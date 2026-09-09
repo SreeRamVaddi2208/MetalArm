@@ -1,0 +1,28 @@
+# LevelForge backend - pinned for reproducible Docker builds.
+# Every compiled dep below ships prebuilt cp314 manylinux aarch64 wheels,
+# so the container needs no gcc/build toolchain.
+
+fastapi==0.141.1
+uvicorn[standard]==0.52.4
+
+# DB
+SQLAlchemy==2.0.52
+alembic==1.19.2
+psycopg2-binary==2.9.11
+
+# Cache / leaderboard
+redis==7.4.1
+
+# Config
+pydantic==2.13.5
+pydantic-settings==2.15.0
+
+# Auth (Sprint 2).
+# NOTE: passlib is deliberately NOT used. It is unmaintained (last release
+# 2020), hard-fails against bcrypt>=5 during backend detection, and depends on
+# the stdlib `crypt` module that PEP 594 removed in Python 3.13+. We call
+# bcrypt directly instead. PyJWT is used over python-jose for the same
+# maintenance reason.
+bcrypt==5.0.0
+PyJWT==2.11.0
+python-multipart==0.0.32

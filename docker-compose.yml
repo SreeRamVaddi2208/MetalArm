@@ -1,0 +1,166 @@
+# ---------------------------------------------------------------------------
+# LevelForge - local development stack.
+#
+# Every service is INDEPENDENTLY buildable, per Section 6. A broken frontend
+# build must never block verification of a working backend:
+#     docker compose build backend
+#     docker compose up -d postgres redis backend
+#     docker compose build frontend
+#
+# No secrets are inlined. Everything comes from .env (gitignored); see
+# .env.example for the template.
+# ---------------------------------------------------------------------------
+
+name: levelforge
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: levelforge-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "${POSTGRES_HOST_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      # -d/-U so the check fails if the DB or role is genuinely wrong,
+      # not merely if the server socket is listening.
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    networks: [levelforge]
+
+  redis:
+    image: redis:8-alpine
+    container_name: levelforge-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "${REDIS_HOST_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+    networks: [levelforge]
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: levelforge-backend
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      # Service name on the compose network, NOT localhost.
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY}
+      JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-60}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
+    ports:
+      - "${BACKEND_HOST_PORT:-8000}:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - |
+          import urllib.request, sys
+          sys.exit(0 if urllib.request.urlopen("http://127.0.0.1:8000/health", timeout=4).status == 200 else 1)
+      interval: 10s
+      timeout: 6s
+      retries: 6
+      start_period: 15s
+    networks: [levelforge]
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        # Browser-reachable, and baked into the JS bundle at build time.
+        REFLEX_API_URL: ${REFLEX_API_URL:-http://localhost:3000}
+    container_name: levelforge-frontend
+    restart: unless-stopped
+    environment:
+      REFLEX_API_URL: ${REFLEX_API_URL:-http://localhost:3000}
+      LEVELFORGE_API_BASE_URL: ${LEVELFORGE_API_BASE_URL:-http://localhost:8000}
+    ports:
+      # Single port: in prod Reflex serves UI + state server from one process.
+      - "${FRONTEND_HOST_PORT:-3000}:3000"
+    # Intentionally NOT depends_on backend: the frontend must be independently
+    # runnable against a stub API during early development (Section 4.3).
+    healthcheck:
+      # Only python3 exists in these images (no curl/wget), so probe with urllib.
+      test:
+        - CMD
+        - python3
+        - -c
+        - |
+          import urllib.request, sys
+          sys.exit(0 if urllib.request.urlopen("http://127.0.0.1:3000/", timeout=8).status == 200 else 1)
+      interval: 15s
+      timeout: 12s
+      retries: 6
+      start_period: 40s
+    networks: [levelforge]
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: levelforge-pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: "False"
+    ports:
+      - "${PGADMIN_HOST_PORT:-5050}:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - python3
+        - -c
+        - |
+          import urllib.request, sys
+          sys.exit(0 if urllib.request.urlopen("http://127.0.0.1:80/misc/ping", timeout=8).status == 200 else 1)
+      interval: 15s
+      timeout: 12s
+      retries: 6
+      start_period: 40s
+    networks: [levelforge]
+
+volumes:
+  postgres_data:
+  redis_data:
+  pgadmin_data:
+
+networks:
+  levelforge:
+    driver: bridge

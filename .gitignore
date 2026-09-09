@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Environment / secrets  -- never commit real values, only .env.example
+.env
+.env.*
+!.env.example
+
+# Reflex build artifacts (Reflex owns the Node/React layer entirely)
+.web/
+frontend/.web/
+.states/
+*.db
+reflex.db
+
+# Node (present only inside Reflex's managed build dir)
+node_modules/
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/

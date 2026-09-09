@@ -1,0 +1,11 @@
+# LevelForge frontend.
+# Reflex compiles Python -> React/Next.js and owns the entire Node build
+# pipeline internally. There is deliberately no package.json / package-lock.json
+# in this repo: the previous project died on a host-generated (darwin) lockfile
+# being fed to a linux/musl container via `npm ci`
+# (@rollup/rollup-linux-arm64-musl not found, npm/cli#4828). Reflex generating
+# its own lockfile inside the target container removes that failure mode.
+# Do not hand-add JS tooling here.
+
+reflex==0.9.10.post2
+httpx==0.28.1
