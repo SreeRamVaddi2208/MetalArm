@@ -14,6 +14,63 @@ Entry format:
 
 ---
 
+## 2026-09-10 (2) - Backend Agent (Opus) - schema + first migration
+
+**Changed**
+- `docs/data-model.md` signed off -> **CONFIRMED**. Decisions: multi-party
+  membership ALLOWED; native PG enums only for genuinely stable sets
+  (`rank`, `quest_status`, `party_role`) with `recurrence` as VARCHAR+CHECK;
+  email uniqueness via `email_normalized`, not CITEXT.
+- ORM models added under `backend/app/models/` (10 tables). `alembic/env.py`
+  now imports them so autogenerate can see them.
+- `backend/app/core/leveling.py`: XP curve + rank thresholds, isolated so
+  Section 11's open curve question stays cheap. PLACEHOLDER numbers.
+- First migration: **`5dba70011569`**.
+
+**Verified (real output)**
+- `upgrade head` -> `downgrade base` -> `upgrade head` all clean; `alembic check`
+  reports **no drift**, so models match the DB exactly.
+- 10 tables, 3 enum types with correct lowercase values, 2 UNIQUE anti-farm
+  constraints, 17 CHECK constraints - all confirmed present in `pg_constraint`.
+- Guarantees tested by attempting what they forbid (all rolled back):
+  double-completing a daily quest **blocked**; completing it the next day
+  **succeeded**; case-variant email **blocked**; negative points **blocked**;
+  `recurrence='monthly'` **blocked**; `xp_reward=999999` **blocked**;
+  bogus enum value **blocked**.
+- Backend image rebuilt; container reports `5dba70011569 (head)` and 10 models.
+  All 5 services healthy; `/health` reports real PG 17.10 + Redis 8.10.1.
+
+**Two bugs caught before shipping**
+- `Enum(QuestStatus)` persists the member NAME (`ACTIVE`), not `.value`
+  (`active`), diverging from `server_default` and failing the migration.
+  Fixed via a shared `pg_enum()` helper using `values_callable`. Hidden by
+  `Rank`, whose names equal its values.
+- Autogenerate's `downgrade()` drops tables but **not** native enum types, so
+  the next upgrade fails with `type "rank" already exists`. `downgrade()` now
+  carries a hand-added `DROP TYPE IF EXISTS` loop.
+
+**Also**
+- Renaming the project folder broke both venvs (venv console scripts hardcode
+  an absolute shebang). Both were recreated. If you move the repo again,
+  recreate `backend/.venv` and `frontend/.venv`; Docker is unaffected.
+
+**Blocked**
+- Nothing.
+
+**Other agent needs to know**
+- **Frontend Agent:** the schema is settled, but **no API endpoints exist yet**
+  beyond `/` and `/health` - `docs/api-contract.md` is still just those two.
+  Sprint 2 UI must run against a stub until auth/quest endpoints land.
+  Useful shapes to design against: a quest is completed **per period**, so the
+  UI needs "done today" state rather than a boolean `completed`; XP is
+  cumulative with level/rank derived; ranks are `E,D,C,B,A,S` lowercase-valued
+  enums except rank which is uppercase.
+- **Backend Agent (next):** Sprint 2 = auth (signup/login/JWT with bcrypt +
+  PyJWT, never passlib) and quest CRUD, including `period_key` derivation in
+  the user's timezone. Regenerate the contract after every endpoint change.
+
+---
+
 ## 2026-09-10 - Setup / Backend Agent (Opus)
 
 **Changed**

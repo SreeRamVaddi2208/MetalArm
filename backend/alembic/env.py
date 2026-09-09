@@ -13,9 +13,9 @@ from sqlalchemy import engine_from_config, pool
 from app.core.config import get_settings
 from app.db.session import Base
 
-# Import every model module here so Base.metadata is fully populated before
-# autogenerate runs. Sprint 2 adds these.
-# from app.models import user, quest, party  # noqa: F401
+# Importing the models package populates Base.metadata. Without this,
+# autogenerate sees an empty schema and produces an empty migration.
+import app.models  # noqa: F401
 
 config = context.config
 
