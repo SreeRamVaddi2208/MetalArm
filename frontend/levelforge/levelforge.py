@@ -1,88 +1,93 @@
 """LevelForge frontend entrypoint.
 
-SPRINT 1 SCOPE ONLY. This is a scaffold whose sole job is to prove the
-Python -> React/Next.js pipeline compiles and serves, locally and in Docker.
-It is intentionally wired to no data.
-
-Frontend Agent (Sonnet) owns everything past this point: the real Stat Panel,
-quest board, party views, theme, and the Section 7 animation components. Build
-those in levelforge/pages/ and levelforge/components/ - keep animation code out
-of state/data modules, per Section 7.
+Routes and page registration only. Layout lives in components/, data in
+state/, and the Section 7 motion work in components/level_up.py - kept apart
+so animation can be iterated on without touching how data flows.
 """
 
 import reflex as rx
 
-# Placeholder palette. Frontend Agent should replace this with a proper theme
-# module - original work only, inspired by the hunter-rank aesthetic, never
-# copying Solo Leveling assets, logos, or text.
-ACCENT = "#38bdf8"
-BG = "#0a0e17"
-PANEL = "#121826"
-BORDER = "#1f2937"
-MUTED = "#94a3b8"
+from levelforge import theme
+from levelforge.pages.dashboard import dashboard_page
+from levelforge.pages.login import login_page, signup_page
+from levelforge.pages.rewards import rewards_page
+from levelforge.state.auth import AuthState
+from levelforge.state.quests import QuestState
+from levelforge.state.rewards import RewardState
 
 
-def stat_row(label: str, value: str) -> rx.Component:
-    return rx.hstack(
-        rx.text(label, color=MUTED, font_size="0.8rem", letter_spacing="0.08em"),
-        rx.spacer(),
-        rx.text(value, color="white", font_weight="600", font_size="0.95rem"),
-        width="100%",
-    )
-
-
-def stat_panel_placeholder() -> rx.Component:
-    """Structural placeholder for the Stat Panel. No live data behind it."""
-    return rx.vstack(
-        rx.text(
-            "STATUS",
-            color=ACCENT,
-            font_size="0.75rem",
-            letter_spacing="0.3em",
-            font_weight="700",
-        ),
-        rx.heading("HUNTER", size="7", color="white"),
-        rx.divider(border_color=BORDER),
-        stat_row("LEVEL", "--"),
-        stat_row("RANK", "--"),
-        stat_row("XP", "-- / --"),
-        stat_row("STREAK", "--"),
-        rx.divider(border_color=BORDER),
-        rx.text(
-            "Scaffold only - not connected to the API. "
-            "Sprint 1 verifies the build pipeline, nothing more.",
-            color=MUTED,
-            font_size="0.75rem",
-            font_style="italic",
-        ),
-        spacing="3",
-        padding="2rem",
-        width="100%",
-        max_width="420px",
-        background=PANEL,
-        border=f"1px solid {BORDER}",
-        border_radius="14px",
-        box_shadow=f"0 0 40px -12px {ACCENT}55",
-    )
-
-
-def index() -> rx.Component:
+def landing() -> rx.Component:
+    """`/` decides where to send you, rather than rendering a third variant of
+    the signed-in and signed-out views."""
     return rx.center(
-        rx.vstack(
-            rx.heading("LevelForge", size="9", color="white"),
-            rx.text("Level up your life.", color=MUTED),
-            stat_panel_placeholder(),
-            spacing="5",
-            align="center",
-        ),
+        rx.spinner(),
         min_height="100vh",
         width="100%",
-        background=BG,
-        padding="2rem",
+        background=theme.BG,
     )
 
 
-# Theme is configured via RadixThemesPlugin in rxconfig.py - passing
-# theme= to rx.App() is deprecated in Reflex 0.9 and removed in 1.0.
-app = rx.App()
-app.add_page(index, route="/", title="LevelForge")
+class RouteState(rx.State):
+    async def route_home(self):
+        auth = await self.get_state(AuthState)
+        return rx.redirect("/dashboard" if auth.token else "/login")
+
+    async def enter_dashboard(self):
+        """Guard + load. Redirects out when there is no session, so a page is
+        never rendered against a token the API has already rejected."""
+        auth = await self.get_state(AuthState)
+        if not auth.token:
+            return rx.redirect("/login")
+        return [AuthState.refresh_me, QuestState.load]
+
+    async def enter_rewards(self):
+        auth = await self.get_state(AuthState)
+        if not auth.token:
+            return rx.redirect("/login")
+        return [AuthState.refresh_me, RewardState.load]
+
+    async def bounce_if_signed_in(self):
+        """Keep a signed-in user off the auth pages."""
+        auth = await self.get_state(AuthState)
+        if auth.token:
+            return rx.redirect("/dashboard")
+
+
+app = rx.App(
+    # Applied to <body>; without it the page shows the browser default behind
+    # the layout on overscroll.
+    style={
+        "background": theme.BG,
+        "color": theme.TEXT,
+        "font_family": (
+            "ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, "
+            "'Helvetica Neue', Arial, sans-serif"
+        ),
+    },
+)
+
+app.add_page(landing, route="/", title="LevelForge", on_load=RouteState.route_home)
+app.add_page(
+    login_page,
+    route="/login",
+    title="Sign in - LevelForge",
+    on_load=RouteState.bounce_if_signed_in,
+)
+app.add_page(
+    signup_page,
+    route="/signup",
+    title="Create account - LevelForge",
+    on_load=RouteState.bounce_if_signed_in,
+)
+app.add_page(
+    dashboard_page,
+    route="/dashboard",
+    title="Quest board - LevelForge",
+    on_load=RouteState.enter_dashboard,
+)
+app.add_page(
+    rewards_page,
+    route="/rewards",
+    title="Rewards - LevelForge",
+    on_load=RouteState.enter_rewards,
+)

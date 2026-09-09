@@ -149,7 +149,18 @@ services:
     restart: unless-stopped
     environment:
       REFLEX_API_URL: ${REFLEX_API_URL:-http://localhost:3000}
-      LEVELFORGE_API_BASE_URL: ${LEVELFORGE_API_BASE_URL:-http://localhost:8000}
+      # Reflex event handlers run SERVER-side, inside this container, so
+      # API calls originate here and not in the browser: the compose service
+      # name is correct and `localhost` is wrong - localhost:8000 in here is
+      # the Reflex server itself, not the backend.
+      # (REFLEX_API_URL above is the opposite: it IS browser-facing.)
+      #
+      # Fixed, NOT ${LEVELFORGE_API_BASE_URL}. That variable means the
+      # browser-reachable URL for a local `reflex run`, and letting .env supply
+      # it here silently pointed the container at its own localhost:8000 -
+      # every API call failed with ECONNREFUSED while the UI still rendered.
+      # This address is a property of the compose network, not user config.
+      LEVELFORGE_API_BASE_URL: http://backend:8000
     ports:
       # Single port: in prod Reflex serves UI + state server from one process.
       - "${FRONTEND_HOST_PORT:-3000}:3000"

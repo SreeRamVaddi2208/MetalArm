@@ -14,6 +14,101 @@ Entry format:
 
 ---
 
+## 2026-09-10 (6) - Opus (now BOTH agents) - audit + frontend catch-up
+
+The user asked for a full audit of Sprints 1-4 before continuing, and took
+over the Frontend Agent role in this session since no Sonnet session had run.
+
+### Part 1 - audit findings
+
+**One serious bug.** Nothing ran `alembic upgrade head`. On a fresh volume the
+README's quick start produced a stack where `/health` returned **200 "ok"**
+while every real request failed with `relation "users" does not exist` - the
+check only ran `SELECT 1`, which an empty database answers happily.
+Reproduced against a scratch DB before fixing. Two fixes, since either alone
+leaves a hole:
+- A `migrate` compose service runs `alembic upgrade head` to completion and
+  exits before the backend starts (`service_completed_successfully`).
+- `/health` now reports READINESS: it compares the applied migration revision
+  to the head this code expects and returns 503 naming the fix.
+
+**Also fixed:** Postgres/Redis/pgAdmin were published on `0.0.0.0` (Redis runs
+unauthenticated and logs a warning saying so) - now bound to `127.0.0.1`.
+`alembic.ini` gained `path_separator = os`, and a test forging a 23-byte key
+now uses a full-length one; warnings 4 -> 2, both remaining third-party.
+
+**Clean:** all 28 modules import, no stale doc references, backend/frontend
+logs error-free, migration round-trip (up/down/up) clean, contract generator
+idempotent. The Postgres ERROR lines in the logs are all deliberate negative
+tests - constraints doing their job.
+
+New `scripts/smoke_test.py`: **51 end-to-end checks** over real HTTP against a
+running stack, covering every sprint plus ownership isolation.
+
+### Part 2 - frontend catch-up (Sprints 2-4 UI)
+
+The frontend was still the Sprint 1 placeholder: 88 lines, one file, empty
+`components/` and `pages/`, not connected to the API. Now built:
+- `api.py` - typed client for all 19 endpoints, driven by `docs/api-contract.md`.
+- `models.py` - Progress / Quest / Reward / Redemption.
+- `state/` - auth (token in LocalStorage), quests, rewards.
+- `components/` - layout, stat_panel, quest_card, reward_card, **level_up**.
+- `pages/` - login, signup, dashboard (Stat Panel + quest board), rewards shop.
+- `theme.py` - original dark palette, per-rank colours. No Solo Leveling asset,
+  logo, colour or copy is reproduced.
+
+**Four Reflex-specific bugs caught during the build**
+- **`rx.Base` was REMOVED in Reflex 0.9** ("No reflex attribute Base"). Reflex
+  0.9 recognises plain **dataclasses** as state-var models instead - see
+  `reflex/istate/proxy.py` dispatching on `dataclasses.is_dataclass`.
+- **`return <value>` in an async generator is a SyntaxError.** A handler that
+  `yield`s (to flash a loading state) must navigate with
+  `yield rx.redirect(...)`. This breaks the BUILD, not runtime.
+- **A Python `@property` on a model is invisible to the compiled component** -
+  Reflex renders to JS and cannot evaluate it. Derived values are now stored
+  fields (`Quest.recurrence_label`) or `rx.var` on the state (`xp_percent`,
+  `rank_is_gated`, `streak_label`).
+- Spreading `**PANEL_STYLE` beside an explicit `width=` is a compile-time
+  `got multiple values for keyword argument`. Replaced with `theme.panel(**overrides)`,
+  which merges and makes the collision impossible.
+
+**One bug that would have made the whole UI dead**
+- `LEVELFORGE_API_BASE_URL` was `http://localhost:8000` inside the frontend
+  container -> **ECONNREFUSED on every call**, while the UI still rendered
+  perfectly. Reflex event handlers run **server-side**, so `localhost` there is
+  the Reflex server, not the backend. Compose now pins `http://backend:8000`
+  and deliberately does NOT read the `.env` value - that variable means the
+  browser-reachable URL for a local `reflex run`, and letting it through
+  silently pointed the container at itself. (`REFLEX_API_URL` is the opposite:
+  genuinely browser-facing, and baked in at build time.)
+
+**One UX bug caught in the SSR output**
+- A brand-new user was shown **"Maximum rank reached"** and a full XP bar:
+  `next_rank` is `""` both at the top of the ladder and in the unloaded
+  default, and `xp_for_next_level` of 0 rendered as 100%. Both are now gated
+  on `AuthState.loaded`, and the streak reads "NONE YET" rather than "BROKEN"
+  for someone who never had one.
+
+**Verified (real output)**
+- 124 backend tests, 51 smoke checks, 5/5 services healthy, all 5 frontend
+  routes 200, **zero** error lines in backend/frontend/migrate logs.
+- Frontend data layer exercised against the LIVE backend from inside the
+  container: every model parses, the 409 "already completed" message is
+  readable, and FastAPI's list-shaped 422 body flattens to `point_cost: ...`
+  rather than an unreadable blob.
+
+**Blocked**
+- Nothing.
+
+**Next**
+- Sprint 5: Party/Guild + Redis leaderboard. Settled with the user:
+  **periodic refresh (REST, no WebSockets)**; **max 10 members**, owner can
+  dissolve, members can leave, owner leaving transfers to the longest-serving
+  member; **party XP counts only what was earned while a member**, so
+  recruiting a high-level user cannot inflate a party's total.
+
+---
+
 ## 2026-09-10 (5) - Backend Agent (Opus) - Sprint 4: rewards wallet + shop
 
 **Changed**
