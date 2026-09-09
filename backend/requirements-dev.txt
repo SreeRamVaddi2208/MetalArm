@@ -1,0 +1,9 @@
+# Test-only dependencies. Deliberately NOT in requirements.txt: they are
+# installed only by the Dockerfile's `dev` stage, so the runtime image that
+# ships to production never contains a test runner.
+-r requirements.txt
+
+pytest==8.4.2
+# Required by fastapi.testclient.TestClient, which drives the app in-process
+# (no live server, no network) so tests are fast and deterministic.
+httpx==0.28.1

@@ -57,6 +57,10 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
+      # EXPLICIT: the Dockerfile's last stage is `dev` (pytest), and Docker
+      # builds the last stage by default. Without this, the shipped runtime
+      # image would silently gain a test runner.
+      target: runtime
     container_name: levelforge-backend
     restart: unless-stopped
     environment:
@@ -124,6 +128,40 @@ services:
       timeout: 12s
       retries: 6
       start_period: 40s
+    networks: [levelforge]
+
+  # Backend test suite. Behind a profile, so `docker compose up` never starts
+  # it and it cannot interfere with the running stack.
+  #     docker compose run --rm tests
+  tests:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: dev
+    profiles: ["test"]
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      # Tests run against a SEPARATE database, created and dropped by
+      # conftest.py, so a test run can never truncate development data.
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY}
+      JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-60}
+      LOG_LEVEL: warning
+    volumes:
+      # Mount the source so editing a test does not require an image rebuild.
+      # The venv lives at /opt/venv, outside /app, so it is unaffected.
+      - ./backend:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     networks: [levelforge]
 
   pgadmin:

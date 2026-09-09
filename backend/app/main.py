@@ -1,8 +1,10 @@
 """LevelForge API entrypoint.
 
-Sprint 1 scope: application scaffold plus a /health endpoint that reports a
-REAL Postgres and Redis connection state. Nothing here is hardcoded to "ok" -
-if a dependency is down, /health says so and returns 503.
+Sprint 1: application scaffold plus a /health endpoint that reports a REAL
+Postgres and Redis connection state. Nothing here is hardcoded to "ok" - if a
+dependency is down, /health says so and returns 503.
+
+Sprint 2: auth (signup/login/JWT) and quest CRUD, mounted under /api/v1.
 """
 
 import logging
@@ -14,6 +16,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 
+from app.api import api_router
 from app.core.config import get_settings
 from app.db.redis_client import get_redis
 from app.db.session import engine
@@ -81,6 +84,9 @@ def health(response: Response) -> dict[str, Any]:
         "version": app.version,
         "dependencies": {"postgres": postgres, "redis": cache},
     }
+
+
+app.include_router(api_router)
 
 
 @app.get("/", tags=["system"])

@@ -14,6 +14,101 @@ Entry format:
 
 ---
 
+## 2026-09-10 (3) - Backend Agent (Opus) - Sprint 2: auth + quest CRUD
+
+**Changed**
+- Committed the Sprint 1.5 schema work that was sitting staged (`de17a20`).
+- **Auth:** `core/security.py` (bcrypt + PyJWT), `api/deps.py`
+  (`get_current_user`), `api/routes/auth.py`. Endpoints: `POST /auth/signup`,
+  `POST /auth/login` (JSON - use this from Reflex), `POST /auth/token`
+  (form-encoded, only so /docs' Authorize button works), `GET /auth/me`.
+- **Quests:** `api/routes/quests.py` - list/create/get/patch/delete plus
+  `POST /quests/{id}/complete`. All mounted under **`/api/v1`**.
+- `core/periods.py` derives `period_key` in the USER's timezone;
+  `core/progression.py` applies XP/points/level/rank/streak.
+- **Tests:** 66 pytest tests under `backend/tests/`. New Dockerfile `dev`
+  stage + profiled `tests` compose service: `docker compose run --rm tests`.
+- `docs/api-contract.md` regenerated from the live app: **11 endpoints**.
+
+**Verified (real output)**
+- `66 passed` in 9.97s. All 5 services `(healthy)`; `/health` 200 with real
+  PG 17.10 + Redis 8.10.1; `/`, `/docs`, `/openapi.json`, `:3000`, `:5050` all
+  responding. `alembic check` still reports no drift (no model changes).
+- **Concurrency, the important one:** 20 simultaneous completions of one quest
+  -> `{409: 19, 200: 1}`, exactly 500 XP awarded (not 10,000), exactly 1
+  completion row. The lost-update and XP-farming races are genuinely closed.
+- **Ownership:** user B gets 404 (not 403) on A's quest for GET/PATCH/DELETE/
+  complete, and earns 0 XP from it. B's board shows 0 of A's quests.
+- **Timezones:** same instant, `America/New_York` -> `2026-09-09` and
+  `Asia/Tokyo` -> `2026-09-10`. Moving a user across that boundary lets the
+  daily quest be completed again and extends the streak to 2 - both rows
+  coexist under the UNIQUE constraint, exactly as intended.
+- **Token attacks all rejected:** wrong secret, `alg=none`, expired (distinct
+  message, deliberately), garbage, valid-signature-but-deleted-user, absent.
+- Unknown-email vs wrong-password login differ by **2.8%** in latency
+  (176.1ms vs 171.3ms) and return byte-identical bodies - no enumeration
+  oracle. Our `JWT_SECRET_KEY` is 64 bytes.
+- `alembic check` clean; contract generator is idempotent apart from its
+  timestamp line; runtime image confirmed to contain **no** pytest/httpx.
+
+**Three bugs caught before shipping**
+- `EmailStr` needs the separate **`email-validator`** package; without it
+  every schema using it fails at IMPORT time. Now pinned (`2.3.0`).
+- The new Dockerfile `dev` stage is the LAST stage, and Docker builds the last
+  stage by default - the shipped backend image would have silently gained
+  pytest. Compose now pins `target: runtime` explicitly.
+- In `conftest.py`, `import app.models` rebinds the name `app` from the
+  FastAPI instance to the package, so `app.dependency_overrides` raised
+  AttributeError. Use `from app import models` instead.
+
+**Decisions worth knowing**
+- **bcrypt 5.0 RAISES past 72 bytes** (it does not truncate). Password length
+  is validated in BYTES at the schema layer, so 30 emoji (120 bytes) is a
+  clean 422 rather than a 500. Truncating instead would make every password
+  sharing a 72-byte prefix open the same account.
+- Completion order is: lock `level_progress` FOR UPDATE -> insert completion
+  -> apply XP -> commit. Same lock order for every writer, so no deadlock, and
+  the UNIQUE constraint (not a Python pre-check) is what stops double-awards.
+- `xp_awarded` is snapshotted at completion time - raising a quest's reward
+  later does not rewrite history.
+- Deleting a quest cascades its completions but does NOT claw back XP:
+  `total_xp` is cumulative and the XP was earned. Archive to keep the trail.
+- Access tokens only, no refresh tokens yet. `jti` is in the payload so a
+  Redis denylist can revoke individual tokens later.
+- Test emails must not use `.test`/`.local` - email-validator rejects RFC 6761
+  special-use TLDs, the same trap pgAdmin hit in Sprint 1.
+- **Known edge case, not a bug:** a user who changes timezone can re-complete
+  a daily quest in the overlap. Inherent to per-user-timezone periods; flagging
+  rather than fixing, since the alternative (server-fixed days) is worse.
+
+**Blocked**
+- Nothing.
+
+**Other agent needs to know**
+- **Frontend Agent: real endpoints now exist.** Regenerated
+  `docs/api-contract.md` has all 11 with full request/response schemas. The
+  stub is no longer needed for auth or quests.
+  - Base path is **`/api/v1`**. Log in via `POST /api/v1/auth/login` with JSON
+    `{email, password}` -> `{access_token, token_type, expires_in}`. Send it
+    as `Authorization: Bearer <token>`. Tokens last 60 min by default; on
+    expiry you get 401 with detail `"Token has expired"` - re-login on that.
+  - A quest is **never** "completed" outright. Render from
+    `completed_in_current_period` + `current_period_key`, both returned per
+    quest and computed in the user's timezone.
+  - `POST /quests/{id}/complete` returns `progression` carrying
+    **`leveled_up`** and **`ranked_up`** booleans plus before/after level and
+    rank - drive the Section 7 level-up animation off those directly, no
+    diffing needed. A repeat completion is a **409**, which the UI should
+    treat as "already done this period", not an error state.
+  - Signup takes an IANA `timezone` (e.g. `America/New_York`); an unknown zone
+    is a 422. This drives daily resets and streaks, so collect it at signup.
+- **Backend Agent (next):** Sprint 3 = XP curve + rank thresholds. The numbers
+  in `core/leveling.py` are still PLACEHOLDERS and Section 11's curve question
+  is still open - settle it with the user before tuning. Retuning is safe:
+  `total_xp` is the source of truth and level/rank are re-derived.
+
+---
+
 ## 2026-09-10 (2) - Backend Agent (Opus) - schema + first migration
 
 **Changed**
