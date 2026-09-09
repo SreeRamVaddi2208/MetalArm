@@ -10,7 +10,7 @@
 
 - **API title:** LevelForge API
 - **API version:** 0.1.0
-- **Generated:** 2026-09-09 22:21 UTC
+- **Generated:** 2026-09-09 22:28 UTC
 - **Source:** `http://localhost:8000/openapi.json`
 
 ---
@@ -231,6 +231,167 @@ Ordering inside the transaction is deliberate:
 
 ---
 
+### `GET /api/v1/rewards`
+
+**List Rewards**
+
+*Tags:* `rewards`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `include_inactive` | query | `boolean` | no |
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `POST /api/v1/rewards`
+
+**Create Reward**
+
+*Tags:* `rewards`
+
+*Request body* (`application/json`): `RewardCreate`
+
+| Status | Description |
+|---|---|
+| `201` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `GET /api/v1/rewards/redemptions`
+
+**List Redemptions**
+
+Spend history, newest first.
+
+*Tags:* `rewards`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `limit` | query | `integer` | no |
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `GET /api/v1/rewards/wallet`
+
+**Read Wallet**
+
+Balance plus lifetime earned/spent totals.
+
+*Tags:* `rewards`
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+
+---
+
+### `DELETE /api/v1/rewards/{reward_id}`
+
+**Delete Reward**
+
+Delete a reward that has never been redeemed.
+
+The redemption FK is ON DELETE RESTRICT so that deleting a reward cannot
+erase the record of points already spent on it. Once there is history the
+reward can only be DEACTIVATED (PATCH is_active=false), which hides it from
+the shop while leaving the ledger intact.
+
+*Tags:* `rewards`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `reward_id` | path | `string` | yes |
+
+| Status | Description |
+|---|---|
+| `204` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `GET /api/v1/rewards/{reward_id}`
+
+**Get Reward**
+
+*Tags:* `rewards`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `reward_id` | path | `string` | yes |
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `PATCH /api/v1/rewards/{reward_id}`
+
+**Update Reward**
+
+Partial update.
+
+Repricing does NOT rewrite spend history: points_spent is snapshotted on
+the redemption row, so past redemptions keep the price actually paid.
+
+*Tags:* `rewards`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `reward_id` | path | `string` | yes |
+
+*Request body* (`application/json`): `RewardUpdate`
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `POST /api/v1/rewards/{reward_id}/redeem`
+
+**Redeem Reward**
+
+Spend points on a reward.
+
+Same transaction shape as completing a quest, and for the same reason:
+
+1. Lock level_progress FOR UPDATE *before* reading the balance. Checking
+   the balance without the lock is a race - two concurrent redeems both
+   read 100, both spend 80, and the user gets 160 points of rewards for
+   100 points. The lock is taken in the same order as the completion path,
+   so the two cannot deadlock against each other.
+2. Insert the redemption and debit in the same transaction, so points can
+   never leave the wallet without a matching ledger row.
+3. CHECK (points_balance >= 0) is the backstop if the guard above is ever
+   bypassed.
+
+*Tags:* `rewards`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `reward_id` | path | `string` | yes |
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
 ### `GET /health`
 
 **Health**
@@ -389,6 +550,50 @@ otherwise 503 with per-dependency detail.
 |---|---|---|
 | _(no properties)_ | | |
 
+#### `RedeemResponse`
+
+| Field | Type | Required |
+|---|---|---|
+| `redemption` | `RedemptionOut` | yes |
+| `points_balance` | `integer` | yes |
+
+#### `RedemptionOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `id` | `string` | yes |
+| `reward_item_id` | `string` | yes |
+| `reward_title` | `string` | yes |
+| `points_spent` | `integer` | yes |
+| `redeemed_at` | `string` | yes |
+
+#### `RewardCreate`
+
+| Field | Type | Required |
+|---|---|---|
+| `title` | `string` | yes |
+| `point_cost` | `integer` | yes |
+
+#### `RewardOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `id` | `string` | yes |
+| `title` | `string` | yes |
+| `point_cost` | `integer` | yes |
+| `is_active` | `boolean` | yes |
+| `created_at` | `string` | yes |
+| `affordable` | `boolean` | yes |
+| `times_redeemed` | `integer` | yes |
+
+#### `RewardUpdate`
+
+| Field | Type | Required |
+|---|---|---|
+| `title` | `string | null` | no |
+| `point_cost` | `integer | null` | no |
+| `is_active` | `boolean | null` | no |
+
 #### `SignupRequest`
 
 | Field | Type | Required |
@@ -415,3 +620,11 @@ otherwise 503 with per-dependency detail.
 | `type` | `string` | yes |
 | `input` | `object` | no |
 | `ctx` | `object` | no |
+
+#### `WalletOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `points_balance` | `integer` | yes |
+| `total_points_earned` | `integer` | yes |
+| `total_points_spent` | `integer` | yes |

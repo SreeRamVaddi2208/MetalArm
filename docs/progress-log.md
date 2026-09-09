@@ -14,6 +14,94 @@ Entry format:
 
 ---
 
+## 2026-09-10 (5) - Backend Agent (Opus) - Sprint 4: rewards wallet + shop
+
+**Changed**
+- Rewards shop live under **`/api/v1/rewards`**, using the `reward_items` /
+  `reward_redemptions` tables that have sat unused since Sprint 1.5. No schema
+  change was needed and `alembic check` still reports no drift.
+- Endpoints: `GET/POST /rewards`, `GET/PATCH/DELETE /rewards/{id}`,
+  **`POST /rewards/{id}/redeem`**, `GET /rewards/wallet`,
+  `GET /rewards/redemptions`.
+- Points are EARNED on quest completion (Sprint 2) and SPENT here. The spend
+  path mirrors the completion path exactly: lock `level_progress` FOR UPDATE,
+  then check balance, then insert + debit in one transaction.
+- Contract regenerated: **19 endpoints, 22 schemas**. 118 tests (was 92).
+
+**Verified (real output)**
+- `118 passed`. All 5 services healthy, `/health` 200, `alembic check` clean.
+- **Double-spend race closed.** 20 simultaneous redeems of an 80-point reward
+  against a 100-point balance -> `{409: 19, 200: 1}`, final balance **20**,
+  exactly **1** redemption row. Same shape as the Sprint 2 completion race.
+- **CHECK is a genuine backstop**, not decoration: a raw
+  `UPDATE level_progress SET points_balance = -1` in psql, bypassing the app
+  entirely, is rejected by `ck_progress_points_non_negative`.
+- Deleting a redeemed reward returns a clean **409** naming the count and
+  pointing at deactivation - not a 500 from the FK. Deactivating instead works
+  and the ledger survives.
+- Sequential overdraw guard: five 30-point redeems against 100 points give
+  `[200, 200, 200, 409, 409]`, balance 10.
+- Repricing a reward after redemption leaves `points_spent` at the price
+  actually paid.
+
+**Design decisions worth knowing**
+- **`ON DELETE RESTRICT` is load-bearing.** A reward with redemption history
+  cannot be deleted, because that would erase the record of points already
+  spent. The app checks first and returns a 409 explaining the alternative;
+  deactivation (`PATCH is_active=false`) hides it from the shop and keeps the
+  ledger. This is the opposite of quests, which hard-delete and cascade.
+- `point_cost >= 1` is enforced in the schema as well as the DB - a zero-cost
+  reward is a free infinite loop.
+- `affordable` and `times_redeemed` are computed per request; the counts come
+  from ONE grouped query, so the shop's cost does not grow per reward.
+- Redemption is **not reversible** - there is no un-redeem or refund endpoint.
+  Nothing in the brief calls for one; flagging in case that is wanted later.
+
+**One bug caught before shipping**
+- FastAPI matches routes in DECLARATION order, so `/rewards/wallet` and
+  `/rewards/redemptions` declared after `/rewards/{reward_id}` would be parsed
+  as UUIDs and 422. They are declared first, with a comment saying why, and a
+  parametrized regression test pins it.
+
+**A real asymmetry the frontend must not paper over**
+- `GET /rewards/wallet` returns `points_balance`, `total_points_earned` and
+  `total_points_spent`. **They do not always reconcile.** Deleting a quest
+  cascades its completions away, so `total_points_earned` drops while the
+  balance correctly does not - the points were genuinely earned and may
+  already be spent. Verified: earn 100, spend 80, delete the earning quest ->
+  `balance=20, earned=0, spent=80`.
+  **Render `points_balance`. Never render `earned - spent` as the balance, and
+  do not treat a mismatch as corruption.** Redemptions never vanish this way
+  (their FK is RESTRICT); only the earned side can.
+
+**Blocked**
+- Nothing.
+
+**Other agent needs to know**
+- **Frontend Agent - the Rewards Shop has real endpoints.** Sprint 4 is the
+  first sprint the brief has us building the same feature together, so:
+  - `GET /rewards` returns the shop, cheapest first, deactivated items hidden
+    (`?include_inactive=true` to see them). Each item carries **`affordable`**
+    (already compared against the caller's balance - just disable the button)
+    and `times_redeemed`.
+  - `POST /rewards/{id}/redeem` returns `{redemption, points_balance}`, so the
+    wallet display can update without a second call. **409 is the expected,
+    non-exceptional response** for insufficient points and for a deactivated
+    reward - the `detail` string is written to be shown to the user.
+  - Deleting a redeemed reward is a **409 by design**; offer "deactivate"
+    in the UI rather than surfacing it as a failure.
+  - Balance also appears on `GET /auth/me` as `progress.points_balance`, so a
+    combined Stat Panel does not need the wallet call.
+- **Backend Agent (next):** Sprint 5 = Party/Guild + Redis leaderboard. The
+  `parties` / `party_memberships` / `party_quests` / `party_quest_completions`
+  tables already exist and are unused. Redis is up and healthy but the app has
+  never actually used it beyond the health check. Note Section 11's open
+  question on **real-time vs periodic refresh** for the shared board and
+  leaderboard, and on **party size limits / dissolution** - both need settling
+  with the user before building.
+
+---
+
 ## 2026-09-10 (4) - Backend Agent (Opus) - Sprint 3: XP curve + rank thresholds
 
 **Changed**
