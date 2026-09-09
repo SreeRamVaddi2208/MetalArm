@@ -22,6 +22,11 @@ python3 -c "import secrets; print(secrets.token_urlsafe(48))"
 docker compose up -d --build
 ```
 
+Schema migrations run automatically: the `migrate` service applies
+`alembic upgrade head` and exits before the backend starts, so a fresh clone
+comes up with a fully migrated database. It is idempotent, so it is safe on
+every start.
+
 Then check that it actually came up - don't assume:
 
 ```bash
@@ -45,6 +50,22 @@ A healthy response reports the **real** server versions it connected to:
 If a dependency is down, `/health` returns **503** and names it. It is never
 hardcoded to "ok".
 
+`/health` checks **readiness, not just liveness**: it also confirms the schema
+is migrated to the revision this code expects. An un-migrated database answers
+`SELECT 1` perfectly happily while every real query fails on a missing table,
+so a connectivity-only check would report "ok" on a stack that cannot serve a
+single request. When the schema is behind, the response is 503 and names the
+fix:
+
+```json
+"schema": {
+  "ready": false,
+  "applied_revision": null,
+  "expected_revision": "5dba70011569",
+  "error": "database has never been migrated - run 'alembic upgrade head'"
+}
+```
+
 ## Services
 
 | Service  | URL                     | Notes |
@@ -54,6 +75,10 @@ hardcoded to "ok".
 | pgAdmin     | http://localhost:5050 | Login with `PGADMIN_DEFAULT_EMAIL` / `PASSWORD` |
 | Postgres    | `localhost:5434`      | Host port 5434; container-internal is 5432 |
 | Redis       | `localhost:6379`      | |
+
+Postgres, Redis and pgAdmin are published to **127.0.0.1 only**, not `0.0.0.0`.
+Redis runs unauthenticated (it logs a warning saying so), and binding it to all
+interfaces would expose it to every host on the network.
 
 **Why Postgres is on 5434:** the development machine runs a native macOS
 Postgres on 5432. Change `POSTGRES_HOST_PORT` in `.env` if that isn't true for
@@ -90,6 +115,31 @@ reflex run                             # UI :3000, state server :8001
 Reflex splits ports in dev but **requires a single port in prod** - the Docker
 image serves both from 3000.
 
+## Tests
+
+The suite runs in its own container against a **separate** database that is
+created and dropped per session, so it never touches development data. Test
+dependencies live in the Dockerfile's `dev` stage and are absent from the
+runtime image.
+
+```bash
+docker compose run --rm tests            # full suite
+docker compose run --rm tests pytest tests/test_quests.py -v
+```
+
+There is also an end-to-end smoke test that drives a **running stack** over
+real HTTP - every sprint's endpoints, plus ownership isolation - and cleans up
+after itself:
+
+```bash
+docker compose up -d
+python3 scripts/smoke_test.py
+```
+
+The two are complementary: pytest drives the app in-process for speed and
+isolation, while the smoke test proves the deployed containers, network and
+migrations actually serve requests.
+
 ## Database migrations
 
 Alembic reads the database URL from the environment, never from `alembic.ini`,
@@ -99,6 +149,23 @@ so no credential is committed.
 docker compose exec backend alembic current
 docker compose exec backend alembic revision --autogenerate -m "describe change"
 docker compose exec backend alembic upgrade head
+```
+
+`alembic check` reports whether the ORM models have drifted from the migrations:
+
+```bash
+docker compose exec backend alembic check      # "No new upgrade operations detected."
+```
+
+### After changing the XP curve
+
+`level_progress.current_level` and `.rank` are **caches** of the curve in
+`backend/app/core/leveling.py`; `total_xp` is the source of truth. Retuning the
+curve leaves those columns stale until they are recomputed:
+
+```bash
+docker compose run --rm tests python -m scripts.recompute_progression --dry-run
+docker compose run --rm tests python -m scripts.recompute_progression
 ```
 
 ## API contract
@@ -138,4 +205,5 @@ The frontend reads that file as the source of truth for endpoint shapes.
 ## Docs
 
 - `docs/api-contract.md` - generated endpoint reference
+- `docs/data-model.md` - the schema and why it is shaped that way
 - `docs/progress-log.md` - session-by-session log; append an entry every session

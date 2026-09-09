@@ -153,7 +153,10 @@ def _forge(secret: str, algorithm: str = "HS256", **overrides) -> str:
 
 
 def test_token_signed_with_the_wrong_secret_is_rejected(client: TestClient) -> None:
-    token = _forge("attacker-guessed-secret")
+    # Full-length key: a short one is rejected for the wrong reason and makes
+    # PyJWT emit an InsecureKeyLengthWarning that has nothing to do with the
+    # behaviour under test.
+    token = _forge("attacker-guessed-secret-" + "x" * 40)
     r = client.get(ME, headers={"Authorization": f"Bearer {token}"})
     assert r.status_code == 401
 

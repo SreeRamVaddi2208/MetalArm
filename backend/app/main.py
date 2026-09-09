@@ -19,6 +19,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from app.api import api_router
 from app.core.config import get_settings
 from app.db.redis_client import get_redis
+from app.db.schema_state import describe as describe_schema
 from app.db.session import engine
 
 settings = get_settings()
@@ -41,13 +42,19 @@ app.add_middleware(
 
 
 def _check_postgres() -> dict[str, Any]:
-    """Actually round-trip a query. Reports the server version on success so a
-    passing check can't be confused with a stubbed response."""
+    """Round-trip a query AND confirm the schema is migrated.
+
+    The connectivity half reports the real server version so a pass cannot be
+    confused with a stubbed response. The schema half exists because
+    connectivity alone is not readiness: an un-migrated database answers
+    SELECT 1 happily while every real query fails on a missing table.
+    """
     try:
         with engine.connect() as conn:
             conn.execute(text("SELECT 1"))
             version = conn.execute(text("SHOW server_version")).scalar_one()
-        return {"connected": True, "server_version": version}
+            schema = describe_schema(conn)
+        return {"connected": True, "server_version": version, "schema": schema}
     except SQLAlchemyError as exc:
         logger.warning("Postgres health check failed: %s", exc)
         return {"connected": False, "error": exc.__class__.__name__}
@@ -73,7 +80,10 @@ def health(response: Response) -> dict[str, Any]:
     """
     postgres = _check_postgres()
     cache = _check_redis()
-    healthy = postgres["connected"] and cache["connected"]
+    # Readiness, not just liveness: a connected but un-migrated database is
+    # not something this service can serve requests against.
+    schema_ready = bool(postgres.get("schema", {}).get("ready", False))
+    healthy = postgres["connected"] and cache["connected"] and schema_ready
 
     if not healthy:
         response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE

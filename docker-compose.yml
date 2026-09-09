@@ -23,7 +23,10 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
     ports:
-      - "${POSTGRES_HOST_PORT:-5432}:5432"
+      # Bound to loopback: the datastores must not be reachable from the LAN.
+      # Redis in particular runs unauthenticated (it logs a warning saying so),
+      # and 0.0.0.0 would expose it to every host on the network.
+      - "127.0.0.1:${POSTGRES_HOST_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -42,7 +45,8 @@ services:
     restart: unless-stopped
     command: ["redis-server", "--appendonly", "yes"]
     ports:
-      - "${REDIS_HOST_PORT:-6379}:6379"
+      # Loopback only - see the note on the postgres service.
+      - "127.0.0.1:${REDIS_HOST_PORT:-6379}:6379"
     volumes:
       - redis_data:/data
     healthcheck:
@@ -51,6 +55,39 @@ services:
       timeout: 3s
       retries: 10
       start_period: 5s
+    networks: [levelforge]
+
+  # Schema migrations. Runs to completion and exits BEFORE the backend
+  # starts, so the API never serves against an un-migrated database.
+  #
+  # Without this, `docker compose up` on a fresh volume gave a backend whose
+  # /health said "ok" (SELECT 1 succeeds on an empty database) while every real
+  # request failed with `relation "users" does not exist`.
+  #
+  # `alembic upgrade head` is idempotent - a no-op when already current - so
+  # this is safe on every start, not just the first.
+  migrate:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: runtime
+    container_name: levelforge-migrate
+    command: ["alembic", "upgrade", "head"]
+    restart: "no"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      # Unused by alembic, but Settings requires it at import time.
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    depends_on:
+      postgres:
+        condition: service_healthy
     networks: [levelforge]
 
   backend:
@@ -84,6 +121,9 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      # Block startup until the schema is actually migrated.
+      migrate:
+        condition: service_completed_successfully
     healthcheck:
       test:
         - CMD
@@ -174,7 +214,8 @@ services:
       PGADMIN_CONFIG_SERVER_MODE: "False"
       PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: "False"
     ports:
-      - "${PGADMIN_HOST_PORT:-5050}:80"
+      # Loopback only: pgAdmin holds database credentials.
+      - "127.0.0.1:${PGADMIN_HOST_PORT:-5050}:80"
     volumes:
       - pgadmin_data:/var/lib/pgadmin
     depends_on:
