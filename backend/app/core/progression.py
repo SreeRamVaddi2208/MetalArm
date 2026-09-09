@@ -37,7 +37,13 @@ class ProgressionDelta:
 
     @property
     def ranked_up(self) -> bool:
-        return self.rank_after != self.rank_before
+        """True only on promotion.
+
+        Rank can also move DOWN when a streak lapses (the gate on A and S), and
+        a demotion must not fire the celebratory rank-up animation.
+        """
+        order = [rank.value for _, rank in leveling.RANK_THRESHOLDS]
+        return order.index(self.rank_after) > order.index(self.rank_before)
 
 
 def lock_progress(db: Session, user_id: uuid.UUID) -> LevelProgress:
@@ -69,16 +75,29 @@ def apply_completion(
     must land together or not at all - awarding XP for a completion that then
     fails to insert would let a user farm XP by retrying.
     """
+    today = local_date(completed_at, tz_name)
+
     level_before = progress.current_level
-    rank_before = progress.rank
+    # The rank held going in, judged against the streak as it stood BEFORE this
+    # completion. Using the stored column instead would report a spurious
+    # rank-up for a lapsed user whose cached rank was never demoted.
+    rank_before = leveling.rank_for(
+        progress.current_level,
+        leveling.effective_streak(
+            progress.current_streak, progress.last_completed_on, today
+        ),
+    )
 
     progress.total_xp += xp
     progress.points_balance += points
-
     progress.current_level = leveling.level_for_xp(progress.total_xp)
-    progress.rank = leveling.rank_for_level(progress.current_level)
 
-    _apply_streak(progress, local_date(completed_at, tz_name))
+    # Streak first: rank depends on it, so computing rank beforehand would use
+    # a stale streak and under-report a promotion earned by this very
+    # completion.
+    _apply_streak(progress, today)
+
+    progress.rank = leveling.rank_for(progress.current_level, progress.current_streak)
 
     return ProgressionDelta(
         xp_awarded=xp,

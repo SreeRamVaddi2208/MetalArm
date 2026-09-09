@@ -10,7 +10,7 @@
 
 - **API title:** LevelForge API
 - **API version:** 0.1.0
-- **Generated:** 2026-09-09 22:09 UTC
+- **Generated:** 2026-09-09 22:21 UTC
 - **Source:** `http://localhost:8000/openapi.json`
 
 ---
@@ -309,13 +309,18 @@ otherwise 503 with per-dependency detail.
 |---|---|---|
 | `total_xp` | `integer` | yes |
 | `current_level` | `integer` | yes |
-| `rank` | `string` | yes |
 | `points_balance` | `integer` | yes |
-| `current_streak` | `integer` | yes |
 | `longest_streak` | `integer` | yes |
 | `last_completed_on` | `string | null` | yes |
 | `xp_into_level` | `integer` | yes |
 | `xp_for_next_level` | `integer` | yes |
+| `current_streak` | `integer` | yes |
+| `streak_is_active` | `boolean` | yes |
+| `rank` | `string` | yes |
+| `rank_by_level` | `string` | yes |
+| `next_rank` | `string | null` | yes |
+| `next_rank_level` | `integer | null` | yes |
+| `next_rank_streak` | `integer | null` | yes |
 
 #### `ProgressionDeltaOut`
 

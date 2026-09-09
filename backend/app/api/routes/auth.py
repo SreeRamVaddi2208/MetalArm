@@ -10,6 +10,7 @@ from sqlalchemy.exc import IntegrityError
 
 from app.api.deps import CurrentUser, DbSession
 from app.core import leveling
+from app.core.periods import local_now
 from app.core.security import (
     burn_password_time,
     create_access_token,
@@ -36,9 +37,24 @@ _INVALID_CREDENTIALS = HTTPException(
 
 
 def _serialize_me(user: User) -> MeOut:
-    """Assemble the identity payload, deriving XP-bar values from the curve."""
+    """Assemble the identity payload.
+
+    Rank and streak are DERIVED here rather than read from the cached columns.
+    A user who lapses while away never issues a request, so nothing updates
+    those columns - reading them raw would show a dormant user an S rank and a
+    streak they no longer hold.
+    """
     progress = user.progress
+    today = local_now(user.timezone).date()
+
+    streak = leveling.effective_streak(
+        progress.current_streak, progress.last_completed_on, today
+    )
+    rank = leveling.rank_for(progress.current_level, streak)
+    earned_by_level = leveling.rank_by_level(progress.current_level)
+    next_up = leveling.next_rank_requirement(progress.current_level, streak)
     into, needed = leveling.progress_into_level(progress.total_xp)
+
     return MeOut(
         id=user.id,
         email=user.email,
@@ -48,13 +64,20 @@ def _serialize_me(user: User) -> MeOut:
         progress=ProgressOut(
             total_xp=progress.total_xp,
             current_level=progress.current_level,
-            rank=progress.rank.value,
             points_balance=progress.points_balance,
-            current_streak=progress.current_streak,
             longest_streak=progress.longest_streak,
             last_completed_on=progress.last_completed_on,
             xp_into_level=into,
             xp_for_next_level=needed,
+            current_streak=streak,
+            streak_is_active=leveling.streak_is_active(
+                progress.last_completed_on, today
+            ),
+            rank=rank.value,
+            rank_by_level=earned_by_level.value,
+            next_rank=next_up[0].value if next_up else None,
+            next_rank_level=next_up[1] if next_up else None,
+            next_rank_streak=next_up[2] if next_up else None,
         ),
     )
 
@@ -97,7 +120,7 @@ def signup(payload: SignupRequest, db: DbSession) -> MeOut:
     user.progress = LevelProgress(
         total_xp=0,
         current_level=1,
-        rank=leveling.rank_for_level(1),
+        rank=leveling.rank_for(1, 0),
         points_balance=0,
         current_streak=0,
         longest_streak=0,

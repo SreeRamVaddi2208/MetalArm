@@ -93,11 +93,107 @@ def test_rank_thresholds_are_ascending() -> None:
     assert levels == sorted(levels)
 
 
+def test_curve_is_fast_enough_to_stay_reachable() -> None:
+    """Guards the pacing decision itself.
+
+    The previous placeholder curve put S rank ~9.8 years out at a realistic
+    income, which made the top half of the ladder dead content. This pins the
+    agreed shape so a future retune cannot silently reintroduce that.
+    """
+    per_day = 268  # 3 dailies at 75 XP plus a weekly at 300
+    top_level = leveling.RANK_THRESHOLDS[-1][0]
+    years = leveling.xp_for_level(top_level) / per_day / 365
+    assert years < 3, f"S rank takes {years:.1f} years at a realistic income"
+
+
 @pytest.mark.parametrize(
-    "level,expected", [(1, "E"), (9, "E"), (10, "D"), (20, "C"), (35, "B"), (50, "A"), (75, "S")]
+    "level,expected", [(1, "E"), (7, "E"), (8, "D"), (18, "C"), (30, "B"), (45, "A"), (65, "S")]
 )
-def test_rank_for_level(level: int, expected: str) -> None:
-    assert leveling.rank_for_level(level).value == expected
+def test_rank_by_level_ignores_the_streak_gate(level: int, expected: str) -> None:
+    """What the level alone has earned - used to tell a user they qualify but
+    need the streak."""
+    assert leveling.rank_by_level(level).value == expected
+
+
+# --------------------------------------------------------------------------
+# The streak gate on A and S
+# --------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "level,streak,expected",
+    [
+        # E-B are level-only, so the streak is irrelevant.
+        (1, 0, "E"),
+        (8, 0, "D"),
+        (18, 0, "C"),
+        (30, 0, "B"),
+        # A needs 14 days, S needs 30.
+        (45, 13, "B"),
+        (45, 14, "A"),
+        (65, 29, "A"),
+        (65, 30, "S"),
+    ],
+)
+def test_rank_applies_the_streak_gate(level: int, streak: int, expected: str) -> None:
+    assert leveling.rank_for(level, streak).value == expected
+
+
+def test_a_lapsed_top_rank_falls_back_not_to_the_floor() -> None:
+    """Losing a streak costs the badge, never the level or the XP behind it."""
+    assert leveling.rank_for(65, 30).value == "S"
+    assert leveling.rank_for(65, 0).value == "B"
+
+
+def test_next_rank_requirement_reports_both_gates() -> None:
+    target, level_needed, streak_needed = leveling.next_rank_requirement(30, 0)
+    assert (target.value, level_needed, streak_needed) == ("A", 45, 14)
+
+
+def test_next_rank_requirement_is_none_at_the_top() -> None:
+    assert leveling.next_rank_requirement(65, 30) is None
+
+
+# --------------------------------------------------------------------------
+# Effective streak - the read-time correction
+# --------------------------------------------------------------------------
+
+TODAY_ = dt.date(2026, 9, 10)
+
+
+@pytest.mark.parametrize(
+    "last,expected_active",
+    [
+        (TODAY_, True),                          # completed today
+        (TODAY_ - dt.timedelta(days=1), True),   # yesterday: still within grace
+        (TODAY_ - dt.timedelta(days=2), False),  # a full day missed
+        (TODAY_ - dt.timedelta(days=30), False),
+        (None, False),                           # never completed anything
+    ],
+)
+def test_streak_is_active(last, expected_active: bool) -> None:
+    assert leveling.streak_is_active(last, TODAY_) is expected_active
+
+
+def test_effective_streak_zeroes_a_lapsed_streak() -> None:
+    """Nothing runs while a user is away, so the stored counter stays frozen at
+    its old value. Without this correction a dormant user would hold S rank
+    forever on a streak they no longer have.
+    """
+    assert leveling.effective_streak(40, TODAY_ - dt.timedelta(days=10), TODAY_) == 0
+    assert leveling.effective_streak(40, TODAY_, TODAY_) == 40
+
+
+def test_a_dormant_user_loses_the_top_rank() -> None:
+    """The end-to-end point of the gate: identical level and stored streak,
+    separated only by whether the user is still showing up."""
+    stored_streak, level = 40, 65
+    active = leveling.effective_streak(stored_streak, TODAY_, TODAY_)
+    lapsed = leveling.effective_streak(
+        stored_streak, TODAY_ - dt.timedelta(days=10), TODAY_
+    )
+    assert leveling.rank_for(level, active).value == "S"
+    assert leveling.rank_for(level, lapsed).value == "B"
 
 
 def test_progress_into_level_matches_the_curve() -> None:

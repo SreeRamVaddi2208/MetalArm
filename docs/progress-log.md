@@ -14,6 +14,97 @@ Entry format:
 
 ---
 
+## 2026-09-10 (4) - Backend Agent (Opus) - Sprint 3: XP curve + rank thresholds
+
+**Changed**
+- **Section 11's curve question is now SETTLED with the user.** Curve
+  retuned from the placeholder `BASE=50, EXPONENT=1.5` to **`BASE=40,
+  EXPONENT=1.25`**, ranks moved from `1/10/20/35/50/75` to
+  **`1/8/18/30/45/65`**. Pacing at a realistic ~268 XP/day:
+  D ~6 days, C ~6 weeks, B ~4.4 months, A ~11 months, **S ~2.1 years**
+  (was 9.8 years, which made the top half of the ladder dead content).
+- **Rank now honours "level AND consistency"** (Section 2), which the previous
+  implementation did not - it keyed off level alone. E-B stay level-only;
+  **A requires a 14-day streak and S a 30-day streak.** A lapsed user falls
+  back to the highest rank they still qualify for (S -> B), never to E:
+  level and total_xp are never lost, only the top badge.
+- `leveling.py` gains `rank_for(level, streak)`, `rank_by_level(level)`,
+  `effective_streak()`, `streak_is_active()`, `next_rank_requirement()`.
+  `rank_for_level()` is gone - all call sites updated.
+- `GET /auth/me` progression payload extended for the Stat Panel:
+  `streak_is_active`, `rank_by_level`, `next_rank`, `next_rank_level`,
+  `next_rank_streak`. Contract regenerated.
+- New `backend/scripts/recompute_progression.py` (with `--dry-run`).
+- 92 tests (was 66).
+
+**Verified (real output)**
+- `92 passed`. Backend rebuilt, all services healthy, `/health` 200.
+- Curve matches the agreed table exactly (D 1,647 XP -> S 209,559 XP);
+  `level_for_xp(xp_for_level(n)) == n` for n in 1..300.
+- **Streak gate demonstrated live** on one user at level 65, varying only the
+  last-completion date:
+  `today -> S`, `1 day ago -> S` (grace), `2 days ago -> B`, `10 days -> B`.
+  Throughout, `rank_by_level` still reports `S` and `next_rank` reports `A`,
+  so the UI can say "rebuild your streak to reclaim it". Level 65 and
+  total_xp never changed.
+- **Recompute verified on seeded stale rows**, not just an empty table: two
+  users with identical XP cached as the old curve's level 34/rank B both moved
+  to level 65; the active one became **S**, the 10-days-dormant one stayed
+  **B**. `--dry-run` wrote nothing; a second run reported `0 of 2` (idempotent).
+- One quest at 150 XP now takes a new user to **level 3** - the early reward
+  loop the curve choice was made for.
+
+**Two design problems found and fixed**
+- **`current_streak` is frozen while a user is away.** Nothing runs on a
+  dormant user's behalf, so gating rank on the stored counter would have meant
+  a lapsed user keeps S forever - the exact outcome the gate exists to prevent.
+  Streak is now derived at READ time via `effective_streak()`, which returns 0
+  once `last_completed_on` is more than `STREAK_GRACE_DAYS` (1) behind the
+  user's local date.
+- **`ranked_up` fired on demotions.** It compared `rank_after != rank_before`,
+  so losing a streak would have triggered the celebratory rank-up animation.
+  It now compares ladder positions and is true only on promotion.
+
+**Also**
+- `xp_for_level` was O(n) and `level_for_xp` O(n^2) (a re-summed loop inside a
+  linear scan). Replaced with a cumulative table built once at import plus a
+  bisect lookup: 10,000 `level_for_xp` calls now take **1.2 ms**. This matters
+  once Sprint 5's leaderboard derives a level per row.
+- Container-run DB tooling lives in `backend/scripts/` (needs app imports and
+  the compose network); host-run HTTP tooling stays in root `scripts/`.
+  Invoke as a module - `python -m scripts.recompute_progression` - because
+  `python scripts/x.py` puts the script's own directory on `sys.path`, not the
+  working directory, so `app` fails to import.
+
+**Blocked**
+- Nothing.
+
+**Other agent needs to know**
+- **Frontend Agent - the Stat Panel now has real data to bind to.**
+  `GET /api/v1/auth/me` -> `progress` carries everything the panel needs:
+  - XP bar: `xp_into_level` / `xp_for_next_level` (both 0 at MAX_LEVEL = full).
+  - Rank badge: **`rank`** is the rank actually held. **`rank_by_level`** is
+    what the level alone earned. **When these differ, the user has earned the
+    higher rank but needs a streak to hold it** - surface that ("14-day streak
+    to claim A"), don't just render the lower badge.
+  - Next rank: `next_rank`, `next_rank_level`, `next_rank_streak`, all `null`
+    at the top of the ladder. Never hardcode a threshold - they will move.
+  - Streak: `current_streak` is the EFFECTIVE value and reads **0** once
+    lapsed; `streak_is_active` says whether it is live. `longest_streak` is
+    the all-time best and never decreases.
+  - `ranked_up` on a completion is now true **only on promotion**, so it is
+    safe to drive the Sprint 6 rank-up animation directly off it.
+- **Backend Agent (next):** Sprint 4 = Reward Points wallet + Rewards Shop
+  (`reward_items`, `reward_redemptions` already exist in the schema, unused).
+  `points_balance` has a `>= 0` CHECK as a double-spend backstop; debit in the
+  same transaction as the redemption insert, and take the `level_progress`
+  row lock first, exactly as the completion path does.
+- If you ever change a number in `app/core/leveling.py`, the cached
+  `current_level` / `rank` columns go stale until you run
+  `docker compose run --rm tests python -m scripts.recompute_progression`.
+
+---
+
 ## 2026-09-10 (3) - Backend Agent (Opus) - Sprint 2: auth + quest CRUD
 
 **Changed**
