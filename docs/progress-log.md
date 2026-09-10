@@ -14,6 +14,77 @@ Entry format:
 
 ---
 
+## 2026-09-10 (8) - Opus (both agents) - bug sweep + Sprint 6 (FINAL SPRINT)
+
+### Part 1 - three bugs cleared
+
+- **Timezone bug in the party leaderboard.** `_derive_rank` accepted `tz_name`
+  and never used it, judging every member's streak against the **server's**
+  date. At 02:00 UTC a Los Angeles member is still on the previous day, so a
+  streak completed "yesterday" their time read as two days idle - a live
+  40-day streak reported as rank **B** when they actually held **S**.
+  Demonstrated numerically before fixing.
+- **Two endpoints disagreed about a party's total XP.** `GET /parties/{id}`
+  summed every contribution; the leaderboard summed only the rows it listed,
+  which skips departed members and truncates at `limit`. A party where someone
+  earned 300 XP then left reported **300 in one place and 0 in the other**.
+- **Reflex reactivity bug.** `_load_detail` mutated `selected.total_party_xp`
+  in place. Reflex marks a var dirty on assignment to the var itself, so a
+  nested write can render stale - and `selected` aliases an entry in
+  `self.parties`, so it quietly edited the list too. Now `dataclasses.replace`.
+
+Ruff over the whole codebase found only two genuinely unused imports (both
+removed). The one other hit was B008 on FastAPI's `Query()` default - the
+documented idiom, a known false positive. **Frontend lints clean.**
+
+### Part 2 - Sprint 6: scroll & level-up animations
+
+- **`components/scroll_reveal.py`** - two implementations of one effect:
+  1. **CSS scroll-driven animation** (`animation-timeline: view()`) where
+     supported. Genuinely scroll-LINKED, compositor-driven, **zero JS**.
+  2. **IntersectionObserver** elsewhere, as a trigger.
+- **Pinned hero:** the Stat Panel holds position while the quest board scrolls
+  past (sticky, never fixed). The wallet does the same on the rewards page.
+- **Level-up beat** now shows the value reached - the new level number or the
+  new rank letter - and rank-up reads gold rather than accent blue, since it is
+  the rarer, larger moment.
+
+**Two real problems solved in the design, not papered over**
+- **The XP bar was animating `width`**, which Section 7 explicitly forbids:
+  width is a layout property, so it forced a reflow every frame. Now
+  `transform: scaleX()` with `transform-origin: left`, via an explicit
+  `xp_scale` rx.var rather than dividing a Var in the template.
+- **Hydration flash.** `rx.script` is bundled and runs AFTER first paint, so
+  hiding content via a document-level class would have flashed it out and back
+  in - worse than no animation. The hidden state is now scoped to `lf-armed`,
+  which the script adds **only to elements below the fold**. Anything already
+  on screen is left untouched. Content is visible by default, so a blocked or
+  failed script costs the animation, never the content.
+
+**Verified (real output)**
+- **158 tests, 82 smoke checks** (was 72), 5/5 services healthy, **zero** error
+  lines in backend/frontend/migrate logs.
+- The smoke test now pins the animation contract against the SERVED page:
+  base `.lf-reveal` rule is empty (visible without JS), hidden state scoped to
+  the JS-added class, scroll-timeline feature-detected, reduced-motion handled,
+  pinning only at >=1024px where a second column exists, **no layout property
+  transitioned anywhere**, and every one of the 5 `lf-*` keyframe blocks
+  animates **only `transform`/`opacity`**.
+
+**Blocked**
+- Nothing.
+
+### Sprint plan status: COMPLETE
+
+Sprints 1-6 are all done and verified. 24 endpoints, 158 backend tests, 82
+end-to-end smoke checks, 5 services, 2 migrations, no schema drift.
+
+Remaining Section 11 items are product decisions, not gaps: real-time party
+updates were deliberately deferred in favour of periodic refresh, and no
+external visual assets were used - `theme.py` is an original palette.
+
+---
+
 ## 2026-09-10 (7) - Opus (both agents) - Sprint 5: parties + leaderboard
 
 **Sprint 5 complete, backend and frontend.** Settled with the user first:

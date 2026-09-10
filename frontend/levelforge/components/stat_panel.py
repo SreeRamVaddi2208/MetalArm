@@ -52,10 +52,13 @@ def stat_row(label: str, value: rx.Var | str, accent: str = theme.TEXT) -> rx.Co
 
 
 def xp_bar() -> rx.Component:
-    """Fill is driven by transform-free width on an inner bar.
+    """XP bar fill.
 
-    Section 7 reserves transform/opacity animation for the signature moments;
-    a static progress fill does not need the compositor.
+    Driven by `transform: scaleX()`, not `width`. Section 7 is explicit about
+    this: width is a layout property, so animating it forces the browser to
+    reflow on every frame, whereas a transform is handled by the compositor.
+    `transform-origin: left` makes the bar grow from its start rather than
+    from the centre.
     """
     return rx.vstack(
         rx.hstack(
@@ -70,11 +73,14 @@ def xp_bar() -> rx.Component:
         ),
         rx.box(
             rx.box(
-                width=f"{AuthState.xp_percent}%",
+                width="100%",
                 height="100%",
+                # scaleX from 0..1 rather than a width percentage.
+                transform=f"scaleX({AuthState.xp_scale})",
+                transform_origin="left center",
                 background=f"linear-gradient(90deg, {theme.ACCENT_DIM}, {theme.ACCENT})",
                 border_radius="999px",
-                transition="width 600ms cubic-bezier(0.22, 1, 0.36, 1)",
+                transition="transform 620ms cubic-bezier(0.22, 1, 0.36, 1)",
                 box_shadow=theme.glow(theme.ACCENT, "22px"),
             ),
             width="100%",

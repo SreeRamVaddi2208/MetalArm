@@ -42,6 +42,8 @@ _KEYFRAMES = f"""
 .lf-card  {{ animation: lf-burst 520ms cubic-bezier(0.22, 1, 0.36, 1) both; }}
 .lf-line  {{ animation: lf-rise 460ms cubic-bezier(0.22, 1, 0.36, 1) 120ms both; }}
 .lf-ring  {{
+  /* The one looping effect in the app, and only while the overlay is open -
+     Section 7: save the expensive motion for the moment that matters. */
   animation: lf-ring 1100ms ease-out 80ms infinite;
   border: 2px solid {theme.ACCENT};
 }}
@@ -54,6 +56,12 @@ _KEYFRAMES = f"""
   .lf-ring {{ display: none; }}
 }}
 """
+
+
+def _beat_color():
+    """Rank-up is the rarer, larger beat, so it reads gold rather than accent
+    blue - the same colour the S-rank badge uses."""
+    return rx.cond(QuestState.level_up_is_rank, theme.RANK_COLORS["S"], theme.ACCENT)
 
 
 def keyframes() -> rx.Component:
@@ -71,35 +79,45 @@ def level_up_overlay() -> rx.Component:
                         rx.box(
                             class_name="lf-ring",
                             position="absolute",
-                            width="120px",
-                            height="120px",
+                            width="128px",
+                            height="128px",
                             border_radius="50%",
                             pointer_events="none",
                         ),
-                        rx.text(
-                            "⚡",
-                            font_size="2.6rem",
+                        # The new level number, or the new rank letter. Showing
+                        # the value reached is the payoff; "you levelled up"
+                        # without saying to what is a weaker beat.
+                        rx.heading(
+                            QuestState.level_up_badge,
+                            size="9",
+                            color=_beat_color(),
+                            font_weight="900",
                             line_height="1",
                         ),
                         position="relative",
                         display="flex",
                         align_items="center",
                         justify_content="center",
-                        width="120px",
-                        height="120px",
+                        width="128px",
+                        height="128px",
                     ),
                     rx.heading(
                         QuestState.level_up_message,
                         size="7",
-                        color=theme.ACCENT,
-                        letter_spacing="0.16em",
+                        color=_beat_color(),
+                        letter_spacing="0.2em",
                         text_align="center",
                         class_name="lf-line",
                     ),
                     rx.text(
-                        "Keep going.",
+                        rx.cond(
+                            QuestState.level_up_is_rank,
+                            "A new rank. Keep the streak alive to hold it.",
+                            "Keep going.",
+                        ),
                         color=theme.MUTED,
                         font_size="0.85rem",
+                        text_align="center",
                         class_name="lf-line",
                     ),
                     rx.button(
@@ -121,7 +139,7 @@ def level_up_overlay() -> rx.Component:
                     class_name="lf-card",
                     padding="2.5rem 2rem",
                     background=theme.PANEL,
-                    border=f"1px solid {theme.ACCENT}55",
+                    border=f"1px solid {_beat_color()}55",
                     border_radius="18px",
                     box_shadow=theme.glow(theme.ACCENT, "90px"),
                     max_width="90vw",

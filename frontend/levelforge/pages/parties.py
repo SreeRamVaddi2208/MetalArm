@@ -15,6 +15,7 @@ from levelforge.components.party_card import (
     party_quest_row,
     party_tab,
 )
+from levelforge.components.scroll_reveal import reveal, reveal_assets
 from levelforge.state.parties import PartyState
 
 
@@ -123,6 +124,10 @@ def empty_state() -> rx.Component:
     )
 
 
+def revealed_party_quest(quest) -> rx.Component:
+    return reveal(party_quest_row(quest))
+
+
 def party_detail() -> rx.Component:
     return rx.vstack(
         rx.vstack(
@@ -225,7 +230,7 @@ def party_detail() -> rx.Component:
             rx.cond(
                 PartyState.has_quests,
                 rx.vstack(
-                    rx.foreach(PartyState.quests, party_quest_row),
+                    rx.foreach(PartyState.quests, revealed_party_quest),
                     spacing="3",
                     width="100%",
                 ),
@@ -269,6 +274,7 @@ def party_detail() -> rx.Component:
 
 def parties_page() -> rx.Component:
     return shell(
+        reveal_assets(),
         error_banner(PartyState.error),
         notice_banner(PartyState.notice),
         rx.hstack(

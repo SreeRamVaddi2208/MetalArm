@@ -27,6 +27,10 @@ class QuestState(rx.State):
     # inferred by diffing two responses.
     level_up_message: str = ""
     show_level_up: bool = False
+    # A rank-up is the bigger of the two beats and gets a different treatment,
+    # so the component needs to tell them apart.
+    level_up_is_rank: bool = False
+    level_up_badge: str = ""
 
     @rx.var
     def has_quests(self) -> bool:
@@ -113,15 +117,17 @@ class QuestState(rx.State):
             self.error = exc.detail
             return
         progression = result.get("progression", {})
+        # Driven off the backend's explicit flags. `ranked_up` is true only on
+        # a promotion, so a demotion from a lapsed streak never fires this.
         if progression.get("ranked_up"):
-            self.level_up_message = (
-                f"RANK UP  {progression.get('rank_before')} -> {progression.get('rank_after')}"
-            )
+            self.level_up_is_rank = True
+            self.level_up_badge = str(progression.get("rank_after") or "")
+            self.level_up_message = "RANK UP"
             self.show_level_up = True
         elif progression.get("leveled_up"):
-            self.level_up_message = (
-                f"LEVEL {progression.get('level_before')} -> {progression.get('level_after')}"
-            )
+            self.level_up_is_rank = False
+            self.level_up_badge = str(progression.get("level_after") or "")
+            self.level_up_message = "LEVEL UP"
             self.show_level_up = True
 
         yield QuestState.load

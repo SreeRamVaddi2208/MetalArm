@@ -61,6 +61,16 @@ class AuthState(rx.State):
         )
 
     @rx.var
+    def xp_scale(self) -> float:
+        """XP bar fill as a 0..1 scale factor for `transform: scaleX()`.
+
+        Computed here rather than dividing a Var in the template, so the value
+        the component receives is a plain float and does not depend on how
+        Reflex compiles arithmetic on a state var.
+        """
+        return round(self.xp_percent / 100, 4)
+
+    @rx.var
     def rank_is_gated(self) -> bool:
         """True when the level has earned a higher rank than the streak allows.
 

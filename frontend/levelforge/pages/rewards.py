@@ -10,6 +10,7 @@ from levelforge.components.layout import (
     shell,
 )
 from levelforge.components.reward_card import history_row, reward_card, wallet_panel
+from levelforge.components.scroll_reveal import pinned, reveal, reveal_assets
 from levelforge.state.rewards import RewardState
 
 
@@ -87,9 +88,17 @@ def empty_shop() -> rx.Component:
     )
 
 
+def revealed_reward(reward) -> rx.Component:
+    return reveal(reward_card(reward))
+
+
 def rewards_page() -> rx.Component:
     return shell(
-        wallet_panel(),
+        reveal_assets(),
+        # The wallet is this page's hero: it holds position while the shop and
+        # the spend history scroll past, so the balance stays readable while
+        # you decide what to spend it on.
+        pinned(wallet_panel()),
         error_banner(RewardState.error),
         notice_banner(RewardState.notice),
         rx.vstack(
@@ -113,7 +122,7 @@ def rewards_page() -> rx.Component:
             rx.cond(
                 RewardState.has_rewards,
                 rx.vstack(
-                    rx.foreach(RewardState.rewards, reward_card),
+                    rx.foreach(RewardState.rewards, revealed_reward),
                     spacing="3",
                     width="100%",
                 ),

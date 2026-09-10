@@ -250,6 +250,57 @@ def main() -> int:
     status, me_other = call("GET", "/auth/me", other)
     check("another user's XP is untouched", me_other["progress"]["total_xp"] == 0)
 
+    # -- Sprint 6: animation contract --------------------------------------
+    section("Sprint 6 - animation contract (served frontend)")
+    try:
+        with urllib.request.urlopen("http://localhost:3000/dashboard", timeout=20) as resp:
+            page = resp.read().decode()
+    except Exception as exc:  # noqa: BLE001
+        page = ""
+        check("frontend reachable", False, str(exc)[:80])
+
+    if page:
+        import re as _re
+        css = "".join(_re.findall(r"<style>(.*?)</style>", page, _re.S))
+
+        check("frontend serves the dashboard", "lf-reveal" in css)
+
+        # Content must never depend on JavaScript to become readable: the
+        # unconditional .lf-reveal rule has to be empty, with the hidden state
+        # scoped to the class the script adds.
+        base = _re.search(r"\n\.lf-reveal \{(.*?)\}", css, _re.S)
+        check("reveal is visible by default (no JS required)",
+              base is not None and base.group(1).strip() == "",
+              repr(base.group(1)) if base else "rule missing")
+        check("hidden state is scoped to the JS-added class",
+              ".lf-reveal.lf-armed {" in css)
+
+        check("scroll-linked path is feature-detected",
+              "@supports (animation-timeline: view())" in css)
+        check("prefers-reduced-motion is handled",
+              "@media (prefers-reduced-motion: reduce)" in css)
+        check("pinned hero only where there are two columns",
+              "@media (min-width: 1024px)" in css and ".lf-pinned" in css)
+
+        # Section 7: transform/opacity only, so the compositor handles motion
+        # instead of a reflow every frame.
+        layout_transitions = _re.findall(
+            r"transition:\s*(width|height|top|left|margin|padding)\b", css
+        )
+        check("no layout property is transitioned", not layout_transitions,
+              str(layout_transitions))
+
+        blocks = _re.findall(r"@keyframes\s+(lf-[\w-]+)\s*\{(.*?)\n\}", css, _re.S)
+        check("keyframes exist", len(blocks) >= 4, f"found {len(blocks)}")
+        offenders = []
+        for name, body in blocks:
+            for prop in set(_re.findall(r"([a-z-]+)\s*:", body)):
+                if prop not in {"opacity", "transform"}:
+                    offenders.append(f"{name}:{prop}")
+        check("keyframes animate only transform/opacity", not offenders, str(offenders))
+
+        check("XP bar uses transform, not width", "scaleX" in page)
+
     # -- Cleanup -----------------------------------------------------------
     if not args.keep:
         section("Cleanup")

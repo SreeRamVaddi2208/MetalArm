@@ -6,6 +6,7 @@ from levelforge import theme
 from levelforge.components.layout import error_banner, section_heading, shell
 from levelforge.components.level_up import keyframes, level_up_overlay
 from levelforge.components.quest_card import empty_board, quest_card
+from levelforge.components.scroll_reveal import pinned, reveal, reveal_assets
 from levelforge.components.stat_panel import stat_panel
 from levelforge.state.quests import QuestState
 
@@ -85,13 +86,33 @@ def create_form() -> rx.Component:
     )
 
 
+def revealed_quest(quest) -> rx.Component:
+    """No artificial stagger delay.
+
+    With a scroll-linked reveal the stagger already comes from the real thing -
+    cards enter the viewport at different scroll positions. Adding a fixed
+    per-index delay on top would make later cards arrive visibly late on a long
+    board, which reads as lag rather than polish.
+    """
+    return reveal(quest_card(quest))
+
+
 def dashboard_page() -> rx.Component:
     return shell(
         keyframes(),
+        reveal_assets(),
         level_up_overlay(),
         rx.box(
-            rx.vstack(
-                stat_panel(),
+            # Two columns from 900px up: the Stat Panel holds position while
+            # the quest board scrolls past it - the pinned-hero pattern from
+            # Section 7. Below that width it stacks and the panel is a normal
+            # block, because there is nothing beside it to scroll.
+            rx.flex(
+                rx.box(
+                    pinned(stat_panel()),
+                    width=rx.breakpoints(initial="100%", lg="340px"),
+                    flex_shrink="0",
+                ),
                 rx.vstack(
                     section_heading(
                         "QUEST BOARD",
@@ -114,7 +135,7 @@ def dashboard_page() -> rx.Component:
                     rx.cond(
                         QuestState.has_quests,
                         rx.vstack(
-                            rx.foreach(QuestState.quests, quest_card),
+                            rx.foreach(QuestState.quests, revealed_quest),
                             spacing="3",
                             width="100%",
                         ),
@@ -122,9 +143,18 @@ def dashboard_page() -> rx.Component:
                     ),
                     spacing="3",
                     width="100%",
+                    flex="1",
+                    min_width="0",
                 ),
-                spacing="5",
+                # rx.breakpoints, not a list: Flex.direction is a typed Radix
+                # prop and rejects the list shorthand that style props accept.
+                # `lg` is 1024px and MUST match the .lf-pinned media query in
+                # scroll_reveal.py - pinning the panel at a width where there
+                # is no second column beside it would just freeze it in place.
+                direction=rx.breakpoints(initial="column", lg="row"),
+                gap="1.25rem",
                 width="100%",
+                align="start",
             ),
             width="100%",
         ),
