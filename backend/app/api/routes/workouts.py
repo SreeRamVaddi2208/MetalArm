@@ -595,7 +595,9 @@ def log_set(
         events=events,
         at=now,
     )
-    entry.is_pr = bool(events)
+    # A first-ever baseline is recorded but is not a PR - the UI must not
+    # badge a set "PR" in the same breath as calling it a baseline.
+    entry.is_pr = any(not e.is_baseline for e in events)
 
     outcome = _award_set(db, user=current_user, session=session, entry=entry, events=events)
     delta = apply_xp(progress, xp=outcome.total, at=now, tz_name=current_user.timezone)

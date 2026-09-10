@@ -12,12 +12,18 @@ from metalarm.pages.dashboard import dashboard_page
 from metalarm.pages.login import login_page, signup_page
 from metalarm.pages.parties import parties_page
 from metalarm.pages.profile import profile_page
+from metalarm.pages.progress import progress_page
 from metalarm.pages.rewards import rewards_page
+from metalarm.pages.routines import routines_page
+from metalarm.pages.workout import workout_page
 from metalarm.state.auth import AuthState
 from metalarm.state.parties import PartyState
 from metalarm.state.profile import ProfileState
+from metalarm.state.progress import ProgressState
 from metalarm.state.quests import QuestState
 from metalarm.state.rewards import RewardState
+from metalarm.state.routines import RoutineState
+from metalarm.state.workout import WorkoutState
 
 
 def landing() -> rx.Component:
@@ -61,6 +67,26 @@ class RouteState(rx.State):
         if not auth.token:
             return rx.redirect("/login")
         return [AuthState.refresh_me, ProfileState.load]
+
+    async def enter_workout(self):
+        """Also the rehydration point: WorkoutState.load asks the API for the
+        live session, so a refresh mid-workout comes back exactly as it was."""
+        auth = await self.get_state(AuthState)
+        if not auth.token:
+            return rx.redirect("/login")
+        return [AuthState.refresh_me, WorkoutState.load]
+
+    async def enter_routines(self):
+        auth = await self.get_state(AuthState)
+        if not auth.token:
+            return rx.redirect("/login")
+        return [AuthState.refresh_me, RoutineState.load]
+
+    async def enter_progress(self):
+        auth = await self.get_state(AuthState)
+        if not auth.token:
+            return rx.redirect("/login")
+        return [AuthState.refresh_me, ProgressState.load]
 
     async def bounce_if_signed_in(self):
         """Keep a signed-in user off the auth pages."""
@@ -118,4 +144,22 @@ app.add_page(
     route="/profile",
     title="Profile - MetalArm",
     on_load=RouteState.enter_profile,
+)
+app.add_page(
+    workout_page,
+    route="/workout",
+    title="Workout - MetalArm",
+    on_load=RouteState.enter_workout,
+)
+app.add_page(
+    routines_page,
+    route="/routines",
+    title="Routines - MetalArm",
+    on_load=RouteState.enter_routines,
+)
+app.add_page(
+    progress_page,
+    route="/progress",
+    title="Progress - MetalArm",
+    on_load=RouteState.enter_progress,
 )

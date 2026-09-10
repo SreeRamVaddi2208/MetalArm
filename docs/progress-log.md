@@ -14,6 +14,90 @@ Entry format:
 
 ---
 
+## 2026-09-10 (11) - Opus - gym workout module (frontend)
+
+Built the brief's Section 6 in Reflex against `docs/workouts-api.md`, inventing
+no endpoint and computing no points client-side.
+
+**Changed**
+- Pages: `/workout` (start, live logging, finish summary), `/routines`,
+  `/progress`. WORKOUT and PROGRESS are in both navs; the mobile nav now wraps.
+- State: `state/workout.py` (live session), `state/picker.py` (exercise
+  library), `state/routines.py`, `state/progress.py`. The live session is never
+  held only in client memory: every load of `/workout` rehydrates it from
+  `GET /workouts/sessions/active`. The only client-persisted value is the
+  kg/lb display preference.
+- Components:
+  - `components/workout.py`: the HUD and the exercise cards. The HUD keeps
+    level, rank, XP bar, weekly streak and this workout's points on screen the
+    whole time.
+  - `components/pr_overlay.py`: the PR moment, a full-screen beat in A-rank
+    orange that reuses the level-up keyframes.
+  - `components/exercise_picker.py`: search, muscle chips, and custom exercise
+    creation.
+  - `components/rest_timer.py`: the rest bar and elapsed clock, both
+    client-side.
+- `workout_models.py` / `workout_api.py`: typed payloads (kg converted to the
+  display unit once, labels stored rather than computed) and the API client.
+
+**UX decisions**
+- **One-handed logging.** Each card is pre-filled from the last set this
+  session, else last time's first set, else the routine target. The previous
+  session's matching set is shown as a ghost line. Weight and reps have 52px
+  steppers, so repeating a set is one tap.
+- **No double logging.** Each card carries a `client_set_id` that rotates only
+  after a confirmed log, so a double tap or a retry cannot log a set twice.
+- **Celebrations are sized by the API's own classification.**
+  - A paid PR (`bonus_awarded`) gets the full-screen moment.
+  - A record that earned no bonus gets a pill on its card.
+  - A first-ever log is noted quietly.
+  - A level-up earned by the same set waits until the PR moment is dismissed,
+    then plays through the app's existing level-up overlay. It is not a
+    second copy of that overlay.
+
+**Two bugs found by driving the UI in real Chrome, both fixed**
+- **Hydration mismatch (React #418).** With a rest still running at page
+  load, the timer script wrote countdown text into a server-rendered node
+  before React hydrated it. The script now only sets attributes React never
+  manages (`data-ma-state`, `data-ma-time`, `data-ma-clock`), and CSS renders
+  them with `content: attr(...)`.
+- **Baseline badged as a PR.** A first-ever set showed "BASELINE SET" and a PR
+  badge at the same time, because the backend set `set.is_pr` for baseline
+  record rows too. `is_pr` now means "beat an existing record" in both the log
+  path and replay. A test asserts it, and the rule is documented in
+  `workouts-api.md`.
+
+**Verified (real output)**
+- `docker compose build frontend`: the full `reflex export` compile succeeds.
+- `pytest`: **302 passed**, exit 0.
+- `scripts/smoke_test.py`: **All 128 checks passed**. It now also checks that
+  `/workout`, `/routines` and `/progress` are served.
+- End-to-end in headless Chrome at 400px (playwright-core against the running
+  stack): **32/32 passed**. The run covered:
+  - sign-in through the form
+  - picker, set logging, baseline, rest timer, stepper
+  - the PR moment, then the chained level-up
+  - deleting a set
+  - refresh mid-workout rehydrating the session, the rest countdown and the
+    clock
+  - the finish summary, with its points matching the API
+  - routine create, then start, then discard
+  - charts, records and a body measurement
+  - no uncaught page errors
+- Screenshots were reviewed at phone and desktop widths.
+
+**Not built / known limits**
+- Editing a logged set in the UI. The API supports `PATCH`; the UI fixes a
+  mistake by deleting the set and logging it again.
+- An exercise added from the picker but never logged is not persisted across a
+  refresh, because it has no sets on the server. Anything with a logged set
+  is persisted.
+- The kg/lb preference is per browser (LocalStorage), not per account.
+- The E2E script lives outside the repo (it needs `playwright-core`, and the
+  repo avoids hand-written JS tooling). Say if it should be committed.
+
+---
+
 ## 2026-09-10 (10) - Opus - rename to MetalArm; gym workout module (backend)
 
 **Changed**

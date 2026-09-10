@@ -423,6 +423,15 @@ def main() -> int:
               "lf-complete" in css and "@keyframes lf-complete" in css)
         check("completion beat is short", "320ms" in css)
 
+    # -- Gym workout pages (served frontend) --------------------------------
+    section("Gym workout pages (served frontend)")
+    for route in ("/workout", "/routines", "/progress"):
+        try:
+            with urllib.request.urlopen(f"http://localhost:3000{route}", timeout=20) as resp:
+                check(f"frontend serves {route}", resp.status == 200)
+        except Exception as exc:  # noqa: BLE001
+            check(f"frontend serves {route}", False, str(exc)[:80])
+
     # -- Cleanup -----------------------------------------------------------
     if not args.keep:
         section("Cleanup")

@@ -6,6 +6,10 @@
 > re-implement. Backend Agent owns it. If you need something that is not here,
 > ask for it - do not invent an endpoint or compute a value client-side.
 
+**Frontend status:** implemented in Reflex - pages `frontend/metalarm/pages/`
+`workout.py`, `routines.py`, `progress.py`; state in `frontend/metalarm/state/`
+(`workout.py`, `picker.py`, `routines.py`, `progress.py`).
+
 All paths are under `/api/v1` and need `Authorization: Bearer <token>`, the
 same as every other endpoint. Another user's session, set, routine, custom
 exercise or measurement is always **404**, never 403.
@@ -148,6 +152,9 @@ Response (`SetLogResponse`):
 
 `record_type` values: `max_weight`, `max_reps_at_weight` (value = reps,
 `weight_kg` = the weight), `est_1rm`, `max_volume` (finish only).
+
+`set.is_pr` is true only when the set beat an existing record. A first-ever
+baseline set has `pr_events` (all `is_baseline: true`) but `is_pr: false`.
 
 ### Finishing - `FinishResponse`
 

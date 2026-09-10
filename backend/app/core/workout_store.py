@@ -213,7 +213,8 @@ def replay_exercise(db: Session, user_id: uuid.UUID, exercise_id: uuid.UUID) -> 
 
     for set_id, event in result.set_events:
         entry = sets_by_id[set_id]  # type: ignore[index]
-        entry.is_pr = True
+        if not event.is_baseline:
+            entry.is_pr = True
         add_records(
             db,
             user_id=user_id,

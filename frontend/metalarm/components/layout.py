@@ -46,6 +46,8 @@ def navbar() -> rx.Component:
         rx.spacer(),
         rx.hstack(
             nav_link("QUESTS", "/dashboard"),
+            nav_link("WORKOUT", "/workout"),
+            nav_link("PROGRESS", "/progress"),
             nav_link("PARTIES", "/parties"),
             nav_link("REWARDS", "/rewards"),
             nav_link("PROFILE", "/profile"),
@@ -90,12 +92,16 @@ def navbar() -> rx.Component:
 def mobile_nav() -> rx.Component:
     """Shown only where the top-bar links are hidden, so navigation never
     disappears on a narrow screen."""
+    # Six links: wraps rather than overflowing at phone width.
     return rx.hstack(
         nav_link("QUESTS", "/dashboard"),
+        nav_link("WORKOUT", "/workout"),
+        nav_link("PROGRESS", "/progress"),
         nav_link("PARTIES", "/parties"),
         nav_link("REWARDS", "/rewards"),
         nav_link("PROFILE", "/profile"),
-        spacing="6",
+        spacing="4",
+        flex_wrap="wrap",
         justify="center",
         width="100%",
         padding="0.75rem",

@@ -230,6 +230,11 @@ The frontend reads that file as the source of truth for endpoint shapes.
   with placeholders.
 - `REFLEX_API_URL` is compiled into the JS bundle - changing it needs
   `docker compose build frontend`, not just a restart.
+- **Inline scripts must not write text or classes into React-owned nodes.**
+  The workout rest timer and clock (`components/rest_timer.py`) set only
+  attributes React never manages, and CSS shows them via
+  `content: attr(...)`. Writing `textContent` into server-rendered nodes
+  before hydration throws React error #418 (hydration mismatch).
 
 ## Docs
 

@@ -254,6 +254,8 @@ def test_the_first_ever_set_is_a_baseline_and_earns_no_pr_bonus(
     assert all(e["is_baseline"] for e in first["pr_events"])
     assert not any(e["bonus_awarded"] for e in first["pr_events"])
     assert first["points_awarded"] == rules.SET_POINTS
+    # Recorded, but not badged as a PR.
+    assert first["set"]["is_pr"] is False
 
 
 def test_a_real_pr_is_flagged_and_paid(client: TestClient, auth: dict, db: Session) -> None:

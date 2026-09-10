@@ -310,7 +310,8 @@ class SetEntry(UUIDPrimaryKey, Base):
     is_warmup: Mapped[bool] = mapped_column(
         Boolean, nullable=False, server_default="false"
     )
-    # Computed server-side: whether this set holds any personal_records row.
+    # Computed server-side: whether this set beat an existing record. A
+    # first-ever baseline holds personal_records rows but is NOT a PR.
     is_pr: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
     completed_at: Mapped[dt.datetime] = mapped_column(
         DateTime(timezone=True), nullable=False
