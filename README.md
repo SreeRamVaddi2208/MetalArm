@@ -1,4 +1,4 @@
-# LevelForge
+# MetalArm
 
 Turn real goals and habits into RPG-style progression - quests, XP, levels,
 ranks (E→S), a rewards shop, and parties with a shared quest board.
@@ -8,6 +8,13 @@ React/Next.js), Postgres, Redis, pgAdmin, all under Docker Compose.
 
 > Visual direction is *inspired by* hunter-rank RPG aesthetics. All assets,
 > copy, and art in this repo are original work - no copyrighted material.
+
+> **Formerly LevelForge.** A few data-bearing identifiers deliberately keep
+> the old name, because the existing data lives under them: the Docker volumes
+> (`levelforge_postgres_data` etc., pinned in `docker-compose.yml`) and the
+> Postgres role/database (`POSTGRES_USER` / `POSTGRES_DB` = `levelforge`).
+> `LEVELFORGE_API_BASE_URL` is still read as a fallback for
+> `METALARM_API_BASE_URL`.
 
 ---
 
@@ -39,7 +46,7 @@ A healthy response reports the **real** server versions it connected to:
 ```json
 {
   "status": "ok",
-  "service": "levelforge-api",
+  "service": "metalarm-api",
   "dependencies": {
     "postgres": {"connected": true, "server_version": "17.10"},
     "redis":    {"connected": true, "server_version": "8.10.1"}

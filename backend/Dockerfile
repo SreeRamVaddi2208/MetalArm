@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 # ---------------------------------------------------------------------------
-# LevelForge backend.
+# MetalArm backend.
 #
 # Multi-stage so build tooling never reaches the runtime image. Requirements
 # are copied and installed BEFORE app source, so editing application code
@@ -36,15 +36,15 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PATH="/opt/venv/bin:$PATH"
 
 # Run as an unprivileged user.
-RUN groupadd --system levelforge \
-    && useradd --system --gid levelforge --create-home levelforge
+RUN groupadd --system metalarm \
+    && useradd --system --gid metalarm --create-home metalarm
 
 COPY --from=builder /opt/venv /opt/venv
 
 WORKDIR /app
-COPY --chown=levelforge:levelforge . .
+COPY --chown=metalarm:metalarm . .
 
-USER levelforge
+USER metalarm
 
 EXPOSE 8000
 
@@ -67,6 +67,6 @@ FROM runtime AS dev
 USER root
 COPY requirements-dev.txt .
 RUN pip install --only-binary=:all: -r requirements-dev.txt
-USER levelforge
+USER metalarm
 
 CMD ["pytest", "-q"]

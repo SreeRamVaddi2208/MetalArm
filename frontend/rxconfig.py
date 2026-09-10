@@ -1,4 +1,4 @@
-"""Reflex configuration for LevelForge.
+"""Reflex configuration for MetalArm.
 
 Port topology differs between dev and prod, and this is enforced by Reflex
 itself (reflex/reflex.py:358): in PROD/PREVIEW, frontend_port and backend_port
@@ -26,7 +26,7 @@ import reflex as rx
 # original work only, inspired by the hunter-rank aesthetic, never copying
 # Solo Leveling assets, logos, or text.
 config = rx.Config(
-    app_name="levelforge",
+    app_name="metalarm",
     backend_port=int(os.getenv("REFLEX_BACKEND_PORT", "8001")),
     frontend_port=int(os.getenv("REFLEX_FRONTEND_PORT", "3000")),
     # Must be resolvable from the BROWSER. Inside Docker the container

@@ -1,4 +1,4 @@
-# LevelForge backend - pinned for reproducible Docker builds.
+# MetalArm backend - pinned for reproducible Docker builds.
 # Every compiled dep below ships prebuilt cp314 manylinux aarch64 wheels,
 # so the container needs no gcc/build toolchain.
 

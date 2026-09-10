@@ -1,4 +1,4 @@
-# LevelForge Data Model - CONFIRMED
+# MetalArm Data Model - CONFIRMED
 
 > **STATUS: CONFIRMED and MIGRATED.** Signed off 2026-09-10; implemented in
 > Alembic revision `5dba70011569`. Verified against Postgres 17 with a full

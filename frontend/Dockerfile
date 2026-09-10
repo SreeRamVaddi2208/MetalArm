@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 # ---------------------------------------------------------------------------
-# LevelForge frontend (Reflex).
+# MetalArm frontend (Reflex).
 #
 # Reflex owns the Node/React/Next.js build entirely. We never hand-write or
 # copy in a package.json / package-lock.json - Reflex generates its lockfile
@@ -26,8 +26,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1
 
-RUN groupadd --system levelforge \
-    && useradd --system --gid levelforge --home-dir /app levelforge
+RUN groupadd --system metalarm \
+    && useradd --system --gid metalarm --home-dir /app metalarm
 
 WORKDIR /app
 
@@ -35,10 +35,10 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install -r requirements.txt
 
-COPY --chown=levelforge:levelforge . .
-RUN chown -R levelforge:levelforge /app
+COPY --chown=metalarm:metalarm . .
+RUN chown -R metalarm:metalarm /app
 
-USER levelforge
+USER metalarm
 
 # Reflex writes its toolchain + build output under HOME and /app/.web.
 ENV HOME=/app

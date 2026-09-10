@@ -1,4 +1,4 @@
-# LevelForge frontend.
+# MetalArm frontend.
 # Reflex compiles Python -> React/Next.js and owns the entire Node build
 # pipeline internally. There is deliberately no package.json / package-lock.json
 # in this repo: the previous project died on a host-generated (darwin) lockfile

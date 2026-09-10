@@ -2,16 +2,16 @@
 
 import reflex as rx
 
-from levelforge import theme
-from levelforge.components.layout import (
+from metalarm import theme
+from metalarm.components.layout import (
     error_banner,
     notice_banner,
     section_heading,
     shell,
 )
-from levelforge.components.reward_card import history_row, reward_card, wallet_panel
-from levelforge.components.scroll_reveal import pinned, reveal, reveal_assets
-from levelforge.state.rewards import RewardState
+from metalarm.components.reward_card import history_row, reward_card, wallet_panel
+from metalarm.components.scroll_reveal import pinned, reveal, reveal_assets
+from metalarm.state.rewards import RewardState
 
 
 def create_form() -> rx.Component:

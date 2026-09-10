@@ -2,8 +2,8 @@
 
 import reflex as rx
 
-from levelforge import theme
-from levelforge.state.auth import AuthState
+from metalarm import theme
+from metalarm.state.auth import AuthState
 
 
 def rank_badge() -> rx.Component:

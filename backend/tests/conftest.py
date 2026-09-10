@@ -107,7 +107,7 @@ def unique_email() -> str:
     special-use TLDs outright, which would fail every signup here for a reason
     that has nothing to do with the code under test.
     """
-    return f"user-{uuid.uuid4().hex[:12]}@levelforge.dev"
+    return f"user-{uuid.uuid4().hex[:12]}@metalarm.dev"
 
 
 @pytest.fixture

@@ -1,5 +1,5 @@
 # ---------------------------------------------------------------------------
-# LevelForge - local development stack.
+# MetalArm - local development stack.
 #
 # Every service is INDEPENDENTLY buildable, per Section 6. A broken frontend
 # build must never block verification of a working backend:
@@ -11,12 +11,12 @@
 # .env.example for the template.
 # ---------------------------------------------------------------------------
 
-name: levelforge
+name: metalarm
 
 services:
   postgres:
     image: postgres:17-alpine
-    container_name: levelforge-postgres
+    container_name: metalarm-postgres
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
@@ -37,11 +37,11 @@ services:
       timeout: 5s
       retries: 10
       start_period: 10s
-    networks: [levelforge]
+    networks: [metalarm]
 
   redis:
     image: redis:8-alpine
-    container_name: levelforge-redis
+    container_name: metalarm-redis
     restart: unless-stopped
     command:
       [
@@ -63,7 +63,7 @@ services:
       timeout: 3s
       retries: 10
       start_period: 5s
-    networks: [levelforge]
+    networks: [metalarm]
 
   # Schema migrations. Runs to completion and exits BEFORE the backend
   # starts, so the API never serves against an un-migrated database.
@@ -84,8 +84,8 @@ services:
     # one stale - the next `up` then failed with "Can't locate revision", because
     # the old image had no knowledge of a migration the database had already
     # applied. One tag makes that drift impossible.
-    image: levelforge-backend
-    container_name: levelforge-migrate
+    image: metalarm-backend
+    container_name: metalarm-migrate
     command: ["alembic", "upgrade", "head"]
     restart: "no"
     environment:
@@ -103,7 +103,7 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    networks: [levelforge]
+    networks: [metalarm]
 
   backend:
     build:
@@ -114,8 +114,8 @@ services:
       # image would silently gain a test runner.
       target: runtime
     # Shared with the `migrate` service - see the note there.
-    image: levelforge-backend
-    container_name: levelforge-backend
+    image: metalarm-backend
+    container_name: metalarm-backend
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
@@ -154,7 +154,7 @@ services:
       timeout: 6s
       retries: 6
       start_period: 15s
-    networks: [levelforge]
+    networks: [metalarm]
 
   frontend:
     build:
@@ -163,7 +163,7 @@ services:
       args:
         # Browser-reachable, and baked into the JS bundle at build time.
         REFLEX_API_URL: ${REFLEX_API_URL:-http://localhost:3000}
-    container_name: levelforge-frontend
+    container_name: metalarm-frontend
     restart: unless-stopped
     environment:
       REFLEX_API_URL: ${REFLEX_API_URL:-http://localhost:3000}
@@ -173,12 +173,12 @@ services:
       # the Reflex server itself, not the backend.
       # (REFLEX_API_URL above is the opposite: it IS browser-facing.)
       #
-      # Fixed, NOT ${LEVELFORGE_API_BASE_URL}. That variable means the
+      # Fixed, NOT ${METALARM_API_BASE_URL}. That variable means the
       # browser-reachable URL for a local `reflex run`, and letting .env supply
       # it here silently pointed the container at its own localhost:8000 -
       # every API call failed with ECONNREFUSED while the UI still rendered.
       # This address is a property of the compose network, not user config.
-      LEVELFORGE_API_BASE_URL: http://backend:8000
+      METALARM_API_BASE_URL: http://backend:8000
     ports:
       # Single port: in prod Reflex serves UI + state server from one process.
       - "${FRONTEND_HOST_PORT:-3000}:3000"
@@ -197,7 +197,7 @@ services:
       timeout: 12s
       retries: 6
       start_period: 40s
-    networks: [levelforge]
+    networks: [metalarm]
 
   # Backend test suite. Behind a profile, so `docker compose up` never starts
   # it and it cannot interfere with the running stack.
@@ -232,11 +232,11 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    networks: [levelforge]
+    networks: [metalarm]
 
   pgadmin:
     image: dpage/pgadmin4:latest
-    container_name: levelforge-pgadmin
+    container_name: metalarm-pgadmin
     restart: unless-stopped
     environment:
       PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
@@ -263,13 +263,25 @@ services:
       timeout: 12s
       retries: 6
       start_period: 40s
-    networks: [levelforge]
+    networks: [metalarm]
 
+# Pinned to the names they were created under while the project was called
+# LevelForge. Compose prefixes volumes with the project name, so renaming the
+# project to metalarm without these pins would silently mount fresh, EMPTY
+# volumes - every user, quest and XP total would appear to vanish.
+#
+# On a machine that ran the stack before the rename, compose warns that these
+# volumes were "created for project levelforge". That is expected and harmless.
+# Its suggested `external: true` is deliberately NOT used: it would make a fresh
+# clone fail to start, since there the volumes do not exist yet.
 volumes:
   postgres_data:
+    name: levelforge_postgres_data
   redis_data:
+    name: levelforge_redis_data
   pgadmin_data:
+    name: levelforge_pgadmin_data
 
 networks:
-  levelforge:
+  metalarm:
     driver: bridge

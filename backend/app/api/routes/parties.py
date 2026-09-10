@@ -45,7 +45,7 @@ from app.schemas.party import (
     PartyUpdate,
 )
 
-logger = logging.getLogger("levelforge.parties")
+logger = logging.getLogger("metalarm.parties")
 
 router = APIRouter(prefix="/parties", tags=["parties"])
 

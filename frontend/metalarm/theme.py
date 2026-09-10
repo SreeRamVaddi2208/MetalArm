@@ -1,4 +1,4 @@
-"""Visual language for LevelForge.
+"""Visual language for MetalArm.
 
 Original work. Inspired by the hunter-rank RPG aesthetic - a dark field, a
 single cold glowing accent, wide-tracked uppercase labels - but no Solo Leveling

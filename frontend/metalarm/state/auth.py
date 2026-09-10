@@ -9,8 +9,8 @@ from __future__ import annotations
 
 import reflex as rx
 
-from levelforge import api
-from levelforge.models import Progress
+from metalarm import api
+from metalarm.models import Progress
 
 
 class AuthState(rx.State):

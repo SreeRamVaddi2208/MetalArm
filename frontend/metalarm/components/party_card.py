@@ -2,9 +2,9 @@
 
 import reflex as rx
 
-from levelforge import theme
-from levelforge.models import LeaderboardRow, Party, PartyQuest
-from levelforge.state.parties import PartyState
+from metalarm import theme
+from metalarm.models import LeaderboardRow, Party, PartyQuest
+from metalarm.state.parties import PartyState
 
 
 def rank_letter(rank: rx.Var) -> rx.Component:

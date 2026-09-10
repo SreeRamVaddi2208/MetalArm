@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""End-to-end smoke test against a RUNNING LevelForge stack.
+"""End-to-end smoke test against a RUNNING MetalArm stack.
 
 Exercises the full user journey across every sprint - health, auth, quests,
 completion, XP/level/rank, rewards, redemption, wallet - over real HTTP, and
@@ -59,7 +59,7 @@ def call(
 
 
 def new_user(tz: str = "UTC") -> tuple[str, dict]:
-    email = f"smoke-{uuid.uuid4().hex[:12]}@levelforge.dev"
+    email = f"smoke-{uuid.uuid4().hex[:12]}@metalarm.dev"
     status, created = call(
         "POST",
         "/auth/signup",
@@ -89,7 +89,7 @@ def main() -> int:
     parser.add_argument("--keep", action="store_true", help="Do not delete the test users.")
     args = parser.parse_args()
 
-    print(f"LevelForge smoke test -> {BASE}")
+    print(f"MetalArm smoke test -> {BASE}")
 
     # -- Sprint 1: infrastructure ------------------------------------------
     section("Sprint 1 - health and readiness")

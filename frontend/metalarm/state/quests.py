@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import reflex as rx
 
-from levelforge import api
-from levelforge.models import Quest
-from levelforge.state.auth import AuthState
+from metalarm import api
+from metalarm.models import Quest
+from metalarm.state.auth import AuthState
 
 
 class QuestState(rx.State):

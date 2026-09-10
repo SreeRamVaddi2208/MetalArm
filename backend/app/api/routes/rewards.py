@@ -28,7 +28,7 @@ from app.schemas.reward import (
     WalletOut,
 )
 
-logger = logging.getLogger("levelforge.rewards")
+logger = logging.getLogger("metalarm.rewards")
 
 router = APIRouter(prefix="/rewards", tags=["rewards"])
 

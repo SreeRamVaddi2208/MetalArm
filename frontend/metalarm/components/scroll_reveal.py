@@ -27,7 +27,7 @@ Principles this follows, and why:
 
 import reflex as rx
 
-from levelforge import theme
+from metalarm import theme
 
 # Distance a revealing element travels. Small on purpose - a long slide reads
 # as sluggish once you have scrolled past a dozen of them.

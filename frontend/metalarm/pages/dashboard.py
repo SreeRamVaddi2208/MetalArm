@@ -2,13 +2,13 @@
 
 import reflex as rx
 
-from levelforge import theme
-from levelforge.components.layout import error_banner, section_heading, shell
-from levelforge.components.level_up import keyframes, level_up_overlay
-from levelforge.components.quest_card import empty_board, quest_card
-from levelforge.components.scroll_reveal import pinned, reveal, reveal_assets
-from levelforge.components.stat_panel import stat_panel
-from levelforge.state.quests import QuestState
+from metalarm import theme
+from metalarm.components.layout import error_banner, section_heading, shell
+from metalarm.components.level_up import keyframes, level_up_overlay
+from metalarm.components.quest_card import empty_board, quest_card
+from metalarm.components.scroll_reveal import pinned, reveal, reveal_assets
+from metalarm.components.stat_panel import stat_panel
+from metalarm.state.quests import QuestState
 
 
 def input_box(placeholder: str, on_change, value=None, **kwargs) -> rx.Component:

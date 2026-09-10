@@ -2,9 +2,9 @@
 
 import reflex as rx
 
-from levelforge import theme
-from levelforge.models import Quest
-from levelforge.state.quests import QuestState
+from metalarm import theme
+from metalarm.models import Quest
+from metalarm.state.quests import QuestState
 
 
 def pill(text: rx.Var | str, color: str) -> rx.Component:

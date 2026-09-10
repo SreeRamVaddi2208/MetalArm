@@ -2,8 +2,8 @@
 
 import reflex as rx
 
-from levelforge import theme
-from levelforge.state.auth import AuthState
+from metalarm import theme
+from metalarm.state.auth import AuthState
 
 
 def nav_link(label: str, href: str) -> rx.Component:
@@ -29,7 +29,7 @@ def brand() -> rx.Component:
             box_shadow=theme.glow(theme.ACCENT, "18px"),
         ),
         rx.text(
-            "LEVELFORGE",
+            "METALARM",
             color=theme.TEXT,
             font_weight="800",
             letter_spacing="0.22em",

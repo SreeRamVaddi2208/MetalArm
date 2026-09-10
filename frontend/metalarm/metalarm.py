@@ -1,4 +1,4 @@
-"""LevelForge frontend entrypoint.
+"""MetalArm frontend entrypoint.
 
 Routes and page registration only. Layout lives in components/, data in
 state/, and the Section 7 motion work in components/level_up.py - kept apart
@@ -7,17 +7,17 @@ so animation can be iterated on without touching how data flows.
 
 import reflex as rx
 
-from levelforge import theme
-from levelforge.pages.dashboard import dashboard_page
-from levelforge.pages.login import login_page, signup_page
-from levelforge.pages.parties import parties_page
-from levelforge.pages.profile import profile_page
-from levelforge.pages.rewards import rewards_page
-from levelforge.state.auth import AuthState
-from levelforge.state.parties import PartyState
-from levelforge.state.profile import ProfileState
-from levelforge.state.quests import QuestState
-from levelforge.state.rewards import RewardState
+from metalarm import theme
+from metalarm.pages.dashboard import dashboard_page
+from metalarm.pages.login import login_page, signup_page
+from metalarm.pages.parties import parties_page
+from metalarm.pages.profile import profile_page
+from metalarm.pages.rewards import rewards_page
+from metalarm.state.auth import AuthState
+from metalarm.state.parties import PartyState
+from metalarm.state.profile import ProfileState
+from metalarm.state.quests import QuestState
+from metalarm.state.rewards import RewardState
 
 
 def landing() -> rx.Component:
@@ -82,40 +82,40 @@ app = rx.App(
     },
 )
 
-app.add_page(landing, route="/", title="LevelForge", on_load=RouteState.route_home)
+app.add_page(landing, route="/", title="MetalArm", on_load=RouteState.route_home)
 app.add_page(
     login_page,
     route="/login",
-    title="Sign in - LevelForge",
+    title="Sign in - MetalArm",
     on_load=RouteState.bounce_if_signed_in,
 )
 app.add_page(
     signup_page,
     route="/signup",
-    title="Create account - LevelForge",
+    title="Create account - MetalArm",
     on_load=RouteState.bounce_if_signed_in,
 )
 app.add_page(
     dashboard_page,
     route="/dashboard",
-    title="Quest board - LevelForge",
+    title="Quest board - MetalArm",
     on_load=RouteState.enter_dashboard,
 )
 app.add_page(
     rewards_page,
     route="/rewards",
-    title="Rewards - LevelForge",
+    title="Rewards - MetalArm",
     on_load=RouteState.enter_rewards,
 )
 app.add_page(
     parties_page,
     route="/parties",
-    title="Parties - LevelForge",
+    title="Parties - MetalArm",
     on_load=RouteState.enter_parties,
 )
 app.add_page(
     profile_page,
     route="/profile",
-    title="Profile - LevelForge",
+    title="Profile - MetalArm",
     on_load=RouteState.enter_profile,
 )

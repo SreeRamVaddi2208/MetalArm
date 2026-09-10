@@ -1,4 +1,4 @@
-"""LevelForge API entrypoint.
+"""MetalArm API entrypoint.
 
 Sprint 1: application scaffold plus a /health endpoint that reports a REAL
 Postgres and Redis connection state. Nothing here is hardcoded to "ok" - if a
@@ -24,10 +24,10 @@ from app.db.session import engine
 
 settings = get_settings()
 logging.basicConfig(level=settings.log_level.upper())
-logger = logging.getLogger("levelforge")
+logger = logging.getLogger("metalarm")
 
 app = FastAPI(
-    title="LevelForge API",
+    title="MetalArm API",
     description="Turn real goals and habits into RPG-style progression.",
     version="0.1.0",
 )
@@ -90,7 +90,7 @@ def health(response: Response) -> dict[str, Any]:
 
     return {
         "status": "ok" if healthy else "degraded",
-        "service": "levelforge-api",
+        "service": "metalarm-api",
         "version": app.version,
         "dependencies": {"postgres": postgres, "redis": cache},
     }
@@ -101,4 +101,4 @@ app.include_router(api_router)
 
 @app.get("/", tags=["system"])
 def root() -> dict[str, str]:
-    return {"service": "levelforge-api", "docs": "/docs", "health": "/health"}
+    return {"service": "metalarm-api", "docs": "/docs", "health": "/health"}

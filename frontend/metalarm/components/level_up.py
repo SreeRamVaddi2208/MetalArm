@@ -16,8 +16,8 @@ Principles applied here:
 
 import reflex as rx
 
-from levelforge import theme
-from levelforge.state.quests import QuestState
+from metalarm import theme
+from metalarm.state.quests import QuestState
 
 _KEYFRAMES = f"""
 @keyframes lf-burst {{

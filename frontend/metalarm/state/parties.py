@@ -12,9 +12,9 @@ import dataclasses
 
 import reflex as rx
 
-from levelforge import api
-from levelforge.models import LeaderboardRow, Party, PartyQuest
-from levelforge.state.auth import AuthState
+from metalarm import api
+from metalarm.models import LeaderboardRow, Party, PartyQuest
+from metalarm.state.auth import AuthState
 
 
 class PartyState(rx.State):

@@ -1,4 +1,4 @@
-# LevelForge API Contract
+# MetalArm API Contract
 
 > **GENERATED FILE - do not hand-edit.**
 > Regenerate with `python scripts/generate_api_contract.py` while the
@@ -8,7 +8,7 @@
 > endpoint shapes. Never invent an endpoint. If something you need is
 > missing, ask Backend Agent to add it and regenerate - do not guess.
 
-- **API title:** LevelForge API
+- **API title:** MetalArm API
 - **API version:** 0.1.0
 - **Generated:** 2026-09-10 08:09 UTC
 - **Source:** `http://localhost:8000/openapi.json`

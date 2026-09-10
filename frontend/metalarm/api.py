@@ -1,4 +1,4 @@
-"""HTTP client for the LevelForge API.
+"""HTTP client for the MetalArm API.
 
 Every endpoint shape here comes from docs/api-contract.md, which the backend
 generates from its live OpenAPI spec. Nothing is invented locally - if
@@ -15,7 +15,13 @@ from typing import Any
 
 import httpx
 
-BASE_URL = os.getenv("LEVELFORGE_API_BASE_URL", "http://localhost:8000").rstrip("/")
+# LEVELFORGE_API_BASE_URL is the pre-rename name, still honoured so an existing
+# local .env keeps working after the project became MetalArm.
+BASE_URL = (
+    os.getenv("METALARM_API_BASE_URL")
+    or os.getenv("LEVELFORGE_API_BASE_URL")
+    or "http://localhost:8000"
+).rstrip("/")
 API = f"{BASE_URL}/api/v1"
 
 TIMEOUT = httpx.Timeout(10.0, connect=5.0)

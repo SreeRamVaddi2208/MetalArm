@@ -1,4 +1,4 @@
-# LevelForge - Progress Log
+# MetalArm (formerly LevelForge) - Progress Log
 
 Both agents append an entry at the end of **every** session: what changed,
 what's blocked, what the other agent needs to know. Newest entries at the top.

@@ -2,21 +2,21 @@
 
 import reflex as rx
 
-from levelforge import theme
-from levelforge.components.layout import (
+from metalarm import theme
+from metalarm.components.layout import (
     error_banner,
     notice_banner,
     section_heading,
     shell,
 )
-from levelforge.components.party_card import (
+from metalarm.components.party_card import (
     invite_panel,
     leaderboard_row,
     party_quest_row,
     party_tab,
 )
-from levelforge.components.scroll_reveal import reveal, reveal_assets
-from levelforge.state.parties import PartyState
+from metalarm.components.scroll_reveal import reveal, reveal_assets
+from metalarm.state.parties import PartyState
 
 
 def text_input(placeholder: str, on_change, value=None, accent=theme.ACCENT):

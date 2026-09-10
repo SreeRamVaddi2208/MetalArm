@@ -2,12 +2,12 @@
 
 import reflex as rx
 
-from levelforge import theme
-from levelforge.components.layout import error_banner, section_heading, shell
-from levelforge.components.scroll_reveal import pinned, reveal, reveal_assets
-from levelforge.components.stat_panel import stat_panel
-from levelforge.models import Badge
-from levelforge.state.profile import ProfileState
+from metalarm import theme
+from metalarm.components.layout import error_banner, section_heading, shell
+from metalarm.components.scroll_reveal import pinned, reveal, reveal_assets
+from metalarm.components.stat_panel import stat_panel
+from metalarm.models import Badge
+from metalarm.state.profile import ProfileState
 
 
 def badge_tile(badge: Badge) -> rx.Component:

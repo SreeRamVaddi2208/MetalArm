@@ -78,7 +78,7 @@ def main() -> None:
     generated = dt.datetime.now(dt.UTC).strftime("%Y-%m-%d %H:%M UTC")
 
     out: list[str] = [
-        "# LevelForge API Contract",
+        "# MetalArm API Contract",
         "",
         "> **GENERATED FILE - do not hand-edit.**",
         "> Regenerate with `python scripts/generate_api_contract.py` while the",

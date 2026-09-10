@@ -2,9 +2,9 @@
 
 import reflex as rx
 
-from levelforge import theme
-from levelforge.models import Redemption, Reward
-from levelforge.state.rewards import RewardState
+from metalarm import theme
+from metalarm.models import Redemption, Reward
+from metalarm.state.rewards import RewardState
 
 
 def reward_card(reward: Reward) -> rx.Component:

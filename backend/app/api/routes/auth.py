@@ -22,7 +22,7 @@ from app.models.user import LevelProgress, User
 from app.schemas.auth import LoginRequest, SignupRequest, TokenResponse
 from app.schemas.user import MeOut, ProgressOut
 
-logger = logging.getLogger("levelforge.auth")
+logger = logging.getLogger("metalarm.auth")
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 

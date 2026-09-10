@@ -19,7 +19,7 @@ from sqlalchemy import text
 from sqlalchemy.engine import Connection
 from sqlalchemy.exc import SQLAlchemyError
 
-logger = logging.getLogger("levelforge.schema")
+logger = logging.getLogger("metalarm.schema")
 
 # /app inside the container: this file is <root>/app/db/schema_state.py.
 BACKEND_ROOT = Path(__file__).resolve().parents[2]

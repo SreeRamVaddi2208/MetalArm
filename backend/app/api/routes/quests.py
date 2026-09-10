@@ -24,7 +24,7 @@ from app.schemas.quest import (
     QuestUpdate,
 )
 
-logger = logging.getLogger("levelforge.quests")
+logger = logging.getLogger("metalarm.quests")
 
 router = APIRouter(prefix="/quests", tags=["quests"])
 

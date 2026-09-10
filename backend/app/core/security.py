@@ -27,7 +27,7 @@ MAX_PASSWORD_BYTES = 72
 # login as on a successful one. Without it, "unknown email" returns measurably
 # faster than "wrong password" and the endpoint becomes a user-enumeration
 # oracle. Computed once at import.
-_DUMMY_HASH = bcrypt.hashpw(b"levelforge-timing-equalizer", bcrypt.gensalt())
+_DUMMY_HASH = bcrypt.hashpw(b"metalarm-timing-equalizer", bcrypt.gensalt())
 
 
 def hash_password(plain: str) -> str:
@@ -46,7 +46,7 @@ def verify_password(plain: str, hashed: str) -> bool:
 
 def burn_password_time() -> None:
     """Spend a bcrypt verification's worth of time on a nonexistent user."""
-    bcrypt.checkpw(b"levelforge-timing-equalizer", _DUMMY_HASH)
+    bcrypt.checkpw(b"metalarm-timing-equalizer", _DUMMY_HASH)
 
 
 def create_access_token(user_id: uuid.UUID) -> tuple[str, int]:

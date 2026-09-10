@@ -27,7 +27,7 @@ from sqlalchemy.orm import Session
 from app.db.redis_client import get_redis
 from app.models.party import PartyQuest, PartyQuestCompletion
 
-logger = logging.getLogger("levelforge.leaderboard")
+logger = logging.getLogger("metalarm.leaderboard")
 
 # Bumped if the value format ever changes, so old entries cannot be read as new.
 KEY_VERSION = "v1"
@@ -37,7 +37,7 @@ TTL_SECONDS = 6 * 60 * 60
 
 
 def key_for(party_id: uuid.UUID) -> str:
-    return f"levelforge:{KEY_VERSION}:party:{party_id}:xp"
+    return f"metalarm:{KEY_VERSION}:party:{party_id}:xp"
 
 
 def compute_from_db(db: Session, party_id: uuid.UUID) -> dict[str, int]:
