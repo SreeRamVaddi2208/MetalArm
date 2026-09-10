@@ -7,8 +7,8 @@ from metalarm import theme
 from metalarm.components.layout import error_banner, section_heading, shell
 from metalarm.components.scroll_reveal import reveal, reveal_assets
 from metalarm.components.workout import FIELD_BG, PR_COLOR, button, empty, history_row, pill, stat
+from metalarm.state.auth import AuthState
 from metalarm.state.progress import ProgressState
-from metalarm.state.workout import WorkoutState
 from metalarm.workout_models import BodyRow, ExerciseOption, RecordRow
 
 
@@ -55,7 +55,7 @@ def exercise_panel() -> rx.Component:
         rx.cond(
             ProgressState.has_chart,
             rx.vstack(
-                rx.text(f"TOP SET & ESTIMATED 1RM ({WorkoutState.unit})", **theme.LABEL_STYLE),
+                rx.text(f"TOP SET & ESTIMATED 1RM ({AuthState.weight_unit})", **theme.LABEL_STYLE),
                 rx.recharts.line_chart(
                     rx.recharts.cartesian_grid(stroke_dasharray="3 3", stroke=theme.BORDER),
                     rx.recharts.x_axis(data_key="date", **_axis_style()),
@@ -67,7 +67,7 @@ def exercise_panel() -> rx.Component:
                     width="100%",
                     height=240,
                 ),
-                rx.text(f"VOLUME PER WORKOUT ({WorkoutState.unit})", **theme.LABEL_STYLE),
+                rx.text(f"VOLUME PER WORKOUT ({AuthState.weight_unit})", **theme.LABEL_STYLE),
                 rx.recharts.bar_chart(
                     rx.recharts.cartesian_grid(stroke_dasharray="3 3", stroke=theme.BORDER),
                     rx.recharts.x_axis(data_key="date", **_axis_style()),
@@ -89,18 +89,28 @@ def exercise_panel() -> rx.Component:
 
 
 def _record_row(row: RecordRow) -> rx.Component:
+    # Two fixed lines rather than one wrapping line: on a phone the wrap put
+    # the date under the name at a random point, which read as broken.
     return rx.hstack(
-        rx.text(row.exercise_name, color=theme.MUTED, font_size="0.82rem", min_width="0"),
-        pill(row.record_label, PR_COLOR),
+        rx.vstack(
+            rx.text(row.exercise_name, color=theme.TEXT, font_size="0.85rem", font_weight="600"),
+            pill(row.record_label, PR_COLOR),
+            spacing="1",
+            align="start",
+            min_width="0",
+        ),
         rx.spacer(),
-        rx.text(row.value_label, color=theme.TEXT, font_weight="800", font_size="0.9rem"),
-        rx.text(row.date_label, color=theme.FAINT, font_size="0.7rem", min_width="4.5rem", text_align="right"),
+        rx.vstack(
+            rx.text(row.value_label, color=theme.TEXT, font_weight="800", font_size="0.92rem", white_space="nowrap"),
+            rx.text(row.date_label, color=theme.FAINT, font_size="0.68rem"),
+            spacing="1",
+            align="end",
+        ),
         width="100%",
         align="center",
-        spacing="2",
-        padding_block="0.45rem",
+        spacing="3",
+        padding_block="0.55rem",
         border_bottom=f"1px solid {theme.BORDER}",
-        flex_wrap="wrap",
     )
 
 

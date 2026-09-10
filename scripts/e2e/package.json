@@ -1,0 +1,12 @@
+{
+  "name": "metalarm-e2e",
+  "private": true,
+  "type": "module",
+  "description": "Browser end-to-end test for MetalArm. Drives the real UI in the locally installed Chrome; not part of the app build.",
+  "scripts": {
+    "test": "node workout_e2e.mjs"
+  },
+  "dependencies": {
+    "playwright-core": "1.63.0"
+  }
+}

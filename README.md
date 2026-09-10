@@ -150,6 +150,24 @@ The two are complementary: pytest drives the app in-process for speed and
 isolation, while the smoke test proves the deployed containers, network and
 migrations actually serve requests.
 
+### Browser end-to-end test
+
+`scripts/e2e/` drives the real UI in your installed Chrome (headless, via
+`playwright-core` - no browser download) against a running stack. It is the
+only test that exercises Reflex's websocket events, hydration and the
+client-side scripts: the full workout journey (log, PR moment, level-up,
+edit, delete, refresh mid-workout, finish), routines, progress, the account
+weight unit, profile and party boards - then sweeps every page at phone and
+desktop width for errors and horizontal overflow, saving screenshots.
+
+```bash
+docker compose up -d
+cd scripts/e2e && npm install && node workout_e2e.mjs      # screenshots -> $TMPDIR/metalarm-e2e
+```
+
+`CHROME_PATH=/path/to/chrome` overrides the browser. This is test tooling
+only - the app itself still has no hand-written JS build.
+
 ## Database migrations
 
 Alembic reads the database URL from the environment, never from `alembic.ini`,

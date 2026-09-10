@@ -204,6 +204,14 @@ while in progress: show `sessions_to_go` ("1 more workout keeps your streak").
 A qualifying workout also advances the app-wide **daily** streak on the Stat
 Panel (the one that gates A/S rank), exactly like completing a quest.
 
+## Account preference, profile, and the party workout board
+
+| Method | Path | Notes |
+|---|---|---|
+| PATCH | `/auth/me` | `{weight_unit: "kg" \| "lb"}` → `MeOut`. The display unit lives on the account (`weight_unit` is on `/auth/me` and `/profile`), so it follows the user across devices. |
+| GET | `/profile` | `stats` now also carries `workouts_completed`, `workout_prs` (sets that beat a record), `total_volume_kg`, `longest_workout_streak` (weeks). Six workout badges join the list: `first_workout`, `ten_workouts`, `fifty_workouts`, `first_pr`, `prs_25`, `workout_streak_4`. |
+| GET | `/parties/{id}/workout-leaderboard` | `?period=week\|all`. Members ranked by workout points from the ledger, with `workouts` finished in the window. `week` is the viewer's current ISO week. Members only (404 otherwise). |
+
 ## Body measurements
 
 | Method | Path | Notes |

@@ -31,6 +31,14 @@ class LifetimeStats(BaseModel):
     parties_joined: int
     party_xp_contributed: int
     member_since: dt.datetime
+    # Gym workout module.
+    workouts_completed: int = 0
+    # Sets that beat an existing record (first-ever baselines excluded).
+    workout_prs: int = 0
+    # Working-set volume across finished workouts, in kg.
+    total_volume_kg: float = 0.0
+    # Longest run of weeks that met the weekly workout target.
+    longest_workout_streak: int = 0
 
 
 class ProfileOut(BaseModel):

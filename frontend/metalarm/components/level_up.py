@@ -30,8 +30,8 @@ _KEYFRAMES = f"""
   100% {{ opacity: 1; transform: translateY(0); }}
 }}
 @keyframes lf-ring {{
-  0%   {{ opacity: 0.85; transform: scale(0.6); }}
-  100% {{ opacity: 0;    transform: scale(2.4); }}
+  0%   {{ opacity: 0.8; transform: scale(0.7); }}
+  100% {{ opacity: 0;   transform: scale(1.25); }}
 }}
 @keyframes lf-veil {{
   0%   {{ opacity: 0; }}
@@ -42,9 +42,10 @@ _KEYFRAMES = f"""
 .lf-card  {{ animation: lf-burst 520ms cubic-bezier(0.22, 1, 0.36, 1) both; }}
 .lf-line  {{ animation: lf-rise 460ms cubic-bezier(0.22, 1, 0.36, 1) 120ms both; }}
 .lf-ring  {{
-  /* The one looping effect in the app, and only while the overlay is open -
-     Section 7: save the expensive motion for the moment that matters. */
-  animation: lf-ring 1100ms ease-out 80ms infinite;
+  /* A few beats around the badge, then still. It used to scale x2.4 forever
+     and swept through the "LEVEL UP" heading; bounded and clipped by the card,
+     it frames the number instead of crossing the text. */
+  animation: lf-ring 1200ms ease-out 80ms 3 both;
   border: 2px solid {theme.ACCENT};
 }}
 
@@ -143,6 +144,7 @@ def level_up_overlay() -> rx.Component:
                     border_radius="18px",
                     box_shadow=theme.glow(theme.ACCENT, "90px"),
                     max_width="90vw",
+                    overflow="hidden",
                 ),
                 width="100%",
                 height="100%",

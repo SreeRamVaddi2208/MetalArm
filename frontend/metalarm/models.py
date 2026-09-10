@@ -275,9 +275,17 @@ class LifetimeStats:
     parties_joined: int = 0
     party_xp_contributed: int = 0
     member_since: str = ""
+    # Gym workout module.
+    workouts_completed: int = 0
+    workout_prs: int = 0
+    volume_label: str = "0 kg"
+    streak_label: str = "0 WEEKS"
 
     @classmethod
-    def from_api(cls, data: dict[str, Any]) -> "LifetimeStats":
+    def from_api(cls, data: dict[str, Any], unit: str = "kg") -> "LifetimeStats":
+        kg = float(data.get("total_volume_kg") or 0)
+        volume = kg / 0.45359237 if unit == "lb" else kg
+        weeks = data.get("longest_workout_streak") or 0
         return cls(
             quests_completed=data.get("quests_completed") or 0,
             party_quests_completed=data.get("party_quests_completed") or 0,
@@ -287,4 +295,34 @@ class LifetimeStats:
             parties_joined=data.get("parties_joined") or 0,
             party_xp_contributed=data.get("party_xp_contributed") or 0,
             member_since=(data.get("member_since") or "")[:10],
+            workouts_completed=data.get("workouts_completed") or 0,
+            workout_prs=data.get("workout_prs") or 0,
+            volume_label=f"{round(volume):,} {unit}",
+            streak_label=f"{weeks} WEEK{'S' if weeks != 1 else ''}",
+        )
+
+
+@dataclasses.dataclass
+class WorkoutBoardRow:
+    """One member on a party's workout leaderboard."""
+
+    position: int = 0
+    display_name: str = ""
+    points: int = 0
+    workouts_label: str = ""
+    level: int = 1
+    rank: str = "E"
+    is_me: bool = False
+
+    @classmethod
+    def from_api(cls, data: dict[str, Any]) -> "WorkoutBoardRow":
+        count = data.get("workouts") or 0
+        return cls(
+            position=data.get("position") or 0,
+            display_name=data.get("display_name") or "",
+            points=data.get("points") or 0,
+            workouts_label=f"{count} workout{'s' if count != 1 else ''}",
+            level=data.get("level") or 1,
+            rank=data.get("rank") or "E",
+            is_me=bool(data.get("is_me")),
         )

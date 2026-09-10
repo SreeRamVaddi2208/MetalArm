@@ -12,8 +12,11 @@ from sqlalchemy.orm import Session
 from app.api.deps import CurrentUser, DbSession
 from app.core import badges as badge_rules
 from app.core import leveling
+from app.core import workout_streaks
 from app.core.periods import local_now
-from app.core.workout_store import workout_points_credited
+from app.core.workout_store import qualified_weeks, workout_points_credited
+from app.models.workout import SetEntry, WorkoutSession
+from app.models.workout_enums import SessionStatus
 from app.models.party import (
     PartyMembership,
     PartyQuest,
@@ -80,6 +83,36 @@ def read_profile(current_user: CurrentUser, db: DbSession) -> ProfileOut:
         .where(PartyQuestCompletion.user_id == current_user.id),
     )
 
+    # --- Gym workout module ---
+    workouts_completed = _scalar(
+        db,
+        select(func.count(WorkoutSession.id)).where(
+            WorkoutSession.user_id == current_user.id,
+            WorkoutSession.status == SessionStatus.COMPLETED.value,
+        ),
+    )
+    # is_pr excludes first-ever baselines and is cleared on abandoned sets,
+    # so this counts only genuine records.
+    workout_prs = _scalar(
+        db,
+        select(func.count(SetEntry.id)).where(
+            SetEntry.user_id == current_user.id, SetEntry.is_pr.is_(True)
+        ),
+    )
+    total_volume = db.execute(
+        select(func.coalesce(func.sum(SetEntry.weight_kg * SetEntry.reps), 0))
+        .join(WorkoutSession, WorkoutSession.id == SetEntry.session_id)
+        .where(
+            SetEntry.user_id == current_user.id,
+            WorkoutSession.status == SessionStatus.COMPLETED.value,
+            SetEntry.is_warmup.is_(False),
+            SetEntry.reps.is_not(None),
+        )
+    ).scalar_one()
+    longest_workout_streak = workout_streaks.longest_weekly_streak(
+        qualified_weeks(db, current_user.id)
+    )
+
     computed = badge_rules.evaluate(
         badge_rules.BadgeInputs(
             # Party quests are quests too - excluding them would make the
@@ -91,6 +124,9 @@ def read_profile(current_user: CurrentUser, db: DbSession) -> ProfileOut:
             parties_joined=parties_joined,
             party_xp=party_xp,
             total_xp=progress.total_xp,
+            workouts_completed=workouts_completed,
+            workout_prs=workout_prs,
+            longest_workout_streak=longest_workout_streak,
         )
     )
 
@@ -109,6 +145,7 @@ def read_profile(current_user: CurrentUser, db: DbSession) -> ProfileOut:
             display_name=current_user.display_name,
             timezone=current_user.timezone,
             created_at=current_user.created_at,
+            weight_unit=current_user.weight_unit,
         ),
         progress=ProgressOut(
             total_xp=progress.total_xp,
@@ -137,6 +174,10 @@ def read_profile(current_user: CurrentUser, db: DbSession) -> ProfileOut:
             parties_joined=parties_joined,
             party_xp_contributed=party_xp,
             member_since=current_user.created_at,
+            workouts_completed=workouts_completed,
+            workout_prs=workout_prs,
+            total_volume_kg=round(float(total_volume), 2),
+            longest_workout_streak=longest_workout_streak,
         ),
         badges=[
             BadgeOut(

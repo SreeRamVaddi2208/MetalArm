@@ -20,7 +20,7 @@ from app.core.security import (
 )
 from app.models.user import LevelProgress, User
 from app.schemas.auth import LoginRequest, SignupRequest, TokenResponse
-from app.schemas.user import MeOut, ProgressOut
+from app.schemas.user import MeOut, MeUpdate, ProgressOut
 
 logger = logging.getLogger("metalarm.auth")
 
@@ -61,6 +61,7 @@ def _serialize_me(user: User) -> MeOut:
         display_name=user.display_name,
         timezone=user.timezone,
         created_at=user.created_at,
+        weight_unit=user.weight_unit,
         progress=ProgressOut(
             total_xp=progress.total_xp,
             current_level=progress.current_level,
@@ -171,4 +172,18 @@ def login_form(
 @router.get("/me", response_model=MeOut)
 def read_me(current_user: CurrentUser) -> MeOut:
     """The signed-in user plus progression - what the Stat Panel renders."""
+    return _serialize_me(current_user)
+
+
+@router.patch("/me", response_model=MeOut)
+def update_me(payload: MeUpdate, current_user: CurrentUser, db: DbSession) -> MeOut:
+    """Update account preferences - currently the workout weight unit.
+
+    Stored on the account rather than in the browser, so the choice follows
+    the user across devices.
+    """
+    if payload.weight_unit is not None:
+        current_user.weight_unit = payload.weight_unit.value
+    db.commit()
+    db.refresh(current_user)
     return _serialize_me(current_user)

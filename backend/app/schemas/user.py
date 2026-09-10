@@ -5,6 +5,8 @@ import uuid
 
 from pydantic import BaseModel, ConfigDict
 
+from app.models.workout_enums import WeightUnit
+
 
 class ProgressOut(BaseModel):
     """Progression state - everything the Stat Panel renders.
@@ -52,7 +54,15 @@ class UserOut(BaseModel):
     display_name: str
     timezone: str
     created_at: dt.datetime
+    # Workout display unit. Weights are always stored in kg.
+    weight_unit: str = "kg"
 
 
 class MeOut(UserOut):
     progress: ProgressOut
+
+
+class MeUpdate(BaseModel):
+    """PATCH /auth/me. Fields left out are unchanged."""
+
+    weight_unit: WeightUnit | None = None

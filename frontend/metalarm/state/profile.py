@@ -31,7 +31,8 @@ class ProfileState(rx.State):
         try:
             data = await api.profile(auth.token)
             self.badges = [Badge.from_api(b) for b in data.get("badges", [])]
-            self.stats = LifetimeStats.from_api(data.get("stats") or {})
+            # Lifetime volume is shown in the account's chosen weight unit.
+            self.stats = LifetimeStats.from_api(data.get("stats") or {}, auth.weight_unit)
             self.badges_earned = data.get("badges_earned") or 0
             self.badges_total = data.get("badges_total") or 0
         except api.ApiError as exc:

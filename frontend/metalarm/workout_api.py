@@ -20,6 +20,22 @@ def _q(path: str, **params: object) -> str:
     return f"{path}?{urlencode(clean)}" if clean else path
 
 
+# --- Account -----------------------------------------------------------------
+
+
+async def update_account(token: str, payload: dict) -> dict:
+    return await request("PATCH", "/auth/me", token=token, json=payload)
+
+
+# --- Party workout leaderboard ---------------------------------------------
+
+
+async def party_workout_leaderboard(token: str, party_id: str, period: str = "week") -> dict:
+    return await request(
+        "GET", _q(f"/parties/{party_id}/workout-leaderboard", period=period), token=token
+    )
+
+
 # --- Exercise library ------------------------------------------------------
 
 
@@ -101,6 +117,12 @@ async def list_sessions(
 async def log_set(token: str, session_id: str, payload: dict) -> dict:
     return await request(
         "POST", f"/workouts/sessions/{session_id}/sets", token=token, json=payload
+    )
+
+
+async def update_set(token: str, session_id: str, set_id: str, payload: dict) -> dict:
+    return await request(
+        "PATCH", f"/workouts/sessions/{session_id}/sets/{set_id}", token=token, json=payload
     )
 
 

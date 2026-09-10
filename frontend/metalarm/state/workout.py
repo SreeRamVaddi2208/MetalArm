@@ -1,11 +1,14 @@
 """Live workout state: the in-progress session, the start screen, the PR
-moment, and the finish summary.
+moment, set editing, and the finish summary.
 
 Kept apart from reference data - the library lives in PickerState, routines in
 RoutineState - per the brief. The session itself lives on the SERVER: `load`
 rehydrates it from GET /workouts/sessions/active, so a refresh mid-workout
-loses nothing and there is no client-side copy to go stale. The only
-client-persisted value is the display unit.
+loses nothing and there is no client-side copy to go stale. Two small things
+are client-persisted: nothing else would survive a refresh -
+  - exercises added from the picker but not logged yet (they have no sets, so
+    the server does not know about them), keyed to the session;
+  - nothing else. The weight unit lives on the account (AuthState).
 
 No number here is computed. Points, PR flags, streaks and level movement all
 come from API responses - the brief's hard rule against client-side scoring.
@@ -14,6 +17,7 @@ come from API responses - the brief's hard rule against client-side scoring.
 from __future__ import annotations
 
 import dataclasses
+import json
 import uuid
 from typing import Any
 
@@ -33,6 +37,7 @@ from metalarm.workout_models import (
     StreakView,
     fmt,
     muscles_label,
+    session_title,
     thousands,
     to_unit,
     weight_label,
@@ -88,10 +93,12 @@ def build_card(
         rest_seconds=int(t.get("rest_seconds") or DEFAULT_REST_SECONDS),
         sets=rows,
         previous=prev,
+        # Only worth saying before anything is logged: once sets exist in
+        # this workout, "first time" is noise.
         previous_label=(
             "Last time: " + ", ".join(r.summary for r in prev[:5])
             if prev
-            else "First time - this sets your baseline"
+            else ("" if rows else "First time - this sets your baseline")
         ),
     )
 
@@ -186,8 +193,10 @@ def level_beat(progression: dict[str, Any]) -> tuple[str, str]:
 
 
 class WorkoutState(rx.State):
-    # Display unit only. Weights are stored in kg; the API converts lb input.
-    unit: str = rx.LocalStorage("kg", name="ma_unit")
+    # Display unit, copied from the account (AuthState.weight_unit) on load.
+    unit: str = "kg"
+    # Exercises added but not yet logged: {"session": id, "ids": [...]}.
+    pending: str = rx.LocalStorage("", name="ma_pending")
 
     loaded: bool = False
     busy: bool = False
@@ -214,6 +223,17 @@ class WorkoutState(rx.State):
     # dismissed, so the two celebrations never stack on top of each other.
     _pending_kind: str = ""
     _pending_badge: str = ""
+    _tz: str = "UTC"
+
+    # Editing a logged set.
+    editing_set_id: str = ""
+    edit_is_cardio: bool = False
+    edit_weight: str = ""
+    edit_reps: str = ""
+    edit_rpe: str = ""
+    edit_duration: str = ""
+    edit_distance: str = ""
+    edit_warmup: bool = False
 
     show_summary: bool = False
     summary: FinishSummary = FinishSummary()
@@ -253,6 +273,25 @@ class WorkoutState(rx.State):
         self.volume_label = ""
         self.cards = []
         self.confirm_abandon = False
+        self.editing_set_id = ""
+        self.pending = ""
+
+    def _pending_for(self, session_id: str) -> list[str]:
+        try:
+            data = json.loads(self.pending or "{}")
+        except ValueError:
+            return []
+        if not isinstance(data, dict) or data.get("session") != session_id:
+            return []
+        return [i for i in data.get("ids") or [] if isinstance(i, str)]
+
+    def _save_pending(self) -> None:
+        ids = [c.exercise_id for c in self.cards if not c.sets]
+        self.pending = (
+            json.dumps({"session": self.session_id, "ids": ids})
+            if self.session_id and ids
+            else ""
+        )
 
     def _apply_session(self, data: dict[str, Any]) -> None:
         """Render the server's copy of the session, keeping per-card entry
@@ -262,7 +301,7 @@ class WorkoutState(rx.State):
         unit = self.unit
 
         self.session_id = data.get("id") or ""
-        self.session_name = data.get("name") or "Workout"
+        self.session_name = session_title(data.get("name"), data.get("started_at"), self._tz)
         self.started_at = data.get("started_at") or ""
         self.session_points = data.get("points_total") or 0
         self.working_sets = data.get("working_sets") or 0
@@ -283,10 +322,28 @@ class WorkoutState(rx.State):
                     existing.get(exercise.get("id") or ""),
                 )
             )
-        # Picker additions exist only here until their first set is logged.
         if same:
             cards += [c for c in self.cards if c.exercise_id not in seen and not c.sets]
         self.cards = cards
+        self._save_pending()
+
+    async def _restore_pending(self, token: str, ids: list[str]) -> None:
+        """Re-add exercises picked before a refresh but never logged."""
+        present = {c.exercise_id for c in self.cards}
+        cards = list(self.cards)
+        for exercise_id in ids:
+            if exercise_id in present:
+                continue
+            try:
+                exercise = await wapi.get_exercise(token, exercise_id)
+                last = await wapi.last_performance(token, exercise_id)
+            except ApiError:
+                # Deleted or no longer visible: drop it quietly.
+                continue
+            cards.append(build_card(exercise, [], last.get("sets") or [], None, self.unit, None))
+            present.add(exercise_id)
+        self.cards = cards
+        self._save_pending()
 
     def _update(self, index: int, **changes: Any) -> None:
         # Reassign the list: Reflex marks a var dirty on assignment, and a
@@ -314,12 +371,17 @@ class WorkoutState(rx.State):
         auth = await self._auth()
         if not auth.token:
             return
+        self.unit = auth.weight_unit or "kg"
+        self._tz = auth.timezone or "UTC"
         self.error = ""
         try:
             active = (await wapi.active_session(auth.token)).get("session")
             self.streak = StreakView.from_api((await wapi.points(auth.token)).get("streak") or {})
             if active:
+                restore = self._pending_for(active.get("id") or "")
                 self._apply_session(active)
+                if restore:
+                    await self._restore_pending(auth.token, restore)
             else:
                 self._clear_session()
                 self.routines = [
@@ -335,17 +397,25 @@ class WorkoutState(rx.State):
         finally:
             self.loaded = True
 
-    def set_unit(self, unit: str):
+    async def set_unit(self, unit: str):
+        """Save the display unit on the ACCOUNT, then re-render in it."""
         if unit not in WEIGHT_STEP or unit == self.unit:
             return
-        self.unit = unit
-        self.cards = []
+        auth = await self._auth()
+        try:
+            data = await wapi.update_account(auth.token, {"weight_unit": unit})
+        except ApiError as exc:
+            self.error = exc.detail
+            return
+        auth.weight_unit = data.get("weight_unit") or unit
+        self.unit = auth.weight_unit
         return WorkoutState.load
 
     # --- starting ---------------------------------------------------------
 
     async def start_session(self, routine_id: str = ""):
         auth = await self._auth()
+        self._tz = auth.timezone or "UTC"
         self.error = ""
         self.show_summary = False
         try:
@@ -359,8 +429,7 @@ class WorkoutState(rx.State):
         return rx.redirect("/workout")
 
     async def add_exercise(self, exercise_id: str):
-        index = self._index_of(exercise_id)
-        if index >= 0:
+        if self._index_of(exercise_id) >= 0:
             return
         auth = await self._auth()
         try:
@@ -373,12 +442,14 @@ class WorkoutState(rx.State):
             *self.cards,
             build_card(exercise, [], last.get("sets") or [], None, self.unit, None),
         ]
+        self._save_pending()
 
     def remove_card(self, index: int) -> None:
         """Only an exercise with nothing logged can be removed - a logged set
         is removed by deleting the set."""
         if 0 <= index < len(self.cards) and not self.cards[index].sets:
             self.cards = [c for i, c in enumerate(self.cards) if i != index]
+            self._save_pending()
 
     # --- entry fields -----------------------------------------------------
 
@@ -508,8 +579,100 @@ class WorkoutState(rx.State):
         except ApiError as exc:
             self.error = exc.detail
             return
+        if self.editing_set_id == set_id:
+            self.editing_set_id = ""
         self._apply_session(session)
         return AuthState.refresh_me
+
+    # --- editing a logged set ---------------------------------------------
+
+    def start_edit(self, set_id: str) -> None:
+        for card in self.cards:
+            for row in card.sets:
+                if row.id != set_id:
+                    continue
+                self.editing_set_id = set_id
+                self.edit_is_cardio = card.is_cardio
+                self.edit_weight = row.weight or ("" if card.is_cardio else "0")
+                self.edit_reps = row.reps
+                self.edit_rpe = row.rpe
+                self.edit_duration = row.duration_min
+                self.edit_distance = row.distance_km
+                self.edit_warmup = row.is_warmup
+                self.error = ""
+                return
+
+    def cancel_edit(self) -> None:
+        self.editing_set_id = ""
+
+    def set_edit_weight(self, value: str) -> None:
+        self.edit_weight = value
+
+    def set_edit_reps(self, value: str) -> None:
+        self.edit_reps = value
+
+    def set_edit_rpe(self, value: str) -> None:
+        self.edit_rpe = value
+
+    def set_edit_duration(self, value: str) -> None:
+        self.edit_duration = value
+
+    def set_edit_distance(self, value: str) -> None:
+        self.edit_distance = value
+
+    def toggle_edit_warmup(self) -> None:
+        self.edit_warmup = not self.edit_warmup
+
+    async def save_edit(self):
+        """PATCH the set. The API reverses its old awards and judges the
+        edited set afresh, so an edit can earn (or lose) a PR - which is then
+        shown exactly like a newly logged one."""
+        set_id = self.editing_set_id
+        exercise_id = next(
+            (c.exercise_id for c in self.cards if any(r.id == set_id for r in c.sets)), ""
+        )
+        if not set_id or not exercise_id:
+            self.editing_set_id = ""
+            return
+
+        draft = ExerciseCard(
+            exercise_id=exercise_id,
+            is_cardio=self.edit_is_cardio,
+            weight_input=self.edit_weight,
+            reps_input=self.edit_reps,
+            rpe_input=self.edit_rpe,
+            duration_input=self.edit_duration,
+            distance_input=self.edit_distance,
+            warmup=self.edit_warmup,
+        )
+        payload, problem = set_payload(draft, self.unit)
+        if payload is None:
+            self.error = problem
+            return
+        payload.pop("exercise_id", None)
+        payload.pop("client_set_id", None)
+        # A cleared field must be sent as null to actually clear it.
+        payload.setdefault("rpe", None)
+        if self.edit_is_cardio:
+            payload.setdefault("duration_seconds", None)
+            payload.setdefault("distance_m", None)
+
+        auth = await self._auth()
+        self.busy = True
+        self.error = ""
+        yield
+        try:
+            result = await wapi.update_set(auth.token, self.session_id, set_id, payload)
+            session = await wapi.get_session(auth.token, self.session_id)
+        except ApiError as exc:
+            self.busy = False
+            self.error = exc.detail
+            return
+        self.busy = False
+        self.editing_set_id = ""
+        self._apply_session(session)
+        await self._show_outcome(exercise_id, result)
+        yield AuthState.refresh_me
 
     # --- finishing --------------------------------------------------------
 

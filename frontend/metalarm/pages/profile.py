@@ -109,6 +109,12 @@ def lifetime_panel() -> rx.Component:
         stat_line("PARTIES", s.parties_joined.to_string()),
         stat_line("PARTY XP", s.party_xp_contributed.to_string()),
         rx.divider(border_color=theme.BORDER),
+        rx.text("TRAINING", **{**theme.LABEL_STYLE, "color": theme.ACCENT}),
+        stat_line("WORKOUTS", s.workouts_completed.to_string()),
+        stat_line("PR SETS", s.workout_prs.to_string()),
+        stat_line("VOLUME LIFTED", s.volume_label),
+        stat_line("BEST WEEK STREAK", s.streak_label),
+        rx.divider(border_color=theme.BORDER),
         rx.text(
             f"Hunter since {s.member_since}",
             color=theme.FAINT,

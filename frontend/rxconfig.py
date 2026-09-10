@@ -34,6 +34,9 @@ config = rx.Config(
     # NOTE: this value is baked into the compiled JS bundle at build time.
     api_url=os.getenv("REFLEX_API_URL", "http://localhost:8001"),
     telemetry_enabled=False,
+    # The sticky "Built with Reflex" badge floated over page content on
+    # phones (it covered the workout summary's point lines).
+    show_built_with_reflex=False,
     plugins=[
         rx.plugins.RadixThemesPlugin(
             theme=rx.theme(appearance="dark", accent_color="blue", radius="large"),

@@ -27,13 +27,35 @@ def week_key(moment: dt.datetime, tz_name: str) -> str:
     return period_key(Recurrence.WEEKLY.value, moment, tz_name)
 
 
+def _monday(key: str) -> dt.date:
+    year, week = key.split("-W")
+    return dt.date.fromisocalendar(int(year), int(week), 1)
+
+
 def previous_week(key: str) -> str:
     """'2027-W01' -> '2026-W53'. Goes through a real date so ISO years with 53
     weeks are handled, rather than doing arithmetic on the week number."""
-    year, week = key.split("-W")
-    monday = dt.date.fromisocalendar(int(year), int(week), 1)
-    iso_year, iso_week, _ = (monday - dt.timedelta(days=7)).isocalendar()
+    iso_year, iso_week, _ = (_monday(key) - dt.timedelta(days=7)).isocalendar()
     return f"{iso_year}-W{iso_week:02d}"
+
+
+def longest_weekly_streak(
+    sessions_per_week: Mapping[str, int],
+    target: int = rules.STREAK_SESSIONS_PER_WEEK,
+) -> int:
+    """The longest run of consecutive counting weeks ever held.
+
+    Drives the streak badge, which - like the daily-streak badges - keys off a
+    value that never goes down, so taking a week off cannot revoke it.
+    """
+    mondays = sorted(_monday(k) for k, n in sessions_per_week.items() if n >= target)
+    best = run = 0
+    previous: dt.date | None = None
+    for monday in mondays:
+        run = run + 1 if previous is not None and (monday - previous).days == 7 else 1
+        best = max(best, run)
+        previous = monday
+    return best
 
 
 @dataclasses.dataclass(frozen=True)

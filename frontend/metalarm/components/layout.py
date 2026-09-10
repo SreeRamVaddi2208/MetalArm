@@ -92,7 +92,10 @@ def navbar() -> rx.Component:
 def mobile_nav() -> rx.Component:
     """Shown only where the top-bar links are hidden, so navigation never
     disappears on a narrow screen."""
-    # Six links: wraps rather than overflowing at phone width.
+    # Six links on one line that scrolls sideways at phone width, rather than
+    # wrapping into two ragged rows. The right edge fades out so the row reads
+    # as scrollable - otherwise the links past the edge look like they do not
+    # exist. The end padding lets the last link scroll clear of the fade.
     return rx.hstack(
         nav_link("QUESTS", "/dashboard"),
         nav_link("WORKOUT", "/workout"),
@@ -100,9 +103,17 @@ def mobile_nav() -> rx.Component:
         nav_link("PARTIES", "/parties"),
         nav_link("REWARDS", "/rewards"),
         nav_link("PROFILE", "/profile"),
-        spacing="4",
-        flex_wrap="wrap",
-        justify="center",
+        spacing="5",
+        flex_wrap="nowrap",
+        overflow_x="auto",
+        white_space="nowrap",
+        justify="start",
+        padding_left="1.25rem",
+        padding_right="3.5rem",
+        style={
+            "scrollbar_width": "none",
+            "mask_image": "linear-gradient(to right, #000 80%, transparent)",
+        },
         width="100%",
         padding="0.75rem",
         border_bottom=f"1px solid {theme.BORDER}",

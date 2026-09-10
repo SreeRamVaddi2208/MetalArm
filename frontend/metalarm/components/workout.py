@@ -382,43 +382,151 @@ def _flash(card: ExerciseCard) -> rx.Component:
     return rx.cond(card.flash_kind != "", pill(card.flash_label, color))
 
 
-def _set_row(entry: SetRow) -> rx.Component:
-    return rx.hstack(
-        rx.center(
-            rx.text(
-                rx.cond(entry.is_warmup, "W", entry.set_number.to_string()),
-                font_size="0.72rem",
+def _set_number(entry: SetRow) -> rx.Component:
+    return rx.center(
+        rx.text(
+            rx.cond(entry.is_warmup, "W", entry.set_number.to_string()),
+            font_size="0.72rem",
+            font_weight="800",
+            color=rx.cond(entry.is_warmup, theme.WARNING, theme.MUTED),
+        ),
+        width="28px",
+        height="28px",
+        border_radius="8px",
+        background=FIELD_BG,
+        border=f"1px solid {theme.BORDER}",
+        flex_shrink="0",
+    )
+
+
+def _edit_field(label: str, value, on_change, **overrides) -> rx.Component:
+    return rx.vstack(
+        rx.text(label, **{**theme.LABEL_STYLE, "font_size": "0.6rem"}),
+        _number_field(value, on_change, height="46px", font_size="1rem", **overrides),
+        spacing="1",
+        flex="1",
+        min_width="0",
+    )
+
+
+def _edit_row(entry: SetRow, is_cardio) -> rx.Component:
+    """Inline editor for a logged set. Saving PATCHes it; the API re-judges
+    the set, so the result is shown exactly like a new log."""
+    return rx.vstack(
+        rx.hstack(
+            _set_number(entry),
+            rx.text("EDIT SET", **{**theme.LABEL_STYLE, "color": theme.ACCENT}),
+            rx.spacer(),
+            rx.button(
+                rx.cond(WorkoutState.edit_warmup, "WARM-UP ✓", "WARM-UP"),
+                on_click=WorkoutState.toggle_edit_warmup,
+                background=rx.cond(WorkoutState.edit_warmup, f"{theme.WARNING}22", "transparent"),
+                color=rx.cond(WorkoutState.edit_warmup, theme.WARNING, theme.FAINT),
+                border=rx.cond(WorkoutState.edit_warmup, f"1px solid {theme.WARNING}", f"1px solid {theme.BORDER}"),
+                border_radius="8px",
+                font_size="0.62rem",
                 font_weight="800",
-                color=rx.cond(entry.is_warmup, theme.WARNING, theme.MUTED),
+                letter_spacing="0.1em",
+                padding="0.35rem 0.6rem",
+                cursor="pointer",
             ),
-            width="28px",
-            height="28px",
-            border_radius="8px",
-            background=FIELD_BG,
-            border=f"1px solid {theme.BORDER}",
-            flex_shrink="0",
+            width="100%",
+            align="center",
+            spacing="3",
         ),
-        rx.text(entry.summary, color=theme.TEXT, font_weight="700", font_size="0.95rem"),
-        rx.cond(entry.detail != "", rx.text(entry.detail, color=theme.FAINT, font_size="0.72rem")),
-        rx.cond(entry.is_pr, pill("PR", PR_COLOR)),
-        rx.spacer(),
-        rx.button(
-            "✕",
-            on_click=WorkoutState.delete_set(entry.id),
-            background="transparent",
-            color=theme.FAINT,
-            border="none",
-            font_size="0.85rem",
-            cursor="pointer",
-            padding="0.35rem 0.55rem",
-            custom_attrs={"aria-label": "Delete set"},
-            _hover={"color": theme.DANGER},
+        rx.hstack(
+            rx.cond(
+                is_cardio,
+                rx.fragment(
+                    _edit_field("MINUTES", WorkoutState.edit_duration, WorkoutState.set_edit_duration),
+                    _edit_field("KM", WorkoutState.edit_distance, WorkoutState.set_edit_distance),
+                ),
+                rx.fragment(
+                    _edit_field(f"WEIGHT ({WorkoutState.unit})", WorkoutState.edit_weight, WorkoutState.set_edit_weight),
+                    _edit_field("REPS", WorkoutState.edit_reps, WorkoutState.set_edit_reps),
+                ),
+            ),
+            _edit_field("RPE", WorkoutState.edit_rpe, WorkoutState.set_edit_rpe, width="100%"),
+            spacing="2",
+            width="100%",
         ),
-        width="100%",
-        align="center",
+        rx.hstack(
+            button(
+                rx.cond(WorkoutState.busy, "SAVING…", "SAVE"),
+                WorkoutState.save_edit,
+                flex="1",
+                height="44px",
+                disabled=WorkoutState.busy,
+            ),
+            button("CANCEL", WorkoutState.cancel_edit, color=theme.MUTED, solid=False, height="44px"),
+            rx.button(
+                "DELETE",
+                on_click=WorkoutState.delete_set(entry.id),
+                background="transparent",
+                color=theme.DANGER,
+                border=f"1px solid {theme.DANGER}55",
+                border_radius="10px",
+                font_size="0.7rem",
+                font_weight="800",
+                letter_spacing="0.1em",
+                height="44px",
+                padding="0 0.8rem",
+                cursor="pointer",
+                custom_attrs={"aria-label": "Delete set"},
+            ),
+            width="100%",
+            spacing="2",
+        ),
         spacing="3",
-        padding_block="0.4rem",
-        border_bottom=f"1px solid {theme.BORDER}",
+        width="100%",
+        padding="0.75rem",
+        margin_block="0.35rem",
+        background=FIELD_BG,
+        border=f"1px solid {theme.ACCENT}55",
+        border_radius="12px",
+    )
+
+
+def _set_row(entry: SetRow, is_cardio) -> rx.Component:
+    return rx.cond(
+        WorkoutState.editing_set_id == entry.id,
+        _edit_row(entry, is_cardio),
+        rx.hstack(
+            # The whole row is the edit target: a big, forgiving tap area.
+            rx.hstack(
+                _set_number(entry),
+                rx.text(entry.summary, color=theme.TEXT, font_weight="700", font_size="0.95rem"),
+                rx.cond(entry.detail != "", rx.text(entry.detail, color=theme.FAINT, font_size="0.72rem")),
+                rx.cond(entry.is_pr, pill("PR", PR_COLOR)),
+                rx.spacer(),
+                rx.text("EDIT", color=theme.FAINT, font_size="0.6rem", font_weight="800", letter_spacing="0.12em"),
+                on_click=WorkoutState.start_edit(entry.id),
+                cursor="pointer",
+                align="center",
+                spacing="3",
+                flex="1",
+                min_width="0",
+                padding_block="0.2rem",
+                custom_attrs={"role": "button", "aria-label": "Edit set"},
+            ),
+            rx.button(
+                "✕",
+                on_click=WorkoutState.delete_set(entry.id),
+                background="transparent",
+                color=theme.FAINT,
+                border="none",
+                font_size="0.85rem",
+                cursor="pointer",
+                padding="0.35rem 0.55rem",
+                custom_attrs={"aria-label": "Delete set"},
+                _hover={"color": theme.DANGER},
+            ),
+            width="100%",
+            align="center",
+            spacing="2",
+            padding_block="0.4rem",
+            border_bottom=f"1px solid {theme.BORDER}",
+        ),
     )
 
 
@@ -596,10 +704,17 @@ def exercise_card(card: ExerciseCard, index) -> rx.Component:
             rx.text(f"TARGET  {card.target_label}", color=theme.ACCENT, font_size="0.7rem",
                     font_weight="700", letter_spacing="0.08em"),
         ),
-        rx.text(card.previous_label, color=theme.FAINT, font_size="0.74rem"),
+        rx.cond(
+            card.previous_label != "",
+            rx.text(card.previous_label, color=theme.FAINT, font_size="0.74rem"),
+        ),
         rx.cond(
             card.sets.length() > 0,
-            rx.vstack(rx.foreach(card.sets, _set_row), spacing="0", width="100%"),
+            rx.vstack(
+                rx.foreach(card.sets, lambda entry: _set_row(entry, card.is_cardio)),
+                spacing="0",
+                width="100%",
+            ),
         ),
         rx.cond(card.is_cardio, _cardio_entry(card, index), _strength_entry(card, index)),
         rx.cond(card.ghost_label != "", rx.text(card.ghost_label, color=theme.MUTED, font_size="0.72rem")),

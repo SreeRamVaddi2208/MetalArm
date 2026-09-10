@@ -22,6 +22,23 @@ from metalarm.workout_models import PrView
 
 PR_COLOR = theme.RANK_COLORS["A"]
 
+# The PR card's own ring. The level-up ring (scale x2.4, infinite) swept
+# through the exercise name and delta pill on this taller card; this one stays
+# within the headline, pulses three times and stops, and the card clips it.
+_CSS = f"""
+@keyframes ma-pr-ring {{
+  0%   {{ opacity: 0.7; transform: scale(0.75); }}
+  100% {{ opacity: 0;   transform: scale(1.35); }}
+}}
+.ma-pr-ring {{
+  border: 2px solid {PR_COLOR};
+  animation: ma-pr-ring 1300ms ease-out 120ms 3 both;
+}}
+@media (prefers-reduced-motion: reduce) {{
+  .ma-pr-ring {{ display: none; }}
+}}
+"""
+
 
 def _other_record(view: PrView) -> rx.Component:
     return rx.hstack(
@@ -45,14 +62,14 @@ def pr_overlay() -> rx.Component:
                         class_name="lf-line",
                     ),
                     rx.box(
+                        rx.el.style(_CSS),
                         rx.box(
-                            class_name="lf-ring",
+                            class_name="ma-pr-ring",
                             position="absolute",
                             width="150px",
                             height="150px",
                             border_radius="50%",
                             pointer_events="none",
-                            border_color=PR_COLOR,
                         ),
                         rx.vstack(
                             rx.heading(
@@ -143,6 +160,7 @@ def pr_overlay() -> rx.Component:
                     border_radius="20px",
                     box_shadow=theme.glow(PR_COLOR, "110px"),
                     max_width="92vw",
+                    overflow="hidden",
                 ),
                 width="100%",
                 height="100%",

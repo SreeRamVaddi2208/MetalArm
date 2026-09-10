@@ -90,6 +90,26 @@ def short_date(iso: str | None, tz: str) -> str:
     return moment.strftime("%d %b") if moment else ""
 
 
+def session_title(name: str | None, started_at: str | None, tz: str) -> str:
+    """A blank workout gets a name from when it started - "Evening workout"
+    reads better in history than a column of identical "Workout" rows."""
+    if name:
+        return name
+    moment = local_dt(started_at, tz)
+    if moment is None:
+        return "Workout"
+    hour = moment.hour
+    if 5 <= hour < 12:
+        part = "Morning"
+    elif 12 <= hour < 17:
+        part = "Afternoon"
+    elif 17 <= hour < 22:
+        part = "Evening"
+    else:
+        part = "Late-night"
+    return f"{part} workout"
+
+
 def _num(value: Any) -> float:
     try:
         return float(value)
@@ -110,7 +130,9 @@ class SetRow:
     detail: str = ""
     is_warmup: bool = False
     is_pr: bool = False
-    # Raw values in the display unit, used to pre-fill the next set.
+    # Raw values in the display unit, used to pre-fill the next set and the
+    # edit form.
+    rpe: str = ""
     weight: str = ""
     reps: str = ""
     duration_min: str = ""
@@ -146,6 +168,7 @@ class SetRow:
             detail=" · ".join(details),
             is_warmup=bool(data.get("is_warmup")),
             is_pr=bool(data.get("is_pr")),
+            rpe=fmt(_num(data["rpe"])) if data.get("rpe") else "",
             weight=fmt(to_unit(kg, unit)) if kg else "",
             reps=str(reps) if reps else "",
             duration_min=fmt(duration / 60) if duration else "",
@@ -335,7 +358,7 @@ class HistoryRow:
         status = data.get("status") or ""
         return cls(
             id=data.get("id") or "",
-            title=data.get("name") or "Workout",
+            title=session_title(data.get("name"), data.get("started_at"), tz),
             date_label=day_label(data.get("started_at"), tz),
             duration_label=f"{int((data.get('duration_seconds') or 0) // 60)} min",
             sets_label=f"{data.get('working_sets') or 0} sets",

@@ -10,7 +10,7 @@
 
 - **API title:** MetalArm API
 - **API version:** 0.1.0
-- **Generated:** 2026-09-10 15:38 UTC
+- **Generated:** 2026-09-10 17:04 UTC
 - **Source:** `http://localhost:8000/openapi.json`
 
 ---
@@ -57,6 +57,26 @@ The signed-in user plus progression - what the Stat Panel renders.
 | Status | Description |
 |---|---|
 | `200` | Successful Response |
+
+---
+
+### `PATCH /api/v1/auth/me`
+
+**Update Me**
+
+Update account preferences - currently the workout weight unit.
+
+Stored on the account rather than in the browser, so the choice follows
+the user across devices.
+
+*Tags:* `auth`
+
+*Request body* (`application/json`): `MeUpdate`
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
 
 ---
 
@@ -620,6 +640,34 @@ rotating it is what stops further joins.
 | Param | In | Type | Required |
 |---|---|---|---|
 | `party_id` | path | `string` | yes |
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `GET /api/v1/parties/{party_id}/workout-leaderboard`
+
+**Party Workout Leaderboard**
+
+Friends' competition for the gym module: members ranked by workout
+points from the points ledger.
+
+Unlike the XP board above, this counts ALL of each member's workout points,
+not only what was earned for the party - training is personal, and the
+point is to compare it. `week` is the current ISO week in the VIEWER's
+timezone (the same boundary GET /workouts/points uses), so everyone on one
+board is compared over one window. A week's total cannot read negative:
+a reversal landing this week of an award from last week is clamped at 0.
+
+*Tags:* `parties`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `party_id` | path | `string` | yes |
+| `period` | query | `string` | no |
 
 | Status | Description |
 |---|---|
@@ -1515,6 +1563,10 @@ otherwise 503 with per-dependency detail.
 | `parties_joined` | `integer` | yes |
 | `party_xp_contributed` | `integer` | yes |
 | `member_since` | `string` | yes |
+| `workouts_completed` | `integer` | no |
+| `workout_prs` | `integer` | no |
+| `total_volume_kg` | `number` | no |
+| `longest_workout_streak` | `integer` | no |
 
 #### `LoginRequest`
 
@@ -1532,7 +1584,14 @@ otherwise 503 with per-dependency detail.
 | `display_name` | `string` | yes |
 | `timezone` | `string` | yes |
 | `created_at` | `string` | yes |
+| `weight_unit` | `string` | no |
 | `progress` | `ProgressOut` | yes |
+
+#### `MeUpdate`
+
+| Field | Type | Required |
+|---|---|---|
+| `weight_unit` | `WeightUnit | null` | no |
 
 #### `MeasurementMetric`
 
@@ -2044,6 +2103,7 @@ otherwise 503 with per-dependency detail.
 | `display_name` | `string` | yes |
 | `timezone` | `string` | yes |
 | `created_at` | `string` | yes |
+| `weight_unit` | `string` | no |
 
 #### `ValidationError`
 
@@ -2068,3 +2128,25 @@ otherwise 503 with per-dependency detail.
 | Field | Type | Required |
 |---|---|---|
 | _(no properties)_ | | |
+
+#### `WorkoutLeaderboardEntry`
+
+| Field | Type | Required |
+|---|---|---|
+| `position` | `integer` | yes |
+| `user_id` | `string` | yes |
+| `display_name` | `string` | yes |
+| `points` | `integer` | yes |
+| `workouts` | `integer` | yes |
+| `level` | `integer` | yes |
+| `rank` | `string` | yes |
+| `is_me` | `boolean` | yes |
+
+#### `WorkoutLeaderboardOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `party_id` | `string` | yes |
+| `period` | `string` | yes |
+| `period_start` | `string | null` | yes |
+| `entries` | `WorkoutLeaderboardEntry[]` | yes |

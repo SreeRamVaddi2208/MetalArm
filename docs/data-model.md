@@ -281,3 +281,10 @@ end of the statement.
 `alembic check` reports no drift; `upgrade` → `downgrade -1` → `upgrade` is
 clean; the importer loaded 91 library exercises and a second run reported 91
 unchanged.
+
+## `users.weight_unit` (Alembic `2caadc5c9d12`)
+
+`VARCHAR(2) NOT NULL DEFAULT 'kg'`, `CHECK (weight_unit IN ('kg', 'lb'))`.
+Presentation only - weights are always stored in kg. On the account rather
+than in the browser so the choice follows the user across devices; set via
+`PATCH /auth/me`.

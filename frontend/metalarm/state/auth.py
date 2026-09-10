@@ -20,6 +20,9 @@ class AuthState(rx.State):
     display_name: str = ""
     email: str = ""
     timezone: str = "UTC"
+    # Workout display unit, stored on the account so it follows the user
+    # across devices. Weights are always stored in kg server-side.
+    weight_unit: str = "kg"
     progress: Progress = Progress()
 
     # Form fields
@@ -197,6 +200,7 @@ class AuthState(rx.State):
         self.token = ""
         self.display_name = ""
         self.email = ""
+        self.weight_unit = "kg"
         self.progress = Progress()
         self.loaded = False
         return rx.redirect("/login")
@@ -206,6 +210,7 @@ class AuthState(rx.State):
         self.display_name = data.get("display_name") or ""
         self.email = data.get("email") or ""
         self.timezone = data.get("timezone") or "UTC"
+        self.weight_unit = data.get("weight_unit") or "kg"
         self.progress = Progress.from_api(data.get("progress") or {})
         self.loaded = True
 

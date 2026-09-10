@@ -14,8 +14,10 @@ from metalarm.components.party_card import (
     leaderboard_row,
     party_quest_row,
     party_tab,
+    rank_letter,
 )
 from metalarm.components.scroll_reveal import reveal, reveal_assets
+from metalarm.models import WorkoutBoardRow
 from metalarm.state.parties import PartyState
 
 
@@ -267,8 +269,92 @@ def party_detail() -> rx.Component:
             spacing="3",
             width="100%",
         ),
+        # --- workout leaderboard ---
+        rx.vstack(
+            section_heading(
+                "WORKOUT BOARD",
+                rx.hstack(
+                    _period_button("WEEK", "week"),
+                    _period_button("ALL TIME", "all"),
+                    spacing="2",
+                    flex_shrink="0",
+                ),
+            ),
+            rx.box(
+                rx.foreach(PartyState.workout_board, workout_board_row),
+                **theme.panel(),
+            ),
+            rx.text(
+                "Ranked by workout points - every set logged, PR and finished "
+                "workout. Compared over the same window for everyone.",
+                color=theme.FAINT,
+                font_size="0.72rem",
+                line_height="1.5",
+            ),
+            spacing="3",
+            width="100%",
+        ),
         spacing="5",
         width="100%",
+    )
+
+
+def _period_button(label: str, period: str) -> rx.Component:
+    active = PartyState.workout_period == period
+    return rx.button(
+        label,
+        on_click=PartyState.set_workout_period(period),
+        background=rx.cond(active, f"{theme.ACCENT}22", "transparent"),
+        color=rx.cond(active, theme.ACCENT, theme.FAINT),
+        border=rx.cond(active, f"1px solid {theme.ACCENT}", f"1px solid {theme.BORDER}"),
+        border_radius="8px",
+        font_size="0.62rem",
+        font_weight="800",
+        letter_spacing="0.1em",
+        padding="0.35rem 0.6rem",
+        cursor="pointer",
+    )
+
+
+def workout_board_row(entry: WorkoutBoardRow) -> rx.Component:
+    return rx.hstack(
+        rx.text(
+            entry.position.to_string(),
+            color=theme.FAINT,
+            font_size="0.8rem",
+            font_weight="800",
+            min_width="22px",
+        ),
+        rank_letter(entry.rank),
+        rx.vstack(
+            rx.text(
+                entry.display_name,
+                color=rx.cond(entry.is_me, theme.ACCENT, theme.TEXT),
+                font_weight=rx.cond(entry.is_me, "800", "600"),
+                font_size="0.86rem",
+            ),
+            rx.text(
+                f"Level {entry.level} · {entry.workouts_label}",
+                color=theme.FAINT,
+                font_size="0.68rem",
+            ),
+            spacing="0",
+            align="start",
+            flex="1",
+            min_width="0",
+        ),
+        rx.text(
+            f"{entry.points} PTS",
+            color=theme.ACCENT,
+            font_weight="700",
+            font_size="0.85rem",
+            white_space="nowrap",
+        ),
+        width="100%",
+        align="center",
+        spacing="3",
+        padding_block="0.55rem",
+        border_bottom=f"1px solid {theme.BORDER}",
     )
 
 

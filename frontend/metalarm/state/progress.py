@@ -11,7 +11,6 @@ import reflex as rx
 from metalarm import workout_api as wapi
 from metalarm.api import ApiError
 from metalarm.state.auth import AuthState
-from metalarm.state.workout import WorkoutState
 from metalarm.workout_models import (
     LB_PER_KG,
     BodyRow,
@@ -87,8 +86,7 @@ class ProgressState(rx.State):
 
     async def _ctx(self) -> tuple[str, str, str]:
         auth = await self.get_state(AuthState)
-        workout = await self.get_state(WorkoutState)
-        return auth.token, workout.unit, auth.timezone
+        return auth.token, auth.weight_unit or "kg", auth.timezone
 
     async def load(self):
         token, unit, tz = await self._ctx()

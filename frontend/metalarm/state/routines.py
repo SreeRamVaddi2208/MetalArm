@@ -51,8 +51,7 @@ class RoutineState(rx.State):
 
     async def _ctx(self) -> tuple[str, str]:
         auth = await self.get_state(AuthState)
-        workout = await self.get_state(WorkoutState)
-        return auth.token, workout.unit
+        return auth.token, auth.weight_unit or "kg"
 
     async def load(self):
         token, unit = await self._ctx()

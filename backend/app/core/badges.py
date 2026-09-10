@@ -47,6 +47,11 @@ class BadgeInputs:
     parties_joined: int = 0
     party_xp: int = 0
     total_xp: int = 0
+    # Gym workout module. Each of these only ever grows: finished workouts,
+    # sets that beat a record, and the longest weekly streak ever held.
+    workouts_completed: int = 0
+    workout_prs: int = 0
+    longest_workout_streak: int = 0
 
 
 # (id, name, description, icon, field, target)
@@ -64,6 +69,12 @@ _TIERS: tuple[tuple[str, str, str, str, str, int], ...] = (
     ("first_reward", "Well Earned", "Redeem your first reward", "🎁", "rewards_redeemed", 1),
     ("party_member", "Not Alone", "Join or create a party", "🤝", "parties_joined", 1),
     ("party_1000", "Backbone", "Contribute 1,000 XP to a party", "🏛️", "party_xp", 1000),
+    ("first_workout", "Iron Initiate", "Finish your first workout", "🏋️", "workouts_completed", 1),
+    ("ten_workouts", "Regular", "Finish 10 workouts", "💪", "workouts_completed", 10),
+    ("fifty_workouts", "Gym Rat", "Finish 50 workouts", "🦾", "workouts_completed", 50),
+    ("first_pr", "Record Breaker", "Set your first personal record", "🥇", "workout_prs", 1),
+    ("prs_25", "Always Climbing", "Set 25 personal records", "⚡", "workout_prs", 25),
+    ("workout_streak_4", "Four-Week Block", "Hold a 4-week workout streak", "🗓️", "longest_workout_streak", 4),
 )
 
 

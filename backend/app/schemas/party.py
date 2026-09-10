@@ -69,6 +69,28 @@ class LeaderboardOut(BaseModel):
     entries: list[LeaderboardEntry]
 
 
+class WorkoutLeaderboardEntry(BaseModel):
+    position: int
+    user_id: uuid.UUID
+    display_name: str
+    # Net workout points in the period, from the points ledger.
+    points: int
+    # Finished workouts in the period.
+    workouts: int
+    level: int
+    rank: str
+    is_me: bool
+
+
+class WorkoutLeaderboardOut(BaseModel):
+    party_id: uuid.UUID
+    period: str
+    # Start of the window (the viewer's local Monday 00:00) for `week`; null
+    # for `all`.
+    period_start: dt.datetime | None
+    entries: list[WorkoutLeaderboardEntry]
+
+
 class PartyQuestCreate(BaseModel):
     title: str = Field(min_length=1, max_length=140)
     description: str | None = None

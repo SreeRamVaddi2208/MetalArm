@@ -3,7 +3,12 @@ week keeps, extends, or breaks a streak. Pure logic, no database."""
 
 import datetime as dt
 
-from app.core.workout_streaks import previous_week, week_key, weekly_streak
+from app.core.workout_streaks import (
+    longest_weekly_streak,
+    previous_week,
+    week_key,
+    weekly_streak,
+)
 
 TARGET = 3
 
@@ -72,3 +77,26 @@ def test_a_streak_runs_across_new_year() -> None:
 
 def test_the_target_is_tunable() -> None:
     assert weekly_streak({"2026-W37": 1}, "2026-W37", target=1).weeks == 1
+
+
+# --------------------------------------------------------------------------
+# Longest streak ever (drives the badge)
+# --------------------------------------------------------------------------
+
+
+def test_longest_streak_with_no_counting_weeks_is_zero() -> None:
+    assert longest_weekly_streak({"2026-W37": 2}, TARGET) == 0
+
+
+def test_longest_streak_is_the_best_run_not_the_latest() -> None:
+    counts = {
+        "2026-W30": 3, "2026-W31": 3, "2026-W32": 4,  # a 3-week run
+        "2026-W34": 3,  # after a gap
+        "2026-W36": 2,  # under target
+    }
+    assert longest_weekly_streak(counts, TARGET) == 3
+
+
+def test_longest_streak_runs_across_new_year() -> None:
+    counts = {"2026-W52": 3, "2026-W53": 3, "2027-W01": 3}
+    assert longest_weekly_streak(counts, TARGET) == 3

@@ -6,9 +6,9 @@ from metalarm import theme
 from metalarm.components.exercise_picker import picker_dialog
 from metalarm.components.layout import error_banner, notice_banner, section_heading, shell
 from metalarm.components.workout import FIELD_BG, button, empty
+from metalarm.state.auth import AuthState
 from metalarm.state.picker import PickerState
 from metalarm.state.routines import RoutineState
-from metalarm.state.workout import WorkoutState
 from metalarm.workout_models import RoutineItem, RoutineSlot
 
 
@@ -78,7 +78,7 @@ def _slot_row(slot: RoutineSlot, index) -> rx.Component:
         rx.hstack(
             _small_field("SETS", slot.target_sets, lambda v: RoutineState.set_slot_sets(index, v)),
             _small_field("REPS", slot.target_reps, lambda v: RoutineState.set_slot_reps(index, v)),
-            _small_field(f"WEIGHT ({WorkoutState.unit})", slot.target_weight,
+            _small_field(f"WEIGHT ({AuthState.weight_unit})", slot.target_weight,
                          lambda v: RoutineState.set_slot_weight(index, v)),
             _small_field("REST (S)", slot.rest_seconds, lambda v: RoutineState.set_slot_rest(index, v)),
             spacing="2",

@@ -14,6 +14,70 @@ Entry format:
 
 ---
 
+## 2026-09-10 (12) - Opus - close every open workout item; UI polish pass
+
+Built everything left open in entry (11), then verified and cleaned the whole
+UI, not only the new pages.
+
+**Built**
+- **Weight unit on the account.** New `users.weight_unit` column (migration
+  `2caadc5c9d12`, CHECK kg/lb) and `PATCH /auth/me`. The kg/lb toggle now
+  saves to the account and follows the user to a fresh browser. It was
+  previously per-browser LocalStorage.
+- **Edit a logged set in the UI.** Tap a set row to open an inline editor
+  (weight/reps or minutes/km, RPE, warm-up). It saves through the existing
+  `PATCH`, and the result is shown exactly like a new log, so an edit that
+  earns a PR raises the PR moment.
+- **Unlogged exercises survive a refresh.** They are persisted per session in
+  LocalStorage and restored on load. They are dropped once logged, removed,
+  or the session ends.
+- **Workout stats and badges on the profile.** Workouts completed, PR sets,
+  lifetime volume and best week streak are shown in the user's unit, plus six
+  badges (Iron Initiate, Regular, Gym Rat, Record Breaker, Always Climbing,
+  Four-Week Block). Like the existing badges they are derived, never stored,
+  and key off values that never go down (`longest_weekly_streak`).
+- **Party workout board.** `GET /parties/{id}/workout-leaderboard?period=week|all`:
+  members ranked by ledger points, with workouts finished. Members only.
+  `week` is the viewer's ISO week.
+- **Browser E2E committed** as `scripts/e2e/` (playwright-core against the
+  installed Chrome). It is documented in the README.
+
+**UI fixes found by reviewing every page at phone and desktop width**
+- Removed the sticky "Built with Reflex" badge
+  (`show_built_with_reflex=False`). It covered the workout summary's point
+  lines on phones.
+- The mobile nav wrapped into two ragged rows. It is now one line that scrolls
+  sideways, with an edge fade so the hidden links read as reachable.
+- The PR-moment and level-up rings scaled x2.4 forever and swept through the
+  headline text. Both are now bounded, pulse three times, and are clipped by
+  their card.
+- The records list wrapped at random points on phones. It now uses two fixed
+  lines per record.
+- "First time - this sets your baseline" stayed on a card after sets were
+  logged. It now shows only before the first set.
+- The party page's "WORKOUT LEADERBOARD" heading wrapped beside its toggle. It
+  is now "WORKOUT BOARD" with WEEK / ALL TIME.
+- Blank workouts are named by time of day ("Evening workout") instead of a
+  column of identical "Workout" rows.
+
+**Verified (real output)**
+- `alembic check`: no drift at `2caadc5c9d12`.
+- `pytest`: **318 passed**, exit 0. That includes 16 new tests covering the
+  account unit, profile stats and badges, the workout board's
+  ranking/week window/404, and `longest_weekly_streak`.
+- `scripts/smoke_test.py`: **All 128 checks passed**.
+- `scripts/e2e`: **ALL PASSED (72)**. That covers the full journey including
+  set editing, pending-exercise restore, the unit following the account into
+  a fresh browser, the profile stats and badges and the party board. It also
+  covers all 7 signed-in pages at phone and desktop width, with no uncaught
+  errors, no horizontal overflow, and no Reflex badge.
+- `docs/api-contract.md` regenerated: 45 paths, 80 schemas.
+
+**Still open (decisions, not build work)**
+- Point values remain placeholders in `workout_rules.py`.
+
+---
+
 ## 2026-09-10 (11) - Opus - gym workout module (frontend)
 
 Built the brief's Section 6 in Reflex against `docs/workouts-api.md`, inventing

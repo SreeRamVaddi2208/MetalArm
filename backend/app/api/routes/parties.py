@@ -21,7 +21,7 @@ from sqlalchemy.orm import Session
 from app.api.deps import CurrentUser, DbSession
 from app.core import leaderboard, leveling
 from app.core.invites import generate_invite_code, normalize_invite_code
-from app.core.periods import local_date, period_key
+from app.core.periods import local_date, local_now, period_key, resolve_timezone
 from app.core.progression import apply_completion, lock_progress
 from app.models.enums import PartyRole
 from app.models.party import (
@@ -31,6 +31,8 @@ from app.models.party import (
     PartyQuestCompletion,
 )
 from app.models.user import LevelProgress, User
+from app.models.workout import PointsLedgerEntry, WorkoutSession
+from app.models.workout_enums import SessionStatus
 from app.schemas.party import (
     JoinRequest,
     LeaderboardEntry,
@@ -43,6 +45,8 @@ from app.schemas.party import (
     PartyQuestOut,
     PartyQuestUpdate,
     PartyUpdate,
+    WorkoutLeaderboardEntry,
+    WorkoutLeaderboardOut,
 )
 
 logger = logging.getLogger("metalarm.parties")
@@ -507,6 +511,90 @@ def party_leaderboard(
         # consistent with dissolution and quest removal both being soft.
         total_party_xp=sum(_party_xp_totals(db, party.id).values()),
         entries=entries[:limit],
+    )
+
+
+@router.get("/{party_id}/workout-leaderboard", response_model=WorkoutLeaderboardOut)
+def party_workout_leaderboard(
+    party_id: uuid.UUID,
+    current_user: CurrentUser,
+    db: DbSession,
+    period: str = Query(default="week", pattern="^(week|all)$"),
+) -> WorkoutLeaderboardOut:
+    """Friends' competition for the gym module: members ranked by workout
+    points from the points ledger.
+
+    Unlike the XP board above, this counts ALL of each member's workout points,
+    not only what was earned for the party - training is personal, and the
+    point is to compare it. `week` is the current ISO week in the VIEWER's
+    timezone (the same boundary GET /workouts/points uses), so everyone on one
+    board is compared over one window. A week's total cannot read negative:
+    a reversal landing this week of an award from last week is clamped at 0.
+    """
+    party, _ = _membership_or_404(db, party_id, current_user, require_active=False)
+
+    members = db.execute(
+        select(User, LevelProgress)
+        .join(LevelProgress, LevelProgress.user_id == User.id)
+        .join(PartyMembership, PartyMembership.user_id == User.id)
+        .where(PartyMembership.party_id == party.id)
+    ).all()
+    member_ids = [user.id for user, _ in members]
+
+    start: dt.datetime | None = None
+    if period == "week":
+        local = local_now(current_user.timezone)
+        monday = local.date() - dt.timedelta(days=local.weekday())
+        start = dt.datetime.combine(
+            monday, dt.time.min, tzinfo=resolve_timezone(current_user.timezone)
+        )
+
+    points_query = (
+        select(PointsLedgerEntry.user_id, func.coalesce(func.sum(PointsLedgerEntry.points), 0))
+        .where(PointsLedgerEntry.user_id.in_(member_ids))
+        .group_by(PointsLedgerEntry.user_id)
+    )
+    workouts_query = (
+        select(WorkoutSession.user_id, func.count(WorkoutSession.id))
+        .where(
+            WorkoutSession.user_id.in_(member_ids),
+            WorkoutSession.status == SessionStatus.COMPLETED.value,
+        )
+        .group_by(WorkoutSession.user_id)
+    )
+    if start is not None:
+        points_query = points_query.where(PointsLedgerEntry.created_at >= start)
+        workouts_query = workouts_query.where(WorkoutSession.ended_at >= start)
+
+    points = {uid: max(0, int(total)) for uid, total in db.execute(points_query).all()}
+    workouts = {uid: int(count) for uid, count in db.execute(workouts_query).all()}
+    now = dt.datetime.now(dt.timezone.utc)
+
+    ranked = sorted(
+        members,
+        key=lambda row: (
+            -points.get(row[0].id, 0),
+            -workouts.get(row[0].id, 0),
+            row[0].display_name.casefold(),
+        ),
+    )
+    return WorkoutLeaderboardOut(
+        party_id=party.id,
+        period=period,
+        period_start=start,
+        entries=[
+            WorkoutLeaderboardEntry(
+                position=position,
+                user_id=user.id,
+                display_name=user.display_name,
+                points=points.get(user.id, 0),
+                workouts=workouts.get(user.id, 0),
+                level=progress.current_level,
+                rank=_derive_rank(progress, user.timezone, now),
+                is_me=(user.id == current_user.id),
+            )
+            for position, (user, progress) in enumerate(ranked, start=1)
+        ],
     )
 
 

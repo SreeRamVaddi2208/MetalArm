@@ -43,6 +43,12 @@ class User(UUIDPrimaryKey, Timestamps, Base):
     is_active: Mapped[bool] = mapped_column(
         Boolean, nullable=False, server_default="true"
     )
+    # The unit the workout UI shows and accepts. Weights are always STORED in
+    # kg; this is presentation only. Kept on the account, not in the browser,
+    # so it follows the user from phone to laptop.
+    weight_unit: Mapped[str] = mapped_column(
+        String(2), nullable=False, server_default="kg"
+    )
 
     progress: Mapped["LevelProgress"] = relationship(
         back_populates="user", cascade="all, delete-orphan", uselist=False
@@ -50,6 +56,7 @@ class User(UUIDPrimaryKey, Timestamps, Base):
 
     __table_args__ = (
         CheckConstraint("length(display_name) >= 1", name="ck_users_display_name"),
+        CheckConstraint("weight_unit IN ('kg', 'lb')", name="ck_users_weight_unit"),
     )
 
 
