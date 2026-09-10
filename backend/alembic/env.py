@@ -34,6 +34,10 @@ def run_migrations_offline() -> None:
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
         compare_type=True,
+        # Without this, Alembic ignores server_default entirely: changing a
+        # column default autogenerates an EMPTY migration and `alembic check`
+        # reports no drift, which is false confidence rather than a pass.
+        compare_server_default=True,
     )
     with context.begin_transaction():
         context.run_migrations()
@@ -51,6 +55,8 @@ def run_migrations_online() -> None:
             target_metadata=target_metadata,
             # Detect column type changes, not just adds/drops.
             compare_type=True,
+            # See the note in the offline block above.
+            compare_server_default=True,
         )
         with context.begin_transaction():
             context.run_migrations()

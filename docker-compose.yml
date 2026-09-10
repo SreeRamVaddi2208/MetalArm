@@ -71,6 +71,12 @@ services:
       context: ./backend
       dockerfile: Dockerfile
       target: runtime
+    # SAME image tag as the backend, deliberately. They run identical code, and
+    # when they were separate images `docker compose build backend` left this
+    # one stale - the next `up` then failed with "Can't locate revision", because
+    # the old image had no knowledge of a migration the database had already
+    # applied. One tag makes that drift impossible.
+    image: levelforge-backend
     container_name: levelforge-migrate
     command: ["alembic", "upgrade", "head"]
     restart: "no"
@@ -98,6 +104,8 @@ services:
       # builds the last stage by default. Without this, the shipped runtime
       # image would silently gain a test runner.
       target: runtime
+    # Shared with the `migrate` service - see the note there.
+    image: levelforge-backend
     container_name: levelforge-backend
     restart: unless-stopped
     environment:

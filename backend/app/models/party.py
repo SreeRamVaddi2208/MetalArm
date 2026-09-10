@@ -23,7 +23,12 @@ from app.models.mixins import Timestamps, UUIDPrimaryKey
 from app.models.quest import MAX_XP_REWARD
 
 _RECURRENCE_CHECK = ", ".join(f"'{v}'" for v in RECURRENCE_VALUES)
-DEFAULT_MAX_MEMBERS = 8
+
+# Settled with the user on 2026-09-10: parties cap at 10 members, are freely
+# created and dissolved, and a leaving owner hands off rather than orphaning
+# the party. Stored per-party so a future tier could raise it without a
+# migration; the column CHECK still bounds it at 100.
+DEFAULT_MAX_MEMBERS = 10
 
 
 class Party(UUIDPrimaryKey, Timestamps, Base):

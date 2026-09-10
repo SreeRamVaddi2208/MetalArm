@@ -10,7 +10,7 @@
 
 - **API title:** LevelForge API
 - **API version:** 0.1.0
-- **Generated:** 2026-09-09 22:28 UTC
+- **Generated:** 2026-09-10 07:10 UTC
 - **Source:** `http://localhost:8000/openapi.json`
 
 ---
@@ -94,6 +94,328 @@ here carries the email.
 *Tags:* `auth`
 
 *Request body* (`application/x-www-form-urlencoded`): `Body_login_form_api_v1_auth_token_post`
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `GET /api/v1/parties`
+
+**List Parties**
+
+Every party the caller belongs to.
+
+*Tags:* `parties`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `include_dissolved` | query | `boolean` | no |
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `POST /api/v1/parties`
+
+**Create Party**
+
+Create a party and join it as owner, in one transaction.
+
+A party with no members would be unreachable - nobody could see it or use
+its invite code - so the owner's membership is not a separate step.
+
+*Tags:* `parties`
+
+*Request body* (`application/json`): `PartyCreate`
+
+| Status | Description |
+|---|---|
+| `201` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `POST /api/v1/parties/join`
+
+**Join Party**
+
+Join by invite code.
+
+The party row is locked FOR UPDATE before the headcount is read: checking
+the cap without the lock is a race, and two simultaneous joins into a
+9-of-10 party would both see room and both insert.
+
+*Tags:* `parties`
+
+*Request body* (`application/json`): `JoinRequest`
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `DELETE /api/v1/parties/{party_id}`
+
+**Dissolve Party**
+
+Dissolve a party (owner only).
+
+Soft: is_active=false, never a row delete. Members keep the XP they earned
+and the completion history stays reconstructible - deleting would cascade
+party_quests and their completions away, silently rewriting the record of
+work people actually did.
+
+*Tags:* `parties`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `party_id` | path | `string` | yes |
+
+| Status | Description |
+|---|---|
+| `204` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `GET /api/v1/parties/{party_id}`
+
+**Get Party**
+
+*Tags:* `parties`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `party_id` | path | `string` | yes |
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `PATCH /api/v1/parties/{party_id}`
+
+**Update Party**
+
+*Tags:* `parties`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `party_id` | path | `string` | yes |
+
+*Request body* (`application/json`): `PartyUpdate`
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `GET /api/v1/parties/{party_id}/leaderboard`
+
+**Party Leaderboard**
+
+Ranked party members by XP contributed to this party.
+
+Served from the Redis sorted set, which falls back to Postgres and rebuilds
+on a miss - so a cache flush costs a rebuild, never data.
+
+*Tags:* `parties`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `party_id` | path | `string` | yes |
+| `limit` | query | `integer` | no |
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `POST /api/v1/parties/{party_id}/leave`
+
+**Leave Party**
+
+Leave a party.
+
+When the OWNER leaves, the party is handed to the longest-serving remaining
+member rather than orphaned - an ownerless party could never be renamed,
+have its invite rotated, or be dissolved. If nobody remains, the party is
+dissolved instead of being left empty and unreachable.
+
+*Tags:* `parties`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `party_id` | path | `string` | yes |
+
+| Status | Description |
+|---|---|
+| `204` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `GET /api/v1/parties/{party_id}/members`
+
+**List Members**
+
+*Tags:* `parties`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `party_id` | path | `string` | yes |
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `GET /api/v1/parties/{party_id}/quests`
+
+**List Party Quests**
+
+*Tags:* `parties`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `party_id` | path | `string` | yes |
+| `include_inactive` | query | `boolean` | no |
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `POST /api/v1/parties/{party_id}/quests`
+
+**Create Party Quest**
+
+Any member may add to the shared board.
+
+Deliberately not owner-only: a shared quest board that only one person can
+write to is a to-do list handed down, not a party.
+
+*Tags:* `parties`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `party_id` | path | `string` | yes |
+
+*Request body* (`application/json`): `PartyQuestCreate`
+
+| Status | Description |
+|---|---|
+| `201` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `DELETE /api/v1/parties/{party_id}/quests/{quest_id}`
+
+**Delete Party Quest**
+
+Deactivate a shared quest.
+
+Soft, like dissolving a party: a hard delete would cascade away the
+completion rows that back every member's contributed XP, silently changing
+the leaderboard.
+
+*Tags:* `parties`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `party_id` | path | `string` | yes |
+| `quest_id` | path | `string` | yes |
+
+| Status | Description |
+|---|---|
+| `204` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `PATCH /api/v1/parties/{party_id}/quests/{quest_id}`
+
+**Update Party Quest**
+
+*Tags:* `parties`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `party_id` | path | `string` | yes |
+| `quest_id` | path | `string` | yes |
+
+*Request body* (`application/json`): `PartyQuestUpdate`
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `POST /api/v1/parties/{party_id}/quests/{quest_id}/complete`
+
+**Complete Party Quest**
+
+Complete a shared quest for the current period.
+
+Same transaction shape as a personal completion, and for the same reasons:
+lock level_progress FOR UPDATE first (consistent lock order across every
+writer, so no deadlock), then let
+UNIQUE(party_quest_id, user_id, period_key) - not a Python pre-check - be
+what actually stops double-awarding.
+
+The award lands in BOTH places: the member's personal total_xp and their
+party contribution. Because a non-member cannot reach this endpoint, party
+XP counts only what was earned while a member, with no extra bookkeeping.
+
+*Tags:* `parties`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `party_id` | path | `string` | yes |
+| `quest_id` | path | `string` | yes |
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `POST /api/v1/parties/{party_id}/rotate-invite`
+
+**Rotate Invite**
+
+Issue a fresh invite code, invalidating the old one.
+
+The only way to revoke a leaked link: the code IS the capability, so
+rotating it is what stops further joins.
+
+*Tags:* `parties`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `party_id` | path | `string` | yes |
 
 | Status | Description |
 |---|---|
@@ -446,6 +768,32 @@ otherwise 503 with per-dependency detail.
 |---|---|---|
 | `detail` | `ValidationError[]` | no |
 
+#### `JoinRequest`
+
+| Field | Type | Required |
+|---|---|---|
+| `invite_code` | `string` | yes |
+
+#### `LeaderboardEntry`
+
+| Field | Type | Required |
+|---|---|---|
+| `position` | `integer` | yes |
+| `user_id` | `string` | yes |
+| `display_name` | `string` | yes |
+| `party_xp` | `integer` | yes |
+| `level` | `integer` | yes |
+| `rank` | `string` | yes |
+| `is_me` | `boolean` | yes |
+
+#### `LeaderboardOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `party_id` | `string` | yes |
+| `total_party_xp` | `integer` | yes |
+| `entries` | `LeaderboardEntry[]` | yes |
+
 #### `LoginRequest`
 
 | Field | Type | Required |
@@ -463,6 +811,105 @@ otherwise 503 with per-dependency detail.
 | `timezone` | `string` | yes |
 | `created_at` | `string` | yes |
 | `progress` | `ProgressOut` | yes |
+
+#### `MemberOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `user_id` | `string` | yes |
+| `display_name` | `string` | yes |
+| `role` | `string` | yes |
+| `joined_at` | `string` | yes |
+| `level` | `integer` | yes |
+| `rank` | `string` | yes |
+| `party_xp` | `integer` | yes |
+
+#### `PartyCreate`
+
+| Field | Type | Required |
+|---|---|---|
+| `name` | `string` | yes |
+| `max_members` | `integer` | no |
+
+#### `PartyOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `id` | `string` | yes |
+| `name` | `string` | yes |
+| `owner_id` | `string` | yes |
+| `max_members` | `integer` | yes |
+| `member_count` | `integer` | yes |
+| `is_active` | `boolean` | yes |
+| `created_at` | `string` | yes |
+| `my_role` | `string` | yes |
+| `invite_code` | `string | null` | no |
+| `total_party_xp` | `integer` | no |
+
+#### `PartyQuestCompleteResponse`
+
+| Field | Type | Required |
+|---|---|---|
+| `xp_awarded` | `integer` | yes |
+| `points_awarded` | `integer` | yes |
+| `total_xp` | `integer` | yes |
+| `level_before` | `integer` | yes |
+| `level_after` | `integer` | yes |
+| `rank_before` | `string` | yes |
+| `rank_after` | `string` | yes |
+| `current_streak` | `integer` | yes |
+| `longest_streak` | `integer` | yes |
+| `leveled_up` | `boolean` | yes |
+| `ranked_up` | `boolean` | yes |
+| `party_xp_contributed` | `integer` | yes |
+| `total_party_xp` | `integer` | yes |
+
+#### `PartyQuestCreate`
+
+| Field | Type | Required |
+|---|---|---|
+| `title` | `string` | yes |
+| `description` | `string | null` | no |
+| `xp_reward` | `integer` | no |
+| `points_reward` | `integer` | no |
+| `recurrence` | `Recurrence` | no |
+| `due_at` | `string | null` | no |
+
+#### `PartyQuestOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `id` | `string` | yes |
+| `party_id` | `string` | yes |
+| `title` | `string` | yes |
+| `description` | `string | null` | yes |
+| `xp_reward` | `integer` | yes |
+| `points_reward` | `integer` | yes |
+| `recurrence` | `string` | yes |
+| `is_active` | `boolean` | yes |
+| `due_at` | `string | null` | yes |
+| `created_at` | `string` | yes |
+| `current_period_key` | `string` | yes |
+| `completed_in_current_period` | `boolean` | yes |
+| `completed_by_count` | `integer` | yes |
+
+#### `PartyQuestUpdate`
+
+| Field | Type | Required |
+|---|---|---|
+| `title` | `string | null` | no |
+| `description` | `string | null` | no |
+| `xp_reward` | `integer | null` | no |
+| `points_reward` | `integer | null` | no |
+| `recurrence` | `Recurrence | null` | no |
+| `is_active` | `boolean | null` | no |
+| `due_at` | `string | null` | no |
+
+#### `PartyUpdate`
+
+| Field | Type | Required |
+|---|---|---|
+| `name` | `string | null` | no |
 
 #### `ProgressOut`
 
