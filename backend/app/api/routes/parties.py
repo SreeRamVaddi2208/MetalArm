@@ -21,7 +21,7 @@ from sqlalchemy.orm import Session
 from app.api.deps import CurrentUser, DbSession
 from app.core import leaderboard, leveling
 from app.core.invites import generate_invite_code, normalize_invite_code
-from app.core.periods import period_key
+from app.core.periods import local_date, period_key
 from app.core.progression import apply_completion, lock_progress
 from app.models.enums import PartyRole
 from app.models.party import (
@@ -114,13 +114,20 @@ def _party_xp_totals(db: Session, party_id: uuid.UUID) -> dict[uuid.UUID, int]:
     return {user_id: int(total) for user_id, total in rows}
 
 
-def _derive_rank(progress: LevelProgress, tz_name: str, today: dt.date) -> str:
-    """Rank as the Stat Panel would show it.
+def _derive_rank(progress: LevelProgress, tz_name: str, now: dt.datetime) -> str:
+    """Rank as the Stat Panel would show it, judged in the MEMBER's timezone.
 
     The cached rank column is not read here: nothing updates it while a user is
-    away, so a lapsed member would appear on the leaderboard holding a rank
-    their streak no longer supports.
+    away, so a lapsed member would otherwise appear on the leaderboard holding
+    a rank their streak no longer supports.
+
+    The member's own local date is what decides whether their streak is still
+    alive. Using the server's date instead shifts every member's streak
+    boundary onto the server's midnight: at 02:00 UTC a Los Angeles member who
+    last completed "yesterday" their time reads as two days idle, and a live
+    40-day streak is reported as rank B when they in fact hold S.
     """
+    today = local_date(now, tz_name)
     streak = leveling.effective_streak(
         progress.current_streak, progress.last_completed_on, today
     )
@@ -419,7 +426,7 @@ def list_members(
             role=membership.role.value,
             joined_at=membership.joined_at,
             level=progress.current_level,
-            rank=_derive_rank(progress, user.timezone, now.astimezone().date()),
+            rank=_derive_rank(progress, user.timezone, now),
             party_xp=totals.get(user.id, 0),
         )
         for membership, user, progress in rows
@@ -451,7 +458,7 @@ def party_leaderboard(
         .where(PartyMembership.party_id == party.id)
     ).all()
     profiles = {str(user.id): (user, progress) for user, progress in rows}
-    today = dt.datetime.now(dt.timezone.utc).astimezone().date()
+    now = dt.datetime.now(dt.timezone.utc)
 
     entries: list[LeaderboardEntry] = []
     for position, (user_id, xp) in enumerate(ranked, start=1):
@@ -468,7 +475,7 @@ def party_leaderboard(
                 display_name=user.display_name,
                 party_xp=xp,
                 level=progress.current_level,
-                rank=_derive_rank(progress, user.timezone, today),
+                rank=_derive_rank(progress, user.timezone, now),
                 is_me=(user.id == current_user.id),
             )
         )
@@ -486,14 +493,19 @@ def party_leaderboard(
                 display_name=user.display_name,
                 party_xp=0,
                 level=progress.current_level,
-                rank=_derive_rank(progress, user.timezone, today),
+                rank=_derive_rank(progress, user.timezone, now),
                 is_me=(user.id == current_user.id),
             )
         )
 
     return LeaderboardOut(
         party_id=party.id,
-        total_party_xp=sum(e.party_xp for e in entries),
+        # The authoritative total, NOT a sum over the listed rows. Those skip
+        # departed contributors and are truncated by `limit`, so summing them
+        # made GET /parties/{id} and this endpoint disagree about the same
+        # party. Work genuinely done for the party stays in its total, which is
+        # consistent with dissolution and quest removal both being soft.
+        total_party_xp=sum(_party_xp_totals(db, party.id).values()),
         entries=entries[:limit],
     )
 

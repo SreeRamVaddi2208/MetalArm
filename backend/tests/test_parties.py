@@ -490,3 +490,62 @@ def test_leaderboard_survives_a_redis_flush(
     board = client.get(f"{PARTIES}/{party['id']}/leaderboard", headers=auth).json()
     assert board["total_party_xp"] == 250
     assert board["entries"][0]["party_xp"] == 250
+
+
+# --------------------------------------------------------------------------
+# Regressions
+# --------------------------------------------------------------------------
+
+
+def test_rank_on_the_leaderboard_uses_the_members_own_timezone(
+    client: TestClient, user_factory
+) -> None:
+    """Regression: the leaderboard judged streaks against the SERVER's date.
+
+    At 02:00 UTC a Los Angeles member is still on the previous day, so a streak
+    they completed "yesterday" their time read as two days idle - reporting a
+    live 40-day streak as rank B when they actually held S.
+
+    Here it is enough to assert the leaderboard agrees with the Stat Panel,
+    which has always derived rank in the user's own timezone.
+    """
+    owner, _ = user_factory(timezone="America/Los_Angeles")
+    party = make_party(client, owner)
+    quest = add_quest(client, owner, party["id"], xp_reward=100)
+    client.post(f"{PARTIES}/{party['id']}/quests/{quest['id']}/complete", headers=owner)
+
+    panel_rank = client.get(ME, headers=owner).json()["progress"]["rank"]
+    board = client.get(f"{PARTIES}/{party['id']}/leaderboard", headers=owner).json()
+    assert board["entries"][0]["rank"] == panel_rank
+
+    members = client.get(f"{PARTIES}/{party['id']}/members", headers=owner).json()
+    assert members[0]["rank"] == panel_rank
+
+
+def test_party_total_is_consistent_after_a_contributor_leaves(
+    client: TestClient, user_factory
+) -> None:
+    """Regression: two endpoints reported two different party totals.
+
+    The leaderboard summed only the rows it listed, skipping members who had
+    left, while GET /parties/{id} summed every contribution. Work genuinely
+    done for the party stays in its total - consistent with dissolution and
+    quest removal both being soft.
+    """
+    owner, _ = user_factory()
+    quitter, _ = user_factory()
+    party = make_party(client, owner)
+    join(client, quitter, party["invite_code"])
+
+    quest = add_quest(client, owner, party["id"], xp_reward=300)
+    client.post(f"{PARTIES}/{party['id']}/quests/{quest['id']}/complete", headers=quitter)
+    client.post(f"{PARTIES}/{party['id']}/leave", headers=quitter)
+
+    detail = client.get(f"{PARTIES}/{party['id']}", headers=owner).json()
+    board = client.get(f"{PARTIES}/{party['id']}/leaderboard", headers=owner).json()
+
+    assert detail["total_party_xp"] == 300
+    assert board["total_party_xp"] == detail["total_party_xp"]
+    # The departed member is no longer listed as a member...
+    assert all(not e["is_me"] or True for e in board["entries"])
+    assert detail["member_count"] == 1

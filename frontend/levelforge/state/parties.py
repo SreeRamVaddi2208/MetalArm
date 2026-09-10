@@ -8,6 +8,8 @@ no connection lifecycle, no reconnect handling, no auth-over-socket.
 
 from __future__ import annotations
 
+import dataclasses
+
 import reflex as rx
 
 from levelforge import api
@@ -107,7 +109,14 @@ class PartyState(rx.State):
             ]
             board = await api.party_leaderboard(token, self.selected.id)
             self.board = [LeaderboardRow.from_api(e) for e in board.get("entries", [])]
-            self.selected.total_party_xp = board.get("total_party_xp") or 0
+            # REPLACE rather than mutate a field in place. Reflex marks a state
+            # var dirty on assignment to the var itself, so an in-place nested
+            # write can leave the rendered value stale - and `selected` is
+            # usually the same object as an entry in `self.parties`, so
+            # mutating it would quietly edit the list too.
+            self.selected = dataclasses.replace(
+                self.selected, total_party_xp=board.get("total_party_xp") or 0
+            )
         except api.ApiError as exc:
             self.error = exc.detail
 

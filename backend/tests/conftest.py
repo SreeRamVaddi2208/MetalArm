@@ -7,7 +7,6 @@ migrations: `alembic check` already proves the migration and the models agree,
 so re-running migrations per session would only add time.
 """
 
-import os
 import uuid
 from collections.abc import Generator
 
