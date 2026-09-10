@@ -168,3 +168,60 @@ async def wallet(token: str) -> dict:
 
 async def redemptions(token: str) -> list[dict]:
     return await request("GET", "/rewards/redemptions", token=token)
+
+
+# --- Parties ---------------------------------------------------------------
+
+
+async def list_parties(token: str) -> list[dict]:
+    return await request("GET", "/parties", token=token)
+
+
+async def create_party(token: str, name: str) -> dict:
+    return await request("POST", "/parties", token=token, json={"name": name})
+
+
+async def join_party(token: str, invite_code: str) -> dict:
+    return await request(
+        "POST", "/parties/join", token=token, json={"invite_code": invite_code}
+    )
+
+
+async def get_party(token: str, party_id: str) -> dict:
+    return await request("GET", f"/parties/{party_id}", token=token)
+
+
+async def leave_party(token: str, party_id: str) -> None:
+    await request("POST", f"/parties/{party_id}/leave", token=token)
+
+
+async def dissolve_party(token: str, party_id: str) -> None:
+    await request("DELETE", f"/parties/{party_id}", token=token)
+
+
+async def rotate_invite(token: str, party_id: str) -> dict:
+    return await request("POST", f"/parties/{party_id}/rotate-invite", token=token)
+
+
+async def party_leaderboard(token: str, party_id: str) -> dict:
+    return await request("GET", f"/parties/{party_id}/leaderboard", token=token)
+
+
+async def list_party_quests(token: str, party_id: str) -> list[dict]:
+    return await request("GET", f"/parties/{party_id}/quests", token=token)
+
+
+async def create_party_quest(token: str, party_id: str, payload: dict) -> dict:
+    return await request(
+        "POST", f"/parties/{party_id}/quests", token=token, json=payload
+    )
+
+
+async def complete_party_quest(token: str, party_id: str, quest_id: str) -> dict:
+    return await request(
+        "POST", f"/parties/{party_id}/quests/{quest_id}/complete", token=token
+    )
+
+
+async def delete_party_quest(token: str, party_id: str, quest_id: str) -> None:
+    await request("DELETE", f"/parties/{party_id}/quests/{quest_id}", token=token)

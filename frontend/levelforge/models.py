@@ -137,3 +137,95 @@ class Redemption:
             # Trimmed to minutes; the raw value is a full ISO timestamp.
             redeemed_at=(data.get("redeemed_at") or "")[:16].replace("T", " "),
         )
+
+
+@dataclasses.dataclass
+class Party:
+    id: str = ""
+    name: str = ""
+    my_role: str = "member"
+    member_count: int = 0
+    max_members: int = 10
+    invite_code: str = ""
+    total_party_xp: int = 0
+    is_active: bool = True
+    # Stored, not derived - see the note on Quest.recurrence_label.
+    is_owner: bool = False
+    seats_label: str = ""
+
+    @classmethod
+    def from_api(cls, data: dict[str, Any]) -> "Party":
+        role = data.get("my_role") or "member"
+        count = data.get("member_count") or 0
+        cap = data.get("max_members") or 10
+        return cls(
+            id=data.get("id") or "",
+            name=data.get("name") or "",
+            my_role=role,
+            member_count=count,
+            max_members=cap,
+            invite_code=data.get("invite_code") or "",
+            total_party_xp=data.get("total_party_xp") or 0,
+            is_active=bool(data.get("is_active", True)),
+            is_owner=(role == "owner"),
+            seats_label=f"{count}/{cap} MEMBERS",
+        )
+
+
+@dataclasses.dataclass
+class PartyQuest:
+    id: str = ""
+    title: str = ""
+    description: str = ""
+    xp_reward: int = 0
+    points_reward: int = 0
+    recurrence: str = "none"
+    recurrence_label: str = "ONE-OFF"
+    current_period_key: str = ""
+    completed_in_current_period: bool = False
+    completed_by_count: int = 0
+    # Reads "2 of 4 done" on the shared board - the signal that makes it feel
+    # collaborative rather than a private list.
+    progress_label: str = ""
+
+    @classmethod
+    def from_api(cls, data: dict[str, Any], member_count: int = 0) -> "PartyQuest":
+        done = data.get("completed_by_count") or 0
+        return cls(
+            id=data.get("id") or "",
+            title=data.get("title") or "",
+            description=data.get("description") or "",
+            xp_reward=data.get("xp_reward") or 0,
+            points_reward=data.get("points_reward") or 0,
+            recurrence=data.get("recurrence") or "none",
+            recurrence_label=_RECURRENCE_LABELS.get(
+                data.get("recurrence") or "none", "ONE-OFF"
+            ),
+            current_period_key=data.get("current_period_key") or "",
+            completed_in_current_period=bool(data.get("completed_in_current_period")),
+            completed_by_count=done,
+            progress_label=f"{done} of {member_count} done" if member_count else f"{done} done",
+        )
+
+
+@dataclasses.dataclass
+class LeaderboardRow:
+    position: int = 0
+    user_id: str = ""
+    display_name: str = ""
+    party_xp: int = 0
+    level: int = 1
+    rank: str = "E"
+    is_me: bool = False
+
+    @classmethod
+    def from_api(cls, data: dict[str, Any]) -> "LeaderboardRow":
+        return cls(
+            position=data.get("position") or 0,
+            user_id=data.get("user_id") or "",
+            display_name=data.get("display_name") or "",
+            party_xp=data.get("party_xp") or 0,
+            level=data.get("level") or 1,
+            rank=data.get("rank") or "E",
+            is_me=bool(data.get("is_me")),
+        )

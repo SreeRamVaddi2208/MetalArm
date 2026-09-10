@@ -186,6 +186,47 @@ def main() -> int:
     status, _ = call("PATCH", f"/rewards/{reward['id']}", token, {"is_active": False})
     check("deactivating instead succeeds", status == 200)
 
+    # -- Sprint 5: parties -------------------------------------------------
+    section("Sprint 5 - parties, shared board, leaderboard")
+    status, party = call("POST", "/parties", token, {"name": "Smoke Guild"})
+    check("create a party", status == 201, str(party)[:100])
+    check("creator is owner and member", party["my_role"] == "owner" and party["member_count"] == 1)
+    check("default cap is 10", party["max_members"] == 10, str(party.get("max_members")))
+    code = party["invite_code"]
+    check("invite code avoids ambiguous characters",
+          len(code) == 8 and not (set("01OIL") & set(code)), code)
+
+    friend, _ = new_user()
+    status, joined = call("POST", "/parties/join", friend, {"invite_code": code.lower()})
+    check("join by code (case-insensitive)", status == 200 and joined["member_count"] == 2, str(joined)[:100])
+    status, _ = call("POST", "/parties/join", friend, {"invite_code": "ZZZZZZZZ"})
+    check("unknown invite code is 404", status == 404)
+
+    status, pquest = call("POST", f"/parties/{party['id']}/quests", friend,
+                          {"title": "Group raid", "xp_reward": 200, "recurrence": "daily"})
+    check("any member can add a shared quest", status == 201, str(pquest)[:100])
+
+    status, done = call("POST", f"/parties/{party['id']}/quests/{pquest['id']}/complete", token)
+    check("complete a shared quest", status == 200, str(done)[:120])
+    check("shared completion awards personal XP", done.get("xp_awarded") == 200)
+    check("and credits the party", done.get("total_party_xp") == 200, str(done.get("total_party_xp")))
+    status, _ = call("POST", f"/parties/{party['id']}/quests/{pquest['id']}/complete", token)
+    check("repeat completion in the same period is 409", status == 409)
+
+    status, board = call("GET", f"/parties/{party['id']}/leaderboard", token)
+    check("leaderboard lists the whole party", status == 200 and len(board["entries"]) == 2, str(board)[:120])
+    check("leaderboard ranks by contributed XP", board["entries"][0]["party_xp"] == 200)
+    check("members with no contribution still appear", board["entries"][-1]["party_xp"] == 0)
+
+    status, rotated = call("POST", f"/parties/{party['id']}/rotate-invite", token)
+    check("owner can rotate the invite", status == 200 and rotated["invite_code"] != code)
+    outsider, _ = new_user()
+    status, _ = call("POST", "/parties/join", outsider, {"invite_code": code})
+    check("the rotated-away code stops working", status == 404)
+
+    status, _ = call("PATCH", f"/parties/{party['id']}", friend, {"name": "Hijacked"})
+    check("a non-owner cannot rename the party", status == 403)
+
     # -- Cross-cutting: ownership isolation --------------------------------
     section("Cross-cutting - ownership isolation")
     other, _ = new_user()
@@ -193,12 +234,17 @@ def main() -> int:
     check("another user sees none of the quests", status == 200 and board == [])
     status, shop = call("GET", "/rewards", other)
     check("another user sees none of the rewards", status == 200 and shop == [])
+    status, parties_seen = call("GET", "/parties", other)
+    check("another user sees none of the parties", status == 200 and parties_seen == [])
     for method, path in [("GET", f"/quests/{daily['id']}"),
                          ("PATCH", f"/quests/{daily['id']}"),
                          ("DELETE", f"/quests/{daily['id']}"),
                          ("POST", f"/quests/{daily['id']}/complete"),
                          ("GET", f"/rewards/{reward['id']}"),
-                         ("POST", f"/rewards/{reward['id']}/redeem")]:
+                         ("POST", f"/rewards/{reward['id']}/redeem"),
+                         ("GET", f"/parties/{party['id']}"),
+                         ("GET", f"/parties/{party['id']}/leaderboard"),
+                         ("GET", f"/parties/{party['id']}/quests")]:
         status, _ = call(method, path, other, {} if method == "PATCH" else None)
         check(f"{method} another user's resource is 404", status == 404, f"got {status}")
     status, me_other = call("GET", "/auth/me", other)

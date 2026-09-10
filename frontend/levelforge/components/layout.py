@@ -46,6 +46,7 @@ def navbar() -> rx.Component:
         rx.spacer(),
         rx.hstack(
             nav_link("QUESTS", "/dashboard"),
+            nav_link("PARTIES", "/parties"),
             nav_link("REWARDS", "/rewards"),
             spacing="5",
             display=["none", "none", "flex", "flex"],
@@ -90,6 +91,7 @@ def mobile_nav() -> rx.Component:
     disappears on a narrow screen."""
     return rx.hstack(
         nav_link("QUESTS", "/dashboard"),
+        nav_link("PARTIES", "/parties"),
         nav_link("REWARDS", "/rewards"),
         spacing="6",
         justify="center",

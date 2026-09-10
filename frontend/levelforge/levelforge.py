@@ -10,8 +10,10 @@ import reflex as rx
 from levelforge import theme
 from levelforge.pages.dashboard import dashboard_page
 from levelforge.pages.login import login_page, signup_page
+from levelforge.pages.parties import parties_page
 from levelforge.pages.rewards import rewards_page
 from levelforge.state.auth import AuthState
+from levelforge.state.parties import PartyState
 from levelforge.state.quests import QuestState
 from levelforge.state.rewards import RewardState
 
@@ -45,6 +47,12 @@ class RouteState(rx.State):
         if not auth.token:
             return rx.redirect("/login")
         return [AuthState.refresh_me, RewardState.load]
+
+    async def enter_parties(self):
+        auth = await self.get_state(AuthState)
+        if not auth.token:
+            return rx.redirect("/login")
+        return [AuthState.refresh_me, PartyState.load]
 
     async def bounce_if_signed_in(self):
         """Keep a signed-in user off the auth pages."""
@@ -90,4 +98,10 @@ app.add_page(
     route="/rewards",
     title="Rewards - LevelForge",
     on_load=RouteState.enter_rewards,
+)
+app.add_page(
+    parties_page,
+    route="/parties",
+    title="Parties - LevelForge",
+    on_load=RouteState.enter_parties,
 )
