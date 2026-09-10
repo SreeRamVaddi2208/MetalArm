@@ -76,9 +76,11 @@ fix:
 | Postgres    | `localhost:5434`      | Host port 5434; container-internal is 5432 |
 | Redis       | `localhost:6379`      | |
 
-Postgres, Redis and pgAdmin are published to **127.0.0.1 only**, not `0.0.0.0`.
-Redis runs unauthenticated (it logs a warning saying so), and binding it to all
-interfaces would expose it to every host on the network.
+Postgres, Redis and pgAdmin are published to **127.0.0.1 only**, not `0.0.0.0`,
+so none of them is reachable from the LAN. Redis additionally requires a
+password (`REDIS_PASSWORD`); without one it logs a warning that it "will accept
+connections from any IP address on any network interface" and any process on
+the machine could read the leaderboard cache.
 
 **Why Postgres is on 5434:** the development machine runs a native macOS
 Postgres on 5432. Change `POSTGRES_HOST_PORT` in `.env` if that isn't true for

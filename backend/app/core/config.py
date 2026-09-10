@@ -7,6 +7,7 @@ in an insecure state.
 """
 
 from functools import lru_cache
+from urllib.parse import quote
 
 from pydantic import computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -30,6 +31,12 @@ class Settings(BaseSettings):
     # --- Redis ---
     redis_host: str = "redis"
     redis_port: int = 6379
+    # Redis warns loudly at startup that it is unauthenticated and "will accept
+    # connections from any IP address on any network interface". Binding the
+    # published port to loopback already blocks outside access; requiring a
+    # password also stops anything else on this machine from reading the
+    # leaderboard cache. Empty means no auth, for a bare local redis-server.
+    redis_password: str = ""
 
     # --- Auth (no default secret: must come from the environment) ---
     jwt_secret_key: str
@@ -53,6 +60,11 @@ class Settings(BaseSettings):
     @computed_field  # type: ignore[prop-decorator]
     @property
     def redis_url(self) -> str:
+        # URL-quoted: a password containing '@' or '/' would otherwise be
+        # parsed as part of the host.
+        if self.redis_password:
+            secret = quote(self.redis_password, safe="")
+            return f"redis://:{secret}@{self.redis_host}:{self.redis_port}/0"
         return f"redis://{self.redis_host}:{self.redis_port}/0"
 
     @computed_field  # type: ignore[prop-decorator]
