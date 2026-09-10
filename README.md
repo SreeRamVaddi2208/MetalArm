@@ -1,7 +1,8 @@
 # MetalArm
 
-Turn real goals and habits into RPG-style progression - quests, XP, levels,
-ranks (E→S), a rewards shop, and parties with a shared quest board.
+Turn real goals, habits and gym workouts into RPG-style progression - quests,
+workout tracking with personal records, XP, levels, ranks (E→S), a rewards
+shop, and parties with a shared quest board.
 
 Full-Python stack: **FastAPI** backend, **Reflex** frontend (compiles Python to
 React/Next.js), Postgres, Redis, pgAdmin, all under Docker Compose.
@@ -177,6 +178,25 @@ docker compose run --rm tests python -m scripts.recompute_progression --dry-run
 docker compose run --rm tests python -m scripts.recompute_progression
 ```
 
+### Exercise library
+
+The workout module's shared exercise library is loaded by
+`backend/scripts/import_exercises.py` from `backend/app/data/exercises.json`
+(91 starter exercises). The `migrate` service runs it after every
+`alembic upgrade head`; it upserts by slug, so repeat runs are a no-op. To load
+a bigger dataset (JSON, or CSV with `;`-separated muscle groups):
+
+```bash
+docker compose run --rm tests python -m scripts.import_exercises --file path/to/big.csv --dry-run
+docker compose run --rm tests python -m scripts.import_exercises --file path/to/big.csv
+```
+
+A bad row rejects the whole file. Exercises missing from the file are
+reported, never deleted - workout history points at them.
+
+Workout point values live only in `backend/app/core/workout_rules.py`. Awards
+are snapshotted into the points ledger, so retuning never rewrites history.
+
 ## API contract
 
 `docs/api-contract.md` is **generated** from the live OpenAPI spec - it cannot
@@ -214,5 +234,7 @@ The frontend reads that file as the source of truth for endpoint shapes.
 ## Docs
 
 - `docs/api-contract.md` - generated endpoint reference
+- `docs/workouts-api.md` - gym workout module: behaviour, payload examples, and
+  the rules the frontend must follow (frontend handoff)
 - `docs/data-model.md` - the schema and why it is shaped that way
 - `docs/progress-log.md` - session-by-session log; append an entry every session

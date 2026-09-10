@@ -2,7 +2,17 @@
 
 from fastapi import APIRouter
 
-from app.api.routes import auth, parties, profile, quests, rewards
+from app.api.routes import (
+    auth,
+    body,
+    exercises,
+    parties,
+    profile,
+    quests,
+    rewards,
+    routines,
+    workouts,
+)
 
 API_V1_PREFIX = "/api/v1"
 
@@ -14,3 +24,7 @@ api_router.include_router(quests.router)
 api_router.include_router(rewards.router)
 api_router.include_router(parties.router)
 api_router.include_router(profile.router)
+api_router.include_router(exercises.router)
+api_router.include_router(routines.router)
+api_router.include_router(workouts.router)
+api_router.include_router(body.router)

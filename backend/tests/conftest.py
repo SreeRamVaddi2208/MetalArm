@@ -26,6 +26,7 @@ from app import models as _models  # noqa: F401
 from app.core.config import get_settings
 from app.db.session import Base, get_db
 from app.main import app
+from scripts.import_exercises import DEFAULT_FILE, import_exercises, read_file
 
 settings = get_settings()
 TEST_DB_NAME = f"{settings.postgres_db}_test"
@@ -58,6 +59,13 @@ def engine() -> Generator[Engine, None, None]:
 
     test_engine = create_engine(_test_db_url(), pool_pre_ping=True)
     Base.metadata.create_all(test_engine)
+
+    # The exercise library, loaded once through the REAL importer - so every
+    # test run also proves the shipped seed file imports cleanly. Committed,
+    # so it survives each test's rollback.
+    with Session(test_engine) as seed:
+        import_exercises(seed, read_file(DEFAULT_FILE))
+        seed.commit()
 
     yield test_engine
 

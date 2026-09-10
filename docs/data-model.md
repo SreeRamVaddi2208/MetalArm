@@ -226,3 +226,58 @@ was created.
 `rank` / `quest_status` / `party_role` behind, so the next upgrade fails with
 `type "rank" already exists`. The migration's `downgrade()` carries a
 hand-added `DROP TYPE IF EXISTS` loop, marked as such.
+
+---
+
+# Gym workout module (Alembic `085f917f46f8`)
+
+Implements the brief's "Shared data contract" in `backend/app/models/workout.py`.
+Every field the brief lists is present; the **+** additions below are what the
+implementation needed on top. All vocabularies are `VARCHAR + CHECK`
+(`app/models/workout_enums.py`), not native enums - every one of them is
+expected to grow. No native types means `downgrade()` needs no hand-added
+`DROP TYPE`.
+
+| Table | Brief fields | + Additions (why) |
+|---|---|---|
+| `exercises` | name, category, primary_muscle_groups[], equipment, is_custom, created_by_user_id | **slug** (import upsert key, library only) · **name_key** (normalised name carrying uniqueness - same pattern as `email_normalized`) · **instructions**, **media_url** (Lyfta-shaped library) · **is_archived** (a used custom exercise is hidden, never deleted) |
+| `routines` / `routine_exercises` | user_id, name, ordered exercise_id + target sets/reps/weight | **notes** · **position** + UNIQUE(routine_id, position) · **rest_seconds** (seeds the client rest timer) |
+| `workout_sessions` | user_id, started_at, ended_at, routine_id, status | **name**, **notes** · **qualified** (was it a real workout - gates bonus + streak) · **week_key** (ISO week in the user's tz, so the streak is a GROUP BY) · **points_credited** (shop points credited at finish, snapshotted) |
+| `set_entries` | session_id, exercise_id, set_number, weight, reps, rpe, is_warmup, is_pr, completed_at | weight stored as **weight_kg** (lb converted on input) · **user_id** (denormalised: one index scan for an exercise's history) · **duration_seconds**, **distance_m** (cardio) · **client_set_id** (idempotent retries) |
+| `personal_records` | user_id, exercise_id, record_type, value, achieved_at, session_id | **weight_kg** (qualifier for rep PRs) · **previous_value** ("beat it by 5 kg") · **is_baseline** (first log, no bonus) · **set_id**. Rows are record-setting *events*; the current PR is the best row, and all rows are rebuildable from sets (`personal_records.replay`) |
+| `points_ledger` | user_id, source_type, source_id, points, created_at | source **reversal** (append-only undo) · **session_id** · **period_key** (streak week) · **reason** (human label) |
+| `body_measurements` | user_id, metric, value, unit, recorded_at | **label** (required for custom metrics) |
+
+## Constraints doing the anti-farming work
+
+As with quests, the database - not a Python check - is the authority wherever
+a race is possible:
+
+- `uq_workout_sessions_one_active` - partial UNIQUE(user_id) WHERE in_progress.
+  One live workout per user, so parallel sessions cannot multiply the caps.
+- `uq_set_entries_client_id` - UNIQUE(session_id, client_set_id). A retried
+  submit resolves to the original set.
+- `uq_points_ledger_once` - partial UNIQUE(source_type, source_id) for
+  session_completed / streak_bonus / reversal. A session cannot be paid twice
+  and an award cannot be reversed twice.
+- `uq_points_ledger_streak_week` - one streak bonus per user per ISO week.
+- `ck_points_ledger_sign` - only reversals are negative, and they always are.
+- CHECK bounds on weight (≤1000 kg), reps, RPE, duration, distance - absurd
+  inputs cannot mint records.
+
+Set-level awards are serialised by the existing `level_progress` row lock
+(every write path takes it first), which is what makes the per-session caps
+race-free.
+
+## Deliberate FK choice
+
+Foreign keys onto `exercises` use NO ACTION, not RESTRICT: deleting a user
+cascades to their custom exercises and to the sets referencing them in one
+statement, and RESTRICT is checked mid-cascade while NO ACTION waits until the
+end of the statement.
+
+## Verified
+
+`alembic check` reports no drift; `upgrade` → `downgrade -1` → `upgrade` is
+clean; the importer loaded 91 library exercises and a second run reported 91
+unchanged.

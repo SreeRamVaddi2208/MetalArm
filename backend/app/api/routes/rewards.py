@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import CurrentUser, DbSession
 from app.core.progression import lock_progress
+from app.core.workout_store import workout_points_credited
 from app.models.quest import QuestCompletion
 from app.models.reward import RewardItem, RewardRedemption
 from app.models.user import LevelProgress, User
@@ -96,12 +97,16 @@ def _serialize_many(
 
 @router.get("/wallet", response_model=WalletOut)
 def read_wallet(current_user: CurrentUser, db: DbSession) -> WalletOut:
-    """Balance plus lifetime earned/spent totals."""
+    """Balance plus lifetime earned/spent totals.
+
+    Earned counts quests AND finished workouts (credited at finish - see
+    routes/workouts.py), so earned - spent reconciles with the balance.
+    """
     earned = db.execute(
         select(func.coalesce(func.sum(QuestCompletion.points_awarded), 0)).where(
             QuestCompletion.user_id == current_user.id
         )
-    ).scalar_one()
+    ).scalar_one() + workout_points_credited(db, current_user.id)
     spent = db.execute(
         select(func.coalesce(func.sum(RewardRedemption.points_spent), 0)).where(
             RewardRedemption.user_id == current_user.id

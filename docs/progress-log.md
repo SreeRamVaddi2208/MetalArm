@@ -14,6 +14,70 @@ Entry format:
 
 ---
 
+## 2026-09-10 (10) - Opus - rename to MetalArm; gym workout module (backend)
+
+**Changed**
+- **Renamed LevelForge -> MetalArm** (commit `53ceac6`): branding, API title,
+  frontend package `levelforge/` -> `metalarm/`, containers, Redis key prefix.
+  Data-bearing names deliberately kept: Docker volumes are pinned to the
+  existing `levelforge_*` names (a bare project rename would have mounted empty
+  volumes), and `POSTGRES_USER` / `POSTGRES_DB` stay `levelforge`.
+- **Gym workout module** per the MetalArm master build prompt, Section 5:
+  - Models + migration `085f917f46f8`: exercises, routines, routine_exercises,
+    workout_sessions, set_entries, personal_records, points_ledger,
+    body_measurements. Contract additions are documented in `data-model.md`.
+  - Pure, unit-tested rules: `core/workout_rules.py` (the ONLY place point
+    values live), `core/points_engine.py`, `core/personal_records.py`,
+    `core/workout_streaks.py`. DB layer in `core/workout_store.py`.
+  - 28 endpoints under `/exercises`, `/routines`, `/workouts`,
+    `/body-measurements`.
+  - 91-exercise starter library + `scripts/import_exercises.py` (JSON/CSV,
+    idempotent, run by the `migrate` service).
+  - New `progression.apply_xp()` for XP-only awards and reversals.
+  - Wallet and profile "points earned" now include workout credits.
+
+**Decisions (confirmed with the user)**
+- 1 workout point = 1 XP **and** 1 shop point. XP moves live on every set;
+  shop points are credited once, at finish - sets are editable until then, and
+  a reversal must never debit points already spent in the shop.
+- Streak = consecutive ISO weeks with >= 3 qualifying workouts (tunable).
+  A qualifying workout also advances the global daily streak (A/S rank gate).
+- Anti-farming: set points capped per session; warm-ups earn 0; PR bonus only
+  for max_weight / est_1rm (and bodyweight rep PRs), never for a first-ever
+  log, a <1% gain, lighter-weight rep PRs or volume; one bonus per exercise per
+  session, three per session; trivial sessions (<10 min or <3 working sets)
+  earn no bonus and do not count toward the streak; abandoning reverses
+  everything; one live session per user (DB-enforced).
+
+**Verified (real output)**
+- `pytest`: **302 passed** (168 existing + 134 new), exit 0.
+- `alembic check`: "No new upgrade operations detected."; `upgrade` ->
+  `downgrade -1` -> `upgrade` clean.
+- Importer: "91 inserted", then "0 inserted, 0 updated, 91 unchanged"; the
+  `migrate` service logs the same no-op on every start.
+- Stack rebuilt: all services healthy, `/health` ready at `085f917f46f8`.
+- `scripts/smoke_test.py`: **All 125 checks passed** (new workout journey:
+  routine -> live session -> retry dedupe -> paid PR -> lb conversion ->
+  delete reversal -> finish -> wallet credit -> ledger reconciliation ->
+  ownership 404s).
+- `docs/api-contract.md` regenerated: 44 paths, 77 schemas.
+
+**Blocked**
+- Nothing. Point values remain placeholders (brief Section 7) - retune in
+  `workout_rules.py` only.
+
+**Other agent needs to know**
+- **Frontend Agent (Sonnet):** build against `docs/workouts-api.md` (behaviour +
+  payload examples) and `docs/api-contract.md` (shapes). Key rules: never
+  compute points/PRs/streaks; rehydrate with `GET /workouts/sessions/active`;
+  send a fresh `client_set_id` per submit; celebrate from
+  `pr_events[].bonus_awarded` and `progression.leveled_up`; weights come back
+  in kg. The frontend package is now `frontend/metalarm/`.
+- Not built (out of scope this pass): workout badges / profile workout stats,
+  friend leaderboard over `points_ledger`, a user weight-unit preference.
+
+---
+
 ## 2026-09-10 (9) - Opus - close the last Section 2 gaps; PROJECT COMPLETE
 
 Audited every checkpoint in the brief rather than only the sprint plan, which

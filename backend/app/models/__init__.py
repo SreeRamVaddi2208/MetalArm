@@ -14,6 +14,16 @@ from app.models.party import (
 from app.models.quest import Quest, QuestCompletion
 from app.models.reward import RewardItem, RewardRedemption
 from app.models.user import LevelProgress, User
+from app.models.workout import (
+    BodyMeasurement,
+    Exercise,
+    PersonalRecord,
+    PointsLedgerEntry,
+    Routine,
+    RoutineExercise,
+    SetEntry,
+    WorkoutSession,
+)
 
 __all__ = [
     "User",
@@ -26,4 +36,12 @@ __all__ = [
     "PartyMembership",
     "PartyQuest",
     "PartyQuestCompletion",
+    "Exercise",
+    "Routine",
+    "RoutineExercise",
+    "WorkoutSession",
+    "SetEntry",
+    "PersonalRecord",
+    "PointsLedgerEntry",
+    "BodyMeasurement",
 ]

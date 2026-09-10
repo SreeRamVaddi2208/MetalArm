@@ -61,6 +61,47 @@ def lock_progress(db: Session, user_id: uuid.UUID) -> LevelProgress:
     return progress
 
 
+def apply_xp(
+    progress: LevelProgress,
+    *,
+    xp: int,
+    at: dt.datetime,
+    tz_name: str,
+) -> ProgressionDelta:
+    """Apply an XP change that is NOT a completion. Does not commit.
+
+    Used for workout awards made mid-session - a logged set, a PR - and for
+    their reversals, which is why `xp` may be negative. Unlike apply_completion
+    it touches neither points_balance (workout shop points are credited once,
+    at finish) nor the daily streak (logging a set is not finishing
+    something). Rank is still re-derived, since level can move either way.
+    """
+    today = local_date(at, tz_name)
+    streak = leveling.effective_streak(
+        progress.current_streak, progress.last_completed_on, today
+    )
+    level_before = progress.current_level
+    rank_before = leveling.rank_for(level_before, streak)
+
+    # Clamped: a reversal can never take more XP than exists, and
+    # ck_progress_xp_non_negative would reject the row outright if it did.
+    progress.total_xp = max(0, progress.total_xp + xp)
+    progress.current_level = leveling.level_for_xp(progress.total_xp)
+    progress.rank = leveling.rank_for(progress.current_level, streak)
+
+    return ProgressionDelta(
+        xp_awarded=xp,
+        points_awarded=0,
+        total_xp=progress.total_xp,
+        level_before=level_before,
+        level_after=progress.current_level,
+        rank_before=rank_before.value,
+        rank_after=progress.rank.value,
+        current_streak=streak,
+        longest_streak=progress.longest_streak,
+    )
+
+
 def apply_completion(
     progress: LevelProgress,
     *,

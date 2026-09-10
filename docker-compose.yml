@@ -73,7 +73,10 @@ services:
   # request failed with `relation "users" does not exist`.
   #
   # `alembic upgrade head` is idempotent - a no-op when already current - so
-  # this is safe on every start, not just the first.
+  # this is safe on every start, not just the first. The same holds for the
+  # exercise-library import that follows it: it upserts by slug, so after the
+  # first run it only reports "unchanged". A fresh clone therefore comes up
+  # with a migrated schema AND a usable exercise library.
   migrate:
     build:
       context: ./backend
@@ -86,7 +89,8 @@ services:
     # applied. One tag makes that drift impossible.
     image: metalarm-backend
     container_name: metalarm-migrate
-    command: ["alembic", "upgrade", "head"]
+    command:
+      ["sh", "-c", "alembic upgrade head && python -m scripts.import_exercises"]
     restart: "no"
     environment:
       POSTGRES_USER: ${POSTGRES_USER}

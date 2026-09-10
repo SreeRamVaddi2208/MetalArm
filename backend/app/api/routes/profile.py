@@ -13,6 +13,7 @@ from app.api.deps import CurrentUser, DbSession
 from app.core import badges as badge_rules
 from app.core import leveling
 from app.core.periods import local_now
+from app.core.workout_store import workout_points_credited
 from app.models.party import (
     PartyMembership,
     PartyQuest,
@@ -53,12 +54,13 @@ def read_profile(current_user: CurrentUser, db: DbSession) -> ProfileOut:
             RewardRedemption.user_id == current_user.id
         ),
     )
+    # Quests plus finished workouts - the same total the wallet reports.
     points_earned = _scalar(
         db,
         select(func.coalesce(func.sum(QuestCompletion.points_awarded), 0)).where(
             QuestCompletion.user_id == current_user.id
         ),
-    )
+    ) + workout_points_credited(db, current_user.id)
     points_spent = _scalar(
         db,
         select(func.coalesce(func.sum(RewardRedemption.points_spent), 0)).where(

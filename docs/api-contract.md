@@ -10,7 +10,7 @@
 
 - **API title:** MetalArm API
 - **API version:** 0.1.0
-- **Generated:** 2026-09-10 08:09 UTC
+- **Generated:** 2026-09-10 15:38 UTC
 - **Source:** `http://localhost:8000/openapi.json`
 
 ---
@@ -94,6 +94,210 @@ here carries the email.
 *Tags:* `auth`
 
 *Request body* (`application/x-www-form-urlencoded`): `Body_login_form_api_v1_auth_token_post`
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `GET /api/v1/body-measurements`
+
+**List Measurements**
+
+Newest first.
+
+*Tags:* `body`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `metric` | query | `MeasurementMetric | null` | no |
+| `limit` | query | `integer` | no |
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `POST /api/v1/body-measurements`
+
+**Create Measurement**
+
+*Tags:* `body`
+
+*Request body* (`application/json`): `BodyMeasurementCreate`
+
+| Status | Description |
+|---|---|
+| `201` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `DELETE /api/v1/body-measurements/{measurement_id}`
+
+**Delete Measurement**
+
+*Tags:* `body`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `measurement_id` | path | `string` | yes |
+
+| Status | Description |
+|---|---|
+| `204` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `GET /api/v1/exercises`
+
+**List Exercises**
+
+Search the library plus the caller's own exercises, by name.
+
+*Tags:* `exercises`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `q` | query | `string | null` | no |
+| `category` | query | `ExerciseCategory | null` | no |
+| `equipment` | query | `Equipment | null` | no |
+| `muscle` | query | `MuscleGroup | null` | no |
+| `custom_only` | query | `boolean` | no |
+| `include_archived` | query | `boolean` | no |
+| `limit` | query | `integer` | no |
+| `offset` | query | `integer` | no |
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `POST /api/v1/exercises`
+
+**Create Exercise**
+
+*Tags:* `exercises`
+
+*Request body* (`application/json`): `ExerciseCreate`
+
+| Status | Description |
+|---|---|
+| `201` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `GET /api/v1/exercises/meta`
+
+**Exercise Meta**
+
+The allowed vocabularies, for filter chips and pickers.
+
+*Tags:* `exercises`
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+
+---
+
+### `DELETE /api/v1/exercises/{exercise_id}`
+
+**Delete Exercise**
+
+Delete a custom exercise - or archive it, if any set or routine still
+references it, so history is never orphaned.
+
+*Tags:* `exercises`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `exercise_id` | path | `string` | yes |
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `GET /api/v1/exercises/{exercise_id}`
+
+**Read Exercise**
+
+*Tags:* `exercises`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `exercise_id` | path | `string` | yes |
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `PATCH /api/v1/exercises/{exercise_id}`
+
+**Update Exercise**
+
+*Tags:* `exercises`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `exercise_id` | path | `string` | yes |
+
+*Request body* (`application/json`): `ExerciseUpdate`
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `GET /api/v1/exercises/{exercise_id}/history`
+
+**Exercise History**
+
+Per completed session: top weight, best estimated 1RM, volume. Oldest
+first, ready to plot.
+
+*Tags:* `exercises`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `exercise_id` | path | `string` | yes |
+| `limit` | query | `integer` | no |
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `GET /api/v1/exercises/{exercise_id}/last-performance`
+
+**Last Performance**
+
+The previous completed session's sets - ghost values for an exercise
+added mid-workout. Empty `sets` when it has never been done.
+
+*Tags:* `exercises`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `exercise_id` | path | `string` | yes |
 
 | Status | Description |
 |---|---|
@@ -622,6 +826,9 @@ Spend history, newest first.
 
 Balance plus lifetime earned/spent totals.
 
+Earned counts quests AND finished workouts (credited at finish - see
+routes/workouts.py), so earned - spent reconciles with the balance.
+
 *Tags:* `rewards`
 
 | Status | Description |
@@ -726,6 +933,327 @@ Same transaction shape as completing a quest, and for the same reason:
 
 ---
 
+### `GET /api/v1/routines`
+
+**List Routines**
+
+*Tags:* `routines`
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+
+---
+
+### `POST /api/v1/routines`
+
+**Create Routine**
+
+*Tags:* `routines`
+
+*Request body* (`application/json`): `RoutineIn`
+
+| Status | Description |
+|---|---|
+| `201` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `DELETE /api/v1/routines/{routine_id}`
+
+**Delete Routine**
+
+Workouts started from it keep their history (routine_id is SET NULL).
+
+*Tags:* `routines`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `routine_id` | path | `string` | yes |
+
+| Status | Description |
+|---|---|
+| `204` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `GET /api/v1/routines/{routine_id}`
+
+**Read Routine**
+
+*Tags:* `routines`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `routine_id` | path | `string` | yes |
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `PUT /api/v1/routines/{routine_id}`
+
+**Replace Routine**
+
+Full replace. The ordered exercise list is swapped as a whole.
+
+*Tags:* `routines`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `routine_id` | path | `string` | yes |
+
+*Request body* (`application/json`): `RoutineIn`
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `GET /api/v1/workouts/points`
+
+**Points Summary**
+
+Workout points totals and the weekly streak.
+
+*Tags:* `workouts`
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+
+---
+
+### `GET /api/v1/workouts/points/ledger`
+
+**List Ledger**
+
+The points ledger, newest first. Reversals appear as their own negative
+rows - nothing is ever edited or removed.
+
+*Tags:* `workouts`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `limit` | query | `integer` | no |
+| `before` | query | `string | null` | no |
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `GET /api/v1/workouts/records`
+
+**List Records**
+
+Current personal records. One row per record type per exercise, except
+rep records, which return every undominated (weight, reps) point - "best
+reps at each weight" is a list, not a single number.
+
+*Tags:* `workouts`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `exercise_id` | query | `string | null` | no |
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `GET /api/v1/workouts/sessions`
+
+**List Sessions**
+
+Workout history, newest first.
+
+*Tags:* `workouts`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `status` | query | `SessionStatus | null` | no |
+| `limit` | query | `integer` | no |
+| `before` | query | `string | null` | no |
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `POST /api/v1/workouts/sessions`
+
+**Start Session**
+
+Start a workout, blank or from a routine. 409 if one is already live -
+finish or abandon it first (GET /workouts/sessions/active returns it).
+
+*Tags:* `workouts`
+
+*Request body* (`application/json`): `SessionStart`
+
+| Status | Description |
+|---|---|
+| `201` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `GET /api/v1/workouts/sessions/active`
+
+**Read Active Session**
+
+The in-progress workout, or `session: null`. What the UI calls on load
+to rehydrate a workout after a refresh.
+
+*Tags:* `workouts`
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+
+---
+
+### `GET /api/v1/workouts/sessions/{session_id}`
+
+**Read Session**
+
+*Tags:* `workouts`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `session_id` | path | `string` | yes |
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `POST /api/v1/workouts/sessions/{session_id}/abandon`
+
+**Abandon Session**
+
+Discard a live workout. Every award it earned is reversed and its sets
+stop counting toward records - otherwise log-then-abandon would be a way to
+bank XP without ever finishing a workout.
+
+*Tags:* `workouts`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `session_id` | path | `string` | yes |
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `POST /api/v1/workouts/sessions/{session_id}/finish`
+
+**Finish Session**
+
+Finish a workout: judge session-volume records, pay the session and
+streak bonuses, and credit the session's points to the wallet.
+
+*Tags:* `workouts`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `session_id` | path | `string` | yes |
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `POST /api/v1/workouts/sessions/{session_id}/sets`
+
+**Log Set**
+
+Log a set. Records and points are settled before this returns, so the
+response alone tells the UI whether to celebrate a PR or a level-up.
+
+*Tags:* `workouts`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `session_id` | path | `string` | yes |
+
+*Request body* (`application/json`): `SetCreate`
+
+| Status | Description |
+|---|---|
+| `201` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `DELETE /api/v1/workouts/sessions/{session_id}/sets/{set_id}`
+
+**Delete Set**
+
+Remove a set from a live workout. Its awards are reversed and the
+exercise's records rebuilt without it.
+
+*Tags:* `workouts`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `session_id` | path | `string` | yes |
+| `set_id` | path | `string` | yes |
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `PATCH /api/v1/workouts/sessions/{session_id}/sets/{set_id}`
+
+**Update Set**
+
+Fix a typo in a set while the workout is live.
+
+Implemented as reverse-then-re-award: the set's standing awards are
+reversed, the exercise's records are rebuilt from history, and the edited
+set is judged afresh. Other sets' awards are not revisited.
+
+*Tags:* `workouts`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `session_id` | path | `string` | yes |
+| `set_id` | path | `string` | yes |
+
+*Request body* (`application/json`): `SetUpdate`
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
 ### `GET /health`
 
 **Health**
@@ -745,6 +1273,28 @@ otherwise 503 with per-dependency detail.
 
 ## Schemas
 
+#### `AbandonResponse`
+
+| Field | Type | Required |
+|---|---|---|
+| `session` | `SessionSummaryOut` | yes |
+| `points_reversed` | `integer` | yes |
+| `progression` | `ProgressionDeltaOut` | yes |
+
+#### `ActiveSessionOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `session` | `SessionOut | null` | yes |
+
+#### `AwardOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `source_type` | `string` | yes |
+| `points` | `integer` | yes |
+| `reason` | `string` | yes |
+
 #### `BadgeOut`
 
 | Field | Type | Required |
@@ -757,6 +1307,27 @@ otherwise 503 with per-dependency detail.
 | `progress` | `integer` | yes |
 | `target` | `integer` | yes |
 | `percent` | `integer` | yes |
+
+#### `BodyMeasurementCreate`
+
+| Field | Type | Required |
+|---|---|---|
+| `metric` | `MeasurementMetric` | yes |
+| `label` | `string | null` | no |
+| `value` | `number` | yes |
+| `unit` | `MeasurementUnit` | yes |
+| `recorded_at` | `string | null` | no |
+
+#### `BodyMeasurementOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `id` | `string` | yes |
+| `metric` | `string` | yes |
+| `label` | `string | null` | yes |
+| `value` | `number` | yes |
+| `unit` | `string` | yes |
+| `recorded_at` | `string` | yes |
 
 #### `Body_login_form_api_v1_auth_token_post`
 
@@ -787,6 +1358,98 @@ otherwise 503 with per-dependency detail.
 | `xp_awarded` | `integer` | yes |
 | `points_awarded` | `integer` | yes |
 
+#### `Equipment`
+
+| Field | Type | Required |
+|---|---|---|
+| _(no properties)_ | | |
+
+#### `ExerciseCategory`
+
+| Field | Type | Required |
+|---|---|---|
+| _(no properties)_ | | |
+
+#### `ExerciseCreate`
+
+| Field | Type | Required |
+|---|---|---|
+| `name` | `string` | yes |
+| `category` | `ExerciseCategory` | yes |
+| `primary_muscle_groups` | `MuscleGroup[]` | yes |
+| `equipment` | `Equipment` | yes |
+| `instructions` | `string | null` | no |
+| `media_url` | `string | null` | no |
+
+#### `ExerciseDeleteOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `archived` | `boolean` | yes |
+
+#### `ExerciseHistoryPoint`
+
+| Field | Type | Required |
+|---|---|---|
+| `session_id` | `string` | yes |
+| `performed_at` | `string` | yes |
+| `top_weight_kg` | `number | null` | yes |
+| `top_weight_reps` | `integer | null` | yes |
+| `best_est_1rm` | `number | null` | yes |
+| `volume_kg` | `number` | yes |
+| `working_sets` | `integer` | yes |
+| `total_reps` | `integer` | yes |
+
+#### `ExerciseMetaOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `categories` | `string[]` | yes |
+| `equipment` | `string[]` | yes |
+| `muscle_groups` | `string[]` | yes |
+| `weight_units` | `string[]` | yes |
+| `measurement_metrics` | `string[]` | yes |
+| `measurement_units` | `string[]` | yes |
+
+#### `ExerciseOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `id` | `string` | yes |
+| `name` | `string` | yes |
+| `slug` | `string | null` | yes |
+| `category` | `string` | yes |
+| `primary_muscle_groups` | `string[]` | yes |
+| `equipment` | `string` | yes |
+| `instructions` | `string | null` | yes |
+| `media_url` | `string | null` | yes |
+| `is_custom` | `boolean` | yes |
+| `is_archived` | `boolean` | yes |
+
+#### `ExerciseUpdate`
+
+| Field | Type | Required |
+|---|---|---|
+| `name` | `string | null` | no |
+| `category` | `ExerciseCategory | null` | no |
+| `primary_muscle_groups` | `MuscleGroup[] | null` | no |
+| `equipment` | `Equipment | null` | no |
+| `instructions` | `string | null` | no |
+| `media_url` | `string | null` | no |
+
+#### `FinishResponse`
+
+| Field | Type | Required |
+|---|---|---|
+| `session` | `SessionSummaryOut` | yes |
+| `qualified` | `boolean` | yes |
+| `awards` | `AwardOut[]` | yes |
+| `breakdown` | `PointsBreakdownOut` | yes |
+| `points_credited` | `integer` | yes |
+| `pr_events` | `PrEventOut[]` | yes |
+| `streak` | `StreakOut` | yes |
+| `progression` | `ProgressionDeltaOut` | yes |
+
 #### `HTTPValidationError`
 
 | Field | Type | Required |
@@ -798,6 +1461,15 @@ otherwise 503 with per-dependency detail.
 | Field | Type | Required |
 |---|---|---|
 | `invite_code` | `string` | yes |
+
+#### `LastPerformanceOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `exercise_id` | `string` | yes |
+| `session_id` | `string | null` | yes |
+| `performed_at` | `string | null` | yes |
+| `sets` | `SetOut[]` | yes |
 
 #### `LeaderboardEntry`
 
@@ -818,6 +1490,18 @@ otherwise 503 with per-dependency detail.
 | `party_id` | `string` | yes |
 | `total_party_xp` | `integer` | yes |
 | `entries` | `LeaderboardEntry[]` | yes |
+
+#### `LedgerEntryOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `id` | `string` | yes |
+| `source_type` | `string` | yes |
+| `source_id` | `string` | yes |
+| `points` | `integer` | yes |
+| `reason` | `string` | yes |
+| `session_id` | `string | null` | yes |
+| `created_at` | `string` | yes |
 
 #### `LifetimeStats`
 
@@ -850,6 +1534,18 @@ otherwise 503 with per-dependency detail.
 | `created_at` | `string` | yes |
 | `progress` | `ProgressOut` | yes |
 
+#### `MeasurementMetric`
+
+| Field | Type | Required |
+|---|---|---|
+| _(no properties)_ | | |
+
+#### `MeasurementUnit`
+
+| Field | Type | Required |
+|---|---|---|
+| _(no properties)_ | | |
+
 #### `MemberOut`
 
 | Field | Type | Required |
@@ -861,6 +1557,12 @@ otherwise 503 with per-dependency detail.
 | `level` | `integer` | yes |
 | `rank` | `string` | yes |
 | `party_xp` | `integer` | yes |
+
+#### `MuscleGroup`
+
+| Field | Type | Required |
+|---|---|---|
+| _(no properties)_ | | |
 
 #### `PartyCreate`
 
@@ -948,6 +1650,40 @@ otherwise 503 with per-dependency detail.
 | Field | Type | Required |
 |---|---|---|
 | `name` | `string | null` | no |
+
+#### `PointsBreakdownOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `set_points` | `integer` | yes |
+| `pr_bonus` | `integer` | yes |
+| `session_bonus` | `integer` | yes |
+| `streak_bonus` | `integer` | yes |
+| `reversals` | `integer` | yes |
+| `total` | `integer` | yes |
+
+#### `PointsSummaryOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `total_points` | `integer` | yes |
+| `this_week_points` | `integer` | yes |
+| `sessions_completed` | `integer` | yes |
+| `streak` | `StreakOut` | yes |
+
+#### `PrEventOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `exercise_id` | `string` | yes |
+| `exercise_name` | `string` | yes |
+| `record_type` | `string` | yes |
+| `value` | `number` | yes |
+| `weight_kg` | `number | null` | yes |
+| `previous_value` | `number | null` | yes |
+| `is_baseline` | `boolean` | yes |
+| `bonus_awarded` | `boolean` | yes |
+| `set_id` | `string | null` | yes |
 
 #### `ProfileOut`
 
@@ -1040,6 +1776,19 @@ otherwise 503 with per-dependency detail.
 | `status` | `QuestStatus | null` | no |
 | `due_at` | `string | null` | no |
 
+#### `RecordOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `exercise_id` | `string` | yes |
+| `exercise_name` | `string` | yes |
+| `record_type` | `string` | yes |
+| `value` | `number` | yes |
+| `weight_kg` | `number | null` | yes |
+| `achieved_at` | `string` | yes |
+| `session_id` | `string` | yes |
+| `set_id` | `string | null` | yes |
+
 #### `Recurrence`
 
 | Field | Type | Required |
@@ -1090,6 +1839,175 @@ otherwise 503 with per-dependency detail.
 | `point_cost` | `integer | null` | no |
 | `is_active` | `boolean | null` | no |
 
+#### `RoutineExerciseIn`
+
+| Field | Type | Required |
+|---|---|---|
+| `exercise_id` | `string` | yes |
+| `target_sets` | `integer | null` | no |
+| `target_reps` | `integer | null` | no |
+| `target_weight_kg` | `number | null` | no |
+| `rest_seconds` | `integer | null` | no |
+
+#### `RoutineExerciseOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `position` | `integer` | yes |
+| `exercise` | `ExerciseOut` | yes |
+| `target_sets` | `integer | null` | yes |
+| `target_reps` | `integer | null` | yes |
+| `target_weight_kg` | `number | null` | yes |
+| `rest_seconds` | `integer | null` | yes |
+
+#### `RoutineIn`
+
+| Field | Type | Required |
+|---|---|---|
+| `name` | `string` | yes |
+| `notes` | `string | null` | no |
+| `exercises` | `RoutineExerciseIn[]` | no |
+
+#### `RoutineOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `id` | `string` | yes |
+| `name` | `string` | yes |
+| `notes` | `string | null` | yes |
+| `exercises` | `RoutineExerciseOut[]` | yes |
+| `created_at` | `string` | yes |
+| `updated_at` | `string` | yes |
+
+#### `SessionExerciseOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `exercise` | `ExerciseOut` | yes |
+| `target` | `SessionTargetOut | null` | yes |
+| `sets` | `SetOut[]` | yes |
+| `previous_sets` | `SetOut[]` | yes |
+
+#### `SessionOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `id` | `string` | yes |
+| `name` | `string | null` | yes |
+| `status` | `string` | yes |
+| `routine_id` | `string | null` | yes |
+| `started_at` | `string` | yes |
+| `ended_at` | `string | null` | yes |
+| `duration_seconds` | `integer` | yes |
+| `working_sets` | `integer` | yes |
+| `total_volume_kg` | `number` | yes |
+| `points_total` | `integer` | yes |
+| `points_credited` | `integer` | yes |
+| `qualified` | `boolean | null` | yes |
+| `exercises` | `SessionExerciseOut[]` | yes |
+
+#### `SessionStart`
+
+| Field | Type | Required |
+|---|---|---|
+| `routine_id` | `string | null` | no |
+| `name` | `string | null` | no |
+
+#### `SessionStatus`
+
+| Field | Type | Required |
+|---|---|---|
+| _(no properties)_ | | |
+
+#### `SessionSummaryOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `id` | `string` | yes |
+| `name` | `string | null` | yes |
+| `status` | `string` | yes |
+| `started_at` | `string` | yes |
+| `ended_at` | `string | null` | yes |
+| `duration_seconds` | `integer` | yes |
+| `working_sets` | `integer` | yes |
+| `exercise_count` | `integer` | yes |
+| `total_volume_kg` | `number` | yes |
+| `points_total` | `integer` | yes |
+| `pr_count` | `integer` | yes |
+
+#### `SessionTargetOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `target_sets` | `integer | null` | yes |
+| `target_reps` | `integer | null` | yes |
+| `target_weight_kg` | `number | null` | yes |
+| `rest_seconds` | `integer | null` | yes |
+
+#### `SetCreate`
+
+| Field | Type | Required |
+|---|---|---|
+| `weight` | `number` | no |
+| `unit` | `WeightUnit` | no |
+| `reps` | `integer | null` | no |
+| `rpe` | `number | null` | no |
+| `is_warmup` | `boolean` | no |
+| `duration_seconds` | `integer | null` | no |
+| `distance_m` | `number | null` | no |
+| `exercise_id` | `string` | yes |
+| `client_set_id` | `string | null` | no |
+
+#### `SetDeleteResponse`
+
+| Field | Type | Required |
+|---|---|---|
+| `points_awarded` | `integer` | yes |
+| `session_points` | `integer` | yes |
+| `progression` | `ProgressionDeltaOut` | yes |
+
+#### `SetLogResponse`
+
+| Field | Type | Required |
+|---|---|---|
+| `set` | `SetOut` | yes |
+| `pr_events` | `PrEventOut[]` | yes |
+| `awards` | `AwardOut[]` | yes |
+| `points_awarded` | `integer` | yes |
+| `session_points` | `integer` | yes |
+| `set_cap_reached` | `boolean` | yes |
+| `progression` | `ProgressionDeltaOut` | yes |
+| `is_duplicate` | `boolean` | no |
+
+#### `SetOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `id` | `string` | yes |
+| `session_id` | `string` | yes |
+| `exercise_id` | `string` | yes |
+| `set_number` | `integer` | yes |
+| `weight_kg` | `number` | yes |
+| `reps` | `integer | null` | yes |
+| `rpe` | `number | null` | yes |
+| `is_warmup` | `boolean` | yes |
+| `is_pr` | `boolean` | yes |
+| `duration_seconds` | `integer | null` | yes |
+| `distance_m` | `number | null` | yes |
+| `completed_at` | `string` | yes |
+
+#### `SetUpdate`
+
+| Field | Type | Required |
+|---|---|---|
+| `weight` | `number | null` | no |
+| `unit` | `WeightUnit` | no |
+| `reps` | `integer | null` | no |
+| `rpe` | `number | null` | no |
+| `is_warmup` | `boolean | null` | no |
+| `duration_seconds` | `integer | null` | no |
+| `distance_m` | `number | null` | no |
+
 #### `SignupRequest`
 
 | Field | Type | Required |
@@ -1098,6 +2016,16 @@ otherwise 503 with per-dependency detail.
 | `password` | `string` | yes |
 | `display_name` | `string` | yes |
 | `timezone` | `string` | no |
+
+#### `StreakOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `weeks` | `integer` | yes |
+| `this_week_sessions` | `integer` | yes |
+| `target` | `integer` | yes |
+| `this_week_done` | `boolean` | yes |
+| `sessions_to_go` | `integer` | yes |
 
 #### `TokenResponse`
 
@@ -1134,3 +2062,9 @@ otherwise 503 with per-dependency detail.
 | `points_balance` | `integer` | yes |
 | `total_points_earned` | `integer` | yes |
 | `total_points_spent` | `integer` | yes |
+
+#### `WeightUnit`
+
+| Field | Type | Required |
+|---|---|---|
+| _(no properties)_ | | |

@@ -277,6 +277,95 @@ def main() -> int:
     status, _ = call("GET", "/profile")
     check("profile requires auth", status == 401)
 
+    # -- Gym workout module ------------------------------------------------
+    section("Gym workouts - library, logging, PRs, points")
+    status, meta = call("GET", "/exercises/meta", token)
+    check("exercise vocabularies served", status == 200 and "quads" in meta.get("muscle_groups", []))
+    status, library = call("GET", "/exercises?limit=200", token)
+    check("starter library is seeded (50+)", status == 200 and len(library) >= 50, f"{len(library)}")
+    status, found = call("GET", "/exercises?q=Barbell%20Bench%20Press", token)
+    bench = next((e for e in found if e["name"] == "Barbell Bench Press"), None) if status == 200 else None
+    check("library is searchable by name", bench is not None, str(found)[:100])
+
+    status, routine = call("POST", "/routines", token,
+                           {"name": "Smoke Push",
+                            "exercises": [{"exercise_id": bench["id"], "target_sets": 3, "target_reps": 5}]})
+    check("create a routine", status == 201, str(routine)[:100])
+    status, session = call("POST", "/workouts/sessions", token, {"routine_id": routine["id"]})
+    check("start a workout from the routine",
+          status == 201 and session["exercises"][0]["target"]["target_sets"] == 3, str(session)[:120])
+    sid = session["id"]
+    status, _ = call("POST", "/workouts/sessions", token, {})
+    check("a second live workout is 409", status == 409)
+    status, active = call("GET", "/workouts/sessions/active", token)
+    check("the live workout rehydrates", active.get("session", {}).get("id") == sid)
+
+    xp_before = call("GET", "/auth/me", token)[1]["progress"]["total_xp"]
+    client_set_id = str(uuid.uuid4())
+    status, s1 = call("POST", f"/workouts/sessions/{sid}/sets", token,
+                      {"exercise_id": bench["id"], "weight": 60, "reps": 5,
+                       "client_set_id": client_set_id, "points": 9999})
+    check("log a set", status == 201, str(s1)[:120])
+    check("a client-sent point value is ignored", 0 < s1["points_awarded"] < 9999, str(s1["points_awarded"]))
+    check("XP moves on every set",
+          s1["progression"]["total_xp"] == xp_before + s1["points_awarded"])
+    check("a first-ever lift is a baseline, not a paid PR",
+          s1["pr_events"] and not any(e["bonus_awarded"] for e in s1["pr_events"]))
+    status, dup = call("POST", f"/workouts/sessions/{sid}/sets", token,
+                       {"exercise_id": bench["id"], "weight": 60, "reps": 5,
+                        "client_set_id": client_set_id})
+    check("a retried submit is not logged twice",
+          dup.get("is_duplicate") is True and dup["set"]["id"] == s1["set"]["id"]
+          and dup["points_awarded"] == 0, str(dup)[:120])
+
+    status, s2 = call("POST", f"/workouts/sessions/{sid}/sets", token,
+                      {"exercise_id": bench["id"], "weight": 65, "reps": 5})
+    paid = [e for e in s2.get("pr_events", []) if e["bonus_awarded"]]
+    check("a heavier set is a paid PR",
+          len(paid) == 1 and paid[0]["record_type"] == "max_weight" and paid[0]["previous_value"] == 60,
+          str(s2.get("pr_events"))[:160])
+    status, s3 = call("POST", f"/workouts/sessions/{sid}/sets", token,
+                      {"exercise_id": bench["id"], "weight": 225, "unit": "lb", "reps": 1})
+    check("pounds are stored as kilograms", s3["set"]["weight_kg"] == 102.06, str(s3["set"]["weight_kg"]))
+    status, removed = call("DELETE", f"/workouts/sessions/{sid}/sets/{s3['set']['id']}", token)
+    check("deleting a set reverses its points",
+          status == 200 and removed["points_awarded"] == -s3["points_awarded"], str(removed)[:120])
+
+    status, done = call("POST", f"/workouts/sessions/{sid}/finish", token)
+    check("finish the workout", status == 200, str(done)[:120])
+    check("a two-minute workout earns no session bonus",
+          done["qualified"] is False and done["breakdown"]["session_bonus"] == 0)
+    check("session points are credited to the wallet",
+          done["points_credited"] == done["breakdown"]["total"] > 0, str(done["breakdown"]))
+    check("the PR is in the finish summary", any(e["bonus_awarded"] for e in done["pr_events"]))
+    status, _ = call("POST", f"/workouts/sessions/{sid}/sets", token,
+                     {"exercise_id": bench["id"], "weight": 70, "reps": 5})
+    check("a finished workout is immutable", status == 409)
+
+    status, wallet = call("GET", "/rewards/wallet", token)
+    check("wallet 'earned' includes the workout credit",
+          wallet["total_points_earned"] == 20 + done["points_credited"], str(wallet))
+    status, records = call("GET", f"/workouts/records?exercise_id={bench['id']}", token)
+    check("records reflect the deleted set's absence",
+          [r["value"] for r in records if r["record_type"] == "max_weight"] == [65], str(records)[:160])
+    status, points = call("GET", "/workouts/points", token)
+    status, ledger = call("GET", "/workouts/points/ledger?limit=200", token)
+    check("points total equals the ledger",
+          points["total_points"] == sum(e["points"] for e in ledger), f"{points['total_points']}")
+    check("reversals are ledger rows, not edits", any(e["source_type"] == "reversal" for e in ledger))
+    status, hist = call("GET", f"/exercises/{bench['id']}/history", token)
+    check("progress history has the session", status == 200 and hist[-1]["top_weight_kg"] == 65, str(hist)[:120])
+    status, measurement = call("POST", "/body-measurements", token,
+                               {"metric": "weight", "value": 80.5, "unit": "kg"})
+    check("log a body measurement", status == 201, str(measurement)[:100])
+
+    for method, path in [("GET", f"/workouts/sessions/{sid}"),
+                         ("POST", f"/workouts/sessions/{sid}/finish"),
+                         ("GET", f"/routines/{routine['id']}"),
+                         ("DELETE", f"/body-measurements/{measurement['id']}")]:
+        status, _ = call(method, path, other)
+        check(f"{method} another user's workout data is 404", status == 404, f"got {status}")
+
     # -- Sprint 6: animation contract --------------------------------------
     section("Sprint 6 - animation contract (served frontend)")
     try:
@@ -345,7 +434,11 @@ def main() -> int:
             for q in quests:
                 call("DELETE", f"/quests/{q['id']}", tok)
         check("test quests removed", True)
-        print("  note: smoke users remain (no delete-account endpoint yet)")
+        call("DELETE", f"/routines/{routine['id']}", token)
+        call("DELETE", f"/body-measurements/{measurement['id']}", token)
+        check("test routine and measurement removed", True)
+        print("  note: smoke users and their finished workouts remain "
+              "(no delete-account endpoint yet; workouts are history, not deletable)")
 
     # -- Summary -----------------------------------------------------------
     total = _passed + len(_failed)
