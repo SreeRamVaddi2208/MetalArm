@@ -236,6 +236,9 @@ def main() -> int:
     check("another user sees none of the rewards", status == 200 and shop == [])
     status, parties_seen = call("GET", "/parties", other)
     check("another user sees none of the parties", status == 200 and parties_seen == [])
+    status, prof_other = call("GET", "/profile", other)
+    check("another user's profile shows their own empty stats",
+          status == 200 and prof_other["stats"]["quests_completed"] == 0)
     for method, path in [("GET", f"/quests/{daily['id']}"),
                          ("PATCH", f"/quests/{daily['id']}"),
                          ("DELETE", f"/quests/{daily['id']}"),
@@ -249,6 +252,30 @@ def main() -> int:
         check(f"{method} another user's resource is 404", status == 404, f"got {status}")
     status, me_other = call("GET", "/auth/me", other)
     check("another user's XP is untouched", me_other["progress"]["total_xp"] == 0)
+
+    # -- Section 2: profile page and badges --------------------------------
+    section("Section 2 - profile, lifetime stats, badges")
+    status, prof = call("GET", "/profile", token)
+    check("GET /profile returns 200", status == 200, str(prof)[:100])
+    # Not a fixed number: by this point the user has completed a personal
+    # quest AND a party quest, and asserting one literal would break the moment
+    # anything earlier in the run changes.
+    status, me_now = call("GET", "/auth/me", token)
+    check("profile progression matches /auth/me",
+          prof["progress"]["total_xp"] == me_now["progress"]["total_xp"]
+          and prof["progress"]["total_xp"] > 0,
+          f'profile={prof["progress"]["total_xp"]} me={me_now["progress"]["total_xp"]}')
+    check("lifetime stats counted", prof["stats"]["quests_completed"] >= 1, str(prof.get("stats"))[:80])
+    check("party activity counted", prof["stats"]["parties_joined"] >= 1)
+    check("badges listed", prof["badges_total"] > 0 and len(prof["badges"]) == prof["badges_total"])
+    check("first-quest badge earned",
+          any(b["id"] == "first_quest" and b["earned"] for b in prof["badges"]))
+    check("unearned badges report progress",
+          all(0 <= b["percent"] <= 100 and b["progress"] <= b["target"] for b in prof["badges"]))
+    check("profile rank matches /auth/me",
+          prof["progress"]["rank"] == call("GET", "/auth/me", token)[1]["progress"]["rank"])
+    status, _ = call("GET", "/profile")
+    check("profile requires auth", status == 401)
 
     # -- Sprint 6: animation contract --------------------------------------
     section("Sprint 6 - animation contract (served frontend)")
@@ -300,6 +327,12 @@ def main() -> int:
         check("keyframes animate only transform/opacity", not offenders, str(offenders))
 
         check("XP bar uses transform, not width", "scaleX" in page)
+
+        # The quest-complete beat must stay lightweight: Section 7 reserves the
+        # heavy motion for level-up and rank-up, "not every quest checkbox".
+        check("quest completion animates transform only",
+              "lf-complete" in css and "@keyframes lf-complete" in css)
+        check("completion beat is short", "320ms" in css)
 
     # -- Cleanup -----------------------------------------------------------
     if not args.keep:

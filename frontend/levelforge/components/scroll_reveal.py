@@ -81,6 +81,30 @@ _CSS = f"""
    card for the life of the page is a real cost on a long board. */
 .lf-reveal.lf-done {{ will-change: auto; }}
 
+/* --- Quest completion --------------------------------------------------- */
+/* Section 7 is explicit that the heavy motion belongs to the level-up and
+   rank-up beats, "not every quest checkbox". So a completed card gets one
+   short settle - a slight scale down and a fade toward the muted state - and
+   nothing more. Transform and opacity only, like everything else here. */
+@keyframes lf-complete {{
+  0%   {{ transform: scale(1); }}
+  40%  {{ transform: scale(0.985); }}
+  100% {{ transform: scale(1); }}
+}}
+
+.lf-complete {{
+  animation: lf-complete 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}}
+
+.lf-check {{
+  animation: lf-check-in 300ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}}
+
+@keyframes lf-check-in {{
+  0%   {{ opacity: 0; transform: scale(0.6); }}
+  100% {{ opacity: 1; transform: scale(1); }}
+}}
+
 /* --- Pinned hero -------------------------------------------------------- */
 /* The Stat Panel holds position while the quest board scrolls past beneath -
    the same pattern a product hero uses. 1024px matches Reflex's `lg`
@@ -104,6 +128,8 @@ _CSS = f"""
     animation: none;
     transition: none;
   }}
+  .lf-complete {{ animation: none; }}
+  .lf-check {{ animation: none; opacity: 1; transform: none; }}
   .lf-pinned {{ position: static; }}
 }}
 """

@@ -24,7 +24,13 @@ def quest_card(quest: Quest) -> rx.Component:
             rx.vstack(
                 rx.hstack(
                     pill(quest.recurrence_label, theme.ACCENT),
-                    rx.cond(done, pill("DONE", theme.SUCCESS)),
+                    rx.cond(
+                        done,
+                        rx.box(
+                            pill("✓ DONE", theme.SUCCESS),
+                            class_name="lf-check",
+                        ),
+                    ),
                     spacing="2",
                 ),
                 rx.text(
@@ -109,7 +115,10 @@ def quest_card(quest: Quest) -> rx.Component:
         border=f"1px solid {rx.cond(done, theme.BORDER, theme.BORDER_HI)}",
         border_radius="12px",
         opacity=rx.cond(done, "0.72", "1"),
-        transition="opacity 200ms ease, border-color 200ms ease",
+        # Opacity only. A completed card settles rather than celebrating -
+        # Section 7 reserves the heavy motion for level-up and rank-up.
+        transition="opacity 260ms ease",
+        class_name=rx.cond(done, "lf-complete", ""),
     )
 
 

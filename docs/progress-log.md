@@ -14,6 +14,46 @@ Entry format:
 
 ---
 
+## 2026-09-10 (9) - Opus - close the last Section 2 gaps; PROJECT COMPLETE
+
+Audited every checkpoint in the brief rather than only the sprint plan, which
+surfaced **three MVP items in Section 2 that no sprint had covered**:
+
+- **Badges.** Section 2: the Stat Panel shows "level, rank, XP bar, streaks,
+  and **badges**". There were none. Added `core/badges.py` - 13 badges, all
+  **derived** from data already stored, so there is no award-time write path to
+  get wrong, no way for a badge to drift from the facts behind it, and no
+  migration. Tiers key off values that never decrease (`longest_streak`, not
+  the current streak; level, not the streak-gated rank), so taking a week off
+  cannot revoke something genuinely earned. Unearned badges are returned with
+  progress, because a panel that lists only what you have gives you nothing to
+  aim at.
+- **Profile page.** Section 2 calls the Stat Panel a "profile page"; it only
+  existed embedded in the dashboard. Added `GET /api/v1/profile` (kept separate
+  from `/auth/me`, which runs on every page load and must stay cheap) and a
+  `/profile` route with the Stat Panel pinned, lifetime stats, and the badge
+  grid.
+- **Quest-complete animation.** Listed in the MVP features. Deliberately kept
+  small: Section 7 reserves the heavy motion for level-up and rank-up, "not
+  every quest checkbox", so a completed card gets one 320ms settle and a check
+  pill, transform/opacity only.
+
+**Verified (real output)**
+- **168 tests** (was 158), **94 smoke checks** (was 82), 25 endpoints,
+  `alembic check` clean, **ruff clean on both halves**, 5/5 services healthy,
+  zero error lines in any container log.
+- All 7 frontend routes 200: `/ /login /signup /dashboard /parties /rewards
+  /profile`.
+- Section 8's checklist re-verified end to end, including `/health` reporting a
+  real PG 17.10 connection.
+- Section 11: all four open questions resolved and recorded.
+
+**Status: every checkpoint in the brief is complete.** Sprints 1-6 done, the
+full Section 2 MVP feature list delivered, and the Section 8 setup checklist
+verified against the running stack.
+
+---
+
 ## 2026-09-10 (8) - Opus (both agents) - bug sweep + Sprint 6 (FINAL SPRINT)
 
 ### Part 1 - three bugs cleared

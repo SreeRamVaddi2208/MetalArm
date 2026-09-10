@@ -10,7 +10,7 @@
 
 - **API title:** LevelForge API
 - **API version:** 0.1.0
-- **Generated:** 2026-09-10 07:10 UTC
+- **Generated:** 2026-09-10 08:09 UTC
 - **Source:** `http://localhost:8000/openapi.json`
 
 ---
@@ -424,6 +424,18 @@ rotating it is what stops further joins.
 
 ---
 
+### `GET /api/v1/profile`
+
+**Read Profile**
+
+*Tags:* `profile`
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+
+---
+
 ### `GET /api/v1/quests`
 
 **List Quests**
@@ -733,6 +745,19 @@ otherwise 503 with per-dependency detail.
 
 ## Schemas
 
+#### `BadgeOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `id` | `string` | yes |
+| `name` | `string` | yes |
+| `description` | `string` | yes |
+| `icon` | `string` | yes |
+| `earned` | `boolean` | yes |
+| `progress` | `integer` | yes |
+| `target` | `integer` | yes |
+| `percent` | `integer` | yes |
+
 #### `Body_login_form_api_v1_auth_token_post`
 
 | Field | Type | Required |
@@ -793,6 +818,19 @@ otherwise 503 with per-dependency detail.
 | `party_id` | `string` | yes |
 | `total_party_xp` | `integer` | yes |
 | `entries` | `LeaderboardEntry[]` | yes |
+
+#### `LifetimeStats`
+
+| Field | Type | Required |
+|---|---|---|
+| `quests_completed` | `integer` | yes |
+| `party_quests_completed` | `integer` | yes |
+| `rewards_redeemed` | `integer` | yes |
+| `points_earned` | `integer` | yes |
+| `points_spent` | `integer` | yes |
+| `parties_joined` | `integer` | yes |
+| `party_xp_contributed` | `integer` | yes |
+| `member_since` | `string` | yes |
 
 #### `LoginRequest`
 
@@ -910,6 +948,17 @@ otherwise 503 with per-dependency detail.
 | Field | Type | Required |
 |---|---|---|
 | `name` | `string | null` | no |
+
+#### `ProfileOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `user` | `UserOut` | yes |
+| `progress` | `ProgressOut` | yes |
+| `stats` | `LifetimeStats` | yes |
+| `badges` | `BadgeOut[]` | yes |
+| `badges_earned` | `integer` | yes |
+| `badges_total` | `integer` | yes |
 
 #### `ProgressOut`
 
@@ -1057,6 +1106,16 @@ otherwise 503 with per-dependency detail.
 | `access_token` | `string` | yes |
 | `token_type` | `string` | no |
 | `expires_in` | `integer` | yes |
+
+#### `UserOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `id` | `string` | yes |
+| `email` | `string` | yes |
+| `display_name` | `string` | yes |
+| `timezone` | `string` | yes |
+| `created_at` | `string` | yes |
 
 #### `ValidationError`
 

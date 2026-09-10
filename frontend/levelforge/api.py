@@ -225,3 +225,10 @@ async def complete_party_quest(token: str, party_id: str, quest_id: str) -> dict
 
 async def delete_party_quest(token: str, party_id: str, quest_id: str) -> None:
     await request("DELETE", f"/parties/{party_id}/quests/{quest_id}", token=token)
+
+
+# --- Profile ---------------------------------------------------------------
+
+
+async def profile(token: str) -> dict:
+    return await request("GET", "/profile", token=token)

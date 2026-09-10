@@ -229,3 +229,62 @@ class LeaderboardRow:
             rank=data.get("rank") or "E",
             is_me=bool(data.get("is_me")),
         )
+
+
+@dataclasses.dataclass
+class Badge:
+    id: str = ""
+    name: str = ""
+    description: str = ""
+    icon: str = ""
+    earned: bool = False
+    progress: int = 0
+    target: int = 0
+    percent: int = 0
+    # Stored, not derived - Reflex renders to JS and cannot evaluate a Python
+    # property on a model. `scale` is also precomputed rather than dividing a
+    # Var in the template, so the component receives a plain number.
+    progress_label: str = ""
+    scale: float = 0.0
+
+    @classmethod
+    def from_api(cls, data: dict[str, Any]) -> "Badge":
+        prog = data.get("progress") or 0
+        target = data.get("target") or 0
+        return cls(
+            id=data.get("id") or "",
+            name=data.get("name") or "",
+            description=data.get("description") or "",
+            icon=data.get("icon") or "",
+            earned=bool(data.get("earned")),
+            progress=prog,
+            target=target,
+            percent=data.get("percent") or 0,
+            progress_label=f"{prog} / {target}",
+            scale=round((data.get("percent") or 0) / 100, 4),
+        )
+
+
+@dataclasses.dataclass
+class LifetimeStats:
+    quests_completed: int = 0
+    party_quests_completed: int = 0
+    rewards_redeemed: int = 0
+    points_earned: int = 0
+    points_spent: int = 0
+    parties_joined: int = 0
+    party_xp_contributed: int = 0
+    member_since: str = ""
+
+    @classmethod
+    def from_api(cls, data: dict[str, Any]) -> "LifetimeStats":
+        return cls(
+            quests_completed=data.get("quests_completed") or 0,
+            party_quests_completed=data.get("party_quests_completed") or 0,
+            rewards_redeemed=data.get("rewards_redeemed") or 0,
+            points_earned=data.get("points_earned") or 0,
+            points_spent=data.get("points_spent") or 0,
+            parties_joined=data.get("parties_joined") or 0,
+            party_xp_contributed=data.get("party_xp_contributed") or 0,
+            member_since=(data.get("member_since") or "")[:10],
+        )
