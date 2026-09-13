@@ -1,5 +1,7 @@
 # MetalArm
 
+[![CI](https://github.com/SreeRamVaddi2208/MetalArm/actions/workflows/ci.yml/badge.svg)](https://github.com/SreeRamVaddi2208/MetalArm/actions/workflows/ci.yml)
+
 **Turn real goals, habits and gym workouts into RPG-style progression.**
 Log a set and watch your XP bar move. Break a record and the app celebrates it.
 Train with friends in a party and climb the weekly leaderboard.
