@@ -1,5 +1,6 @@
-# MetalArm CI: backend tests + migration check, production image builds, and
-# the iOS app's unit and UI tests.
+# MetalArm CI: backend tests + migration check, and production image builds.
+# The iOS app's tests live in ios.yml, which runs only when ios/ changes
+# (macOS minutes cost 10x on a private repo).
 name: CI
 
 on:
@@ -60,35 +61,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # Each build is retried once: a dropped connection to Docker Hub while
+      # fetching base images is common on shared runners and is not a code fault.
       - name: Backend runtime image
-        run: docker build --target runtime -t metalarm-backend:ci backend
+        run: |
+          build() { docker build --target runtime -t metalarm-backend:ci backend; }
+          build || { echo "::warning::Backend image build failed; retrying once"; sleep 15; build; }
       - name: Frontend image
-        run: docker build --build-arg REFLEX_API_URL=https://metalarm.example.com -t metalarm-frontend:ci frontend
+        run: |
+          build() { docker build --build-arg REFLEX_API_URL=https://metalarm.example.com -t metalarm-frontend:ci frontend; }
+          build || { echo "::warning::Frontend image build failed; retrying once"; sleep 15; build; }
       - name: Production compose file is valid
         run: |
           cp deploy/.env.production.example deploy/.env.production
           docker compose -f deploy/docker-compose.prod.yml --env-file deploy/.env.production config --quiet
-
-  ios:
-    runs-on: macos-26
-    defaults:
-      run:
-        working-directory: ios
-    steps:
-      - uses: actions/checkout@v4
-      - uses: maxim-lobanov/setup-xcode@v1
-        with:
-          xcode-version: latest-stable
-      - name: Unit and UI tests (mock backend)
-        run: |
-          set -o pipefail
-          xcodebuild test \
-            -project MetalARM.xcodeproj -scheme MetalARM \
-            -destination 'platform=iOS Simulator,name=iPhone 17' \
-            CODE_SIGNING_ALLOWED=NO
-      - name: Release build compiles
-        run: |
-          xcodebuild build \
-            -project MetalARM.xcodeproj -scheme MetalARM -configuration Release \
-            -destination 'generic/platform=iOS' \
-            CODE_SIGNING_ALLOWED=NO

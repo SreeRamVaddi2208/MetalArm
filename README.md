@@ -252,8 +252,11 @@ cd scripts/e2e && npm install && node workout_e2e.mjs      # screenshots -> $TMP
 
 **CI** ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs the backend
 suite and a migration check against Postgres and Redis service containers,
-builds both production images, validates the production Compose file, and runs
-the iOS tests on a macOS runner.
+builds both production images, and validates the production Compose file on
+every push and pull request. The iOS tests run separately in
+[`.github/workflows/ios.yml`](.github/workflows/ios.yml) on a macOS runner, only
+for pull requests that touch `ios/`, pushes to `main`, or when started by hand
+from the Actions tab, because macOS minutes are expensive on a private repo.
 
 ---
 
