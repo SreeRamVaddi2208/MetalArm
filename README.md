@@ -1,5 +1,7 @@
 # MetalArm
 
+[![CI](https://github.com/SreeRamVaddi2208/MetalArm/actions/workflows/ci.yml/badge.svg)](https://github.com/SreeRamVaddi2208/MetalArm/actions/workflows/ci.yml)
+
 **Turn real goals, habits and gym workouts into RPG-style progression.**
 Log a set and watch your XP bar move. Break a record and the app celebrates it.
 Train with friends in a party and climb the weekly leaderboard.
@@ -250,8 +252,11 @@ cd scripts/e2e && npm install && node workout_e2e.mjs      # screenshots -> $TMP
 
 **CI** ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs the backend
 suite and a migration check against Postgres and Redis service containers,
-builds both production images, validates the production Compose file, and runs
-the iOS tests on a macOS runner.
+builds both production images, and validates the production Compose file on
+every push and pull request. The iOS tests run separately in
+[`.github/workflows/ios.yml`](.github/workflows/ios.yml) on a macOS runner, only
+for pull requests that touch `ios/`, pushes to `main`, or when started by hand
+from the Actions tab, because macOS minutes are expensive on a private repo.
 
 ---
 
