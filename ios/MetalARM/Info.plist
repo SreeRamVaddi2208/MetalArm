@@ -7,6 +7,18 @@
 	<!-- Only standard HTTPS; saves the export-compliance question on every upload. -->
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+	<!-- Bundled design fonts (SIL Open Font License; see Fonts/OFL-*.txt). -->
+	<key>UIAppFonts</key>
+	<array>
+		<string>SpaceGrotesk-Regular.ttf</string>
+		<string>SpaceGrotesk-Medium.ttf</string>
+		<string>SpaceGrotesk-SemiBold.ttf</string>
+		<string>SpaceGrotesk-Bold.ttf</string>
+		<string>Manrope-Regular.ttf</string>
+		<string>Manrope-Medium.ttf</string>
+		<string>Manrope-SemiBold.ttf</string>
+		<string>Manrope-Bold.ttf</string>
+	</array>
 	<!-- Per-configuration server addresses (METALARM_*_BASE_URL build settings), read by AppConfig. -->
 	<key>METALARMAPIBaseURL</key>
 	<string>$(METALARM_API_BASE_URL)</string>

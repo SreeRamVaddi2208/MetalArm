@@ -14,6 +14,37 @@ Entry format:
 
 ---
 
+## 2026-09-14 (16) - Opus - iOS app uses the design fonts
+
+**Changed**
+- Bundled the design's typefaces in the iOS app, the same pair the web app
+  uses: Space Grotesk (headings, numbers, buttons) and Manrope (body). Static
+  400/500/600/700 TTFs cut from the google/fonts variable sources with
+  `fontTools varLib.instancer`, in `ios/MetalARM/Fonts/` with both SIL Open
+  Font Licences, registered under `UIAppFonts` in `Info.plist`.
+- `Theme.display` now uses Space Grotesk; the new `Theme.body` (Manrope)
+  replaces all 69 `.font(.system(size:))` calls in the views. Requests
+  heavier than bold map to Bold (the heaviest bundled face).
+- New `FontTests.bundledFontLoads` checks each face loads by PostScript name.
+- Re-captured all 11 App Store screenshots on the iPhone 17 Pro Max
+  (1320x2868) from the mock-backend UI tests.
+
+**Verified (real output)**
+- `FontTests`: all 8 faces load; MetalARMTests pass.
+- UI tests pass on the iPhone 17 Pro Max (source of the screenshots).
+- Full suite with the live tour on the merged branch: see the PR.
+
+**Blocked**
+- Nothing.
+
+**Other agent needs to know**
+- Use `Theme.display(size, weight)` / `Theme.body(size, weight)` for new
+  text, never `.system(size:)`. Space Grotesk's SemiBold instance has a
+  hand-set name table (its STAT table has no 600 value); regenerate it the
+  same way if the font files are ever updated.
+
+---
+
 ## 2026-09-14 (15) - Opus - sign out one device, not all of them
 
 **Changed**

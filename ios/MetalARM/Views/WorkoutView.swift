@@ -50,13 +50,13 @@ struct WorkoutView: View {
     private var emptyState: some View {
         VStack(spacing: 16) {
             Image(systemName: "dumbbell.fill")
-                .font(.system(size: 44))
+                .font(Theme.body(44))
                 .foregroundStyle(Theme.fire)
             Text("No active workout")
                 .font(Theme.display(22))
                 .foregroundStyle(Theme.text)
             Text("Start a session to log sets, earn points and chase PRs.")
-                .font(.system(size: 14))
+                .font(Theme.body(14))
                 .foregroundStyle(Theme.dim)
                 .multilineTextAlignment(.center)
             Button {
@@ -106,7 +106,7 @@ struct WorkoutView: View {
                 Button("Discard Workout", systemImage: "trash", role: .destructive) { confirmingDiscard = true }
             } label: {
                 Image(systemName: "ellipsis.circle")
-                    .font(.system(size: 20))
+                    .font(Theme.body(20))
                     .foregroundStyle(Theme.dim)
             }
             .frame(width: 60, alignment: .leading)
@@ -114,14 +114,14 @@ struct WorkoutView: View {
             Spacer()
             VStack(spacing: 0) {
                 Text("SESSION")
-                    .font(.system(size: 11))
+                    .font(Theme.body(11))
                     .kerning(0.5)
                     .foregroundStyle(Theme.dim)
                 Text("\(model.setsLoggedCount) \(model.setsLoggedCount == 1 ? "set" : "sets") logged")
                     .font(Theme.display(15))
                     .foregroundStyle(Theme.text)
                 Text("\(session.pointsTotal) pts")
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(Theme.body(12, .semibold))
                     .foregroundStyle(Theme.fire)
             }
             Spacer()
@@ -159,7 +159,7 @@ struct WorkoutView: View {
                     showingPicker = true
                 } label: {
                     Label("Add", systemImage: "plus")
-                        .font(.system(size: 12.5, weight: .semibold))
+                        .font(Theme.body(12.5, .semibold))
                         .foregroundStyle(Theme.fire)
                         .padding(.horizontal, 14)
                         .padding(.vertical, 8)
@@ -174,13 +174,13 @@ struct WorkoutView: View {
     private var addFirstPrompt: some View {
         VStack(spacing: 12) {
             Image(systemName: "list.bullet.rectangle")
-                .font(.system(size: 30))
+                .font(Theme.body(30))
                 .foregroundStyle(Theme.dim)
             Text("Add your first exercise")
                 .font(Theme.display(17))
                 .foregroundStyle(Theme.text)
             Text("Pick from the library - your last session's numbers fill in for you.")
-                .font(.system(size: 13))
+                .font(Theme.body(13))
                 .foregroundStyle(Theme.dim)
                 .multilineTextAlignment(.center)
             Button {
@@ -206,14 +206,14 @@ struct WorkoutView: View {
                 .font(Theme.display(18))
                 .foregroundStyle(Theme.text)
             Text(exercise.muscleLabel)
-                .font(.system(size: 11))
+                .font(Theme.body(11))
                 .foregroundStyle(Theme.dim)
                 .padding(.horizontal, 9)
                 .padding(.vertical, 4)
                 .background(Theme.bg2, in: RoundedRectangle(cornerRadius: 8))
             if !previous.isEmpty {
                 Text("Last time: " + previous.prefix(4).map { "\(formatNumber(unit.fromKilograms($0.weightKg))) × \($0.reps ?? 0)" }.joined(separator: ", "))
-                    .font(.system(size: 12))
+                    .font(Theme.body(12))
                     .foregroundStyle(Theme.dim)
                     .accessibilityIdentifier("ghostValues")
             }
@@ -252,7 +252,7 @@ struct WorkoutView: View {
                 Task { await model.logSet() }
             } label: {
                 Label("Log Set", systemImage: "plus")
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(Theme.body(13, .semibold))
                     .frame(maxWidth: .infinity)
                     .padding(11)
                     .contentShape(Rectangle())
@@ -283,7 +283,7 @@ struct WorkoutView: View {
 
     private func columnLabel(_ text: String) -> some View {
         Text(text)
-            .font(.system(size: 11))
+            .font(Theme.body(11))
             .foregroundStyle(Theme.faint)
     }
 
@@ -314,7 +314,7 @@ struct WorkoutView: View {
             Image(systemName: icon)
                 .foregroundStyle(tint)
             Text(text)
-                .font(.system(size: 13, weight: .semibold))
+                .font(Theme.body(13, .semibold))
                 .foregroundStyle(textColor)
             Spacer()
         }

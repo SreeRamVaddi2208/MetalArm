@@ -16,7 +16,7 @@ struct OnboardingView: View {
                     RoundedRectangle(cornerRadius: 28)
                         .fill(LinearGradient(colors: [Theme.fire, Theme.fireDeep], startPoint: .topLeading, endPoint: .bottomTrailing))
                     Image(systemName: "bolt.fill")
-                        .font(.system(size: 48, weight: .bold))
+                        .font(Theme.body(48, .bold))
                         .foregroundStyle(Theme.bg)
                 }
                 .frame(width: 104, height: 104)
@@ -29,7 +29,7 @@ struct OnboardingView: View {
                         .foregroundStyle(Theme.text)
                         .accessibilityIdentifier("onboardingTitle")
                     Text("Log your workouts, level up your character, and compete with friends in your party.")
-                        .font(.system(size: 15))
+                        .font(Theme.body(15))
                         .foregroundStyle(Theme.dim)
                         .multilineTextAlignment(.center)
                         .frame(maxWidth: 300)

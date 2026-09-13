@@ -47,7 +47,7 @@ struct ProgressScreen: View {
                 if model.progressTabs.isEmpty {
                     if !model.isBusy {
                         Text("Finish a workout to start tracking your progress.")
-                            .font(.system(size: 14))
+                            .font(Theme.body(14))
                             .foregroundStyle(Theme.dim)
                     }
                 } else {
@@ -62,7 +62,7 @@ struct ProgressScreen: View {
                     }
                     if model.records.isEmpty && !model.isBusy {
                         Text("No records yet - finish a workout with this exercise.")
-                            .font(.system(size: 13))
+                            .font(Theme.body(13))
                             .foregroundStyle(Theme.dim)
                     }
                 }
@@ -107,13 +107,13 @@ struct ProgressScreen: View {
                         .font(Theme.display(26, .heavy))
                         .foregroundStyle(Theme.text)
                     Text("\(unit) top set")
-                        .font(.system(size: 13))
+                        .font(Theme.body(13))
                         .foregroundStyle(Theme.dim)
                 }
                 if points.count > 1 {
                     let change = last.value - first.value
                     Text("\(change >= 0 ? "▲" : "▼") \(formatNumber(abs(change))) \(unit) since \(first.date.formatted(.dateTime.month().day()))")
-                        .font(.system(size: 12, weight: .semibold))
+                        .font(Theme.body(12, .semibold))
                         .foregroundStyle(change >= 0 ? Theme.green : Theme.fire)
                 }
                 Chart(points) { point in
@@ -131,7 +131,7 @@ struct ProgressScreen: View {
                 .padding(.top, 10)
             } else {
                 Text("No finished workouts with this exercise yet.")
-                    .font(.system(size: 13))
+                    .font(Theme.body(13))
                     .foregroundStyle(Theme.dim)
                     .frame(maxWidth: .infinity, minHeight: 80)
             }
@@ -143,14 +143,14 @@ struct ProgressScreen: View {
     private func recordRow(_ record: WorkoutRecord) -> some View {
         HStack(spacing: 12) {
             Image(systemName: "medal.fill")
-                .font(.system(size: 18))
+                .font(Theme.body(18))
                 .foregroundStyle(Theme.gold)
             VStack(alignment: .leading, spacing: 2) {
                 Text("\(record.label) — \(record.exerciseName)")
-                    .font(.system(size: 13.5, weight: .bold))
+                    .font(Theme.body(13.5, .bold))
                     .foregroundStyle(Theme.text)
                 Text(parseServerDate(record.achievedAt)?.formatted(date: .abbreviated, time: .omitted) ?? String(record.achievedAt.prefix(10)))
-                    .font(.system(size: 11.5))
+                    .font(Theme.body(11.5))
                     .foregroundStyle(Theme.dim)
             }
             Spacer()

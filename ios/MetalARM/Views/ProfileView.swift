@@ -51,13 +51,13 @@ struct ProfileView: View {
                 .foregroundStyle(Theme.text)
                 .padding(.top, 12)
             Text("Level \(profile.progress.currentLevel) · Rank \(profile.progress.rank)")
-                .font(.system(size: 12.5, weight: .bold))
+                .font(Theme.body(12.5, .bold))
                 .foregroundStyle(Theme.fire)
                 .padding(.top, 5)
             XPBar(progress: profile.progress.xpProgress, track: Theme.card)
                 .padding(.top, 16)
             Text("\(profile.progress.xpIntoLevel) / \(profile.progress.xpForNextLevel) XP to next level")
-                .font(.system(size: 11))
+                .font(Theme.body(11))
                 .foregroundStyle(Theme.dim)
                 .padding(.top, 6)
         }
@@ -80,7 +80,7 @@ struct ProfileView: View {
                     .foregroundStyle(Theme.text)
                 Spacer()
                 Text("\(profile.badgesEarned) / \(profile.badgesTotal)")
-                    .font(.system(size: 12))
+                    .font(Theme.body(12))
                     .foregroundStyle(Theme.fire)
             }
             LazyVGrid(columns: badgeColumns, spacing: 12) {
@@ -105,18 +105,18 @@ struct ProfileView: View {
                         .strokeBorder(Theme.cardBorder, style: StrokeStyle(lineWidth: 1, dash: [4]))
                 }
                 badgeIcon(badge.icon)
-                    .font(.system(size: 20))
+                    .font(Theme.body(20))
                     .foregroundStyle(badge.earned ? Theme.bg : Theme.faint)
             }
             .aspectRatio(1, contentMode: .fit)
             Text(badge.name)
-                .font(.system(size: 10))
+                .font(Theme.body(10))
                 .foregroundStyle(Theme.dim)
                 .multilineTextAlignment(.center)
                 .lineLimit(2)
             if !badge.earned {
                 Text("\(badge.percent)%")
-                    .font(.system(size: 9, weight: .semibold))
+                    .font(Theme.body(9, .semibold))
                     .foregroundStyle(Theme.faint)
             }
         }
@@ -140,7 +140,7 @@ struct ProfileView: View {
     private var settings: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("SETTINGS")
-                .font(.system(size: 12))
+                .font(Theme.body(12))
                 .kerning(0.4)
                 .foregroundStyle(Theme.dim)
             VStack(spacing: 0) {
@@ -161,7 +161,7 @@ struct ProfileView: View {
                     .frame(width: 110)
                     .accessibilityIdentifier("weightUnitPicker")
                 }
-                .font(.system(size: 15))
+                .font(Theme.body(15))
                 .foregroundStyle(Theme.text)
                 .padding(.horizontal, 16)
                 .padding(.vertical, 10)
@@ -197,10 +197,10 @@ struct ProfileView: View {
             Text(title)
             Spacer()
             Image(systemName: "chevron.right")
-                .font(.system(size: 12, weight: .semibold))
+                .font(Theme.body(12, .semibold))
                 .foregroundStyle(Theme.faint)
         }
-        .font(.system(size: 15))
+        .font(Theme.body(15))
         .foregroundStyle(destructive ? Theme.fire : Theme.text)
         .padding(.horizontal, 16)
         .padding(.vertical, 14)
@@ -217,7 +217,7 @@ struct DeleteAccountSheet: View {
         NavigationStack {
             VStack(alignment: .leading, spacing: 16) {
                 Text("This permanently deletes your account and everything you've logged: workouts, records, points, quests and rewards. A party you own passes to its longest-standing member. This can't be undone.")
-                    .font(.system(size: 14))
+                    .font(Theme.body(14))
                     .foregroundStyle(Theme.dim)
                 SecureField("", text: $password, prompt: Text("Confirm your password").foregroundStyle(Theme.faint))
                     .textContentType(.password)

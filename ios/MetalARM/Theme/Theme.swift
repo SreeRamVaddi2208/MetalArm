@@ -24,9 +24,32 @@ enum Theme {
     static let gold = Color(red: 0.891, green: 0.723, blue: 0.192)
     static let goldDeep = Color(red: 0.719, green: 0.424, blue: 0.000)
 
-    /// Stand-in for Space Grotesk until the design fonts are bundled.
+    // The design's typefaces, bundled under Fonts/ (SIL Open Font License) and
+    // registered through UIAppFonts: Space Grotesk for headings and numbers,
+    // Manrope for everything else - the same pair the web app uses.
+    static let fontNames = [
+        "SpaceGrotesk-Regular", "SpaceGrotesk-Medium", "SpaceGrotesk-SemiBold", "SpaceGrotesk-Bold",
+        "Manrope-Regular", "Manrope-Medium", "Manrope-SemiBold", "Manrope-Bold",
+    ]
+
+    /// Headings, numbers and buttons (Space Grotesk).
     static func display(_ size: CGFloat, _ weight: Font.Weight = .bold) -> Font {
-        .system(size: size, weight: weight, design: .rounded)
+        .custom(face("SpaceGrotesk", weight), fixedSize: size)
+    }
+
+    /// Body text, labels and captions (Manrope).
+    static func body(_ size: CGFloat, _ weight: Font.Weight = .regular) -> Font {
+        .custom(face("Manrope", weight), fixedSize: size)
+    }
+
+    /// The bundled static weights are 400-700, so heavier requests use Bold.
+    private static func face(_ family: String, _ weight: Font.Weight) -> String {
+        switch weight {
+        case .bold, .heavy, .black: "\(family)-Bold"
+        case .semibold: "\(family)-SemiBold"
+        case .medium: "\(family)-Medium"
+        default: "\(family)-Regular"
+        }
     }
 }
 
@@ -44,7 +67,7 @@ struct PrimaryButtonStyle: ButtonStyle {
 struct SecondaryButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(.system(size: 15, weight: .semibold))
+            .font(Theme.body(15, .semibold))
             .foregroundStyle(Theme.text.opacity(configuration.isPressed ? 0.7 : 1))
             .frame(maxWidth: .infinity)
             .padding(16)
@@ -95,12 +118,12 @@ struct StatTile: View {
                     .foregroundStyle(Theme.text)
                 if !unit.isEmpty {
                     Text(unit)
-                        .font(.system(size: 12))
+                        .font(Theme.body(12))
                         .foregroundStyle(Theme.dim)
                 }
             }
             Text(label)
-                .font(.system(size: 11))
+                .font(Theme.body(11))
                 .foregroundStyle(Theme.dim)
         }
         .frame(maxWidth: .infinity)
@@ -140,7 +163,7 @@ struct ErrorText: View {
     var body: some View {
         if !message.isEmpty {
             Text(message)
-                .font(.system(size: 12))
+                .font(Theme.body(12))
                 .foregroundStyle(Theme.fire)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }

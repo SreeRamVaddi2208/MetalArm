@@ -31,7 +31,7 @@ struct AuthView: View {
                     .font(Theme.display(30))
                     .foregroundStyle(Theme.text)
                 Text(isSignUp ? "Your workouts, XP and records, synced to every device." : "Sign in to pick up where you left off.")
-                    .font(.system(size: 15))
+                    .font(Theme.body(15))
                     .foregroundStyle(Theme.dim)
                     .padding(.bottom, 8)
 
@@ -52,7 +52,7 @@ struct AuthView: View {
                     .accessibilityIdentifier("passwordField")
                 if isSignUp {
                     Text("At least 8 characters.")
-                        .font(.system(size: 12))
+                        .font(Theme.body(12))
                         .foregroundStyle(Theme.faint)
                 }
 
@@ -77,13 +77,13 @@ struct AuthView: View {
                     mode = isSignUp ? .signIn : .signUp
                     model.errorMessage = ""
                 }
-                .font(.system(size: 14, weight: .semibold))
+                .font(Theme.body(14, .semibold))
                 .foregroundStyle(Theme.fire)
                 .frame(maxWidth: .infinity)
                 .accessibilityIdentifier("authModeToggle")
 
                 Link("Privacy Policy", destination: AppConfig.privacyPolicyURL)
-                    .font(.system(size: 12))
+                    .font(Theme.body(12))
                     .foregroundStyle(Theme.dim)
                     .frame(maxWidth: .infinity)
                     .padding(.top, 12)
@@ -112,7 +112,7 @@ struct AuthView: View {
 struct FieldStyle: ViewModifier {
     func body(content: Content) -> some View {
         content
-            .font(.system(size: 16))
+            .font(Theme.body(16))
             .foregroundStyle(Theme.text)
             .padding(14)
             .background(Theme.card, in: RoundedRectangle(cornerRadius: 14))
