@@ -61,3 +61,18 @@ class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
     expires_in: int
+    # Exchanged at /auth/refresh for a new pair, so a mobile client stays
+    # signed in without keeping the password. Clients that only need the
+    # access token (the Reflex frontend) can ignore it.
+    refresh_token: str
+    refresh_expires_in: int
+
+
+class RefreshRequest(BaseModel):
+    refresh_token: str = Field(min_length=1)
+
+
+class DeleteAccountRequest(BaseModel):
+    # Re-entered on purpose: an unlocked phone in the wrong hands must not be
+    # able to erase the account with one tap.
+    password: str = Field(min_length=1)

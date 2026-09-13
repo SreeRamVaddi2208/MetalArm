@@ -26,10 +26,17 @@ settings = get_settings()
 logging.basicConfig(level=settings.log_level.upper())
 logger = logging.getLogger("metalarm")
 
+# The interactive docs and the OpenAPI schema map every endpoint for anyone who
+# finds the server, so production serves neither.
+DOCS_ENABLED = settings.environment != "production"
+
 app = FastAPI(
     title="MetalArm API",
     description="Turn real goals and habits into RPG-style progression.",
     version="0.1.0",
+    docs_url="/docs" if DOCS_ENABLED else None,
+    redoc_url="/redoc" if DOCS_ENABLED else None,
+    openapi_url="/openapi.json" if DOCS_ENABLED else None,
 )
 
 app.add_middleware(
@@ -101,4 +108,8 @@ app.include_router(api_router)
 
 @app.get("/", tags=["system"])
 def root() -> dict[str, str]:
-    return {"service": "metalarm-api", "docs": "/docs", "health": "/health"}
+    return {
+        "service": "metalarm-api",
+        "docs": "/docs" if DOCS_ENABLED else "disabled",
+        "health": "/health",
+    }

@@ -125,6 +125,23 @@ reflex run                             # UI :3000, state server :8001
 Reflex splits ports in dev but **requires a single port in prod** - the Docker
 image serves both from 3000.
 
+## Authentication
+
+`POST /api/v1/auth/login` returns a short-lived `access_token` (send it as
+`Authorization: Bearer ...`) and a long-lived `refresh_token`. Exchange the
+refresh token at `POST /api/v1/auth/refresh` for a new pair; a refresh token is
+never accepted as an access token. `POST /api/v1/auth/logout` revokes every
+token the user holds on every device, and `DELETE /api/v1/auth/me` (password
+confirmation required) deletes the account and all its data - a party the user
+owns passes to its longest-serving member. Login, signup and refresh are rate
+limited (429 with `Retry-After`).
+
+## Production
+
+See [`docs/deployment.md`](docs/deployment.md): a single-server Docker Compose
+stack behind Caddy with automatic HTTPS, nightly backups, and the iOS release
+checklist. The iOS app lives in `ios/`.
+
 ## Tests
 
 The suite runs in its own container against a **separate** database that is

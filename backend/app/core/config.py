@@ -42,8 +42,15 @@ class Settings(BaseSettings):
     jwt_secret_key: str
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 60
+    # Refresh tokens keep the mobile app signed in without storing the password.
+    refresh_token_expire_days: int = 30
+    # Redis-backed limits on login/signup/refresh (app/core/rate_limit.py).
+    # Switched off only by the test suite, which logs in hundreds of times.
+    rate_limit_enabled: bool = True
 
     # --- App ---
+    # "production" hides /docs, /redoc and /openapi.json.
+    environment: str = "development"
     log_level: str = "info"
     cors_origins: str = "http://localhost:3000"
 

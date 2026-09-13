@@ -374,13 +374,26 @@ def leave_party(
     dissolved instead of being left empty and unreachable.
     """
     party, membership = _membership_or_404(db, party_id, current_user)
+    release_membership(db, party, membership)
+    db.commit()
+    if not party.is_active:
+        leaderboard.drop(party.id)
 
+
+def release_membership(db: Session, party: Party, membership: PartyMembership) -> None:
+    """Remove `membership` from `party` without committing.
+
+    An owner's party goes to the longest-serving remaining member, or is
+    dissolved when nobody remains. Shared by leaving a party and deleting an
+    account, so an account deletion never takes other members' party with it
+    (parties.owner_id cascades on user delete).
+    """
     if membership.role == PartyRole.OWNER:
         successor = db.execute(
             select(PartyMembership)
             .where(
                 PartyMembership.party_id == party.id,
-                PartyMembership.user_id != current_user.id,
+                PartyMembership.user_id != membership.user_id,
             )
             .order_by(PartyMembership.joined_at.asc())
             .limit(1)
@@ -388,18 +401,13 @@ def leave_party(
 
         if successor is None:
             party.is_active = False
-            db.delete(membership)
-            db.commit()
-            leaderboard.drop(party.id)
             logger.info("party %s dissolved - last member left", party.id)
-            return
-
-        successor.role = PartyRole.OWNER
-        party.owner_id = successor.user_id
-        logger.info("party %s ownership -> %s", party.id, successor.user_id)
+        else:
+            successor.role = PartyRole.OWNER
+            party.owner_id = successor.user_id
+            logger.info("party %s ownership -> %s", party.id, successor.user_id)
 
     db.delete(membership)
-    db.commit()
 
 
 # ---------------------------------------------------------------------------

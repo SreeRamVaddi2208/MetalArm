@@ -49,30 +49,54 @@ def burn_password_time() -> None:
     bcrypt.checkpw(b"metalarm-timing-equalizer", _DUMMY_HASH)
 
 
-def create_access_token(user_id: uuid.UUID) -> tuple[str, int]:
-    """Return (token, expires_in_seconds).
+ACCESS_TOKEN_TYPE = "access"
+REFRESH_TOKEN_TYPE = "refresh"
 
-    `sub` is the user's UUID as a string - the JWT spec requires `sub` to be a
-    string, and PyJWT will reject a non-string on decode.
-    """
-    expires_in = settings.access_token_expire_minutes * 60
+
+def _encode_token(
+    user_id: uuid.UUID, token_version: int, token_type: str, expires_in: int
+) -> tuple[str, int]:
     now = dt.datetime.now(dt.timezone.utc)
     payload = {
+        # The JWT spec requires `sub` to be a string; PyJWT rejects anything
+        # else on decode.
         "sub": str(user_id),
         "iat": now,
         "exp": now + dt.timedelta(seconds=expires_in),
         # Unique per token so individual tokens can be revoked later (Redis
         # denylist) without invalidating every session.
         "jti": str(uuid.uuid4()),
-        "typ": "access",
+        # Checked on every use: a long-lived refresh token must never be
+        # accepted where an access token is expected.
+        "typ": token_type,
+        # users.token_version at mint time. Bumping the column (sign out
+        # everywhere) invalidates every token already issued.
+        "tv": token_version,
     }
     token = jwt.encode(payload, settings.jwt_secret_key, algorithm=settings.jwt_algorithm)
     return token, expires_in
 
 
-def decode_access_token(token: str) -> dict[str, Any]:
-    """Decode and verify. Raises jwt.InvalidTokenError (or a subclass such as
-    ExpiredSignatureError) on any failure.
+def create_access_token(user_id: uuid.UUID, token_version: int = 0) -> tuple[str, int]:
+    """Return (token, expires_in_seconds) for a short-lived API token."""
+    return _encode_token(
+        user_id, token_version, ACCESS_TOKEN_TYPE, settings.access_token_expire_minutes * 60
+    )
+
+
+def create_refresh_token(user_id: uuid.UUID, token_version: int = 0) -> tuple[str, int]:
+    """Return (token, expires_in_seconds) for a long-lived token that can only
+    be exchanged at /auth/refresh. Lets the mobile app stay signed in without
+    keeping the password."""
+    return _encode_token(
+        user_id, token_version, REFRESH_TOKEN_TYPE, settings.refresh_token_expire_days * 86400
+    )
+
+
+def decode_token(token: str) -> dict[str, Any]:
+    """Decode and verify an access or refresh token; callers check `typ`.
+    Raises jwt.InvalidTokenError (or a subclass such as ExpiredSignatureError)
+    on any failure.
 
     `algorithms` is pinned to the single configured algorithm: accepting a list
     the attacker can choose from is how alg-confusion attacks work.

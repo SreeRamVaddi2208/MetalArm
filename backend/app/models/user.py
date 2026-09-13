@@ -49,6 +49,11 @@ class User(UUIDPrimaryKey, Timestamps, Base):
     weight_unit: Mapped[str] = mapped_column(
         String(2), nullable=False, server_default="kg"
     )
+    # Bumped to revoke every token issued so far ("sign out everywhere").
+    # Access and refresh tokens carry the value they were minted with.
+    token_version: Mapped[int] = mapped_column(
+        Integer, nullable=False, server_default="0"
+    )
 
     progress: Mapped["LevelProgress"] = relationship(
         back_populates="user", cascade="all, delete-orphan", uselist=False

@@ -8,7 +8,7 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 
-from app.core.security import decode_access_token
+from app.core.security import ACCESS_TOKEN_TYPE, decode_token
 from app.db.session import get_db
 from app.models.user import User
 
@@ -40,7 +40,7 @@ def get_current_user(
         raise _CREDENTIALS_ERROR
 
     try:
-        payload = decode_access_token(token)
+        payload = decode_token(token)
     except jwt.ExpiredSignatureError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -50,6 +50,11 @@ def get_current_user(
     except jwt.InvalidTokenError:
         raise _CREDENTIALS_ERROR from None
 
+    # A refresh token is only good at /auth/refresh; accepting it here would
+    # turn a 30-day credential into a 30-day API key.
+    if payload.get("typ") != ACCESS_TOKEN_TYPE:
+        raise _CREDENTIALS_ERROR
+
     try:
         user_id = uuid.UUID(payload["sub"])
     except (KeyError, ValueError):
@@ -57,8 +62,9 @@ def get_current_user(
 
     user = db.get(User, user_id)
     # A token outliving its user (deleted account) must not authenticate, and
-    # a deactivated user must not either.
-    if user is None or not user.is_active:
+    # a deactivated user must not either. Nor may one minted before the user
+    # signed out everywhere (token_version bumped since).
+    if user is None or not user.is_active or payload.get("tv", 0) != user.token_version:
         raise _CREDENTIALS_ERROR
 
     return user

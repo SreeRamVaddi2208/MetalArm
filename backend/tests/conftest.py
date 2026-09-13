@@ -108,6 +108,14 @@ def client(db: Session) -> Generator[TestClient, None, None]:
     app.dependency_overrides.clear()
 
 
+@pytest.fixture(autouse=True)
+def _rate_limits_off(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The suite signs up and logs in hundreds of users from one TestClient
+    address, which the real limits would block. test_rate_limits.py switches
+    limiting back on for itself."""
+    monkeypatch.setattr(settings, "rate_limit_enabled", False)
+
+
 def unique_email() -> str:
     """Fresh address per call, so tests never collide on the UNIQUE index.
 

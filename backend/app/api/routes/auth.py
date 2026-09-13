@@ -1,25 +1,39 @@
-"""Signup, login, and the authenticated identity endpoint."""
+"""Signup, login, token refresh, sign-out, account deletion, and the
+authenticated identity endpoint."""
 
 import logging
+import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+import jwt
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
 from app.api.deps import CurrentUser, DbSession
-from app.core import leveling
+from app.api.routes.parties import release_membership
+from app.core import leaderboard, leveling, rate_limit
 from app.core.periods import local_now
 from app.core.security import (
+    REFRESH_TOKEN_TYPE,
     burn_password_time,
     create_access_token,
+    create_refresh_token,
+    decode_token,
     hash_password,
     normalize_email,
     verify_password,
 )
+from app.models.party import Party, PartyMembership
 from app.models.user import LevelProgress, User
-from app.schemas.auth import LoginRequest, SignupRequest, TokenResponse
+from app.schemas.auth import (
+    DeleteAccountRequest,
+    LoginRequest,
+    RefreshRequest,
+    SignupRequest,
+    TokenResponse,
+)
 from app.schemas.user import MeOut, MeUpdate, ProgressOut
 
 logger = logging.getLogger("metalarm.auth")
@@ -32,6 +46,12 @@ _INVALID_CREDENTIALS = HTTPException(
     # distinct message would turn this endpoint into an account-existence
     # oracle; see also burn_password_time() below.
     detail="Incorrect email or password",
+    headers={"WWW-Authenticate": "Bearer"},
+)
+
+_INVALID_REFRESH = HTTPException(
+    status_code=status.HTTP_401_UNAUTHORIZED,
+    detail="Refresh token is invalid or expired - sign in again",
     headers={"WWW-Authenticate": "Bearer"},
 )
 
@@ -103,14 +123,31 @@ def _authenticate(db: DbSession, email: str, password: str) -> User:
     return user
 
 
+def _limit_login(request: Request, email: str) -> None:
+    rate_limit.enforce(rate_limit.LOGIN_PER_IP, rate_limit.client_ip(request))
+    rate_limit.enforce(rate_limit.LOGIN_PER_EMAIL, normalize_email(email))
+
+
+def _issue_tokens(user: User) -> TokenResponse:
+    access, expires_in = create_access_token(user.id, user.token_version)
+    refresh, refresh_expires_in = create_refresh_token(user.id, user.token_version)
+    return TokenResponse(
+        access_token=access,
+        expires_in=expires_in,
+        refresh_token=refresh,
+        refresh_expires_in=refresh_expires_in,
+    )
+
+
 @router.post("/signup", response_model=MeOut, status_code=status.HTTP_201_CREATED)
-def signup(payload: SignupRequest, db: DbSession) -> MeOut:
+def signup(payload: SignupRequest, request: Request, db: DbSession) -> MeOut:
     """Create an account and its progression row.
 
     Both rows are written in one transaction: a User without LevelProgress
     would break every progression read path, and there is no valid state in
     which one exists without the other.
     """
+    rate_limit.enforce(rate_limit.SIGNUP_PER_IP, rate_limit.client_ip(request))
     user = User(
         email=payload.email,
         email_normalized=normalize_email(payload.email),
@@ -146,16 +183,17 @@ def signup(payload: SignupRequest, db: DbSession) -> MeOut:
 
 
 @router.post("/login", response_model=TokenResponse)
-def login(payload: LoginRequest, db: DbSession) -> TokenResponse:
-    """JSON login - the endpoint the Reflex frontend uses."""
+def login(payload: LoginRequest, request: Request, db: DbSession) -> TokenResponse:
+    """JSON login - the endpoint the Reflex frontend and the iOS app use."""
+    _limit_login(request, payload.email)
     user = _authenticate(db, payload.email, payload.password)
-    token, expires_in = create_access_token(user.id)
-    return TokenResponse(access_token=token, expires_in=expires_in)
+    return _issue_tokens(user)
 
 
 @router.post("/token", response_model=TokenResponse, include_in_schema=True)
 def login_form(
     form: Annotated[OAuth2PasswordRequestForm, Depends()],
+    request: Request,
     db: DbSession,
 ) -> TokenResponse:
     """OAuth2 password-flow login, form-encoded.
@@ -164,9 +202,44 @@ def login_form(
     semantics to /login; OAuth2 mandates the field be named `username`, which
     here carries the email.
     """
+    _limit_login(request, form.username)
     user = _authenticate(db, form.username, form.password)
-    token, expires_in = create_access_token(user.id)
-    return TokenResponse(access_token=token, expires_in=expires_in)
+    return _issue_tokens(user)
+
+
+@router.post("/refresh", response_model=TokenResponse)
+def refresh(payload: RefreshRequest, request: Request, db: DbSession) -> TokenResponse:
+    """Swap a refresh token for a new access + refresh pair.
+
+    Stateless: a refresh token stays valid until it expires or the user signs
+    out everywhere (which bumps token_version and revokes every device at once).
+    """
+    rate_limit.enforce(rate_limit.REFRESH_PER_IP, rate_limit.client_ip(request))
+    try:
+        claims = decode_token(payload.refresh_token)
+        user_id = uuid.UUID(claims["sub"])
+    except (jwt.InvalidTokenError, KeyError, ValueError):
+        raise _INVALID_REFRESH from None
+
+    # An access token must not be able to mint new tokens.
+    if claims.get("typ") != REFRESH_TOKEN_TYPE:
+        raise _INVALID_REFRESH
+
+    user = db.get(User, user_id)
+    if user is None or not user.is_active or claims.get("tv", 0) != user.token_version:
+        raise _INVALID_REFRESH
+
+    return _issue_tokens(user)
+
+
+@router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
+def logout_everywhere(current_user: CurrentUser, db: DbSession) -> None:
+    """Sign out on every device: every access and refresh token issued so far
+    stops working. Signing out of one device is just the client forgetting its
+    tokens."""
+    current_user.token_version += 1
+    db.commit()
+    logger.info("user %s signed out everywhere", current_user.id)
 
 
 @router.get("/me", response_model=MeOut)
@@ -187,3 +260,36 @@ def update_me(payload: MeUpdate, current_user: CurrentUser, db: DbSession) -> Me
     db.commit()
     db.refresh(current_user)
     return _serialize_me(current_user)
+
+
+@router.delete("/me", status_code=status.HTTP_204_NO_CONTENT)
+def delete_account(
+    payload: DeleteAccountRequest, current_user: CurrentUser, db: DbSession
+) -> None:
+    """Permanently delete the account and everything it owns.
+
+    Required by the App Store for any app that offers account creation. Every
+    user-owned table cascades on users.id. Parties are handled first: one the
+    user owns goes to its longest-serving member instead of being deleted with
+    its owner.
+    """
+    if not verify_password(payload.password, current_user.password_hash):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Password is incorrect")
+
+    memberships = db.execute(
+        select(PartyMembership).where(PartyMembership.user_id == current_user.id)
+    ).scalars().all()
+    party_ids = []
+    for membership in memberships:
+        party = db.get(Party, membership.party_id)
+        if party is not None:
+            release_membership(db, party, membership)
+            party_ids.append(party.id)
+
+    user_id = current_user.id
+    db.delete(current_user)
+    db.commit()
+    # Cached party boards would otherwise still list the deleted user.
+    for party_id in party_ids:
+        leaderboard.drop(party_id)
+    logger.info("user %s deleted their account", user_id)

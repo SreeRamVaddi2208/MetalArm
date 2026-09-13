@@ -10,8 +10,8 @@
 
 - **API title:** MetalArm API
 - **API version:** 0.1.0
-- **Generated:** 2026-09-10 17:04 UTC
-- **Source:** `http://localhost:8000/openapi.json`
+- **Generated:** 2026-09-13 16:51 UTC
+- **Source:** `http://127.0.0.1:8000/openapi.json`
 
 ---
 
@@ -33,7 +33,7 @@
 
 **Login**
 
-JSON login - the endpoint the Reflex frontend uses.
+JSON login - the endpoint the Reflex frontend and the iOS app use.
 
 *Tags:* `auth`
 
@@ -42,6 +42,44 @@ JSON login - the endpoint the Reflex frontend uses.
 | Status | Description |
 |---|---|
 | `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `POST /api/v1/auth/logout`
+
+**Logout Everywhere**
+
+Sign out on every device: every access and refresh token issued so far
+stops working. Signing out of one device is just the client forgetting its
+tokens.
+
+*Tags:* `auth`
+
+| Status | Description |
+|---|---|
+| `204` | Successful Response |
+
+---
+
+### `DELETE /api/v1/auth/me`
+
+**Delete Account**
+
+Permanently delete the account and everything it owns.
+
+Required by the App Store for any app that offers account creation. Every
+user-owned table cascades on users.id. Parties are handled first: one the
+user owns goes to its longest-serving member instead of being deleted with
+its owner.
+
+*Tags:* `auth`
+
+*Request body* (`application/json`): `DeleteAccountRequest`
+
+| Status | Description |
+|---|---|
+| `204` | Successful Response |
 | `422` | Validation Error |
 
 ---
@@ -72,6 +110,26 @@ the user across devices.
 *Tags:* `auth`
 
 *Request body* (`application/json`): `MeUpdate`
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `POST /api/v1/auth/refresh`
+
+**Refresh**
+
+Swap a refresh token for a new access + refresh pair.
+
+Stateless: a refresh token stays valid until it expires or the user signs
+out everywhere (which bumps token_version and revokes every device at once).
+
+*Tags:* `auth`
+
+*Request body* (`application/json`): `RefreshRequest`
 
 | Status | Description |
 |---|---|
@@ -1406,6 +1464,12 @@ otherwise 503 with per-dependency detail.
 | `xp_awarded` | `integer` | yes |
 | `points_awarded` | `integer` | yes |
 
+#### `DeleteAccountRequest`
+
+| Field | Type | Required |
+|---|---|---|
+| `password` | `string` | yes |
+
 #### `Equipment`
 
 | Field | Type | Required |
@@ -1871,6 +1935,12 @@ otherwise 503 with per-dependency detail.
 | `points_spent` | `integer` | yes |
 | `redeemed_at` | `string` | yes |
 
+#### `RefreshRequest`
+
+| Field | Type | Required |
+|---|---|---|
+| `refresh_token` | `string` | yes |
+
 #### `RewardCreate`
 
 | Field | Type | Required |
@@ -2093,6 +2163,8 @@ otherwise 503 with per-dependency detail.
 | `access_token` | `string` | yes |
 | `token_type` | `string` | no |
 | `expires_in` | `integer` | yes |
+| `refresh_token` | `string` | yes |
+| `refresh_expires_in` | `integer` | yes |
 
 #### `UserOut`
 
