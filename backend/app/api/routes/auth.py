@@ -12,7 +12,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
 
-from app.api.deps import CurrentUser, DbSession, oauth2_scheme, session_is_live
+from app.api.deps import CurrentUser, DbSession, get_current_user, oauth2_scheme, session_is_live
 from app.api.routes.parties import release_membership
 from app.core import leaderboard, leveling, rate_limit
 from app.core.periods import local_now
@@ -32,6 +32,7 @@ from app.models.user import LevelProgress, User
 from app.schemas.auth import (
     DeleteAccountRequest,
     LoginRequest,
+    LogoutRequest,
     RefreshRequest,
     SignupRequest,
     TokenResponse,
@@ -224,50 +225,69 @@ def refresh(payload: RefreshRequest, request: Request, db: DbSession) -> TokenRe
     session. Fails once that device has signed out, or once the user has signed
     out everywhere (token_version bumped)."""
     rate_limit.enforce(rate_limit.REFRESH_PER_IP, rate_limit.client_ip(request))
-    try:
-        claims = decode_token(payload.refresh_token)
-        user_id = uuid.UUID(claims["sub"])
-    except (jwt.InvalidTokenError, KeyError, ValueError):
-        raise _INVALID_REFRESH from None
-
-    # An access token must not be able to mint new tokens.
-    if claims.get("typ") != REFRESH_TOKEN_TYPE:
-        raise _INVALID_REFRESH
-
-    user = db.get(User, user_id)
+    claims = _refresh_claims(payload.refresh_token)
+    user = db.get(User, uuid.UUID(claims["sub"]))
     if user is None or not user.is_active or claims.get("tv", 0) != user.token_version:
         raise _INVALID_REFRESH
 
-    if "sid" in claims:
-        if not session_is_live(db, user.id, claims["sid"]):
-            raise _INVALID_REFRESH
-        session_id = uuid.UUID(str(claims["sid"]))
-    else:
-        # Issued before device sessions existed: move it onto one.
-        session_id = _start_session(db, user).id
+    # A token from before device sessions has no session to keep it alive (and
+    # none that sign-out could revoke), so it must sign in again.
+    if "sid" not in claims or not session_is_live(db, user.id, claims["sid"]):
+        raise _INVALID_REFRESH
 
-    return _issue_tokens(user, session_id)
+    return _issue_tokens(user, uuid.UUID(str(claims["sid"])))
+
+
+def _refresh_claims(token: str) -> dict:
+    """Decode a refresh token; any failure, or an access token, is a 401."""
+    try:
+        claims = decode_token(token)
+        uuid.UUID(claims["sub"])
+    except (jwt.InvalidTokenError, KeyError, ValueError):
+        raise _INVALID_REFRESH from None
+    # An access token must not be able to mint new tokens.
+    if claims.get("typ") != REFRESH_TOKEN_TYPE:
+        raise _INVALID_REFRESH
+    return claims
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
 def logout(
-    current_user: CurrentUser,
-    token: Annotated[str | None, Depends(oauth2_scheme)],
     db: DbSession,
+    token: Annotated[str | None, Depends(oauth2_scheme)],
+    payload: LogoutRequest | None = None,
 ) -> None:
     """Sign out of this device only: its access and refresh tokens stop
-    working, every other device stays signed in."""
-    # get_current_user has already validated this token.
-    session_id = decode_token(token or "").get("sid")
+    working, every other device stays signed in.
+
+    Send the refresh token in the body - it is still valid after the access
+    token has expired. A bearer access token alone also works.
+    """
+    if payload is not None:
+        claims = _refresh_claims(payload.refresh_token)
+        user = db.get(User, uuid.UUID(claims["sub"]))
+        if user is None or claims.get("tv", 0) != user.token_version:
+            return  # already signed out everywhere, or the account is gone
+    else:
+        user = get_current_user(db, token)
+        claims = decode_token(token or "")
+
+    session_id = claims.get("sid")
     if session_id is None:
-        # A token from before device sessions: nothing to revoke server-side;
-        # the client forgetting it is the sign-out.
+        # A token from before device sessions has no session to revoke, so end
+        # it the only way left: every token issued so far stops working.
+        user.token_version += 1
+        db.commit()
+        logger.info("user %s signed out a pre-session token; all tokens revoked", user.id)
         return
-    session = db.get(AuthSession, uuid.UUID(str(session_id)))
-    if session is not None and session.user_id == current_user.id and session.revoked_at is None:
+    try:
+        session = db.get(AuthSession, uuid.UUID(str(session_id)))
+    except ValueError:
+        return
+    if session is not None and session.user_id == user.id and session.revoked_at is None:
         session.revoked_at = dt.datetime.now(dt.timezone.utc)
         db.commit()
-        logger.info("user %s signed out session %s", current_user.id, session.id)
+        logger.info("user %s signed out session %s", user.id, session.id)
 
 
 @router.post("/logout-all", status_code=status.HTTP_204_NO_CONTENT)

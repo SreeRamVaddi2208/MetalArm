@@ -10,7 +10,7 @@
 
 - **API title:** MetalArm API
 - **API version:** 0.1.0
-- **Generated:** 2026-09-13 20:59 UTC
+- **Generated:** 2026-09-13 21:42 UTC
 - **Source:** `http://127.0.0.1:8000/openapi.json`
 
 ---
@@ -53,11 +53,17 @@ JSON login - the endpoint the Reflex frontend and the iOS app use.
 Sign out of this device only: its access and refresh tokens stop
 working, every other device stays signed in.
 
+Send the refresh token in the body - it is still valid after the access
+token has expired. A bearer access token alone also works.
+
 *Tags:* `auth`
+
+*Request body* (`application/json`): `LogoutRequest | null`
 
 | Status | Description |
 |---|---|
 | `204` | Successful Response |
+| `422` | Validation Error |
 
 ---
 
@@ -1651,6 +1657,12 @@ otherwise 503 with per-dependency detail.
 |---|---|---|
 | `email` | `string` | yes |
 | `password` | `string` | yes |
+
+#### `LogoutRequest`
+
+| Field | Type | Required |
+|---|---|---|
+| `refresh_token` | `string` | yes |
 
 #### `MeOut`
 

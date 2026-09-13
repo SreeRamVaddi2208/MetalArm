@@ -86,7 +86,8 @@ All secrets live only in `deploy/.env.production` (gitignored).
   account (`backend/app/core/rate_limit.py`); clients get 429 with `Retry-After`.
 - Access tokens last `ACCESS_TOKEN_EXPIRE_MINUTES`; refresh tokens
   `REFRESH_TOKEN_EXPIRE_DAYS`. `POST /api/v1/auth/logout` signs out one device
-  (its session is revoked); `POST /api/v1/auth/logout-all` signs out every
+  (its session is revoked; clients send the refresh token, so it works after
+  the access token has expired); `POST /api/v1/auth/logout-all` signs out every
   device; `DELETE /api/v1/auth/me` deletes the account and all its data.
 - `/docs`, `/redoc` and `/openapi.json` are disabled (`ENVIRONMENT=production`).
 - Containers run as non-root; the backend image contains no test tooling.

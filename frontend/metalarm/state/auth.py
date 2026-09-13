@@ -254,11 +254,12 @@ class AuthState(rx.State):
             yield rx.redirect("/dashboard")
 
     async def do_logout(self):
-        # End this browser's session on the server too. If that fails (offline,
-        # or the session already ended), signing out here still happens.
-        if self.token:
+        # End this browser's session on the server too, with the refresh token
+        # (still valid when the access token has expired). If that fails -
+        # offline, or the session already ended - signing out here still happens.
+        if self.refresh_token or self.token:
             try:
-                await api.logout(self.token)
+                await api.logout(refresh_token=self.refresh_token, token=self.token)
             except api.ApiError:
                 pass
         self.token = ""

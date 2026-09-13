@@ -5,6 +5,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
+from app.core.security import create_access_token, create_refresh_token, normalize_email
 from app.models.auth_session import AuthSession
 from app.models.party import Party
 from app.models.user import User
@@ -92,6 +93,56 @@ def test_refreshed_tokens_stay_on_the_same_device_session(client: TestClient) ->
     # they belong to one device session.
     assert client.post(REFRESH, json={"refresh_token": tokens["refresh_token"]}).status_code == 401
     assert client.post(REFRESH, json={"refresh_token": renewed["refresh_token"]}).status_code == 401
+
+
+def test_logout_with_the_refresh_token_needs_no_access_token(client: TestClient) -> None:
+    email, phone = _signup_and_login(client)
+    laptop = _login(client, email)
+
+    # What a client does once its access token has expired: sign out with the
+    # refresh token alone.
+    assert client.post(LOGOUT, json={"refresh_token": phone["refresh_token"]}).status_code == 204
+
+    assert client.get(ME, headers=_bearer(phone["access_token"])).status_code == 401
+    assert client.post(REFRESH, json={"refresh_token": phone["refresh_token"]}).status_code == 401
+    assert client.get(ME, headers=_bearer(laptop["access_token"])).status_code == 200
+    # Signing out again is harmless.
+    assert client.post(LOGOUT, json={"refresh_token": phone["refresh_token"]}).status_code == 204
+
+
+def test_logout_needs_a_valid_token(client: TestClient) -> None:
+    _, tokens = _signup_and_login(client)
+    assert client.post(LOGOUT).status_code == 401
+    assert client.post(LOGOUT, json={"refresh_token": "not.a.jwt"}).status_code == 401
+    # An access token in the body is not a refresh token.
+    assert client.post(LOGOUT, json={"refresh_token": tokens["access_token"]}).status_code == 401
+
+
+def _pre_session_tokens(db: Session, email: str) -> tuple[str, str]:
+    """Tokens as minted before device sessions existed: no `sid` claim."""
+    user = db.scalar(select(User).where(User.email_normalized == normalize_email(email)))
+    assert user is not None
+    return (
+        create_access_token(user.id, user.token_version)[0],
+        create_refresh_token(user.id, user.token_version)[0],
+    )
+
+
+def test_refresh_rejects_tokens_from_before_device_sessions(client: TestClient, db: Session) -> None:
+    email, _ = _signup_and_login(client)
+    _, old_refresh = _pre_session_tokens(db, email)
+    assert client.post(REFRESH, json={"refresh_token": old_refresh}).status_code == 401
+
+
+def test_logout_with_a_pre_session_token_revokes_it(client: TestClient, db: Session) -> None:
+    email, _ = _signup_and_login(client)
+    old_access, _ = _pre_session_tokens(db, email)
+    assert client.get(ME, headers=_bearer(old_access)).status_code == 200
+
+    # No session to revoke, so sign-out ends every token issued so far
+    # rather than reporting success while the token keeps working.
+    assert client.post(LOGOUT, headers=_bearer(old_access)).status_code == 204
+    assert client.get(ME, headers=_bearer(old_access)).status_code == 401
 
 
 def test_logout_all_ends_every_device(client: TestClient) -> None:

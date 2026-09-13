@@ -121,9 +121,16 @@ async def refresh(refresh_token: str) -> dict:
     return await request("POST", "/auth/refresh", json={"refresh_token": refresh_token})
 
 
-async def logout(token: str) -> None:
-    """End this browser's session on the server (other devices stay signed in)."""
-    await request("POST", "/auth/logout", token=token)
+async def logout(*, refresh_token: str = "", token: str = "") -> None:
+    """End this browser's session on the server (other devices stay signed in).
+
+    Prefers the refresh token: it is still valid after the access token has
+    expired, so the session is revoked even from a tab left open for hours.
+    """
+    if refresh_token:
+        await request("POST", "/auth/logout", json={"refresh_token": refresh_token})
+    else:
+        await request("POST", "/auth/logout", token=token)
 
 
 async def me(token: str) -> dict:

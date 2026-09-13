@@ -248,8 +248,17 @@ struct LiveAPIClientTests {
         let request = try #require(StubURLProtocol.requests.first)
         #expect(request.httpMethod == "POST")
         #expect(request.url?.path == "/api/v1/auth/logout")
-        #expect(request.value(forHTTPHeaderField: "Authorization") == "Bearer access-1")
+        // The refresh token, not the access token: it still works after the
+        // access token has expired, so the session is always revoked.
+        #expect(try body(0)["refresh_token"] as? String == "refresh-1")
+        #expect(request.value(forHTTPHeaderField: "Authorization") == nil)
         #expect(store.tokens == nil)
+    }
+
+    @Test func signingOutWhenAlreadySignedOutSendsNothing() async {
+        let (client, _) = makeClient(responses: [])
+        await client.signOut()
+        #expect(StubURLProtocol.requests.isEmpty)
     }
 
     @Test func signingOutStillForgetsTokensWhenTheServerFails() async {

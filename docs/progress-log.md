@@ -19,15 +19,22 @@ Entry format:
 **Changed**
 - New `auth_sessions` table (`AuthSession`, migration `ce1968933857`): one row
   per signed-in device. Login and `/auth/token` start a session; both tokens
-  carry its id as the `sid` claim, and `/auth/refresh` keeps it (a legacy
-  token without `sid` gets a new session).
+  carry its id as the `sid` claim, and `/auth/refresh` keeps it. A refresh
+  token without `sid` (minted before sessions existed) is rejected: sign in again.
 - `get_current_user` and `/auth/refresh` reject tokens whose session is
   revoked. `POST /auth/logout` now revokes only the caller's session;
   new `POST /auth/logout-all` bumps `token_version` and revokes every session
   (the old "sign out everywhere"). Deleting the account cascades its sessions.
-- iOS: `signOut()` calls `/auth/logout` (best effort - tokens are forgotten
-  even if the server is unreachable); `signOutEverywhere()` uses `logout-all`.
-- Web: `AuthState.do_logout` calls `/auth/logout` before clearing tokens.
+- `/auth/logout` takes `{"refresh_token": ...}` in the body (no bearer needed),
+  so a client whose access token has expired still revokes its session; a
+  bearer access token alone also works. Signing out a token without `sid`
+  bumps `token_version` (the only way to end it) instead of a silent 204.
+- iOS: `signOut()` forgets the tokens first, then sends the refresh token to
+  `/auth/logout` (best effort); `AppModel` resets the UI before that call, so
+  a slow or offline server never holds sign-out. `signOutEverywhere()` uses
+  `logout-all`.
+- Web: `AuthState.do_logout` sends the refresh token to `/auth/logout`
+  before clearing tokens.
 - `scripts/e2e`: waits for the discard confirmation row before clicking its
   DISCARD button (the click could land on the old button and stall).
 - iOS UI tests: `dismissSavePasswordPrompt` retries "Not Now" until the
