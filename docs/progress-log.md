@@ -14,6 +14,68 @@ Entry format:
 
 ---
 
+## 2026-09-13 (13) - Opus - deployment readiness: mobile auth, production stack, CI, iOS app
+
+Made the project deployable end to end and moved the native iPhone app into
+this repo (`ios/`, previously a separate copy talking to an older SQLite demo
+API).
+
+**Changed**
+- **Auth for mobile and production.** Login returns a 30-day `refresh_token`;
+  `POST /auth/refresh` swaps it for a new pair. Tokens carry `typ`, and
+  `deps.get_current_user` now rejects anything that is not an access token
+  (before this, a refresh token would have worked as a 30-day API key).
+  New `users.token_version` (migration `7b3e9d41c2a8`, default 0 so existing
+  tokens stay valid): `POST /auth/logout` bumps it and revokes every token.
+- **Account deletion** (App Store requirement): `DELETE /auth/me` with password
+  confirmation. Party ownership handover was pulled out of `leave_party` into
+  `release_membership()` and reused, because `parties.owner_id` cascades: a
+  deleted owner would otherwise have taken the whole party with them.
+- **Rate limits** (`app/core/rate_limit.py`): Redis fixed windows on login
+  (per IP and per account), signup and refresh; 429 + `Retry-After`; fails
+  open if Redis is down. Off by default in the test suite (autouse fixture).
+- **`ENVIRONMENT=production`** hides `/docs`, `/redoc`, `/openapi.json`.
+- **`deploy/`**: single-server Compose stack behind Caddy (automatic HTTPS,
+  security headers, only 80/443 public), uvicorn `--proxy-headers`, nightly
+  `pg_dump` with retention, `backup.sh` restore, `/privacy` and `/support`
+  pages, `.env.production.example`. Guide: `docs/deployment.md`.
+- **CI** (`.github/workflows/ci.yml`): backend pytest + `alembic check` on
+  Postgres/Redis service containers, both image builds, prod Compose
+  validation, iOS tests on a macOS runner.
+- **iOS app on `/api/v1`**: Keychain tokens with refresh-once-then-sign-out,
+  sign up / sign in, workouts with library picker and ghost values,
+  `client_set_id` per tap, server-driven PR/level-up/finish screens, progress
+  from history + records, party boards, kg/lb from the account, delete
+  account. Release setup: iOS 18+, iPhone portrait, opaque icon, privacy
+  manifest, per-configuration API/web URLs.
+- README rewritten to cover all three parts.
+
+**Verified (real output)**
+- `pytest`: **332 passed**. `alembic check`: no drift at `7b3e9d41c2a8`
+  (applied to the dev DB after a `pg_dump` backup; `/health` ok).
+- Production stack run locally with `DOMAIN=localhost`: all services healthy;
+  `https://api.localhost/health` ok; `/docs`, `/openapi.json`, `/redoc` 404;
+  HSTS and security headers present; `/privacy` served; 11th bad login 429
+  with `Retry-After`; backend logged the real client address, not Caddy's;
+  backup service wrote a dump. Torn down with `down -v` afterwards.
+- iOS: **30 unit + 7 UI tests passed** on the iPhone 17 simulator (iOS 26.5),
+  including the live tour against the dev stack (signup -> workout -> finish
+  -> every tab -> delete account, every request 2xx). Unsigned Release build
+  for a generic iPhone succeeded. App Store screenshots captured on iPhone 17
+  Pro Max (1320x2868).
+
+**Blocked**
+- Needs the owner's accounts: a domain and server, an Apple Developer
+  membership (signing team, TestFlight), and App Store Connect.
+
+**Other agent needs to know**
+- Refresh tokens are stateless: revocation is per user (`token_version`), not
+  per device. Per-device sign-out is the client dropping its tokens.
+- The Reflex frontend ignores `refresh_token`; it still re-logs in when its
+  60-minute access token expires.
+- iOS UI tests must dismiss the system "Use Strong Password?" and "Save
+  Password?" sheets (helpers in `MetalARMUITests.swift`).
+
 ## 2026-09-10 (12) - Opus - close every open workout item; UI polish pass
 
 Built everything left open in entry (11), then verified and cleaned the whole

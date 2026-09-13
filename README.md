@@ -1,104 +1,134 @@
 # MetalArm
 
-Turn real goals, habits and gym workouts into RPG-style progression - quests,
-workout tracking with personal records, XP, levels, ranks (E→S), a rewards
-shop, and parties with a shared quest board.
+**Turn real goals, habits and gym workouts into RPG-style progression.**
+Log a set and watch your XP bar move. Break a record and the app celebrates it.
+Train with friends in a party and climb the weekly leaderboard.
 
-Full-Python stack: **FastAPI** backend, **Reflex** frontend (compiles Python to
-React/Next.js), Postgres, Redis, pgAdmin, all under Docker Compose.
+MetalArm has three parts that share one API:
 
-> Visual direction is *inspired by* hunter-rank RPG aesthetics. All assets,
-> copy, and art in this repo are original work - no copyrighted material.
+- **Backend** - FastAPI + PostgreSQL + Redis, with Alembic migrations and JWT auth
+- **Web app** - Reflex (Python compiled to React/Next.js)
+- **iPhone app** - native SwiftUI, in [`ios/`](ios)
 
-> **Formerly LevelForge.** A few data-bearing identifiers deliberately keep
-> the old name, because the existing data lives under them: the Docker volumes
+<p align="center">
+  <img src="ios/AppStore/screenshots/03-home.png" width="200" alt="Home: level, rank, XP and weekly streak">
+  <img src="ios/AppStore/screenshots/06-set-logged.png" width="200" alt="Workout: logging a set with rest timer and PR alert">
+  <img src="ios/AppStore/screenshots/07-summary.png" width="200" alt="Workout summary with points breakdown">
+  <img src="ios/AppStore/screenshots/09-ranks.png" width="200" alt="Party leaderboard">
+</p>
+
+> **Formerly LevelForge.** A few data-bearing identifiers keep the old name on
+> purpose, because existing data lives under them: the Docker volumes
 > (`levelforge_postgres_data` etc., pinned in `docker-compose.yml`) and the
-> Postgres role/database (`POSTGRES_USER` / `POSTGRES_DB` = `levelforge`).
-> `LEVELFORGE_API_BASE_URL` is still read as a fallback for
+> development Postgres role/database (`POSTGRES_USER` / `POSTGRES_DB` =
+> `levelforge`). `LEVELFORGE_API_BASE_URL` is still read as a fallback for
 > `METALARM_API_BASE_URL`.
 
 ---
 
-## Quick start
+## Features
+
+- **Workouts** - live sessions that survive a refresh or a device switch, an exercise library of 91 starters plus your own, routines, ghost values from your last session, a rest timer, and editing or deleting sets.
+- **Records** - heaviest set, estimated 1RM, session volume and most reps at a weight, detected on the server as you log.
+- **Progression** - points become XP, levels and ranks from E to S. Weekly workout streaks, badges and a rewards shop.
+- **Quests** - daily, weekly and one-off goals in your own time zone.
+- **Parties** - invite codes, a shared quest board, and weekly workout leaderboards.
+- **Accounts** - sign-up and login with refresh tokens, sign-out on every device, and in-app account deletion.
+
+Every number (points, XP, records, streaks) is computed on the server. No
+request accepts a point value.
+
+## Architecture
+
+```mermaid
+flowchart LR
+    ios["iPhone app<br/>(SwiftUI)"] -->|HTTPS /api/v1| caddy
+    browser["Browser"] -->|HTTPS| caddy
+    caddy["Caddy<br/>(TLS, headers)"] --> api["FastAPI backend"]
+    caddy --> web["Reflex web app"]
+    web -->|server-side calls| api
+    api --> pg[("PostgreSQL")]
+    api --> redis[("Redis<br/>leaderboards, rate limits")]
+```
+
+In development there is no Caddy: the API is on `:8000` and the web app on `:3000`.
+
+## Repository layout
+
+| Path | What it is |
+|---|---|
+| [`backend/`](backend) | FastAPI app (`app/`), Alembic migrations, exercise importer, pytest suite |
+| [`frontend/`](frontend) | Reflex web app (`metalarm/`) |
+| [`ios/`](ios) | SwiftUI iPhone app, unit and UI tests, App Store screenshots |
+| [`deploy/`](deploy) | Production stack: Compose file, Caddyfile, backups, privacy and support pages |
+| [`docs/`](docs) | API contract, workout API guide, data model, deployment guide |
+| [`scripts/`](scripts) | API contract generator, smoke test, browser end-to-end test |
+| [`.github/workflows/ci.yml`](.github/workflows/ci.yml) | CI: backend tests, image builds, iOS tests |
+
+---
+
+## Quick start (local development)
+
+Requirements: Docker with Compose. For the iPhone app you also need Xcode 26 or newer.
 
 ```bash
+git clone https://github.com/SreeRamVaddi2208/MetalArm.git
+cd MetalArm
+
 cp .env.example .env
 # Edit .env and replace every CHANGE_ME placeholder.
-# Generate a real JWT secret:
+# Generate a real secret for each:
 python3 -c "import secrets; print(secrets.token_urlsafe(48))"
 
 docker compose up -d --build
 ```
 
-Schema migrations run automatically: the `migrate` service applies
-`alembic upgrade head` and exits before the backend starts, so a fresh clone
-comes up with a fully migrated database. It is idempotent, so it is safe on
-every start.
+Schema migrations run automatically: the `migrate` service runs
+`alembic upgrade head` and imports the exercise library before the backend
+starts, so a fresh clone comes up with a migrated database. It is idempotent,
+so it is safe on every start.
 
-Then check that it actually came up - don't assume:
+Then check that it actually came up:
 
 ```bash
 docker compose ps
 curl -s http://localhost:8000/health | python3 -m json.tool
 ```
 
-A healthy response reports the **real** server versions it connected to:
+A healthy response reports the real server versions it connected to:
 
 ```json
 {
   "status": "ok",
   "service": "metalarm-api",
   "dependencies": {
-    "postgres": {"connected": true, "server_version": "17.10"},
+    "postgres": {"connected": true, "server_version": "17.10", "schema": {"ready": true}},
     "redis":    {"connected": true, "server_version": "8.10.1"}
   }
 }
 ```
 
-If a dependency is down, `/health` returns **503** and names it. It is never
-hardcoded to "ok".
+`/health` checks **readiness, not just liveness**. If Postgres or Redis is
+down, or the schema is behind the code, it returns **503** and names the
+problem (for example `"database schema is out of date - run 'alembic upgrade head'"`).
 
-`/health` checks **readiness, not just liveness**: it also confirms the schema
-is migrated to the revision this code expects. An un-migrated database answers
-`SELECT 1` perfectly happily while every real query fails on a missing table,
-so a connectivity-only check would report "ok" on a stack that cannot serve a
-single request. When the schema is behind, the response is 503 and names the
-fix:
+### Services
 
-```json
-"schema": {
-  "ready": false,
-  "applied_revision": null,
-  "expected_revision": "5dba70011569",
-  "error": "database has never been migrated - run 'alembic upgrade head'"
-}
-```
-
-## Services
-
-| Service  | URL                     | Notes |
+| Service | URL | Notes |
 |---|---|---|
-| Backend API | http://localhost:8000 | `/docs` for Swagger UI |
-| Frontend    | http://localhost:3000 | Reflex (UI + state server, one port in prod) |
-| pgAdmin     | http://localhost:5050 | Login with `PGADMIN_DEFAULT_EMAIL` / `PASSWORD` |
-| Postgres    | `localhost:5434`      | Host port 5434; container-internal is 5432 |
-| Redis       | `localhost:6379`      | |
+| Backend API | http://localhost:8000 | `/docs` for Swagger UI (disabled in production) |
+| Web app | http://localhost:3000 | Reflex (UI and state server on one port in production) |
+| pgAdmin | http://localhost:5050 | Log in with `PGADMIN_DEFAULT_EMAIL` / `PGADMIN_DEFAULT_PASSWORD` |
+| Postgres | `localhost:5434` | Host port 5434; 5432 inside the container |
+| Redis | `localhost:6379` | Password required (`REDIS_PASSWORD`) |
 
-Postgres, Redis and pgAdmin are published to **127.0.0.1 only**, not `0.0.0.0`,
-so none of them is reachable from the LAN. Redis additionally requires a
-password (`REDIS_PASSWORD`); without one it logs a warning that it "will accept
-connections from any IP address on any network interface" and any process on
-the machine could read the leaderboard cache.
+Postgres, Redis and pgAdmin are published to **127.0.0.1 only**, so none of
+them is reachable from your network. Change `POSTGRES_HOST_PORT` in `.env` if
+5434 does not suit you; the backend is unaffected either way.
 
-**Why Postgres is on 5434:** the development machine runs a native macOS
-Postgres on 5432. Change `POSTGRES_HOST_PORT` in `.env` if that isn't true for
-you - the container-internal port stays 5432 either way, so the backend is
-unaffected.
+### Working on one part at a time
 
-## Working on one half at a time
-
-Every service is independently buildable, so a frontend problem never blocks
-verifying the backend:
+Every service builds independently, so a frontend problem never blocks the backend:
 
 ```bash
 docker compose build backend
@@ -108,82 +138,144 @@ docker compose logs -f backend
 docker compose build frontend          # separately
 ```
 
-## Local (non-Docker) development
+### Without Docker
 
 ```bash
-# Backend
+# Backend (needs Postgres and Redis running)
 cd backend && python3.14 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-uvicorn app.main:app --reload          # needs postgres+redis running
+uvicorn app.main:app --reload
 
-# Frontend
+# Web app
 cd frontend && python3.14 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 reflex run                             # UI :3000, state server :8001
 ```
 
-Reflex splits ports in dev but **requires a single port in prod** - the Docker
-image serves both from 3000.
+Reflex splits ports in development but **requires a single port in
+production**; the Docker image serves both from 3000.
+
+---
+
+## iPhone app
+
+A native SwiftUI app in [`ios/`](ios) for iPhone, iOS 18 and later.
+
+- Sign up or sign in; tokens are stored in the Keychain and refreshed automatically.
+- Home: level, rank, XP and this week's streak progress.
+- Workout: pick exercises from the library, see last session's numbers, log sets, and get PR, level-up and rest-timer banners. Finish or discard the session.
+- Progress: a top-set chart and personal records for each exercise you have trained.
+- Ranks: your party's weekly leaderboard, with create, join and share-invite.
+- Profile: stats, badges, kg/lb preference, privacy policy, sign out, and delete account.
+
+**Run it:** start the backend (above), open `ios/MetalARM.xcodeproj` in Xcode,
+and run the `MetalARM` scheme on an iPhone simulator. The Debug build talks to
+`http://127.0.0.1:8000`.
+
+Each build configuration has its own server addresses, set in the
+`METALARM_API_BASE_URL` and `METALARM_WEB_BASE_URL` build settings. The
+`METALARM_BACKEND_URL` environment variable overrides the API address at run
+time.
+
+**Test it:**
+
+```bash
+cd ios
+xcodebuild test -project MetalARM.xcodeproj -scheme MetalARM \
+  -destination 'platform=iOS Simulator,name=iPhone 17'
+```
+
+That runs about 30 unit tests (response decoding, token refresh against a
+stubbed network, the app model's workflows) and the UI tests (sign-up, the
+full workout loop, every tab, account deletion) against an in-memory backend
+(the `-UITestMockAPI` launch argument). One more UI test drives the real
+backend end to end: it signs up a throwaway account, logs a workout, and
+deletes the account. It runs only when you opt in:
+
+```bash
+TEST_RUNNER_METALARM_LIVE_UI=1 xcodebuild test -project MetalARM.xcodeproj -scheme MetalARM \
+  -destination 'platform=iOS Simulator,name=iPhone 17'
+```
+
+The UI tests on an iPhone 17 Pro Max produce the App Store screenshot set in
+[`ios/AppStore/screenshots/`](ios/AppStore/screenshots).
+
+---
 
 ## Authentication
 
 `POST /api/v1/auth/login` returns a short-lived `access_token` (send it as
-`Authorization: Bearer ...`) and a long-lived `refresh_token`. Exchange the
-refresh token at `POST /api/v1/auth/refresh` for a new pair; a refresh token is
-never accepted as an access token. `POST /api/v1/auth/logout` revokes every
-token the user holds on every device, and `DELETE /api/v1/auth/me` (password
-confirmation required) deletes the account and all its data - a party the user
-owns passes to its longest-serving member. Login, signup and refresh are rate
-limited (429 with `Retry-After`).
+`Authorization: Bearer ...`) and a long-lived `refresh_token`.
 
-## Production
+- `POST /api/v1/auth/refresh` swaps the refresh token for a new pair. A refresh token is never accepted as an access token.
+- `POST /api/v1/auth/logout` revokes every token the user holds, on every device.
+- `DELETE /api/v1/auth/me` (password confirmation required) deletes the account and all its data. A party the user owns passes to its longest-serving member.
+- Login, signup and refresh are rate limited per client address and per account (429 with `Retry-After`).
 
-See [`docs/deployment.md`](docs/deployment.md): a single-server Docker Compose
-stack behind Caddy with automatic HTTPS, nightly backups, and the iOS release
-checklist. The iOS app lives in `ios/`.
+## Testing
 
-## Tests
-
-The suite runs in its own container against a **separate** database that is
-created and dropped per session, so it never touches development data. Test
-dependencies live in the Dockerfile's `dev` stage and are absent from the
-runtime image.
+The backend suite runs in its own container against a **separate** database
+that is created and dropped for each run, so it never touches your development
+data. Test dependencies live in the Dockerfile's `dev` stage and are not in the
+production image.
 
 ```bash
-docker compose run --rm tests            # full suite
-docker compose run --rm tests pytest tests/test_quests.py -v
+docker compose run --rm tests                                  # full suite
+docker compose run --rm tests pytest tests/test_quests.py -v   # one module
+docker compose exec backend alembic check                      # models match the migrations
 ```
 
-There is also an end-to-end smoke test that drives a **running stack** over
-real HTTP - every sprint's endpoints, plus ownership isolation - and cleans up
-after itself:
+An end-to-end smoke test drives a **running stack** over real HTTP (every
+endpoint group, plus ownership isolation) and cleans up after itself:
 
 ```bash
 docker compose up -d
 python3 scripts/smoke_test.py
 ```
 
-The two are complementary: pytest drives the app in-process for speed and
-isolation, while the smoke test proves the deployed containers, network and
-migrations actually serve requests.
+pytest drives the app in-process for speed and isolation; the smoke test proves
+the deployed containers, network and migrations actually serve requests.
 
-### Browser end-to-end test
-
-`scripts/e2e/` drives the real UI in your installed Chrome (headless, via
-`playwright-core` - no browser download) against a running stack. It is the
-only test that exercises Reflex's websocket events, hydration and the
-client-side scripts: the full workout journey (log, PR moment, level-up,
-edit, delete, refresh mid-workout, finish), routines, progress, the account
-weight unit, profile and party boards - then sweeps every page at phone and
-desktop width for errors and horizontal overflow, saving screenshots.
+**Browser end-to-end test:** `scripts/e2e/` drives the real web UI in your
+installed Chrome (headless, via `playwright-core`) against a running stack: the
+full workout journey, routines, progress, weight unit, profile and party
+boards, then every page at phone and desktop width, saving screenshots.
 
 ```bash
 docker compose up -d
 cd scripts/e2e && npm install && node workout_e2e.mjs      # screenshots -> $TMPDIR/metalarm-e2e
 ```
 
-`CHROME_PATH=/path/to/chrome` overrides the browser. This is test tooling
-only - the app itself still has no hand-written JS build.
+`CHROME_PATH=/path/to/chrome` overrides the browser.
+
+**CI** ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs the backend
+suite and a migration check against Postgres and Redis service containers,
+builds both production images, validates the production Compose file, and runs
+the iOS tests on a macOS runner.
+
+---
+
+## Deploying to production
+
+[`docs/deployment.md`](docs/deployment.md) is the full guide. In short:
+
+```bash
+cp deploy/.env.production.example deploy/.env.production   # fill every CHANGE_ME
+docker compose -f deploy/docker-compose.prod.yml --env-file deploy/.env.production up -d --build
+```
+
+The production stack runs on one Linux server:
+
+- **Caddy** is the only public service (ports 80 and 443) and gets HTTPS certificates automatically.
+- The web app is at `https://DOMAIN` and the API at `https://api.DOMAIN`.
+- `/docs` and the OpenAPI schema are disabled, and the backend reads real client addresses from the proxy.
+- A nightly `pg_dump` runs with 14-day retention; `deploy/backup.sh` handles manual backups and restores.
+- `https://DOMAIN/privacy` and `/support` are ready to link from the App Store listing.
+
+The guide also includes the iOS release checklist (Apple Developer account,
+signing team, production addresses, App Store Connect listing).
+
+---
 
 ## Database migrations
 
@@ -194,12 +286,6 @@ so no credential is committed.
 docker compose exec backend alembic current
 docker compose exec backend alembic revision --autogenerate -m "describe change"
 docker compose exec backend alembic upgrade head
-```
-
-`alembic check` reports whether the ORM models have drifted from the migrations:
-
-```bash
-docker compose exec backend alembic check      # "No new upgrade operations detected."
 ```
 
 ### After changing the XP curve
@@ -215,66 +301,50 @@ docker compose run --rm tests python -m scripts.recompute_progression
 
 ### Exercise library
 
-The workout module's shared exercise library is loaded by
-`backend/scripts/import_exercises.py` from `backend/app/data/exercises.json`
-(91 starter exercises). The `migrate` service runs it after every
-`alembic upgrade head`; it upserts by slug, so repeat runs are a no-op. To load
-a bigger dataset (JSON, or CSV with `;`-separated muscle groups):
+`backend/scripts/import_exercises.py` loads the shared library from
+`backend/app/data/exercises.json` (91 starter exercises). The `migrate` service
+runs it after every `alembic upgrade head`; it upserts by slug, so repeat runs
+change nothing. To load a bigger dataset (JSON, or CSV with `;`-separated muscle
+groups):
 
 ```bash
 docker compose run --rm tests python -m scripts.import_exercises --file path/to/big.csv --dry-run
 docker compose run --rm tests python -m scripts.import_exercises --file path/to/big.csv
 ```
 
-A bad row rejects the whole file. Exercises missing from the file are
-reported, never deleted - workout history points at them.
+A bad row rejects the whole file. Exercises missing from the file are reported,
+never deleted, because workout history points at them.
 
 Workout point values live only in `backend/app/core/workout_rules.py`. Awards
 are snapshotted into the points ledger, so retuning never rewrites history.
 
 ## API contract
 
-`docs/api-contract.md` is **generated** from the live OpenAPI spec - it cannot
-silently drift from the code:
+[`docs/api-contract.md`](docs/api-contract.md) is **generated** from the live
+OpenAPI spec, so it cannot drift from the code:
 
 ```bash
 docker compose up -d backend
 python3 scripts/generate_api_contract.py
 ```
 
-The frontend reads that file as the source of truth for endpoint shapes.
+The web and iOS clients treat it as the source of truth for endpoint shapes.
+[`docs/workouts-api.md`](docs/workouts-api.md) explains the behaviour: what to
+call when, and the rules clients must follow.
 
 ## Notes for contributors
 
-- **No hand-written JS/TS.** Reflex owns the Node/React build entirely.
-  `frontend/reflex.lock/` (`package.json` + `bun.lock`) is **generated by
-  Reflex and committed on purpose** for reproducible builds - never hand-edit
-  it; change dependencies through Reflex.
-  Why this is safe, given the predecessor project died on exactly this: the old
-  break was npm's, where a macOS-generated `package-lock.json` pinned only the
-  host's optional dep and `npm ci` in a Linux/musl container then failed on the
-  missing `@rollup/rollup-linux-arm64-musl` (npm/cli#4828). Bun's lockfile
-  records **all** platform variants (`linux-arm64-musl`, `linux-arm64-gnu`,
-  `darwin-arm64`, `win32`, ...), so the same file resolves correctly on every
-  platform. Verified: this lockfile was generated on macOS/arm64 and built
-  cleanly inside the linux/arm64 container.
-- **Do not use `passlib`.** It fails against `bcrypt>=5` and depends on the
-  stdlib `crypt` module removed in Python 3.13+ (PEP 594). Use `bcrypt`
-  directly; use `PyJWT` for tokens.
-- Secrets come from `.env` only. `.env` is gitignored; commit `.env.example`
-  with placeholders.
-- `REFLEX_API_URL` is compiled into the JS bundle - changing it needs
-  `docker compose build frontend`, not just a restart.
-- **Inline scripts must not write text or classes into React-owned nodes.**
-  The workout rest timer and clock (`components/rest_timer.py`) set only
-  attributes React never manages, and CSS shows them via
-  `content: attr(...)`. Writing `textContent` into server-rendered nodes
-  before hydration throws React error #418 (hydration mismatch).
+- **Secrets come from `.env` only.** `.env` and `deploy/.env.production` are gitignored; commit only the `.example` templates.
+- **No hand-written JS/TS in the web app.** Reflex owns the Node/React build. `frontend/reflex.lock/` (`package.json` + `bun.lock`) is generated by Reflex and committed on purpose for reproducible builds; never hand-edit it. Bun's lockfile records every platform variant, so a lockfile generated on macOS/arm64 builds cleanly in the Linux containers (the npm lockfile failure in npm/cli#4828 does not apply).
+- **Do not use `passlib`.** It fails against `bcrypt>=5` and depends on the `crypt` module removed in Python 3.13 (PEP 594). Use `bcrypt` and `PyJWT` directly.
+- **`REFLEX_API_URL` is compiled into the JS bundle**, so changing it needs `docker compose build frontend`, not just a restart.
+- **Inline scripts must not write text or classes into React-owned nodes.** The workout rest timer and clock (`components/rest_timer.py`) set only attributes React never manages, and CSS shows them via `content: attr(...)`. Writing `textContent` into server-rendered nodes before hydration throws React error #418.
+- The visual direction is inspired by hunter-rank RPG aesthetics. All assets, copy and art in this repo are original work.
 
 ## Docs
 
-- `docs/api-contract.md` - generated endpoint reference
-- `docs/workouts-api.md` - gym workout module: behaviour, payload examples, and
-  the rules the frontend must follow (frontend handoff)
-- `docs/data-model.md` - the schema and why it is shaped that way
-- `docs/progress-log.md` - session-by-session log; append an entry every session
+- [`docs/api-contract.md`](docs/api-contract.md) - generated endpoint reference
+- [`docs/workouts-api.md`](docs/workouts-api.md) - workout module behaviour and client rules
+- [`docs/data-model.md`](docs/data-model.md) - the schema and why it is shaped that way
+- [`docs/deployment.md`](docs/deployment.md) - production deployment and iOS release checklist
+- [`docs/progress-log.md`](docs/progress-log.md) - session-by-session development log
