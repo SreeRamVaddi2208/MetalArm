@@ -121,9 +121,25 @@ def mobile_nav() -> rx.Component:
     )
 
 
+def session_keeper() -> rx.Component:
+    """Invisible 5-minute tick that renews the access token while a page stays
+    open (a workout can outlast a 60-minute token). Rendered only when signed
+    in; the seconds in the format make every tick a change, so on_change fires."""
+    return rx.cond(
+        AuthState.is_authenticated,
+        rx.moment(
+            interval=5 * 60 * 1000,
+            format="HH:mm:ss",
+            on_change=AuthState.keep_fresh,
+            display="none",
+        ),
+    )
+
+
 def shell(*children: rx.Component) -> rx.Component:
     """Standard signed-in page frame."""
     return rx.box(
+        session_keeper(),
         navbar(),
         mobile_nav(),
         rx.box(
