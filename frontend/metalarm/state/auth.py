@@ -253,7 +253,14 @@ class AuthState(rx.State):
         if ok:
             yield rx.redirect("/dashboard")
 
-    def do_logout(self):
+    async def do_logout(self):
+        # End this browser's session on the server too. If that fails (offline,
+        # or the session already ended), signing out here still happens.
+        if self.token:
+            try:
+                await api.logout(self.token)
+            except api.ApiError:
+                pass
         self.token = ""
         self.refresh_token = ""
         self.display_name = ""

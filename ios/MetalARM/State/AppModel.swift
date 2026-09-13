@@ -126,8 +126,8 @@ final class AppModel {
         }
     }
 
-    func signOut() {
-        api.signOut()
+    func signOut() async {
+        await api.signOut()
         resetAfterSignOut()
     }
 

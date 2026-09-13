@@ -211,7 +211,8 @@ The UI tests on an iPhone 17 Pro Max produce the App Store screenshot set in
 `Authorization: Bearer ...`) and a long-lived `refresh_token`.
 
 - `POST /api/v1/auth/refresh` swaps the refresh token for a new pair. A refresh token is never accepted as an access token.
-- `POST /api/v1/auth/logout` revokes every token the user holds, on every device.
+- `POST /api/v1/auth/logout` signs out **this device**: its session is revoked, so its access and refresh tokens stop working while other devices stay signed in.
+- `POST /api/v1/auth/logout-all` signs out **every device**: every token the user holds is revoked.
 - `DELETE /api/v1/auth/me` (password confirmation required) deletes the account and all its data. A party the user owns passes to its longest-serving member.
 - Login, signup and refresh are rate limited per client address and per account (429 with `Retry-After`).
 

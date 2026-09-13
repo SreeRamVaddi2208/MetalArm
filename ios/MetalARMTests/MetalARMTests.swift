@@ -242,6 +242,29 @@ struct LiveAPIClientTests {
         }
     }
 
+    @Test func signingOutEndsThisDeviceOnTheServer() async throws {
+        let (client, store) = makeClient(tokens: signedIn, responses: [(204, "")])
+        await client.signOut()
+        let request = try #require(StubURLProtocol.requests.first)
+        #expect(request.httpMethod == "POST")
+        #expect(request.url?.path == "/api/v1/auth/logout")
+        #expect(request.value(forHTTPHeaderField: "Authorization") == "Bearer access-1")
+        #expect(store.tokens == nil)
+    }
+
+    @Test func signingOutStillForgetsTokensWhenTheServerFails() async {
+        let (client, store) = makeClient(tokens: signedIn, responses: [(503, #"{"detail": "Service unavailable"}"#)])
+        await client.signOut()
+        #expect(store.tokens == nil)
+    }
+
+    @Test func signingOutEverywhereUsesLogoutAll() async throws {
+        let (client, store) = makeClient(tokens: signedIn, responses: [(204, "")])
+        try await client.signOutEverywhere()
+        #expect(StubURLProtocol.requests.first?.url?.path == "/api/v1/auth/logout-all")
+        #expect(store.tokens == nil)
+    }
+
     @Test func deletingTheAccountSendsThePasswordAndForgetsTokens() async throws {
         let (client, store) = makeClient(tokens: signedIn, responses: [(204, "")])
         try await client.deleteAccount(password: "correct-horse-1")

@@ -14,6 +14,44 @@ Entry format:
 
 ---
 
+## 2026-09-14 (15) - Opus - sign out one device, not all of them
+
+**Changed**
+- New `auth_sessions` table (`AuthSession`, migration `ce1968933857`): one row
+  per signed-in device. Login and `/auth/token` start a session; both tokens
+  carry its id as the `sid` claim, and `/auth/refresh` keeps it (a legacy
+  token without `sid` gets a new session).
+- `get_current_user` and `/auth/refresh` reject tokens whose session is
+  revoked. `POST /auth/logout` now revokes only the caller's session;
+  new `POST /auth/logout-all` bumps `token_version` and revokes every session
+  (the old "sign out everywhere"). Deleting the account cascades its sessions.
+- iOS: `signOut()` calls `/auth/logout` (best effort - tokens are forgotten
+  even if the server is unreachable); `signOutEverywhere()` uses `logout-all`.
+- Web: `AuthState.do_logout` calls `/auth/logout` before clearing tokens.
+- `scripts/e2e`: waits for the discard confirmation row before clicking its
+  DISCARD button (the click could land on the old button and stall).
+- iOS UI tests: `dismissSavePasswordPrompt` retries "Not Now" until the
+  Save Password sheet is gone (a tap during its slide-in was swallowed and
+  the sheet covered Home, failing the live tour).
+
+**Verified (real output)**
+- Backend suite passes (4 new tests: this-device logout, refresh keeps the
+  session, logout-all, account deletion removes sessions); `alembic check` clean.
+- `scripts/e2e`: **ALL PASSED (72)**. Web sign-out check: the signed-out
+  browser's refresh token -> 401, another device's session -> 200.
+- iOS `xcodebuild test`: MetalARMTests 33 passed (3 new sign-out tests),
+  UI tests passed including the live-backend tour.
+
+**Blocked**
+- Nothing.
+
+**Other agent needs to know**
+- The auth signup limit is 5/hour per IP; running e2e, the sign-out check and
+  the iOS live tour back to back exhausts it locally (the tour then fails on
+  a 429). Wait out the window or delete `ratelimit:signup-ip:*` in dev Redis.
+
+---
+
 ## 2026-09-14 (14) - Opus - web sessions survive the 60-minute access token
 
 **Changed**

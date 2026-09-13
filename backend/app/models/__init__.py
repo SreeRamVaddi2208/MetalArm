@@ -5,6 +5,7 @@ before Alembic autogenerate runs - a model that isn't imported is invisible to
 autogenerate and silently omitted from migrations.
 """
 
+from app.models.auth_session import AuthSession
 from app.models.party import (
     Party,
     PartyMembership,
@@ -26,6 +27,7 @@ from app.models.workout import (
 )
 
 __all__ = [
+    "AuthSession",
     "User",
     "LevelProgress",
     "Quest",

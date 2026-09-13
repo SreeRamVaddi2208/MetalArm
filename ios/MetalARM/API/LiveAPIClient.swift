@@ -68,12 +68,17 @@ final class LiveAPIClient: MetalArmAPI {
         try await signIn(email: email, password: password)
     }
 
-    func signOut() {
+    func signOut() async {
+        // Best effort: revoke this device's session so its tokens die on the
+        // server too. Offline or not, the device forgets them.
+        if tokenStore.tokens != nil {
+            _ = try? await perform(try .post("auth/logout", EmptyBody(), encoder), authenticated: true)
+        }
         tokenStore.tokens = nil
     }
 
     func signOutEverywhere() async throws {
-        _ = try await perform(.post("auth/logout", EmptyBody(), encoder), authenticated: true)
+        _ = try await perform(.post("auth/logout-all", EmptyBody(), encoder), authenticated: true)
         tokenStore.tokens = nil
     }
 

@@ -1,7 +1,7 @@
 """Shared FastAPI dependencies."""
 
 import uuid
-from typing import Annotated
+from typing import Annotated, Any
 
 import jwt
 from fastapi import Depends, HTTPException, status
@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from app.core.security import ACCESS_TOKEN_TYPE, decode_token
 from app.db.session import get_db
+from app.models.auth_session import AuthSession
 from app.models.user import User
 
 # tokenUrl is what /docs' Authorize button posts to. It must match the form
@@ -23,6 +24,16 @@ _CREDENTIALS_ERROR = HTTPException(
     detail="Could not validate credentials",
     headers={"WWW-Authenticate": "Bearer"},
 )
+
+
+def session_is_live(db: Session, user_id: uuid.UUID, session_id: Any) -> bool:
+    """True when `session_id` names an unrevoked session of this user."""
+    try:
+        sid = uuid.UUID(str(session_id))
+    except ValueError:
+        return False
+    session = db.get(AuthSession, sid)
+    return session is not None and session.user_id == user_id and session.revoked_at is None
 
 
 def get_current_user(
@@ -65,6 +76,12 @@ def get_current_user(
     # a deactivated user must not either. Nor may one minted before the user
     # signed out everywhere (token_version bumped since).
     if user is None or not user.is_active or payload.get("tv", 0) != user.token_version:
+        raise _CREDENTIALS_ERROR
+
+    # Signing out of one device revokes its session, and with it that device's
+    # access token immediately. Tokens issued before sessions existed carry no
+    # `sid` and are still accepted until they expire.
+    if "sid" in payload and not session_is_live(db, user.id, payload["sid"]):
         raise _CREDENTIALS_ERROR
 
     return user

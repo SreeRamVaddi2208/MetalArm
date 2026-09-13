@@ -83,10 +83,14 @@ final class MetalARMUITests: XCTestCase {
     @MainActor
     private func dismissSavePasswordPrompt(_ app: XCUIApplication) {
         let notNow = app.buttons["Not Now"]
-        if notNow.waitForExistence(timeout: 5) {
-            notNow.tap()
-            _ = notNow.waitForNonExistence(timeout: 3)
+        guard notNow.waitForExistence(timeout: 5) else { return }
+        // A tap while the sheet is still sliding in can be swallowed, leaving
+        // it over Home - keep tapping until it has actually gone.
+        for _ in 1...4 {
+            if notNow.isHittable { notNow.tap() }
+            if notNow.waitForNonExistence(timeout: 3) { return }
         }
+        XCTFail("The Save Password sheet would not close")
     }
 
     @MainActor

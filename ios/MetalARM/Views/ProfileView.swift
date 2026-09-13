@@ -170,7 +170,7 @@ struct ProfileView: View {
                 divider
                 Link(destination: AppConfig.supportURL) { settingsLabel("Support", icon: "questionmark.circle") }
                 divider
-                Button { model.signOut() } label: { settingsLabel("Sign Out", icon: "rectangle.portrait.and.arrow.right") }
+                Button { Task { await model.signOut() } } label: { settingsLabel("Sign Out", icon: "rectangle.portrait.and.arrow.right") }
                     .accessibilityIdentifier("signOutButton")
                 divider
                 Button { confirmingSignOutEverywhere = true } label: { settingsLabel("Sign Out of All Devices", icon: "iphone.slash") }

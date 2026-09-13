@@ -1,9 +1,11 @@
-"""Refresh tokens, sign-out everywhere, and account deletion."""
+"""Refresh tokens, device sessions, sign-out, and account deletion."""
 
 from fastapi.testclient import TestClient
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
+from app.models.auth_session import AuthSession
 from app.models.party import Party
 from app.models.user import User
 from tests.conftest import unique_email
@@ -13,6 +15,7 @@ SIGNUP = "/api/v1/auth/signup"
 LOGIN = "/api/v1/auth/login"
 REFRESH = "/api/v1/auth/refresh"
 LOGOUT = "/api/v1/auth/logout"
+LOGOUT_ALL = "/api/v1/auth/logout-all"
 ME = "/api/v1/auth/me"
 PASSWORD = "correct-horse-1"
 
@@ -24,6 +27,12 @@ def _signup_and_login(client: TestClient) -> tuple[str, dict]:
     login = client.post(LOGIN, json={"email": email, "password": PASSWORD})
     assert login.status_code == 200, login.text
     return email, login.json()
+
+
+def _login(client: TestClient, email: str) -> dict:
+    r = client.post(LOGIN, json={"email": email, "password": PASSWORD})
+    assert r.status_code == 200, r.text
+    return r.json()
 
 
 def _bearer(token: str) -> dict:
@@ -59,15 +68,44 @@ def test_garbage_refresh_token_is_rejected(client: TestClient) -> None:
     assert client.post(REFRESH, json={"refresh_token": "not.a.jwt"}).status_code == 401
 
 
-def test_logout_revokes_every_issued_token(client: TestClient) -> None:
-    email, tokens = _signup_and_login(client)
-    assert client.post(LOGOUT, headers=_bearer(tokens["access_token"])).status_code == 204
+def test_logout_ends_only_this_device(client: TestClient) -> None:
+    email, phone = _signup_and_login(client)
+    laptop = _login(client, email)
 
-    assert client.get(ME, headers=_bearer(tokens["access_token"])).status_code == 401
+    assert client.post(LOGOUT, headers=_bearer(phone["access_token"])).status_code == 204
+
+    # The phone's tokens stop working at once...
+    assert client.get(ME, headers=_bearer(phone["access_token"])).status_code == 401
+    assert client.post(REFRESH, json={"refresh_token": phone["refresh_token"]}).status_code == 401
+    # ...while the laptop stays signed in.
+    assert client.get(ME, headers=_bearer(laptop["access_token"])).status_code == 200
+    assert client.post(REFRESH, json={"refresh_token": laptop["refresh_token"]}).status_code == 200
+
+
+def test_refreshed_tokens_stay_on_the_same_device_session(client: TestClient) -> None:
+    _, tokens = _signup_and_login(client)
+    renewed = client.post(REFRESH, json={"refresh_token": tokens["refresh_token"]}).json()
+
+    assert client.post(LOGOUT, headers=_bearer(renewed["access_token"])).status_code == 204
+
+    # Signing out with the renewed token also ends the original refresh token:
+    # they belong to one device session.
     assert client.post(REFRESH, json={"refresh_token": tokens["refresh_token"]}).status_code == 401
+    assert client.post(REFRESH, json={"refresh_token": renewed["refresh_token"]}).status_code == 401
+
+
+def test_logout_all_ends_every_device(client: TestClient) -> None:
+    email, phone = _signup_and_login(client)
+    laptop = _login(client, email)
+
+    assert client.post(LOGOUT_ALL, headers=_bearer(phone["access_token"])).status_code == 204
+
+    for device in (phone, laptop):
+        assert client.get(ME, headers=_bearer(device["access_token"])).status_code == 401
+        assert client.post(REFRESH, json={"refresh_token": device["refresh_token"]}).status_code == 401
 
     # Signing in again works and yields tokens for the new version.
-    fresh = client.post(LOGIN, json={"email": email, "password": PASSWORD}).json()
+    fresh = _login(client, email)
     assert client.get(ME, headers=_bearer(fresh["access_token"])).status_code == 200
 
 
@@ -78,8 +116,9 @@ def test_delete_account_requires_the_password(client: TestClient) -> None:
     assert client.get(ME, headers=_bearer(tokens["access_token"])).status_code == 200
 
 
-def test_delete_account_removes_the_user(client: TestClient, db: Session) -> None:
+def test_delete_account_removes_the_user_and_its_sessions(client: TestClient, db: Session) -> None:
     email, tokens = _signup_and_login(client)
+    _login(client, email)
     user_id = client.get(ME, headers=_bearer(tokens["access_token"])).json()["id"]
 
     r = client.request("DELETE", ME, headers=_bearer(tokens["access_token"]), json={"password": PASSWORD})
@@ -89,6 +128,8 @@ def test_delete_account_removes_the_user(client: TestClient, db: Session) -> Non
     assert client.post(LOGIN, json={"email": email, "password": PASSWORD}).status_code == 401
     db.expire_all()
     assert db.get(User, user_id) is None
+    remaining = db.scalar(select(func.count()).select_from(AuthSession).where(AuthSession.user_id == user_id))
+    assert remaining == 0
 
 
 def test_deleting_a_party_owner_hands_the_party_to_a_member(
