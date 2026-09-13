@@ -126,9 +126,11 @@ final class AppModel {
         }
     }
 
-    func signOut() {
-        api.signOut()
+    /// Signs out at once; telling the server (which may be slow or offline)
+    /// happens afterwards and never holds the user on a signed-in screen.
+    func signOut() async {
         resetAfterSignOut()
+        await api.signOut()
     }
 
     func signOutEverywhere() async {

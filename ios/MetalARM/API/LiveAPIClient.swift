@@ -68,12 +68,18 @@ final class LiveAPIClient: MetalArmAPI {
         try await signIn(email: email, password: password)
     }
 
-    func signOut() {
+    func signOut() async {
+        // Forget the tokens first, so the sign-out holds even if the app is
+        // quit mid-request. Then, best effort, revoke this device's session
+        // with the refresh token - still valid after the access token expired.
+        guard let tokens = tokenStore.tokens else { return }
         tokenStore.tokens = nil
+        _ = try? await perform(
+            try .post("auth/logout", RefreshBody(refreshToken: tokens.refreshToken), encoder), authenticated: false)
     }
 
     func signOutEverywhere() async throws {
-        _ = try await perform(.post("auth/logout", EmptyBody(), encoder), authenticated: true)
+        _ = try await perform(.post("auth/logout-all", EmptyBody(), encoder), authenticated: true)
         tokenStore.tokens = nil
     }
 

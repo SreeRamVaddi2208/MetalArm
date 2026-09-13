@@ -255,6 +255,38 @@ struct LiveAPIClientTests {
         }
     }
 
+    @Test func signingOutEndsThisDeviceOnTheServer() async throws {
+        let (client, store) = makeClient(tokens: signedIn, responses: [(204, "")])
+        await client.signOut()
+        let request = try #require(StubURLProtocol.requests.first)
+        #expect(request.httpMethod == "POST")
+        #expect(request.url?.path == "/api/v1/auth/logout")
+        // The refresh token, not the access token: it still works after the
+        // access token has expired, so the session is always revoked.
+        #expect(try body(0)["refresh_token"] as? String == "refresh-1")
+        #expect(request.value(forHTTPHeaderField: "Authorization") == nil)
+        #expect(store.tokens == nil)
+    }
+
+    @Test func signingOutWhenAlreadySignedOutSendsNothing() async {
+        let (client, _) = makeClient(responses: [])
+        await client.signOut()
+        #expect(StubURLProtocol.requests.isEmpty)
+    }
+
+    @Test func signingOutStillForgetsTokensWhenTheServerFails() async {
+        let (client, store) = makeClient(tokens: signedIn, responses: [(503, #"{"detail": "Service unavailable"}"#)])
+        await client.signOut()
+        #expect(store.tokens == nil)
+    }
+
+    @Test func signingOutEverywhereUsesLogoutAll() async throws {
+        let (client, store) = makeClient(tokens: signedIn, responses: [(204, "")])
+        try await client.signOutEverywhere()
+        #expect(StubURLProtocol.requests.first?.url?.path == "/api/v1/auth/logout-all")
+        #expect(store.tokens == nil)
+    }
+
     @Test func deletingTheAccountSendsThePasswordAndForgetsTokens() async throws {
         let (client, store) = makeClient(tokens: signedIn, responses: [(204, "")])
         try await client.deleteAccount(password: "correct-horse-1")

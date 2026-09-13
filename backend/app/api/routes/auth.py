@@ -1,6 +1,7 @@
 """Signup, login, token refresh, sign-out, account deletion, and the
 authenticated identity endpoint."""
 
+import datetime as dt
 import logging
 import uuid
 from typing import Annotated
@@ -8,10 +9,10 @@ from typing import Annotated
 import jwt
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordRequestForm
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
 
-from app.api.deps import CurrentUser, DbSession
+from app.api.deps import CurrentUser, DbSession, get_current_user, oauth2_scheme, session_is_live
 from app.api.routes.parties import release_membership
 from app.core import leaderboard, leveling, rate_limit
 from app.core.periods import local_now
@@ -25,11 +26,13 @@ from app.core.security import (
     normalize_email,
     verify_password,
 )
+from app.models.auth_session import AuthSession
 from app.models.party import Party, PartyMembership
 from app.models.user import LevelProgress, User
 from app.schemas.auth import (
     DeleteAccountRequest,
     LoginRequest,
+    LogoutRequest,
     RefreshRequest,
     SignupRequest,
     TokenResponse,
@@ -128,9 +131,18 @@ def _limit_login(request: Request, email: str) -> None:
     rate_limit.enforce(rate_limit.LOGIN_PER_EMAIL, normalize_email(email))
 
 
-def _issue_tokens(user: User) -> TokenResponse:
-    access, expires_in = create_access_token(user.id, user.token_version)
-    refresh, refresh_expires_in = create_refresh_token(user.id, user.token_version)
+def _start_session(db: DbSession, user: User) -> AuthSession:
+    """One row per signed-in device; its id rides in every token it gets."""
+    session = AuthSession(user_id=user.id)
+    db.add(session)
+    db.commit()
+    db.refresh(session)
+    return session
+
+
+def _issue_tokens(user: User, session_id: uuid.UUID) -> TokenResponse:
+    access, expires_in = create_access_token(user.id, user.token_version, session_id)
+    refresh, refresh_expires_in = create_refresh_token(user.id, user.token_version, session_id)
     return TokenResponse(
         access_token=access,
         expires_in=expires_in,
@@ -187,7 +199,7 @@ def login(payload: LoginRequest, request: Request, db: DbSession) -> TokenRespon
     """JSON login - the endpoint the Reflex frontend and the iOS app use."""
     _limit_login(request, payload.email)
     user = _authenticate(db, payload.email, payload.password)
-    return _issue_tokens(user)
+    return _issue_tokens(user, _start_session(db, user).id)
 
 
 @router.post("/token", response_model=TokenResponse, include_in_schema=True)
@@ -204,40 +216,90 @@ def login_form(
     """
     _limit_login(request, form.username)
     user = _authenticate(db, form.username, form.password)
-    return _issue_tokens(user)
+    return _issue_tokens(user, _start_session(db, user).id)
 
 
 @router.post("/refresh", response_model=TokenResponse)
 def refresh(payload: RefreshRequest, request: Request, db: DbSession) -> TokenResponse:
-    """Swap a refresh token for a new access + refresh pair.
-
-    Stateless: a refresh token stays valid until it expires or the user signs
-    out everywhere (which bumps token_version and revokes every device at once).
-    """
+    """Swap a refresh token for a new access + refresh pair on the same device
+    session. Fails once that device has signed out, or once the user has signed
+    out everywhere (token_version bumped)."""
     rate_limit.enforce(rate_limit.REFRESH_PER_IP, rate_limit.client_ip(request))
-    try:
-        claims = decode_token(payload.refresh_token)
-        user_id = uuid.UUID(claims["sub"])
-    except (jwt.InvalidTokenError, KeyError, ValueError):
-        raise _INVALID_REFRESH from None
-
-    # An access token must not be able to mint new tokens.
-    if claims.get("typ") != REFRESH_TOKEN_TYPE:
-        raise _INVALID_REFRESH
-
-    user = db.get(User, user_id)
+    claims = _refresh_claims(payload.refresh_token)
+    user = db.get(User, uuid.UUID(claims["sub"]))
     if user is None or not user.is_active or claims.get("tv", 0) != user.token_version:
         raise _INVALID_REFRESH
 
-    return _issue_tokens(user)
+    # A token from before device sessions has no session to keep it alive (and
+    # none that sign-out could revoke), so it must sign in again.
+    if "sid" not in claims or not session_is_live(db, user.id, claims["sid"]):
+        raise _INVALID_REFRESH
+
+    return _issue_tokens(user, uuid.UUID(str(claims["sid"])))
+
+
+def _refresh_claims(token: str) -> dict:
+    """Decode a refresh token; any failure, or an access token, is a 401."""
+    try:
+        claims = decode_token(token)
+        uuid.UUID(claims["sub"])
+    except (jwt.InvalidTokenError, KeyError, ValueError):
+        raise _INVALID_REFRESH from None
+    # An access token must not be able to mint new tokens.
+    if claims.get("typ") != REFRESH_TOKEN_TYPE:
+        raise _INVALID_REFRESH
+    return claims
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
+def logout(
+    db: DbSession,
+    token: Annotated[str | None, Depends(oauth2_scheme)],
+    payload: LogoutRequest | None = None,
+) -> None:
+    """Sign out of this device only: its access and refresh tokens stop
+    working, every other device stays signed in.
+
+    Send the refresh token in the body - it is still valid after the access
+    token has expired. A bearer access token alone also works.
+    """
+    if payload is not None:
+        claims = _refresh_claims(payload.refresh_token)
+        user = db.get(User, uuid.UUID(claims["sub"]))
+        if user is None or claims.get("tv", 0) != user.token_version:
+            return  # already signed out everywhere, or the account is gone
+    else:
+        user = get_current_user(db, token)
+        claims = decode_token(token or "")
+
+    session_id = claims.get("sid")
+    if session_id is None:
+        # A token from before device sessions has no session to revoke, so end
+        # it the only way left: every token issued so far stops working.
+        user.token_version += 1
+        db.commit()
+        logger.info("user %s signed out a pre-session token; all tokens revoked", user.id)
+        return
+    try:
+        session = db.get(AuthSession, uuid.UUID(str(session_id)))
+    except ValueError:
+        return
+    if session is not None and session.user_id == user.id and session.revoked_at is None:
+        session.revoked_at = dt.datetime.now(dt.timezone.utc)
+        db.commit()
+        logger.info("user %s signed out session %s", user.id, session.id)
+
+
+@router.post("/logout-all", status_code=status.HTTP_204_NO_CONTENT)
 def logout_everywhere(current_user: CurrentUser, db: DbSession) -> None:
     """Sign out on every device: every access and refresh token issued so far
-    stops working. Signing out of one device is just the client forgetting its
-    tokens."""
+    stops working."""
     current_user.token_version += 1
+    db.execute(
+        update(AuthSession)
+        .where(AuthSession.user_id == current_user.id, AuthSession.revoked_at.is_(None))
+        .values(revoked_at=dt.datetime.now(dt.timezone.utc))
+    )
     db.commit()
     logger.info("user %s signed out everywhere", current_user.id)
 
@@ -269,9 +331,9 @@ def delete_account(
     """Permanently delete the account and everything it owns.
 
     Required by the App Store for any app that offers account creation. Every
-    user-owned table cascades on users.id. Parties are handled first: one the
-    user owns goes to its longest-serving member instead of being deleted with
-    its owner.
+    user-owned table (device sessions included) cascades on users.id. Parties
+    are handled first: one the user owns goes to its longest-serving member
+    instead of being deleted with its owner.
     """
     if not verify_password(payload.password, current_user.password_hash):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Password is incorrect")

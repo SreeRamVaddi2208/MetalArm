@@ -54,10 +54,14 @@ REFRESH_TOKEN_TYPE = "refresh"
 
 
 def _encode_token(
-    user_id: uuid.UUID, token_version: int, token_type: str, expires_in: int
+    user_id: uuid.UUID,
+    token_version: int,
+    token_type: str,
+    expires_in: int,
+    session_id: uuid.UUID | None = None,
 ) -> tuple[str, int]:
     now = dt.datetime.now(dt.timezone.utc)
-    payload = {
+    payload: dict[str, Any] = {
         # The JWT spec requires `sub` to be a string; PyJWT rejects anything
         # else on decode.
         "sub": str(user_id),
@@ -73,23 +77,33 @@ def _encode_token(
         # everywhere) invalidates every token already issued.
         "tv": token_version,
     }
+    if session_id is not None:
+        # The device session (auth_sessions.id) this token belongs to, so
+        # signing out one device revokes only that device's tokens.
+        payload["sid"] = str(session_id)
     token = jwt.encode(payload, settings.jwt_secret_key, algorithm=settings.jwt_algorithm)
     return token, expires_in
 
 
-def create_access_token(user_id: uuid.UUID, token_version: int = 0) -> tuple[str, int]:
+def create_access_token(
+    user_id: uuid.UUID, token_version: int = 0, session_id: uuid.UUID | None = None
+) -> tuple[str, int]:
     """Return (token, expires_in_seconds) for a short-lived API token."""
     return _encode_token(
-        user_id, token_version, ACCESS_TOKEN_TYPE, settings.access_token_expire_minutes * 60
+        user_id, token_version, ACCESS_TOKEN_TYPE, settings.access_token_expire_minutes * 60,
+        session_id,
     )
 
 
-def create_refresh_token(user_id: uuid.UUID, token_version: int = 0) -> tuple[str, int]:
+def create_refresh_token(
+    user_id: uuid.UUID, token_version: int = 0, session_id: uuid.UUID | None = None
+) -> tuple[str, int]:
     """Return (token, expires_in_seconds) for a long-lived token that can only
     be exchanged at /auth/refresh. Lets the mobile app stay signed in without
     keeping the password."""
     return _encode_token(
-        user_id, token_version, REFRESH_TOKEN_TYPE, settings.refresh_token_expire_days * 86400
+        user_id, token_version, REFRESH_TOKEN_TYPE, settings.refresh_token_expire_days * 86400,
+        session_id,
     )
 
 

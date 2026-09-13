@@ -10,7 +10,7 @@
 
 - **API title:** MetalArm API
 - **API version:** 0.1.0
-- **Generated:** 2026-09-13 16:51 UTC
+- **Generated:** 2026-09-13 21:42 UTC
 - **Source:** `http://127.0.0.1:8000/openapi.json`
 
 ---
@@ -48,11 +48,31 @@ JSON login - the endpoint the Reflex frontend and the iOS app use.
 
 ### `POST /api/v1/auth/logout`
 
+**Logout**
+
+Sign out of this device only: its access and refresh tokens stop
+working, every other device stays signed in.
+
+Send the refresh token in the body - it is still valid after the access
+token has expired. A bearer access token alone also works.
+
+*Tags:* `auth`
+
+*Request body* (`application/json`): `LogoutRequest | null`
+
+| Status | Description |
+|---|---|
+| `204` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `POST /api/v1/auth/logout-all`
+
 **Logout Everywhere**
 
 Sign out on every device: every access and refresh token issued so far
-stops working. Signing out of one device is just the client forgetting its
-tokens.
+stops working.
 
 *Tags:* `auth`
 
@@ -69,9 +89,9 @@ tokens.
 Permanently delete the account and everything it owns.
 
 Required by the App Store for any app that offers account creation. Every
-user-owned table cascades on users.id. Parties are handled first: one the
-user owns goes to its longest-serving member instead of being deleted with
-its owner.
+user-owned table (device sessions included) cascades on users.id. Parties
+are handled first: one the user owns goes to its longest-serving member
+instead of being deleted with its owner.
 
 *Tags:* `auth`
 
@@ -122,10 +142,9 @@ the user across devices.
 
 **Refresh**
 
-Swap a refresh token for a new access + refresh pair.
-
-Stateless: a refresh token stays valid until it expires or the user signs
-out everywhere (which bumps token_version and revokes every device at once).
+Swap a refresh token for a new access + refresh pair on the same device
+session. Fails once that device has signed out, or once the user has signed
+out everywhere (token_version bumped).
 
 *Tags:* `auth`
 
@@ -1638,6 +1657,12 @@ otherwise 503 with per-dependency detail.
 |---|---|---|
 | `email` | `string` | yes |
 | `password` | `string` | yes |
+
+#### `LogoutRequest`
+
+| Field | Type | Required |
+|---|---|---|
+| `refresh_token` | `string` | yes |
 
 #### `MeOut`
 
