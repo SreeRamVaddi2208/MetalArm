@@ -12,6 +12,15 @@ venv/
 .env
 .env.*
 !.env.example
+!.env.production.example
+
+# Production database dumps (deploy/backup.sh and the backup service)
+deploy/backups/
+
+# Xcode per-user state
+xcuserdata/
+*.xcuserstate
+DerivedData/
 
 # Reflex build artifacts (Reflex owns the Node/React layer entirely)
 .web/

@@ -1,0 +1,50 @@
+# MetalArm - public entry point. Caddy obtains and renews HTTPS certificates
+# automatically (Let's Encrypt for a real domain, its local CA for localhost).
+#
+#   https://{$DOMAIN}       web app (Reflex, websockets included) + /privacy, /support
+#   https://api.{$DOMAIN}   API used by the web app's server and the iOS app
+
+{
+	email {$ACME_EMAIL}
+}
+
+(security_headers) {
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		X-Frame-Options "DENY"
+		-Server
+	}
+}
+
+(static_page) {
+	root * /srv/site
+	templates
+	file_server
+}
+
+api.{$DOMAIN} {
+	import security_headers
+	encode zstd gzip
+	reverse_proxy backend:8000
+}
+
+{$DOMAIN} {
+	import security_headers
+	encode zstd gzip
+
+	# Linked from the App Store listing and the iOS app's Profile screen.
+	handle /privacy {
+		rewrite * /privacy.html
+		import static_page
+	}
+	handle /support {
+		rewrite * /support.html
+		import static_page
+	}
+
+	handle {
+		reverse_proxy frontend:3000
+	}
+}
