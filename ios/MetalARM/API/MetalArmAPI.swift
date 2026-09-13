@@ -16,8 +16,9 @@ protocol MetalArmAPI: AnyObject {
     // Account
     func signIn(email: String, password: String) async throws
     func signUp(email: String, password: String, displayName: String, timezone: String) async throws
-    /// Forgets this device's tokens.
-    func signOut()
+    /// Ends this device's session on the server (best effort) and forgets its
+    /// tokens, even when the server can't be reached.
+    func signOut() async
     /// Revokes every token the account holds, on every device.
     func signOutEverywhere() async throws
     func deleteAccount(password: String) async throws

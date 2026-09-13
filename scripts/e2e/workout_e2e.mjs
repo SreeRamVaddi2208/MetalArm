@@ -223,6 +223,9 @@ try {
   await page.getByText('TARGET', { exact: false }).first().waitFor({ timeout: 15000 });
   check('starting a routine opens a workout with its targets', await visible(page.getByText('Back Squat', { exact: true })));
   await page.getByText('DISCARD', { exact: true }).click();
+  // The confirm row replaces the button; clicking `.last()` before it renders
+  // hit the same button again and the test stalled.
+  await page.getByText('Discard this workout?').waitFor({ timeout: 15000 });
   await page.getByText('DISCARD', { exact: true }).last().click();
   await page.getByText('START EMPTY WORKOUT').waitFor({ timeout: 15000 });
   check('discarding a workout returns to the start screen', true);

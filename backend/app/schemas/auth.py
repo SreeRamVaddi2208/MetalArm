@@ -72,6 +72,12 @@ class RefreshRequest(BaseModel):
     refresh_token: str = Field(min_length=1)
 
 
+class LogoutRequest(BaseModel):
+    # The refresh token is still valid after the access token has expired, so
+    # a client signing out with it always reaches its own session.
+    refresh_token: str = Field(min_length=1)
+
+
 class DeleteAccountRequest(BaseModel):
     # Re-entered on purpose: an unlocked phone in the wrong hands must not be
     # able to erase the account with one tap.

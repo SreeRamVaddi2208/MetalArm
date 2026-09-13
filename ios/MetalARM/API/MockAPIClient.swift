@@ -56,7 +56,7 @@ final class MockAPIClient: MetalArmAPI {
         isSignedIn = true
     }
 
-    func signOut() {
+    func signOut() async {
         isSignedIn = false
     }
 
