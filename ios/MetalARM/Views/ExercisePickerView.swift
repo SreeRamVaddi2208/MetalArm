@@ -23,10 +23,10 @@ struct ExercisePickerView: View {
                 } label: {
                     VStack(alignment: .leading, spacing: 3) {
                         Text(exercise.name)
-                            .font(.system(size: 15, weight: .semibold))
+                            .font(Theme.body(15, .semibold))
                             .foregroundStyle(Theme.text)
                         Text("\(exercise.muscleLabel) · \(exercise.equipment.capitalized)")
-                            .font(.system(size: 12))
+                            .font(Theme.body(12))
                             .foregroundStyle(Theme.dim)
                     }
                 }

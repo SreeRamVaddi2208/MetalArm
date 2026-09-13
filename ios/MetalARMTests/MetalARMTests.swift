@@ -7,7 +7,20 @@
 
 import Foundation
 import Testing
+import UIKit
 @testable import MetalARM
+
+// MARK: - Bundled fonts
+
+@MainActor
+struct FontTests {
+    // A font missing from the bundle or UIAppFonts would silently fall back to
+    // the system font, so check every face loads by its PostScript name.
+    @Test(arguments: Theme.fontNames)
+    func bundledFontLoads(name: String) {
+        #expect(UIFont(name: name, size: 12) != nil, "\(name) is not in the app bundle")
+    }
+}
 
 // MARK: - Decoding the backend's response shapes
 

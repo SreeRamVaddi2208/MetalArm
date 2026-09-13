@@ -29,7 +29,7 @@ struct LeaderboardView: View {
                             Button("Join with Code", systemImage: "person.badge.plus") { showingJoin = true }
                         } label: {
                             Image(systemName: "plus.circle.fill")
-                                .font(.system(size: 24))
+                                .font(Theme.body(24))
                                 .foregroundStyle(Theme.fire)
                         }
                         .accessibilityLabel("Add a party")
@@ -84,13 +84,13 @@ struct LeaderboardView: View {
     private var emptyState: some View {
         VStack(spacing: 14) {
             Image(systemName: "person.3.fill")
-                .font(.system(size: 40))
+                .font(Theme.body(40))
                 .foregroundStyle(Theme.fire)
             Text("Train with friends")
                 .font(Theme.display(22))
                 .foregroundStyle(Theme.text)
             Text("Create a party and share its invite code, or join one. Members are ranked by workout points each week.")
-                .font(.system(size: 14))
+                .font(Theme.body(14))
                 .foregroundStyle(Theme.dim)
                 .multilineTextAlignment(.center)
             Button("Create a Party") { showingCreate = true }
@@ -114,7 +114,7 @@ struct LeaderboardView: View {
                     HStack(spacing: 4) {
                         Text(model.selectedParty?.name ?? "")
                         Image(systemName: "chevron.down")
-                            .font(.system(size: 11, weight: .bold))
+                            .font(Theme.body(11, .bold))
                     }
                     .font(Theme.display(16))
                     .foregroundStyle(Theme.text)
@@ -126,7 +126,7 @@ struct LeaderboardView: View {
             }
             Spacer()
             Text("This Week")
-                .font(.system(size: 11.5, weight: .bold))
+                .font(Theme.body(11.5, .bold))
                 .foregroundStyle(Theme.bg)
                 .padding(.horizontal, 10)
                 .padding(.vertical, 6)
@@ -145,16 +145,16 @@ struct LeaderboardView: View {
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 4) {
                     Text(entry.displayName)
-                        .font(.system(size: 13.5, weight: .bold))
+                        .font(Theme.body(13.5, .bold))
                         .foregroundStyle(Theme.text)
                     if entry.isMe {
                         Text("(you)")
-                            .font(.system(size: 13.5, weight: .medium))
+                            .font(Theme.body(13.5, .medium))
                             .foregroundStyle(Theme.dim)
                     }
                 }
                 Text("\(entry.workouts) workout\(entry.workouts == 1 ? "" : "s") · Rank \(entry.rank)")
-                    .font(.system(size: 11))
+                    .font(Theme.body(11))
                     .foregroundStyle(Theme.dim)
             }
             Spacer()
@@ -172,7 +172,7 @@ struct LeaderboardView: View {
         HStack {
             VStack(alignment: .leading, spacing: 2) {
                 Text("INVITE CODE")
-                    .font(.system(size: 11))
+                    .font(Theme.body(11))
                     .kerning(0.5)
                     .foregroundStyle(Theme.dim)
                 Text(code)
@@ -183,7 +183,7 @@ struct LeaderboardView: View {
             Spacer()
             ShareLink(item: "Join my MetalArm party \"\(party.name)\" with invite code \(code).") {
                 Label("Share", systemImage: "square.and.arrow.up")
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(Theme.body(13, .semibold))
             }
             .foregroundStyle(Theme.fire)
         }

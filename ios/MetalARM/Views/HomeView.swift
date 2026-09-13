@@ -34,7 +34,7 @@ struct HomeView: View {
             AvatarBadge(initials: initials(of: model.me?.displayName ?? ""), size: 40, cornerRadius: 12, fontSize: 15)
             VStack(alignment: .leading, spacing: 0) {
                 Text("Welcome back")
-                    .font(.system(size: 13))
+                    .font(Theme.body(13))
                     .foregroundStyle(Theme.dim)
                 Text(model.me?.displayName ?? " ")
                     .font(Theme.display(15, .semibold))
@@ -59,14 +59,14 @@ struct HomeView: View {
                             .font(Theme.display(15))
                             .foregroundStyle(Theme.text)
                         Text("\(progress.xpIntoLevel) / \(progress.xpForNextLevel) XP")
-                            .font(.system(size: 12))
+                            .font(Theme.body(12))
                             .foregroundStyle(Theme.dim)
                     }
                 }
                 Spacer()
                 HStack(spacing: 4) {
                     Image(systemName: "flame.fill")
-                        .font(.system(size: 13))
+                        .font(Theme.body(13))
                         .foregroundStyle(progress.streakIsActive ? Theme.fire : Theme.faint)
                     Text("\(progress.currentStreak)")
                         .font(Theme.display(13))
@@ -82,7 +82,7 @@ struct HomeView: View {
             XPBar(progress: progress.xpProgress)
             if let next = progress.nextRank, let level = progress.nextRankLevel {
                 Text("Rank \(next) unlocks at level \(level)\(progress.nextRankStreak.map { " with a \($0)-day streak" } ?? "")")
-                    .font(.system(size: 11))
+                    .font(Theme.body(11))
                     .foregroundStyle(Theme.dim)
             }
         }
@@ -101,7 +101,7 @@ struct HomeView: View {
     private var todayCard: some View {
         VStack(spacing: 4) {
             Text("TODAY")
-                .font(.system(size: 12))
+                .font(Theme.body(12))
                 .kerning(0.4)
                 .foregroundStyle(Theme.dim)
             Text(model.sessionActive ? "Workout in progress" : "Ready to train?")
@@ -131,7 +131,7 @@ struct HomeView: View {
     private func weekCard(_ points: PointsSummary) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("THIS WEEK")
-                .font(.system(size: 12))
+                .font(Theme.body(12))
                 .kerning(0.4)
                 .foregroundStyle(Theme.dim)
             HStack(spacing: 12) {
@@ -142,7 +142,7 @@ struct HomeView: View {
             Text(points.streak.thisWeekDone
                  ? "Weekly goal met - your streak is safe."
                  : "\(points.streak.sessionsToGo) more workout\(points.streak.sessionsToGo == 1 ? "" : "s") this week keeps your streak.")
-                .font(.system(size: 12))
+                .font(Theme.body(12))
                 .foregroundStyle(points.streak.thisWeekDone ? Theme.green : Theme.dim)
         }
     }
