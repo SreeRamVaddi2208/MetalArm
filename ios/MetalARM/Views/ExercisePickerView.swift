@@ -1,0 +1,65 @@
+//
+//  ExercisePickerView.swift
+//  MetalARM
+//
+//  Searches the shared exercise library plus the user's own exercises.
+//
+
+import SwiftUI
+
+struct ExercisePickerView: View {
+    @Environment(AppModel.self) private var model
+    @Environment(\.dismiss) private var dismiss
+    @State private var query = ""
+
+    var body: some View {
+        NavigationStack {
+            List(model.pickerResults) { exercise in
+                Button {
+                    Task {
+                        await model.addExercise(exercise)
+                        dismiss()
+                    }
+                } label: {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(exercise.name)
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundStyle(Theme.text)
+                        Text("\(exercise.muscleLabel) · \(exercise.equipment.capitalized)")
+                            .font(.system(size: 12))
+                            .foregroundStyle(Theme.dim)
+                    }
+                }
+                .accessibilityIdentifier("pickExercise-\(exercise.name)")
+                .listRowBackground(Theme.card)
+            }
+            .overlay {
+                if model.pickerResults.isEmpty && !query.trimmed.isEmpty && !model.isBusy {
+                    ContentUnavailableView.search(text: query)
+                }
+            }
+            .scrollContentBackground(.hidden)
+            .background(Theme.bg)
+            .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: "Search exercises")
+            .navigationTitle("Add Exercise")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+            }
+            .task(id: query) {
+                // Debounce typing: a newer query cancels this one.
+                try? await Task.sleep(for: .milliseconds(250))
+                guard !Task.isCancelled else { return }
+                await model.searchExercises(query)
+            }
+        }
+        .preferredColorScheme(.dark)
+    }
+}
+
+#Preview {
+    ExercisePickerView()
+        .environment(AppModel(api: MockAPIClient()))
+}

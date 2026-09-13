@@ -4,31 +4,31 @@
 //
 //  Created by Vaddi Sree Rama Sai Sasi Sekhar on 13/09/26.
 //
+//  Runs against MockAPIClient (launch argument -UITestMockAPI) unless noted.
+//  The screenshots double as the App Store set when run on iPhone 17 Pro Max.
+//
 
 import XCTest
 
 final class MetalARMUITests: XCTestCase {
+    private let password = "correct-horse-1"
 
     override func setUpWithError() throws {
         continueAfterFailure = false
     }
 
-    // Runs against the API_CONTRACT.md examples (MockAPIClient), starting from onboarding.
     @MainActor
-    private func launchApp() -> XCUIApplication {
+    private func launch(_ arguments: [String]) -> XCUIApplication {
         let app = XCUIApplication()
-        app.launchArguments += ["-UITestMockAPI", "-UITestResetOnboarding"]
+        app.launchArguments = ["-UITestMockAPI"] + arguments
         app.launch()
         return app
     }
 
     @MainActor
-    private func launchPastOnboarding() -> XCUIApplication {
-        let app = launchApp()
-        let getStarted = app.buttons["getStartedButton"]
-        XCTAssertTrue(getStarted.waitForExistence(timeout: 10), "Onboarding never appeared")
-        getStarted.tap()
-        XCTAssertTrue(app.staticTexts["Level 14 — Forged"].waitForExistence(timeout: 5), "Home never showed the level card")
+    private func launchSignedIn() -> XCUIApplication {
+        let app = launch(["-UITestSignedIn", "-UITestSkipOnboarding"])
+        XCTAssertTrue(app.staticTexts["Level 14 · Rank C"].waitForExistence(timeout: 10), "Home never loaded")
         return app
     }
 
@@ -43,6 +43,53 @@ final class MetalARMUITests: XCTestCase {
     }
 
     @MainActor
+    private func element(_ app: XCUIApplication, _ identifier: String) -> XCUIElement {
+        app.descendants(matching: .any)[identifier]
+    }
+
+    @MainActor
+    private func type(_ text: String, into field: XCUIElement) {
+        XCTAssertTrue(field.waitForExistence(timeout: 5), "\(field) missing")
+        field.tap()
+        field.typeText(text)
+    }
+
+    /// The sign-up password field is a new-password field, so iOS may cover it
+    /// with its own "Use Strong Password?" sheet, which would swallow the typing.
+    /// The sheet can arrive late (or not at all), so verify what landed - a secure
+    /// field reports one bullet per character - and retry if it swallowed the typing.
+    @MainActor
+    private func typeNewPassword(_ text: String, into field: XCUIElement, in app: XCUIApplication) {
+        XCTAssertTrue(field.waitForExistence(timeout: 5), "\(field) missing")
+        for attempt in 1...3 {
+            field.tap()
+            if app.staticTexts["Use Strong Password?"].waitForExistence(timeout: attempt == 1 ? 2 : 5) {
+                app.buttons["Close"].firstMatch.tap()
+                _ = app.staticTexts["Use Strong Password?"].waitForNonExistence(timeout: 3)
+                field.tap()
+            }
+            let typed = (field.value as? String) ?? ""
+            if !typed.isEmpty && typed != field.placeholderValue {
+                field.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: typed.count))
+            }
+            field.typeText(text)
+            if ((field.value as? String) ?? "").count == text.count { return }
+        }
+        XCTFail("Could not type the password - the AutoFill sheet kept taking the keyboard")
+    }
+
+    /// After a sign-up with a new password iOS may offer "Save Password?", which
+    /// covers the app until dismissed.
+    @MainActor
+    private func dismissSavePasswordPrompt(_ app: XCUIApplication) {
+        let notNow = app.buttons["Not Now"]
+        if notNow.waitForExistence(timeout: 5) {
+            notNow.tap()
+            _ = notNow.waitForNonExistence(timeout: 3)
+        }
+    }
+
+    @MainActor
     private func attachScreenshot(_ app: XCUIApplication, named name: String) {
         let attachment = XCTAttachment(screenshot: app.screenshot())
         attachment.name = name
@@ -51,118 +98,167 @@ final class MetalARMUITests: XCTestCase {
     }
 
     @MainActor
-    func testOnboardingLeadsToHome() throws {
-        let app = launchApp()
+    private func deleteAccount(_ app: XCUIApplication, screenshot: String? = nil) {
+        openTab(app, "Profile")
+        let delete = app.buttons["deleteAccountButton"]
+        XCTAssertTrue(delete.waitForExistence(timeout: 10), "Delete Account missing")
+        app.swipeUp()
+        app.swipeUp()
+        delete.tap()
+        type(password, into: app.secureTextFields["deletePasswordField"])
+        if let screenshot { attachScreenshot(app, named: screenshot) }
+        app.buttons["confirmDeleteButton"].tap()
+        XCTAssertTrue(app.buttons["authSubmitButton"].waitForExistence(timeout: 10), "Deleting the account did not sign out")
+    }
+
+    @MainActor
+    func testOnboardingAndSignUp() throws {
+        let app = launch(["-UITestResetOnboarding"])
         XCTAssertTrue(app.staticTexts["onboardingTitle"].waitForExistence(timeout: 10), "Onboarding never appeared")
         attachScreenshot(app, named: "01 Onboarding")
 
         app.buttons["getStartedButton"].tap()
-        XCTAssertTrue(app.staticTexts["Level 14 — Forged"].waitForExistence(timeout: 5), "Home never showed the level card")
-        XCTAssertTrue(app.staticTexts["Sree Ram"].exists)
-        attachScreenshot(app, named: "02 Home")
+        type("Sree Ram", into: app.textFields["displayNameField"])
+        type("sree@metalarm.dev", into: app.textFields["emailField"])
+        typeNewPassword(password, into: app.secureTextFields["passwordField"], in: app)
+        attachScreenshot(app, named: "02 Create account")
+
+        app.buttons["authSubmitButton"].tap()
+        XCTAssertTrue(app.staticTexts["Level 14 · Rank C"].waitForExistence(timeout: 10), "Sign-up did not reach Home")
+        dismissSavePasswordPrompt(app)
+        attachScreenshot(app, named: "Home after sign-up")
     }
 
     @MainActor
     func testWorkoutLoopFromStartToSummary() throws {
-        let app = launchPastOnboarding()
+        let app = launchSignedIn()
 
         app.buttons["homeStartWorkoutButton"].tap()
+        let addFirst = app.buttons["addFirstExerciseButton"]
+        XCTAssertTrue(addFirst.waitForExistence(timeout: 5), "Workout never started")
+        addFirst.tap()
+
+        let bench = app.buttons["pickExercise-Barbell Bench Press"]
+        XCTAssertTrue(bench.waitForExistence(timeout: 5), "Exercise picker did not load")
+        attachScreenshot(app, named: "04 Exercise picker")
+        bench.tap()
+
         let logSet = app.buttons["logSetButton"]
-        XCTAssertTrue(logSet.waitForExistence(timeout: 5), "Workout screen never opened")
-        XCTAssertTrue(app.staticTexts["Barbell Bench Press"].exists)
-        attachScreenshot(app, named: "03 Workout")
+        XCTAssertTrue(logSet.waitForExistence(timeout: 5), "Exercise card missing")
+        XCTAssertTrue(element(app, "ghostValues").exists, "Last session's numbers missing")
+        attachScreenshot(app, named: "05 Workout")
 
         logSet.tap()
-        XCTAssertTrue(app.staticTexts["1 sets logged"].waitForExistence(timeout: 5), "Logged set did not appear")
-        XCTAssertTrue(app.descendants(matching: .any)["restBanner"].exists, "Rest timer banner missing")
-        XCTAssertTrue(app.descendants(matching: .any)["prBanner"].exists, "PR banner missing")
-        attachScreenshot(app, named: "04 Set logged")
+        XCTAssertTrue(app.staticTexts["1 set logged"].waitForExistence(timeout: 5), "Set was not logged")
+        XCTAssertTrue(element(app, "prBanner").exists, "PR banner missing")
+        XCTAssertTrue(element(app, "restBanner").exists, "Rest timer missing")
+        attachScreenshot(app, named: "06 Set logged")
 
         app.buttons["finishButton"].tap()
-        XCTAssertTrue(app.staticTexts["+185"].waitForExistence(timeout: 5), "Summary never showed the points")
+        XCTAssertTrue(app.buttons["doneButton"].waitForExistence(timeout: 5), "Summary never appeared")
         XCTAssertTrue(app.staticTexts["New Personal Record!"].exists)
-        attachScreenshot(app, named: "05 Summary")
+        XCTAssertTrue(element(app, "unqualifiedNote").exists, "Short workout was not explained")
+        attachScreenshot(app, named: "07 Summary")
 
         app.buttons["doneButton"].tap()
-        XCTAssertTrue(app.buttons["workoutStartButton"].waitForExistence(timeout: 5), "Summary did not close back to the workout tab")
+        XCTAssertTrue(app.buttons["workoutStartButton"].waitForExistence(timeout: 5), "Summary did not close")
     }
 
     @MainActor
-    func testTabsShowProgressRanksAndProfile() throws {
-        let app = launchPastOnboarding()
+    func testProgressRanksAndProfile() throws {
+        let app = launchSignedIn()
+        attachScreenshot(app, named: "03 Home")
 
         openTab(app, "Progress")
-        XCTAssertTrue(app.staticTexts["Personal records"].waitForExistence(timeout: 5), "Progress tab did not load")
+        XCTAssertTrue(app.staticTexts["Personal records"].waitForExistence(timeout: 5), "Progress did not load")
         XCTAssertTrue(app.staticTexts["Heaviest — Barbell Bench Press"].waitForExistence(timeout: 5))
-        attachScreenshot(app, named: "06 Progress")
+        attachScreenshot(app, named: "08 Progress")
 
         openTab(app, "Ranks")
-        XCTAssertTrue(app.staticTexts["Meera"].waitForExistence(timeout: 5), "Leaderboard did not load")
+        XCTAssertTrue(app.staticTexts["Meera"].waitForExistence(timeout: 5), "Party board did not load")
         XCTAssertTrue(app.staticTexts["(you)"].exists)
-        attachScreenshot(app, named: "07 Leaderboard")
+        attachScreenshot(app, named: "09 Ranks")
 
         openTab(app, "Profile")
-        XCTAssertTrue(app.staticTexts["Badges"].waitForExistence(timeout: 5), "Profile tab did not load")
-        XCTAssertTrue(app.staticTexts["1 / 2"].waitForExistence(timeout: 5))
-        attachScreenshot(app, named: "08 Profile")
+        XCTAssertTrue(app.staticTexts["Badges"].waitForExistence(timeout: 5), "Profile did not load")
+        attachScreenshot(app, named: "10 Profile")
     }
 
-    // End-to-end against the real backend (uvicorn on localhost:8000). Logs a real session,
-    // so it only runs when xcodebuild is given TEST_RUNNER_METALARM_LIVE_UI=1.
+    @MainActor
+    func testDeletingTheAccountReturnsToSignIn() throws {
+        let app = launchSignedIn()
+        deleteAccount(app, screenshot: "11 Delete account")
+    }
+
+    // End-to-end against the real backend (the LevelForge stack on 127.0.0.1:8000):
+    // signs up a fresh account, logs a workout, then deletes the account again.
+    // Runs only when xcodebuild is given TEST_RUNNER_METALARM_LIVE_UI=1.
     @MainActor
     func testLiveBackendTour() throws {
         try XCTSkipUnless(ProcessInfo.processInfo.environment["METALARM_LIVE_UI"] == "1",
                           "Start the backend and set TEST_RUNNER_METALARM_LIVE_UI=1 to run")
         let app = XCUIApplication()
-        app.launchArguments += ["-UITestResetOnboarding"]
-        // IPv4 on purpose: "localhost" can resolve to ::1, where another service may hold port 8000.
+        app.launchArguments = ["-UITestResetOnboarding"]
         app.launchEnvironment["METALARM_BACKEND_URL"] =
             ProcessInfo.processInfo.environment["METALARM_BACKEND_URL"] ?? "http://127.0.0.1:8000"
         app.launch()
 
-        let getStarted = app.buttons["getStartedButton"]
-        XCTAssertTrue(getStarted.waitForExistence(timeout: 10), "Onboarding never appeared")
-        getStarted.tap()
-        let levelCard = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH 'Level '")).firstMatch
-        XCTAssertTrue(levelCard.waitForExistence(timeout: 10), "Home never loaded from the backend")
+        XCTAssertTrue(app.buttons["getStartedButton"].waitForExistence(timeout: 10))
+        app.buttons["getStartedButton"].tap()
+        type("Live Tester", into: app.textFields["displayNameField"])
+        type("live-\(UUID().uuidString.prefix(8).lowercased())@metalarm.dev", into: app.textFields["emailField"])
+        typeNewPassword(password, into: app.secureTextFields["passwordField"], in: app)
+        app.buttons["authSubmitButton"].tap()
+        let level = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH 'Level 1 '")).firstMatch
+        XCTAssertTrue(level.waitForExistence(timeout: 15), "Sign-up against the backend failed")
+        dismissSavePasswordPrompt(app)
         attachScreenshot(app, named: "Live 01 Home")
 
         app.buttons["homeStartWorkoutButton"].tap()
-        let logSet = app.buttons["logSetButton"]
-        XCTAssertTrue(logSet.waitForExistence(timeout: 10), "Backend session never started")
-        logSet.tap()
-        XCTAssertTrue(app.staticTexts["1 sets logged"].waitForExistence(timeout: 10))
-        logSet.tap()
-        XCTAssertTrue(app.staticTexts["2 sets logged"].waitForExistence(timeout: 10))
-        attachScreenshot(app, named: "Live 02 Workout")
+        let addFirst = app.buttons["addFirstExerciseButton"]
+        XCTAssertTrue(addFirst.waitForExistence(timeout: 10), "Backend workout never started")
+        addFirst.tap()
+        type("bench press", into: app.searchFields.firstMatch)
+        let pick = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'pickExercise-'")).firstMatch
+        XCTAssertTrue(pick.waitForExistence(timeout: 10), "Exercise search returned nothing")
+        attachScreenshot(app, named: "Live 02 Exercise search")
+        pick.tap()
+
+        type("60", into: app.textFields["weightField"])
+        type("5", into: app.textFields["repsField"])
+        app.buttons["keyboardDoneButton"].tap()
+        app.buttons["logSetButton"].tap()
+        XCTAssertTrue(app.staticTexts["1 set logged"].waitForExistence(timeout: 10), "First set was not logged")
+        app.buttons["logSetButton"].tap()
+        XCTAssertTrue(app.staticTexts["2 sets logged"].waitForExistence(timeout: 10), "Second set was not logged")
+        attachScreenshot(app, named: "Live 03 Workout")
 
         app.buttons["finishButton"].tap()
         XCTAssertTrue(app.buttons["doneButton"].waitForExistence(timeout: 10), "Summary never appeared")
-        attachScreenshot(app, named: "Live 03 Summary")
+        attachScreenshot(app, named: "Live 04 Summary")
         app.buttons["doneButton"].tap()
 
         openTab(app, "Progress")
         XCTAssertTrue(app.staticTexts["Personal records"].waitForExistence(timeout: 10))
-        attachScreenshot(app, named: "Live 04 Progress Bench")
-        app.buttons["Squat"].tap()
-        let squatRecord = app.staticTexts.matching(NSPredicate(format: "label CONTAINS 'Barbell Back Squat'")).firstMatch
-        XCTAssertTrue(squatRecord.waitForExistence(timeout: 10), "Squat tab did not load Barbell Back Squat")
-        attachScreenshot(app, named: "Live 05 Progress Squat")
+        attachScreenshot(app, named: "Live 05 Progress")
 
         openTab(app, "Ranks")
-        XCTAssertTrue(app.staticTexts["(you)"].waitForExistence(timeout: 10))
-        attachScreenshot(app, named: "Live 06 Leaderboard")
+        XCTAssertTrue(app.buttons["createPartyButton"].waitForExistence(timeout: 10))
+        attachScreenshot(app, named: "Live 06 Ranks")
 
         openTab(app, "Profile")
         XCTAssertTrue(app.staticTexts["Badges"].waitForExistence(timeout: 10))
         attachScreenshot(app, named: "Live 07 Profile")
+
+        deleteAccount(app)
     }
 
     @MainActor
     func testLaunchPerformance() throws {
-        // This measures how long it takes to launch your application.
         measure(metrics: [XCTApplicationLaunchMetric()]) {
-            XCUIApplication().launch()
+            let app = XCUIApplication()
+            app.launchArguments = ["-UITestMockAPI"]
+            app.launch()
         }
     }
 }

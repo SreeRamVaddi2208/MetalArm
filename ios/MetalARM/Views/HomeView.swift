@@ -2,28 +2,27 @@
 //  HomeView.swift
 //  MetalARM
 //
-//  Port of frontend/frontend/pages/home.py.
-//
 
 import SwiftUI
 
 struct HomeView: View {
     @Environment(AppModel.self) private var model
-    var onStartWorkout: () -> Void = {}
+    var onOpenWorkout: () -> Void = {}
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 header
-                if let user = model.user {
-                    xpCard(user)
+                if let me = model.me {
+                    levelCard(me.progress)
                 }
                 todayCard
-                friendActivity
+                if let points = model.points {
+                    weekCard(points)
+                }
                 ErrorText(message: model.errorMessage)
             }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 20)
+            .padding(20)
         }
         .background(Theme.bg)
         .task { await model.loadHome() }
@@ -32,39 +31,34 @@ struct HomeView: View {
 
     private var header: some View {
         HStack(spacing: 12) {
-            AvatarBadge(initials: initials(of: model.user?.name ?? ""), size: 40, cornerRadius: 12, fontSize: 15)
+            AvatarBadge(initials: initials(of: model.me?.displayName ?? ""), size: 40, cornerRadius: 12, fontSize: 15)
             VStack(alignment: .leading, spacing: 0) {
                 Text("Welcome back")
                     .font(.system(size: 13))
                     .foregroundStyle(Theme.dim)
-                Text(model.user?.name ?? " ")
+                Text(model.me?.displayName ?? " ")
                     .font(Theme.display(15, .semibold))
                     .foregroundStyle(Theme.text)
             }
             Spacer()
-            Image(systemName: "bell")
-                .font(.system(size: 16))
-                .foregroundStyle(Theme.dim)
-                .frame(width: 38, height: 38)
-                .cardStyle(cornerRadius: 11)
         }
     }
 
-    private func xpCard(_ user: User) -> some View {
-        VStack(spacing: 12) {
+    private func levelCard(_ progress: ProgressInfo) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
             HStack {
                 HStack(spacing: 12) {
-                    Text("\(user.level)")
+                    Text("\(progress.currentLevel)")
                         .font(Theme.display(17))
                         .foregroundStyle(Theme.fire)
                         .frame(width: 44, height: 44)
                         .background(Theme.bg, in: RoundedRectangle(cornerRadius: 14))
                         .overlay(RoundedRectangle(cornerRadius: 14).stroke(Theme.fire, lineWidth: 2))
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("Level \(user.level) — \(user.levelName)")
+                        Text("Level \(progress.currentLevel) · Rank \(progress.rank)")
                             .font(Theme.display(15))
                             .foregroundStyle(Theme.text)
-                        Text("\(user.xpCurrent) / \(user.xpToNextLevel) XP")
+                        Text("\(progress.xpIntoLevel) / \(progress.xpForNextLevel) XP")
                             .font(.system(size: 12))
                             .foregroundStyle(Theme.dim)
                     }
@@ -73,8 +67,8 @@ struct HomeView: View {
                 HStack(spacing: 4) {
                     Image(systemName: "flame.fill")
                         .font(.system(size: 13))
-                        .foregroundStyle(Theme.fire)
-                    Text("\(user.streakDays ?? 0)")
+                        .foregroundStyle(progress.streakIsActive ? Theme.fire : Theme.faint)
+                    Text("\(progress.currentStreak)")
                         .font(Theme.display(13))
                         .foregroundStyle(Theme.text)
                 }
@@ -83,9 +77,14 @@ struct HomeView: View {
                 .background(Theme.bg, in: RoundedRectangle(cornerRadius: 10))
                 .overlay(RoundedRectangle(cornerRadius: 10).stroke(Theme.cardBorder))
                 .accessibilityElement(children: .combine)
-                .accessibilityLabel("\(user.streakDays ?? 0) day streak")
+                .accessibilityLabel("\(progress.currentStreak) day streak")
             }
-            XPBar(progress: model.xpProgress)
+            XPBar(progress: progress.xpProgress)
+            if let next = progress.nextRank, let level = progress.nextRankLevel {
+                Text("Rank \(next) unlocks at level \(level)\(progress.nextRankStreak.map { " with a \($0)-day streak" } ?? "")")
+                    .font(.system(size: 11))
+                    .foregroundStyle(Theme.dim)
+            }
         }
         .padding(.horizontal, 18)
         .padding(.vertical, 16)
@@ -105,7 +104,7 @@ struct HomeView: View {
                 .font(.system(size: 12))
                 .kerning(0.4)
                 .foregroundStyle(Theme.dim)
-            Text(model.sessionActive ? "Workout in progress" : "No workout logged yet")
+            Text(model.sessionActive ? "Workout in progress" : "Ready to train?")
                 .font(Theme.display(20))
                 .foregroundStyle(Theme.text)
             Button {
@@ -114,11 +113,11 @@ struct HomeView: View {
                         await model.startWorkout()
                     }
                     if model.sessionActive {
-                        onStartWorkout()
+                        onOpenWorkout()
                     }
                 }
             } label: {
-                Label(model.sessionActive ? "Resume Workout" : "Start Workout", systemImage: "plus")
+                Label(model.sessionActive ? "Resume Workout" : "Start Workout", systemImage: model.sessionActive ? "play.fill" : "plus")
             }
             .buttonStyle(PrimaryButtonStyle())
             .accessibilityIdentifier("homeStartWorkoutButton")
@@ -129,35 +128,22 @@ struct HomeView: View {
         .cardStyle()
     }
 
-    private var friendActivity: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text("Friend activity")
-                    .font(Theme.display(16))
-                    .foregroundStyle(Theme.text)
-                Spacer()
-                Text("See all")
-                    .font(.system(size: 12))
-                    .foregroundStyle(Theme.fire)
+    private func weekCard(_ points: PointsSummary) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("THIS WEEK")
+                .font(.system(size: 12))
+                .kerning(0.4)
+                .foregroundStyle(Theme.dim)
+            HStack(spacing: 12) {
+                StatTile(value: "\(points.thisWeekPoints)", label: "Points")
+                StatTile(value: "\(points.streak.thisWeekSessions)/\(points.streak.target)", label: "Workouts")
+                StatTile(value: "\(points.streak.weeks)", label: "Week streak")
             }
-            .padding(.top, 2)
-            ForEach(model.friendActivity) { item in
-                HStack(spacing: 12) {
-                    RoundedRectangle(cornerRadius: 9)
-                        .fill(Theme.violet)
-                        .frame(width: 32, height: 32)
-                    Text("\(Text(item.userName).bold().foregroundStyle(Theme.text)) \(item.text)")
-                        .font(.system(size: 13))
-                        .foregroundStyle(Theme.dim)
-                    Spacer()
-                    Text("\(item.hoursAgo)h")
-                        .font(.system(size: 11))
-                        .foregroundStyle(Theme.faint)
-                }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 11)
-                .cardStyle(cornerRadius: 14)
-            }
+            Text(points.streak.thisWeekDone
+                 ? "Weekly goal met - your streak is safe."
+                 : "\(points.streak.sessionsToGo) more workout\(points.streak.sessionsToGo == 1 ? "" : "s") this week keeps your streak.")
+                .font(.system(size: 12))
+                .foregroundStyle(points.streak.thisWeekDone ? Theme.green : Theme.dim)
         }
     }
 }

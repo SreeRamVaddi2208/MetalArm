@@ -2,7 +2,9 @@
 //  AppModel.swift
 //  MetalARM
 //
-//  App-wide state, ported from AppState in frontend/frontend/state.py.
+//  App-wide state. Mirrors the behaviour rules in docs/workouts-api.md:
+//  rehydrate the live workout on load, send a fresh client_set_id per tap,
+//  celebrate from the response, and never compute points on the device.
 //
 
 import Foundation
@@ -11,150 +13,301 @@ import Observation
 @Observable
 final class AppModel {
     struct ProgressTab: Identifiable, Hashable {
-        let id: Int
+        let id: String
         let name: String
     }
 
-    static let restDuration = 90
+    static let defaultRestSeconds = 90
+    // Shown on the Progress screen until the user has records of their own.
+    static let starterExercises = ["Barbell Bench Press", "Barbell Back Squat", "Conventional Deadlift"]
 
     let api: MetalArmAPI
+    private(set) var isSignedIn: Bool
 
-    // Home / user
-    var user: User?
-    var friendActivity: [FriendActivity] = []
+    // Home
+    var me: Me?
+    var points: PointsSummary?
 
-    // Exercise library
-    var exercises: [Exercise] = []
-
-    // Active workout session
-    var sessionID: Int?
-    var activeExercise: Exercise?
-    var setsLogged: [LoggedSet] = []
-    var weightInput = "80"
-    var repsInput = "8"
+    // Workout
+    var session: WorkoutSession?
+    // Chosen in the picker but with no set logged yet, so not on the server.
+    var pendingExercises: [Exercise] = []
+    var ghostSets: [String: [WorkoutSet]] = [:]
+    var selectedExerciseID: String?
+    var weightInput = ""
+    var repsInput = ""
     var prHint = ""
+    var progressionHint = ""
     var restSecondsLeft = 0
-
-    // Last finished session
-    var summary: WorkoutSummary?
+    var pickerResults: [Exercise] = []
+    var finishResult: FinishResult?
     var showingSummary = false
 
-    // Progress tabs are resolved from /exercises by name: the seeded ids are not 1/2/3
-    // (Squat is 3 and Deadlift is 5), so hardcoding ids shows the wrong exercise.
-    static let progressExercises = [
-        (tab: "Bench Press", exercise: "Barbell Bench Press"),
-        (tab: "Squat", exercise: "Barbell Back Squat"),
-        (tab: "Deadlift", exercise: "Conventional Deadlift"),
-    ]
+    // Progress
     var progressTabs: [ProgressTab] = []
-    var selectedExerciseID = 1
-    var progress: ProgressData?
-    var records: [RecordItem] = []
+    var selectedProgressID: String?
+    var history: [HistoryPoint] = []
+    var records: [WorkoutRecord] = []
 
-    // Leaderboard / profile
-    var leaderboard: [LeaderboardEntry] = []
-    var profileStats: ProfileStats?
-    var badges: [Badge] = []
+    // Ranks
+    var parties: [Party] = []
+    var selectedPartyID: String?
+    var partyBoard: PartyBoard?
+
+    // Profile
+    var profile: Profile?
 
     var errorMessage = ""
+    var isBusy = false
 
     @ObservationIgnored private var restTask: Task<Void, Never>?
 
     init(api: MetalArmAPI) {
         self.api = api
+        isSignedIn = api.isSignedIn
+        api.onSignedOut = { [weak self] in self?.resetAfterSignOut() }
     }
 
     // MARK: - Derived values
 
-    var sessionActive: Bool { sessionID != nil }
-
-    var resting: Bool { restSecondsLeft > 0 }
-
-    var activeExerciseMuscleLabel: String {
-        activeExercise?.muscleGroups.joined(separator: ", ").capitalized ?? ""
+    var weightUnit: WeightUnit {
+        WeightUnit(rawValue: me?.weightUnit ?? profile?.user.weightUnit ?? "kg") ?? .kg
     }
 
-    var xpProgress: Double { user?.xpProgress ?? 0 }
+    var sessionActive: Bool { session != nil }
 
-    var summaryXPRemaining: Int { summary?.level.xpRemaining ?? 0 }
-
-    var summaryXPProgress: Double { summary?.level.progress ?? 0 }
-
-    var badgesEarnedCount: Int { badges.filter(\.earned).count }
+    var resting: Bool { restSecondsLeft > 0 }
 
     var restDisplay: String {
         let seconds = max(0, restSecondsLeft)
         return String(format: "%d:%02d", seconds / 60, seconds % 60)
     }
 
+    var xpProgress: Double { me?.progress.xpProgress ?? profile?.progress.xpProgress ?? 0 }
+
+    /// Exercises on the workout board: those with sets (server order), then ones just added.
+    var workoutExercises: [Exercise] {
+        let logged = session?.exercises.map(\.exercise) ?? []
+        return logged + pendingExercises.filter { pending in !logged.contains { $0.id == pending.id } }
+    }
+
+    var selectedExercise: Exercise? { workoutExercises.first { $0.id == selectedExerciseID } }
+
+    var selectedSessionExercise: SessionExercise? {
+        session?.exercises.first { $0.exercise.id == selectedExerciseID }
+    }
+
+    /// Last session's sets for the selected exercise - the ghost values.
+    var selectedPreviousSets: [WorkoutSet] {
+        guard let selectedExerciseID else { return [] }
+        let fromSession = selectedSessionExercise?.previousSets ?? []
+        return fromSession.isEmpty ? ghostSets[selectedExerciseID] ?? [] : fromSession
+    }
+
+    var setsLoggedCount: Int { session?.exercises.reduce(0) { $0 + $1.sets.count } ?? 0 }
+
+    var selectedParty: Party? { parties.first { $0.id == selectedPartyID } }
+
+    // MARK: - Account
+
+    func signIn(email: String, password: String) async {
+        await run("Couldn't sign in") {
+            try await api.signIn(email: email.trimmed, password: password)
+            isSignedIn = true
+        }
+    }
+
+    func signUp(email: String, password: String, displayName: String) async {
+        await run("Couldn't create your account") {
+            try await api.signUp(
+                email: email.trimmed, password: password, displayName: displayName.trimmed,
+                timezone: TimeZone.current.identifier)
+            isSignedIn = true
+        }
+    }
+
+    func signOut() {
+        api.signOut()
+        resetAfterSignOut()
+    }
+
+    func signOutEverywhere() async {
+        var succeeded = false
+        await run("Couldn't sign out of other devices") {
+            try await api.signOutEverywhere()
+            succeeded = true
+        }
+        if succeeded { resetAfterSignOut() }
+    }
+
+    /// Returns whether the account was deleted.
+    func deleteAccount(password: String) async -> Bool {
+        var deleted = false
+        await run("Couldn't delete your account") {
+            try await api.deleteAccount(password: password)
+            deleted = true
+        }
+        if deleted { resetAfterSignOut() }
+        return deleted
+    }
+
+    private func resetAfterSignOut() {
+        isSignedIn = false
+        me = nil
+        points = nil
+        profile = nil
+        clearWorkout()
+        ghostSets = [:]
+        finishResult = nil
+        showingSummary = false
+        progressTabs = []
+        selectedProgressID = nil
+        history = []
+        records = []
+        parties = []
+        selectedPartyID = nil
+        partyBoard = nil
+    }
+
     // MARK: - Home
 
     func loadHome() async {
-        do {
-            user = try await api.me()
-            friendActivity = try await api.friendActivity()
-            errorMessage = ""
-        } catch {
-            errorMessage = "Couldn't reach the backend: \(error.localizedDescription)"
+        await run("Couldn't load your stats") {
+            me = try await api.me()
+            points = try await api.points()
+            session = try await api.activeSession()
         }
+        if selectedExercise == nil { selectDefaultExercise() }
     }
 
     // MARK: - Workout
 
+    func loadWorkout() async {
+        await run("Couldn't load your workout") {
+            session = try await api.activeSession()
+        }
+        if selectedExercise == nil { selectDefaultExercise() }
+    }
+
     func startWorkout() async {
-        do {
-            if exercises.isEmpty {
-                exercises = try await api.exercises()
+        await run("Couldn't start a workout") {
+            do {
+                session = try await api.startSession()
+            } catch let error as APIError where error.status == 409 {
+                // One is already live (started on another device): resume it.
+                session = try await api.activeSession()
             }
-            // Single-exercise sessions for now, defaulting to bench — same as the web app.
-            guard let bench = exercises.first(where: { $0.name.lowercased().contains("bench") }) ?? exercises.first else {
-                errorMessage = "No exercises are available."
-                return
-            }
-            let session = try await api.startSession()
-            activeExercise = bench
-            sessionID = session.id
-            setsLogged = []
+            pendingExercises = []
             prHint = ""
-            weightInput = "80"
-            repsInput = "8"
+            progressionHint = ""
             stopRestTimer()
-            errorMessage = ""
-        } catch {
-            errorMessage = "Couldn't start a session: \(error.localizedDescription)"
+        }
+        selectDefaultExercise()
+    }
+
+    func searchExercises(_ query: String) async {
+        await run("Couldn't search exercises") {
+            pickerResults = try await api.searchExercises(query: query)
         }
     }
 
-    func logCurrentSet() async {
-        guard let weight = Double(weightInput.trimmingCharacters(in: .whitespaces)),
-              let reps = Int(repsInput.trimmingCharacters(in: .whitespaces)) else {
-            errorMessage = "Weight and reps need to be numbers."
-            return
+    func addExercise(_ exercise: Exercise) async {
+        if !workoutExercises.contains(where: { $0.id == exercise.id }) {
+            pendingExercises.append(exercise)
         }
-        guard let sessionID, let exercise = activeExercise else {
-            errorMessage = "Start a workout first."
-            return
+        if ghostSets[exercise.id] == nil, let sets = try? await api.lastPerformance(exerciseID: exercise.id) {
+            ghostSets[exercise.id] = sets
         }
-        do {
-            let result = try await api.logSet(sessionID: sessionID, exerciseID: exercise.id, weightKg: weight, reps: reps)
-            setsLogged.append(result.loggedSet)
-            if let pr = result.pr {
-                let record = pr.recordType.replacingOccurrences(of: "_", with: " ")
-                let previous = pr.previousValue.map { " (was \(formatNumber($0)))" } ?? ""
-                prHint = "New \(record): \(formatNumber(pr.value))\(previous)"
-            } else {
-                prHint = ""
-            }
-            errorMessage = ""
-            startRestTimer()
-        } catch {
-            errorMessage = "Couldn't log that set: \(error.localizedDescription)"
+        select(exercise.id)
+    }
+
+    func select(_ exerciseID: String) {
+        selectedExerciseID = exerciseID
+        prefillInputs()
+    }
+
+    private func selectDefaultExercise() {
+        if let id = session?.exercises.last?.exercise.id ?? pendingExercises.last?.id {
+            select(id)
+        } else {
+            selectedExerciseID = nil
         }
     }
 
-    func startRestTimer() {
+    /// This session's last set on the exercise, else last time's, else blank.
+    private func prefillInputs() {
+        guard let reference = selectedSessionExercise?.sets.last ?? selectedPreviousSets.first else {
+            weightInput = ""
+            repsInput = ""
+            return
+        }
+        weightInput = formatNumber(weightUnit.fromKilograms(reference.weightKg))
+        repsInput = reference.reps.map(String.init) ?? ""
+    }
+
+    func logSet() async {
+        guard let current = session, let exercise = selectedExercise else {
+            errorMessage = "Add an exercise first."
+            return
+        }
+        guard let weight = Double(weightInput.trimmed.replacingOccurrences(of: ",", with: ".")), weight >= 0,
+              let reps = Int(repsInput.trimmed), reps > 0 else {
+            errorMessage = "Enter a weight and a number of reps."
+            return
+        }
+        // One id per tap: a retry of this same request can never log twice.
+        let clientSetID = UUID()
+        await run("Couldn't log that set") {
+            let result = try await api.logSet(
+                sessionID: current.id, exerciseID: exercise.id, weight: weight, unit: weightUnit,
+                reps: reps, clientSetID: clientSetID)
+            prHint = result.prEvents.celebrated?.headline(in: weightUnit) ?? ""
+            progressionHint = result.progression.hint
+            session = try await api.session(id: current.id)
+            pendingExercises.removeAll { $0.id == exercise.id }
+            let rest = selectedSessionExercise?.target?.restSeconds ?? Self.defaultRestSeconds
+            startRestTimer(seconds: rest)
+        }
+    }
+
+    func finishWorkout() async {
+        guard let current = session else { return }
+        await run("Couldn't finish the workout") {
+            finishResult = try await api.finishSession(sessionID: current.id)
+            clearWorkout()
+            showingSummary = true
+        }
+        await refreshStats()
+    }
+
+    func abandonWorkout() async {
+        guard let current = session else { return }
+        await run("Couldn't discard the workout") {
+            try await api.abandonSession(sessionID: current.id)
+            clearWorkout()
+        }
+        await refreshStats()
+    }
+
+    private func refreshStats() async {
+        if let latest = try? await api.me() { me = latest }
+        if let latest = try? await api.points() { points = latest }
+    }
+
+    private func clearWorkout() {
+        session = nil
+        pendingExercises = []
+        selectedExerciseID = nil
+        weightInput = ""
+        repsInput = ""
+        prHint = ""
+        progressionHint = ""
+        stopRestTimer()
+    }
+
+    func startRestTimer(seconds: Int = defaultRestSeconds) {
         restTask?.cancel()
-        restSecondsLeft = Self.restDuration
+        restSecondsLeft = seconds
         restTask = Task { [weak self] in
             while !Task.isCancelled {
                 try? await Task.sleep(for: .seconds(1))
@@ -171,79 +324,116 @@ final class AppModel {
         restSecondsLeft = 0
     }
 
-    func finishWorkout() async {
-        guard let sessionID else { return }
-        do {
-            summary = try await api.finishSession(sessionID: sessionID)
-            self.sessionID = nil
-            activeExercise = nil
-            stopRestTimer()
-            errorMessage = ""
-            showingSummary = true
-            // Home's level/XP card should reflect the points just earned.
-            if let refreshed = try? await api.me() {
-                user = refreshed
-            }
-        } catch {
-            errorMessage = "Couldn't finish the session: \(error.localizedDescription)"
-        }
-    }
-
     // MARK: - Progress
 
     func loadProgress() async {
-        do {
-            if exercises.isEmpty {
-                exercises = try await api.exercises()
+        await run("Couldn't load progress") {
+            var tabs: [ProgressTab] = []
+            for record in try await api.records(exerciseID: nil) where !tabs.contains(where: { $0.id == record.exerciseId }) {
+                tabs.append(ProgressTab(id: record.exerciseId, name: record.exerciseName))
             }
-        } catch {
-            errorMessage = "Couldn't load progress: \(error.localizedDescription)"
-            return
+            if tabs.isEmpty {
+                for name in Self.starterExercises {
+                    if let match = try await api.searchExercises(query: name).first(where: { $0.name == name }) {
+                        tabs.append(ProgressTab(id: match.id, name: match.name))
+                    }
+                }
+            }
+            progressTabs = tabs
         }
-        progressTabs = Self.progressExercises.compactMap { entry in
-            exercises.first { $0.name == entry.exercise }.map { ProgressTab(id: $0.id, name: entry.tab) }
+        let keep = progressTabs.contains { $0.id == selectedProgressID }
+        if let id = keep ? selectedProgressID : progressTabs.first?.id {
+            await selectProgress(id)
         }
-        if !progressTabs.contains(where: { $0.id == selectedExerciseID }), let first = progressTabs.first {
-            selectedExerciseID = first.id
-        }
-        await selectExercise(selectedExerciseID)
     }
 
-    func selectExercise(_ exerciseID: Int) async {
-        selectedExerciseID = exerciseID
-        do {
-            progress = try await api.progress(exerciseID: exerciseID)
+    func selectProgress(_ exerciseID: String) async {
+        selectedProgressID = exerciseID
+        await run("Couldn't load progress") {
+            history = try await api.exerciseHistory(exerciseID: exerciseID)
             records = try await api.records(exerciseID: exerciseID)
-            errorMessage = ""
-        } catch {
-            errorMessage = "Couldn't load progress: \(error.localizedDescription)"
         }
     }
 
-    // MARK: - Leaderboard
+    // MARK: - Ranks
 
-    func loadLeaderboard() async {
-        do {
-            leaderboard = try await api.leaderboard()
-            errorMessage = ""
-        } catch {
-            errorMessage = "Couldn't load the leaderboard: \(error.localizedDescription)"
+    func loadParties() async {
+        await run("Couldn't load your parties") {
+            parties = try await api.parties().filter(\.isActive)
+            if !parties.contains(where: { $0.id == selectedPartyID }) {
+                selectedPartyID = parties.first?.id
+            }
+            partyBoard = try await selectedPartyID.asyncMap { try await api.partyLeaderboard(partyID: $0) }
+        }
+    }
+
+    func selectParty(_ partyID: String) async {
+        selectedPartyID = partyID
+        await run("Couldn't load the leaderboard") {
+            partyBoard = try await api.partyLeaderboard(partyID: partyID)
+        }
+    }
+
+    func createParty(name: String) async {
+        guard !name.trimmed.isEmpty else { return }
+        var created: Party?
+        await run("Couldn't create the party") {
+            created = try await api.createParty(name: name.trimmed)
+        }
+        if let created {
+            selectedPartyID = created.id
+            await loadParties()
+        }
+    }
+
+    func joinParty(inviteCode: String) async {
+        guard !inviteCode.trimmed.isEmpty else { return }
+        var joined: Party?
+        await run("Couldn't join the party") {
+            joined = try await api.joinParty(inviteCode: inviteCode.trimmed.uppercased())
+        }
+        if let joined {
+            selectedPartyID = joined.id
+            await loadParties()
         }
     }
 
     // MARK: - Profile
 
     func loadProfile() async {
-        do {
-            let data = try await api.profile()
-            var profileUser = data.user
-            profileUser.streakDays = data.stats.streakDays
-            user = profileUser
-            profileStats = data.stats
-            badges = data.badges
-            errorMessage = ""
-        } catch {
-            errorMessage = "Couldn't load your profile: \(error.localizedDescription)"
+        await run("Couldn't load your profile") {
+            profile = try await api.profile()
         }
+    }
+
+    func setWeightUnit(_ unit: WeightUnit) async {
+        guard unit != weightUnit else { return }
+        await run("Couldn't change the weight unit") {
+            me = try await api.updateWeightUnit(unit)
+            profile = try await api.profile()
+        }
+        prefillInputs()
+    }
+
+    // MARK: - Errors
+
+    private func run(_ context: String, _ work: () async throws -> Void) async {
+        isBusy = true
+        defer { isBusy = false }
+        do {
+            try await work()
+            errorMessage = ""
+        } catch APIError.signedOut {
+            errorMessage = APIError.signedOut.localizedDescription
+        } catch {
+            errorMessage = "\(context): \(error.localizedDescription)"
+        }
+    }
+}
+
+private extension Optional {
+    func asyncMap<T>(_ transform: (Wrapped) async throws -> T) async rethrows -> T? {
+        guard let self else { return nil }
+        return try await transform(self)
     }
 }

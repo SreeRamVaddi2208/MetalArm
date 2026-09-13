@@ -9,115 +9,129 @@ import Foundation
 import Testing
 @testable import MetalARM
 
-// MARK: - Decoding the API_CONTRACT.md examples
+// MARK: - Decoding the backend's response shapes
 
 @MainActor
-struct ContractDecodingTests {
+struct DecodingTests {
     private let decoder = LiveAPIClient.makeDecoder()
 
     private func decode<T: Decodable>(_ type: T.Type, _ json: String) throws -> T {
         try decoder.decode(type, from: Data(json.utf8))
     }
 
-    @Test func user() throws {
-        let user = try decode(User.self, ContractFixtures.user)
-        #expect(user.levelName == "Forged")
-        #expect(user.xpToNextLevel == 3000)
-        #expect(user.streakDays == 6)
+    @Test func tokenPair() throws {
+        let tokens = try decode(TokenPair.self, ContractFixtures.tokens)
+        #expect(tokens.accessToken == "access-1")
+        #expect(tokens.refreshToken == "refresh-1")
+        #expect(tokens.refreshExpiresIn == 2_592_000)
     }
 
-    @Test func logSetWithPR() throws {
-        let result = try decode(LogSetResult.self, ContractFixtures.logSetWithPR)
-        #expect(result.loggedSet.setNumber == 3)
-        #expect(result.loggedSet.isPr)
-        #expect(result.pr?.recordType == "max_weight")
-        #expect(result.pr?.previousValue == 82.5)
-        #expect(result.pointsAwarded == 2)
+    @Test func meCarriesProgression() throws {
+        let me = try decode(Me.self, ContractFixtures.me)
+        #expect(me.displayName == "Sree Ram")
+        #expect(me.progress.currentLevel == 14)
+        #expect(me.progress.rank == "C")
+        #expect(me.progress.nextRankStreak == nil)
+        #expect(abs(me.progress.xpProgress - 2140.0 / 3000.0) < 0.0001)
     }
 
-    @Test func logSetWithoutPR() throws {
-        let json = """
-        {"set": {"id": 9002, "session_id": 501, "exercise_id": 1, "set_number": 4, "weight_kg": 80, "reps": 5, "is_warmup": false, "is_pr": false}, "pr": null, "points_awarded": 2}
-        """
-        let result = try decode(LogSetResult.self, json)
-        #expect(result.pr == nil)
-        #expect(!result.loggedSet.isPr)
+    @Test func activeSessionIncludesGhostSets() throws {
+        let active = try decode(ActiveSession.self, ContractFixtures.activeSession)
+        let bench = try #require(active.session?.exercises.first)
+        #expect(bench.exercise.name == "Barbell Bench Press")
+        #expect(bench.target?.restSeconds == 120)
+        #expect(bench.previousSets.map(\.reps) == [8, 7])
+        #expect(try decode(ActiveSession.self, ContractFixtures.noActiveSession).session == nil)
     }
 
-    @Test func workoutSummary() throws {
-        let summary = try decode(WorkoutSummary.self, ContractFixtures.workoutSummary)
-        #expect(summary.totalPoints == 185)
-        #expect(summary.pointsBreakdown.streakBonus == 74)
-        #expect(summary.newPrs.first?.exerciseName == "Barbell Bench Press")
-        #expect(summary.level.xpRemaining == 860)
+    @Test func setLogResultLeadsWithTheBonusRecord() throws {
+        let result = try decode(SetLogResult.self, ContractFixtures.setLogResult)
+        #expect(result.loggedSet.setNumber == 2)
+        #expect(result.prEvents.celebrated?.recordType == "max_weight")
+        #expect(result.progression.hint == "Level up! You reached level 10.")
+        #expect(result.sessionPoints == 66)
     }
 
-    @Test func contractHeadlinePRReadsAsWeightTimesReps() throws {
-        let summary = try decode(WorkoutSummary.self, ContractFixtures.workoutSummary)
-        #expect(summary.headlinePR?.detail == "85 kg × 7 reps")
+    @Test func finishResult() throws {
+        let result = try decode(FinishResult.self, ContractFixtures.finishResult)
+        #expect(result.qualified)
+        #expect(result.breakdown.total == 140)
+        #expect(result.breakdown.reversals == -2)
+        #expect(result.streak.sessionsToGo == 1)
     }
 
-    // Regression: the summary showed new_prs[0] (sorted by type), so a reps record read "8 kg × 8 reps".
-    @Test func headlinePRUsesBackendPriorityNotListOrder() throws {
-        var summary = try decode(WorkoutSummary.self, ContractFixtures.workoutSummary)
-        summary.newPrs = [
-            NewPR(exerciseName: "Barbell Bench Press", recordType: "max_reps_at_weight", value: 8, reps: 8),
-            NewPR(exerciseName: "Barbell Bench Press", recordType: "max_volume", value: 640, reps: 8),
-        ]
-        #expect(summary.headlinePR?.recordType == "max_volume")
-        #expect(summary.headlinePR?.detail == "640 kg set volume")
-        #expect(summary.newPrs[0].detail == "8 reps (most at this weight)")
+    @Test func progressPartiesPointsAndProfile() throws {
+        #expect(try decode([HistoryPoint].self, ContractFixtures.history).count == 4)
+        #expect(try decode([WorkoutRecord].self, ContractFixtures.records).first?.label == "Heaviest")
+        #expect(try decode([Party].self, ContractFixtures.parties).first?.inviteCode == "IRON2345")
+        #expect(try decode(PartyBoard.self, ContractFixtures.partyBoard).entries.first?.isMe == true)
+        #expect(try decode(PointsSummary.self, ContractFixtures.points).thisWeekPoints == 185)
+        let profile = try decode(Profile.self, ContractFixtures.profile)
+        #expect(profile.stats.workoutsCompleted == 142)
+        #expect(profile.badgesEarned == 3)
+    }
+}
+
+// MARK: - Units and wording
+
+@MainActor
+struct FormattingTests {
+    @Test func poundsShowOneDecimal() {
+        #expect(WeightUnit.lb.format(kilograms: 80) == "176.4 lb")
+        #expect(WeightUnit.kg.format(kilograms: 82.5) == "82.5 kg")
     }
 
-    @Test func progressAndRecords() throws {
-        let progress = try decode(ProgressData.self, ContractFixtures.progress)
-        #expect(progress.changeSinceStart == 12.5)
-        #expect(progress.points.last?.value == 85)
-        let records = try decode([RecordItem].self, ContractFixtures.records)
-        #expect(records.map(\.label) == ["Heaviest", "Best est. 1RM"])
+    @Test func firstEverLogsAreNotCelebrated() {
+        let baseline = PREvent(
+            exerciseId: "e", exerciseName: "Squat", recordType: "max_weight", value: 100, weightKg: 100,
+            previousValue: nil, isBaseline: true, bonusAwarded: false, setId: nil)
+        #expect([baseline].celebrated == nil)
     }
 
-    @Test func leaderboardStreakIsOptional() throws {
-        let entries = try decode([LeaderboardEntry].self, ContractFixtures.leaderboard)
-        #expect(entries.first?.isCurrentUser == true)
-        #expect(entries.first?.streakDays == nil)
-        #expect(entries.last?.streakDays == 5)
+    @Test func repRecordsReadAsReps() {
+        let event = PREvent(
+            exerciseId: "e", exerciseName: "Bench", recordType: "max_reps_at_weight", value: 8, weightKg: 80,
+            previousValue: 7, isBaseline: false, bonusAwarded: false, setId: nil)
+        #expect(event.headline(in: .kg) == "New rep record on Bench: 8 reps at 80 kg")
     }
 
-    @Test func profileUserHasNoStreak() throws {
-        let profile = try decode(ProfileData.self, ContractFixtures.profile)
-        #expect(profile.user.streakDays == nil)
-        #expect(profile.stats.prsSet == 23)
-        #expect(profile.badges.count == 2)
+    @Test func serverTimestampsParse() {
+        #expect(parseServerDate("2026-09-13T21:14:05.123456Z") != nil)
+        #expect(parseServerDate("2026-09-07T00:00:00+05:30") != nil)
     }
 
-    @Test func friendActivity() throws {
-        let feed = try decode([FriendActivity].self, ContractFixtures.friendActivity)
-        #expect(feed.map(\.userName) == ["Arjun", "Meera"])
-        #expect(feed.first?.hoursAgo == 2)
+    @Test(arguments: zip([85.0, 82.5, 142.25, 0], ["85", "82.5", "142.25", "0"]))
+    func formatsNumbersLikeTheBackend(value: Double, expected: String) {
+        #expect(formatNumber(value) == expected)
+    }
+
+    @Test func initialsUseFirstTwoWords() {
+        #expect(initials(of: "Sree Ram") == "SR")
+        #expect(initials(of: "meera") == "M")
     }
 }
 
 // MARK: - LiveAPIClient against a stubbed network
 
 nonisolated final class StubURLProtocol: URLProtocol {
-    nonisolated(unsafe) static var response: (status: Int, body: String) = (200, "{}")
-    nonisolated(unsafe) static var lastRequest: URLRequest?
-    nonisolated(unsafe) static var lastBody: Data?
+    nonisolated(unsafe) static var responses: [(status: Int, body: String)] = []
+    nonisolated(unsafe) static var requests: [URLRequest] = []
+    nonisolated(unsafe) static var bodies: [Data] = []
 
     override class func canInit(with request: URLRequest) -> Bool { true }
 
     override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
 
     override func startLoading() {
-        Self.lastRequest = request
+        Self.requests.append(request)
         // URLSession moves httpBody into a stream before it reaches a URLProtocol.
-        Self.lastBody = request.httpBody ?? request.httpBodyStream.map(Self.readAll)
-        let httpResponse = HTTPURLResponse(
-            url: request.url!, statusCode: Self.response.status, httpVersion: "HTTP/1.1",
+        Self.bodies.append(request.httpBody ?? request.httpBodyStream.map(Self.readAll) ?? Data())
+        let next = Self.responses.isEmpty ? (status: 500, body: "{}") : Self.responses.removeFirst()
+        let response = HTTPURLResponse(
+            url: request.url!, statusCode: next.status, httpVersion: "HTTP/1.1",
             headerFields: ["Content-Type": "application/json"])!
-        client?.urlProtocol(self, didReceive: httpResponse, cacheStoragePolicy: .notAllowed)
-        client?.urlProtocol(self, didLoad: Data(Self.response.body.utf8))
+        client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+        client?.urlProtocol(self, didLoad: Data(next.body.utf8))
         client?.urlProtocolDidFinishLoading(self)
     }
 
@@ -140,172 +154,241 @@ nonisolated final class StubURLProtocol: URLProtocol {
 @MainActor
 @Suite(.serialized)
 struct LiveAPIClientTests {
-    private func makeClient(status: Int = 200, body: String) -> LiveAPIClient {
-        StubURLProtocol.response = (status, body)
-        StubURLProtocol.lastRequest = nil
-        StubURLProtocol.lastBody = nil
+    private let signedIn = TokenPair(
+        accessToken: "access-1", tokenType: "bearer", expiresIn: 3600,
+        refreshToken: "refresh-1", refreshExpiresIn: 2_592_000)
+
+    private func makeClient(tokens: TokenPair? = nil, responses: [(Int, String)]) -> (LiveAPIClient, InMemoryTokenStore) {
+        StubURLProtocol.responses = responses.map { (status: $0.0, body: $0.1) }
+        StubURLProtocol.requests = []
+        StubURLProtocol.bodies = []
         let configuration = URLSessionConfiguration.ephemeral
         configuration.protocolClasses = [StubURLProtocol.self]
-        return LiveAPIClient(baseURL: URL(string: "http://backend.test")!, session: URLSession(configuration: configuration))
+        let store = InMemoryTokenStore(tokens: tokens)
+        let client = LiveAPIClient(
+            baseURL: URL(string: "http://backend.test")!, session: URLSession(configuration: configuration), tokenStore: store)
+        return (client, store)
     }
 
-    @Test func meRequestsUsersMe() async throws {
-        let user = try await makeClient(body: ContractFixtures.user).me()
-        #expect(StubURLProtocol.lastRequest?.httpMethod == "GET")
-        #expect(StubURLProtocol.lastRequest?.url?.path == "/users/me")
-        #expect(user.name == "Sree Ram")
+    private func body(_ index: Int) throws -> [String: Any] {
+        try #require(try JSONSerialization.jsonObject(with: StubURLProtocol.bodies[index]) as? [String: Any])
     }
 
-    @Test func logSetPostsOnlyContractFields() async throws {
-        let result = try await makeClient(status: 201, body: ContractFixtures.logSetWithPR)
-            .logSet(sessionID: 501, exerciseID: 1, weightKg: 85, reps: 6)
-        let request = try #require(StubURLProtocol.lastRequest)
-        #expect(request.httpMethod == "POST")
-        #expect(request.url?.path == "/sessions/501/sets")
-        let body = try #require(StubURLProtocol.lastBody)
-        let json = try #require(try JSONSerialization.jsonObject(with: body) as? [String: Any])
-        #expect(json["exercise_id"] as? Int == 1)
-        #expect(json["weight_kg"] as? Double == 85)
-        #expect(json["reps"] as? Int == 6)
-        #expect(json["is_warmup"] as? Bool == false)
-        // Points and PRs are server-computed; the client must never send them.
-        #expect(json["points"] == nil)
-        #expect(json["is_pr"] == nil)
-        #expect(result.pr?.value == 85)
+    @Test func signInStoresBothTokens() async throws {
+        let (client, store) = makeClient(responses: [(200, ContractFixtures.tokens)])
+        try await client.signIn(email: "sree@metalarm.dev", password: "correct-horse-1")
+        #expect(store.tokens?.refreshToken == "refresh-1")
+        let request = try #require(StubURLProtocol.requests.first)
+        #expect(request.url?.path == "/api/v1/auth/login")
+        #expect(request.value(forHTTPHeaderField: "Authorization") == nil)
+        #expect(try body(0)["email"] as? String == "sree@metalarm.dev")
     }
 
-    @Test func leaderboardAsksForThisWeek() async throws {
-        _ = try await makeClient(body: ContractFixtures.leaderboard).leaderboard()
-        #expect(StubURLProtocol.lastRequest?.url?.query == "period=week")
+    @Test func requestsCarryTheAccessToken() async throws {
+        let (client, _) = makeClient(tokens: signedIn, responses: [(200, ContractFixtures.me)])
+        _ = try await client.me()
+        #expect(StubURLProtocol.requests.first?.value(forHTTPHeaderField: "Authorization") == "Bearer access-1")
     }
 
-    @Test func progressAsksForMaxWeightOverOneYear() async throws {
-        _ = try await makeClient(body: ContractFixtures.progress).progress(exerciseID: 2)
-        #expect(StubURLProtocol.lastRequest?.url?.path == "/progress/2")
-        #expect(StubURLProtocol.lastRequest?.url?.query == "metric=max_weight&range=1y")
+    @Test func expiredAccessTokenIsRefreshedAndTheRequestRetried() async throws {
+        let refreshed = #"{"access_token": "access-2", "token_type": "bearer", "expires_in": 3600, "refresh_token": "refresh-2", "refresh_expires_in": 2592000}"#
+        let (client, store) = makeClient(tokens: signedIn, responses: [
+            (401, #"{"detail": "Token has expired"}"#), (200, refreshed), (200, ContractFixtures.me),
+        ])
+        let me = try await client.me()
+        #expect(me.displayName == "Sree Ram")
+        #expect(StubURLProtocol.requests.map { $0.url?.path ?? "" } == ["/api/v1/auth/me", "/api/v1/auth/refresh", "/api/v1/auth/me"])
+        #expect(try body(1)["refresh_token"] as? String == "refresh-1")
+        #expect(StubURLProtocol.requests.last?.value(forHTTPHeaderField: "Authorization") == "Bearer access-2")
+        #expect(store.tokens?.refreshToken == "refresh-2")
     }
 
-    @Test func errorStatusSurfacesServerDetail() async {
-        let client = makeClient(status: 400, body: #"{"detail": "Session already finished"}"#)
-        await #expect(throws: APIError.http(status: 400, detail: "Session already finished")) {
-            _ = try await client.finishSession(sessionID: 501)
+    @Test func rejectedRefreshSignsOut() async throws {
+        let (client, store) = makeClient(tokens: signedIn, responses: [
+            (401, #"{"detail": "Token has expired"}"#),
+            (401, #"{"detail": "Refresh token is invalid or expired - sign in again"}"#),
+        ])
+        var signedOut = false
+        client.onSignedOut = { signedOut = true }
+        await #expect(throws: APIError.signedOut) {
+            _ = try await client.me()
         }
+        #expect(store.tokens == nil)
+        #expect(signedOut)
+    }
+
+    @Test func logSetSendsClientSetIDAndUnitButNoPoints() async throws {
+        let (client, _) = makeClient(tokens: signedIn, responses: [(201, ContractFixtures.setLogResult)])
+        let clientSetID = UUID()
+        _ = try await client.logSet(
+            sessionID: ContractFixtures.sessionID, exerciseID: ContractFixtures.benchID, weight: 225, unit: .lb,
+            reps: 5, clientSetID: clientSetID)
+        #expect(StubURLProtocol.requests.first?.url?.path == "/api/v1/workouts/sessions/\(ContractFixtures.sessionID)/sets")
+        let sent = try body(0)
+        #expect(sent["exercise_id"] as? String == ContractFixtures.benchID)
+        #expect(sent["weight"] as? Double == 225)
+        #expect(sent["unit"] as? String == "lb")
+        #expect(sent["reps"] as? Int == 5)
+        #expect(sent["client_set_id"] as? String == clientSetID.uuidString)
+        // Points and PRs are computed by the server; the client never sends them.
+        #expect(sent["points"] == nil)
+    }
+
+    @Test func validationErrorsAreReadable() async {
+        let issue = #"{"detail": [{"loc": ["body", "password"], "msg": "String should have at least 8 characters", "type": "string_too_short"}]}"#
+        let (client, _) = makeClient(responses: [(422, issue)])
+        await #expect(throws: APIError.http(status: 422, detail: "String should have at least 8 characters")) {
+            try await client.signUp(email: "a@metalarm.dev", password: "short", displayName: "A", timezone: "UTC")
+        }
+    }
+
+    @Test func deletingTheAccountSendsThePasswordAndForgetsTokens() async throws {
+        let (client, store) = makeClient(tokens: signedIn, responses: [(204, "")])
+        try await client.deleteAccount(password: "correct-horse-1")
+        let request = try #require(StubURLProtocol.requests.first)
+        #expect(request.httpMethod == "DELETE")
+        #expect(request.url?.path == "/api/v1/auth/me")
+        #expect(try body(0)["password"] as? String == "correct-horse-1")
+        #expect(store.tokens == nil)
     }
 }
 
-// MARK: - AppModel (ported AppState) with the mock backend
+// MARK: - AppModel with the in-memory backend
 
 @MainActor
 struct AppModelTests {
-    @Test func loadHomeFillsUserAndFeed() async {
-        let model = AppModel(api: MockAPIClient())
-        await model.loadHome()
-        #expect(model.user?.name == "Sree Ram")
-        #expect(model.friendActivity.count == 2)
-        #expect(abs(model.xpProgress - 2140.0 / 3000.0) < 0.0001)
+    private func signedInModel() -> (AppModel, MockAPIClient) {
+        let api = MockAPIClient()
+        return (AppModel(api: api), api)
     }
 
-    @Test func startWorkoutPicksBenchAndOpensSession() async {
-        let model = AppModel(api: MockAPIClient())
+    private func bench(_ api: MockAPIClient) async throws -> Exercise {
+        try #require(try await api.searchExercises(query: "bench").first)
+    }
+
+    @Test func signingInThenLoadingHome() async {
+        let model = AppModel(api: MockAPIClient(signedIn: false))
+        #expect(!model.isSignedIn)
+        await model.signIn(email: " sree@metalarm.dev ", password: MockAPIClient.password)
+        #expect(model.isSignedIn)
+        await model.loadHome()
+        #expect(model.me?.progress.currentLevel == 14)
+        #expect(model.points?.thisWeekPoints == 185)
+        #expect(!model.sessionActive)
+    }
+
+    @Test func wrongPasswordStaysSignedOut() async {
+        let model = AppModel(api: MockAPIClient(signedIn: false))
+        await model.signIn(email: "sree@metalarm.dev", password: "wrong-password")
+        #expect(!model.isSignedIn)
+        #expect(model.errorMessage == "Couldn't sign in: Incorrect email or password")
+    }
+
+    @Test func workoutLoopFromStartToSummary() async throws {
+        let (model, api) = signedInModel()
         await model.startWorkout()
         #expect(model.sessionActive)
-        #expect(model.activeExercise?.name == "Barbell Bench Press")
-        #expect(model.activeExerciseMuscleLabel == "Chest, Triceps")
-        #expect(model.setsLogged.isEmpty)
-    }
+        #expect(model.selectedExercise == nil)
 
-    @Test func loggingASetAddsRowShowsPRAndStartsRest() async {
-        let model = AppModel(api: MockAPIClient())
-        await model.startWorkout()
-        await model.logCurrentSet()
-        #expect(model.setsLogged.count == 1)
-        #expect(model.setsLogged.first?.weightKg == 80)
-        #expect(model.prHint == "New max weight: 80")
+        await model.addExercise(try await bench(api))
+        // Prefilled from last session's first set (the ghost values).
+        #expect(model.weightInput == "80")
+        #expect(model.repsInput == "8")
+
+        await model.logSet()
+        #expect(model.setsLoggedCount == 1)
+        #expect(model.pendingExercises.isEmpty)
+        #expect(model.prHint == "New heaviest Barbell Bench Press: 80 kg")
         #expect(model.resting)
         #expect(model.restDisplay == "1:30")
-        model.stopRestTimer()
-        #expect(!model.resting)
-    }
 
-    @Test func secondSetClearsPRHint() async {
-        let model = AppModel(api: MockAPIClient())
-        await model.startWorkout()
-        await model.logCurrentSet()
-        await model.logCurrentSet()
-        #expect(model.setsLogged.count == 2)
-        #expect(model.prHint.isEmpty)
-        model.stopRestTimer()
-    }
-
-    @Test func nonNumericInputShowsErrorWithoutLogging() async {
-        let model = AppModel(api: MockAPIClient())
-        await model.startWorkout()
-        model.weightInput = "heavy"
-        await model.logCurrentSet()
-        #expect(model.errorMessage == "Weight and reps need to be numbers.")
-        #expect(model.setsLogged.isEmpty)
-        #expect(!model.resting)
-    }
-
-    @Test func finishingShowsSummaryAndEndsSession() async {
-        let model = AppModel(api: MockAPIClient())
-        await model.startWorkout()
-        await model.logCurrentSet()
         await model.finishWorkout()
         #expect(model.showingSummary)
         #expect(!model.sessionActive)
         #expect(!model.resting)
-        #expect(model.summary?.totalPoints == 185)
-        #expect(model.summaryXPRemaining == 860)
+        // A single set is not a qualifying workout: no completion bonus.
+        #expect(model.finishResult?.qualified == false)
+        #expect(model.finishResult?.breakdown.sessionBonus == 0)
+        #expect(model.finishResult?.breakdown.prBonus == 50)
     }
 
-    // Regression: tabs used to hardcode ids 1/2/3, so "Squat" loaded Incline Dumbbell Press.
-    @Test func progressTabsResolveSeededExerciseIDsByName() async {
-        let model = AppModel(api: MockAPIClient())
-        await model.loadProgress()
-        #expect(model.progressTabs.map(\.name) == ["Bench Press", "Squat", "Deadlift"])
-        #expect(model.progressTabs.map(\.id) == [1, 3, 5])
-        #expect(model.selectedExerciseID == 1)
+    @Test func invalidInputIsRejectedWithoutLogging() async throws {
+        let (model, api) = signedInModel()
+        await model.startWorkout()
+        await model.addExercise(try await bench(api))
+        model.weightInput = "heavy"
+        await model.logSet()
+        #expect(model.errorMessage == "Enter a weight and a number of reps.")
+        #expect(model.setsLoggedCount == 0)
     }
 
-    @Test func switchingProgressTabLoadsThatExercise() async {
-        let model = AppModel(api: MockAPIClient())
-        await model.loadProgress()
-        await model.selectExercise(3)
-        #expect(model.selectedExerciseID == 3)
-        #expect(model.progress?.unit == "kg")
-        #expect(model.records.count == 2)
-    }
-
-    @Test func profileCountsEarnedBadgesAndKeepsStreak() async {
-        let model = AppModel(api: MockAPIClient())
-        await model.loadProfile()
-        #expect(model.badgesEarnedCount == 1)
-        #expect(model.user?.streakDays == 6)
-        #expect(model.profileStats?.workouts == 142)
-    }
-
-    @Test func backendFailureShowsErrorMessage() async {
-        let api = MockAPIClient()
-        api.failure = APIError.http(status: 500, detail: "boom")
-        let model = AppModel(api: api)
+    @Test func poundsAreShownAndSentAsPounds() async throws {
+        let (model, api) = signedInModel()
         await model.loadHome()
-        #expect(model.errorMessage == "Couldn't reach the backend: boom (HTTP 500)")
-        #expect(model.user == nil)
-    }
-}
-
-// MARK: - Formatting helpers
-
-@MainActor
-struct FormattingTests {
-    @Test(arguments: zip([85.0, 82.5, 142.25, 0], ["85", "82.5", "142.25", "0"]))
-    func formatsNumbersLikeTheBackend(value: Double, expected: String) {
-        #expect(formatNumber(value) == expected)
+        await model.setWeightUnit(.lb)
+        #expect(model.weightUnit == .lb)
+        await model.startWorkout()
+        await model.addExercise(try await bench(api))
+        #expect(model.weightInput == "176.4")
+        await model.logSet()
+        let kilograms = try #require(model.session?.exercises.first?.sets.first?.weightKg)
+        #expect(abs(kilograms - 80) < 0.05)
     }
 
-    @Test func initialsUseFirstTwoWords() {
-        #expect(initials(of: "Sree Ram") == "SR")
-        #expect(initials(of: "meera") == "M")
+    @Test func startingWhileOneIsLiveResumesIt() async {
+        let (model, api) = signedInModel()
+        await model.startWorkout()
+        // A second device sees the 409 and picks up the same workout.
+        let otherDevice = AppModel(api: api)
+        await otherDevice.startWorkout()
+        #expect(otherDevice.session?.id == model.session?.id)
+        #expect(otherDevice.errorMessage.isEmpty)
+    }
+
+    @Test func discardingEndsTheWorkout() async {
+        let (model, _) = signedInModel()
+        await model.startWorkout()
+        await model.abandonWorkout()
+        #expect(!model.sessionActive)
+    }
+
+    @Test func progressTabsComeFromTheUsersRecords() async {
+        let (model, _) = signedInModel()
+        await model.loadProgress()
+        #expect(model.progressTabs.map(\.name) == ["Barbell Bench Press", "Barbell Back Squat"])
+        #expect(model.selectedProgressID == ContractFixtures.benchID)
+        #expect(model.history.count == 4)
+        #expect(model.records.allSatisfy { $0.exerciseId == ContractFixtures.benchID })
+    }
+
+    @Test func partiesShowTheWeeklyBoard() async {
+        let (model, _) = signedInModel()
+        await model.loadParties()
+        #expect(model.parties.count == 1)
+        #expect(model.partyBoard?.entries.first?.isMe == true)
+
+        await model.createParty(name: "Leg Day Club")
+        #expect(model.parties.count == 2)
+        #expect(model.selectedParty?.name == "Leg Day Club")
+
+        await model.joinParty(inviteCode: "nope")
+        #expect(model.errorMessage == "Couldn't join the party: No party with that invite code")
+    }
+
+    @Test func deletingTheAccountNeedsThePassword() async {
+        let (model, _) = signedInModel()
+        #expect(await model.deleteAccount(password: "guess") == false)
+        #expect(model.errorMessage == "Couldn't delete your account: Password is incorrect")
+        #expect(model.isSignedIn)
+        #expect(await model.deleteAccount(password: MockAPIClient.password))
+        #expect(!model.isSignedIn)
+    }
+
+    @Test func anExpiredSessionReturnsToSignIn() async {
+        let (model, api) = signedInModel()
+        await model.loadHome()
+        api.expireSession()
+        #expect(!model.isSignedIn)
+        #expect(model.me == nil)
     }
 }

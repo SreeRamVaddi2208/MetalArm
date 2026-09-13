@@ -2,15 +2,41 @@
 //  ProgressScreen.swift
 //  MetalARM
 //
-//  Port of frontend/frontend/pages/progress.py. Named ProgressScreen to avoid
-//  clashing with SwiftUI's ProgressView.
+//  Per-exercise history (top weight per finished workout) and records.
+//  Named ProgressScreen to avoid clashing with SwiftUI's ProgressView.
 //
 
 import Charts
 import SwiftUI
 
 struct ProgressScreen: View {
+    private struct ChartPoint: Identifiable {
+        let id: String
+        let date: Date
+        let value: Double
+    }
+
     @Environment(AppModel.self) private var model
+
+    private var chartPoints: [ChartPoint] {
+        model.history.compactMap { point in
+            guard let top = point.topWeightKg, let date = parseServerDate(point.performedAt) else { return nil }
+            return ChartPoint(id: point.id, date: date, value: model.weightUnit.fromKilograms(top))
+        }
+    }
+
+    // One row per record type; "most reps" has a row per weight, so show the heaviest three.
+    private var sortedRecords: [WorkoutRecord] {
+        let order = WorkoutRecord.displayOrder
+        let others = model.records
+            .filter { $0.recordType != "max_reps_at_weight" }
+            .sorted { (order.firstIndex(of: $0.recordType) ?? order.count) < (order.firstIndex(of: $1.recordType) ?? order.count) }
+        let reps = model.records
+            .filter { $0.recordType == "max_reps_at_weight" }
+            .sorted { ($0.weightKg ?? 0) > ($1.weightKg ?? 0) }
+            .prefix(3)
+        return others + reps
+    }
 
     var body: some View {
         ScrollView {
@@ -18,27 +44,27 @@ struct ProgressScreen: View {
                 Text("Progress")
                     .font(Theme.display(28))
                     .foregroundStyle(Theme.text)
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
-                        ForEach(model.progressTabs) { tab in
-                            tabButton(tab)
-                        }
+                if model.progressTabs.isEmpty {
+                    if !model.isBusy {
+                        Text("Finish a workout to start tracking your progress.")
+                            .font(.system(size: 14))
+                            .foregroundStyle(Theme.dim)
                     }
-                }
-                if let progress = model.progress {
-                    chartCard(progress)
-                }
-                Text("Personal records")
-                    .font(Theme.display(16))
-                    .foregroundStyle(Theme.text)
-                    .padding(.top, 2)
-                ForEach(model.records) { record in
-                    recordRow(record, exerciseName: model.progress?.exerciseName ?? "")
-                }
-                if model.records.isEmpty && model.progress != nil {
-                    Text("No records yet — log a set to set your first.")
-                        .font(.system(size: 13))
-                        .foregroundStyle(Theme.dim)
+                } else {
+                    tabs
+                    chartCard
+                    Text("Personal records")
+                        .font(Theme.display(16))
+                        .foregroundStyle(Theme.text)
+                        .padding(.top, 2)
+                    ForEach(sortedRecords) { record in
+                        recordRow(record)
+                    }
+                    if model.records.isEmpty && !model.isBusy {
+                        Text("No records yet - finish a workout with this exercise.")
+                            .font(.system(size: 13))
+                            .foregroundStyle(Theme.dim)
+                    }
                 }
                 ErrorText(message: model.errorMessage)
             }
@@ -46,71 +72,89 @@ struct ProgressScreen: View {
         }
         .background(Theme.bg)
         .task { await model.loadProgress() }
+        .refreshable { await model.loadProgress() }
     }
 
-    private func tabButton(_ tab: AppModel.ProgressTab) -> some View {
-        let active = tab.id == model.selectedExerciseID
-        return Button {
-            Task { await model.selectExercise(tab.id) }
-        } label: {
-            Text(tab.name)
-                .font(Theme.display(12.5, active ? .bold : .semibold))
-                .foregroundStyle(active ? Theme.bg : Theme.dim)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 7)
-                .background(active ? Theme.fire : Theme.card, in: RoundedRectangle(cornerRadius: 10))
-                .overlay(RoundedRectangle(cornerRadius: 10).stroke(active ? Color.clear : Theme.cardBorder))
+    private var tabs: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(model.progressTabs) { tab in
+                    let active = tab.id == model.selectedProgressID
+                    Button {
+                        Task { await model.selectProgress(tab.id) }
+                    } label: {
+                        Text(tab.name)
+                            .font(Theme.display(12.5, active ? .bold : .semibold))
+                            .foregroundStyle(active ? Theme.bg : Theme.dim)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 7)
+                            .background(active ? Theme.fire : Theme.card, in: RoundedRectangle(cornerRadius: 10))
+                            .overlay(RoundedRectangle(cornerRadius: 10).stroke(active ? Color.clear : Theme.cardBorder))
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
         }
-        .buttonStyle(.plain)
     }
 
-    private func chartCard(_ progress: ProgressData) -> some View {
-        let improving = progress.changeSinceStart >= 0
+    private var chartCard: some View {
+        let points = chartPoints
+        let unit = model.weightUnit.rawValue
         return VStack(alignment: .leading, spacing: 4) {
-            HStack(alignment: .firstTextBaseline, spacing: 4) {
-                Text(formatNumber(progress.currentValue))
-                    .font(Theme.display(26, .heavy))
-                    .foregroundStyle(Theme.text)
-                Text(progress.unit)
+            if let last = points.last, let first = points.first {
+                HStack(alignment: .firstTextBaseline, spacing: 4) {
+                    Text(formatNumber(last.value))
+                        .font(Theme.display(26, .heavy))
+                        .foregroundStyle(Theme.text)
+                    Text("\(unit) top set")
+                        .font(.system(size: 13))
+                        .foregroundStyle(Theme.dim)
+                }
+                if points.count > 1 {
+                    let change = last.value - first.value
+                    Text("\(change >= 0 ? "▲" : "▼") \(formatNumber(abs(change))) \(unit) since \(first.date.formatted(.dateTime.month().day()))")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(change >= 0 ? Theme.green : Theme.fire)
+                }
+                Chart(points) { point in
+                    AreaMark(x: .value("Date", point.date), y: .value(unit, point.value))
+                        .foregroundStyle(LinearGradient(colors: [Theme.fire.opacity(0.35), Theme.fire.opacity(0.02)], startPoint: .top, endPoint: .bottom))
+                        .interpolationMethod(.monotone)
+                    LineMark(x: .value("Date", point.date), y: .value(unit, point.value))
+                        .foregroundStyle(Theme.fire)
+                        .interpolationMethod(.monotone)
+                }
+                .chartXAxis(.hidden)
+                .chartYAxis(.hidden)
+                .chartYScale(domain: .automatic(includesZero: false))
+                .frame(height: 140)
+                .padding(.top, 10)
+            } else {
+                Text("No finished workouts with this exercise yet.")
                     .font(.system(size: 13))
                     .foregroundStyle(Theme.dim)
+                    .frame(maxWidth: .infinity, minHeight: 80)
             }
-            Text("\(improving ? "▲" : "▼") \(formatNumber(abs(progress.changeSinceStart))) since start")
-                .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(improving ? Theme.green : Theme.fire)
-            Chart(progress.points) { point in
-                AreaMark(x: .value("Date", point.date), y: .value(progress.unit, point.value))
-                    .foregroundStyle(LinearGradient(colors: [Theme.fire.opacity(0.35), Theme.fire.opacity(0.02)], startPoint: .top, endPoint: .bottom))
-                    .interpolationMethod(.monotone)
-                LineMark(x: .value("Date", point.date), y: .value(progress.unit, point.value))
-                    .foregroundStyle(Theme.fire)
-                    .interpolationMethod(.monotone)
-            }
-            .chartXAxis(.hidden)
-            .chartYAxis(.hidden)
-            .chartYScale(domain: .automatic(includesZero: false))
-            .frame(height: 140)
-            .padding(.top, 10)
         }
         .padding(18)
         .cardStyle()
     }
 
-    private func recordRow(_ record: RecordItem, exerciseName: String) -> some View {
+    private func recordRow(_ record: WorkoutRecord) -> some View {
         HStack(spacing: 12) {
             Image(systemName: "medal.fill")
                 .font(.system(size: 18))
                 .foregroundStyle(Theme.gold)
             VStack(alignment: .leading, spacing: 2) {
-                Text("\(record.label) — \(exerciseName)")
+                Text("\(record.label) — \(record.exerciseName)")
                     .font(.system(size: 13.5, weight: .bold))
                     .foregroundStyle(Theme.text)
-                Text("\(record.detail) · \(record.achievedAt)")
+                Text(parseServerDate(record.achievedAt)?.formatted(date: .abbreviated, time: .omitted) ?? String(record.achievedAt.prefix(10)))
                     .font(.system(size: 11.5))
                     .foregroundStyle(Theme.dim)
             }
             Spacer()
-            Text("\(formatNumber(record.value)) \(record.unit)")
+            Text(record.valueText(in: model.weightUnit))
                 .font(Theme.display(13))
                 .foregroundStyle(Theme.fire)
         }

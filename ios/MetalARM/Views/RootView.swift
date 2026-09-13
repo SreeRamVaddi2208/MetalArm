@@ -13,12 +13,18 @@ struct RootView: View {
     @Environment(AppModel.self) private var model
     @AppStorage("hasOnboarded") private var hasOnboarded = false
     @State private var selectedTab: AppTab = .home
+    @State private var authMode: AuthView.Mode = .signUp
 
     var body: some View {
-        if hasOnboarded {
-            tabs
+        if !hasOnboarded {
+            OnboardingView { mode in
+                authMode = mode
+                hasOnboarded = true
+            }
+        } else if !model.isSignedIn {
+            AuthView(mode: $authMode)
         } else {
-            OnboardingView { hasOnboarded = true }
+            tabs
         }
     }
 
@@ -43,8 +49,8 @@ struct RootView: View {
         }
         .tint(Theme.fire)
         .fullScreenCover(isPresented: $model.showingSummary) {
-            if let summary = model.summary {
-                SummaryView(summary: summary) { model.showingSummary = false }
+            if let result = model.finishResult {
+                SummaryView(result: result, unit: model.weightUnit) { model.showingSummary = false }
             }
         }
     }

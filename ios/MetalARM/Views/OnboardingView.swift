@@ -2,13 +2,11 @@
 //  OnboardingView.swift
 //  MetalARM
 //
-//  Port of frontend/frontend/pages/onboarding.py.
-//
 
 import SwiftUI
 
 struct OnboardingView: View {
-    var onFinish: () -> Void
+    var onFinish: (AuthView.Mode) -> Void
 
     var body: some View {
         VStack(spacing: 0) {
@@ -30,7 +28,7 @@ struct OnboardingView: View {
                         .multilineTextAlignment(.center)
                         .foregroundStyle(Theme.text)
                         .accessibilityIdentifier("onboardingTitle")
-                    Text("Log your workouts, level up your character, and compete with friends on the leaderboard in real time.")
+                    Text("Log your workouts, level up your character, and compete with friends in your party.")
                         .font(.system(size: 15))
                         .foregroundStyle(Theme.dim)
                         .multilineTextAlignment(.center)
@@ -40,12 +38,12 @@ struct OnboardingView: View {
             .padding(32)
             Spacer()
             VStack(spacing: 12) {
-                Button("Get Started", action: onFinish)
+                Button("Get Started") { onFinish(.signUp) }
                     .buttonStyle(PrimaryButtonStyle())
                     .accessibilityIdentifier("getStartedButton")
-                // No auth yet — both paths lead to the demo user, as on the web.
-                Button("I already have an account", action: onFinish)
+                Button("I already have an account") { onFinish(.signIn) }
                     .buttonStyle(SecondaryButtonStyle())
+                    .accessibilityIdentifier("haveAccountButton")
             }
             .padding(.horizontal, 24)
             .padding(.bottom, 40)
@@ -62,6 +60,6 @@ struct OnboardingView: View {
 }
 
 #Preview {
-    OnboardingView {}
+    OnboardingView { _ in }
         .preferredColorScheme(.dark)
 }

@@ -13,11 +13,23 @@ struct MetalARMApp: App {
 
     init() {
         let arguments = ProcessInfo.processInfo.arguments
-        // UI tests start from onboarding and run against the contract examples, not a live server.
-        if arguments.contains("-UITestResetOnboarding") {
+        // UI-test hooks: start from onboarding, skip it, and/or use the in-memory backend.
+        let resetOnboarding = arguments.contains("-UITestResetOnboarding")
+        if resetOnboarding {
             UserDefaults.standard.removeObject(forKey: "hasOnboarded")
         }
-        let api: MetalArmAPI = arguments.contains("-UITestMockAPI") ? MockAPIClient() : LiveAPIClient()
+        if arguments.contains("-UITestSkipOnboarding") {
+            UserDefaults.standard.set(true, forKey: "hasOnboarded")
+        }
+
+        let api: MetalArmAPI
+        if arguments.contains("-UITestMockAPI") {
+            api = MockAPIClient(signedIn: arguments.contains("-UITestSignedIn"))
+        } else {
+            let tokens = KeychainTokenStore()
+            if resetOnboarding { tokens.tokens = nil }
+            api = LiveAPIClient(baseURL: AppConfig.apiBaseURL, tokenStore: tokens)
+        }
         _model = State(initialValue: AppModel(api: api))
     }
 

@@ -2,6 +2,17 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>CFBundleDisplayName</key>
+	<string>MetalArm</string>
+	<!-- Only standard HTTPS; saves the export-compliance question on every upload. -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
+	<!-- Per-configuration server addresses (METALARM_*_BASE_URL build settings), read by AppConfig. -->
+	<key>METALARMAPIBaseURL</key>
+	<string>$(METALARM_API_BASE_URL)</string>
+	<key>METALARMWebBaseURL</key>
+	<string>$(METALARM_WEB_BASE_URL)</string>
+	<!-- Plain HTTP only to local addresses, for the Debug build's local stack. -->
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsLocalNetworking</key>

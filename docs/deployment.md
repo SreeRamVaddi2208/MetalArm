@@ -98,13 +98,15 @@ All secrets live only in `deploy/.env.production` (gitignored).
 
 ## 8. iOS app release checklist
 
-The app lives in `ios/`. Its Release build talks to `https://api.<METALARM_DOMAIN>`,
-set in `ios/Config/Release.xcconfig`.
+The app lives in `ios/`. Each build configuration has its own server
+addresses, set as the `METALARM_API_BASE_URL` and `METALARM_WEB_BASE_URL`
+build settings (Debug: the local stack; Release: `https://api.metalarm.example.com`
+and `https://metalarm.example.com` placeholders).
 
 1. Enroll in the Apple Developer Program.
-2. In `ios/Config/Release.xcconfig`, set `METALARM_DOMAIN` to your DOMAIN.
-   In Xcode → target MetalARM → Signing & Capabilities, choose your Team
-   (or set `DEVELOPMENT_TEAM` in the xcconfig).
+2. In Xcode → target MetalARM → Build Settings, set the **Release** values of
+   `METALARM_API_BASE_URL` to `https://api.DOMAIN` and `METALARM_WEB_BASE_URL`
+   to `https://DOMAIN`. Then in Signing & Capabilities, choose your Team.
 3. Create the app in App Store Connect with bundle ID `com.SreeRam.MetalARM`
    (or change `PRODUCT_BUNDLE_IDENTIFIER` first; it must be unique).
 4. Listing: screenshots are in `ios/AppStore/screenshots/`; privacy policy URL

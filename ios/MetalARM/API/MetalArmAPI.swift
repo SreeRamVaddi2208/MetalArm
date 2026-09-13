@@ -2,18 +2,47 @@
 //  MetalArmAPI.swift
 //  MetalARM
 //
-//  One method per endpoint in API_CONTRACT.md — the same set as frontend/frontend/api.py.
+//  The LevelForge /api/v1 endpoints the app uses (see docs/api-contract.md
+//  and docs/workouts-api.md).
 //
 
+import Foundation
+
 protocol MetalArmAPI: AnyObject {
-    func me() async throws -> User
-    func exercises() async throws -> [Exercise]
-    func startSession() async throws -> SessionStart
-    func logSet(sessionID: Int, exerciseID: Int, weightKg: Double, reps: Int) async throws -> LogSetResult
-    func finishSession(sessionID: Int) async throws -> WorkoutSummary
-    func progress(exerciseID: Int) async throws -> ProgressData
-    func records(exerciseID: Int) async throws -> [RecordItem]
-    func leaderboard() async throws -> [LeaderboardEntry]
-    func profile() async throws -> ProfileData
-    func friendActivity() async throws -> [FriendActivity]
+    var isSignedIn: Bool { get }
+    /// Called when the server rejects the stored tokens and refreshing fails.
+    var onSignedOut: (() -> Void)? { get set }
+
+    // Account
+    func signIn(email: String, password: String) async throws
+    func signUp(email: String, password: String, displayName: String, timezone: String) async throws
+    /// Forgets this device's tokens.
+    func signOut()
+    /// Revokes every token the account holds, on every device.
+    func signOutEverywhere() async throws
+    func deleteAccount(password: String) async throws
+    func me() async throws -> Me
+    func updateWeightUnit(_ unit: WeightUnit) async throws -> Me
+    func profile() async throws -> Profile
+    func points() async throws -> PointsSummary
+
+    // Exercises and progress
+    func searchExercises(query: String) async throws -> [Exercise]
+    func lastPerformance(exerciseID: String) async throws -> [WorkoutSet]
+    func exerciseHistory(exerciseID: String) async throws -> [HistoryPoint]
+    func records(exerciseID: String?) async throws -> [WorkoutRecord]
+
+    // Workouts
+    func activeSession() async throws -> WorkoutSession?
+    func session(id: String) async throws -> WorkoutSession
+    func startSession() async throws -> WorkoutSession
+    func logSet(sessionID: String, exerciseID: String, weight: Double, unit: WeightUnit, reps: Int, clientSetID: UUID) async throws -> SetLogResult
+    func finishSession(sessionID: String) async throws -> FinishResult
+    func abandonSession(sessionID: String) async throws
+
+    // Parties
+    func parties() async throws -> [Party]
+    func createParty(name: String) async throws -> Party
+    func joinParty(inviteCode: String) async throws -> Party
+    func partyLeaderboard(partyID: String) async throws -> PartyBoard
 }

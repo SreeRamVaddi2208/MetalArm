@@ -2,16 +2,17 @@
 //  SummaryView.swift
 //  MetalARM
 //
-//  Port of frontend/frontend/pages/summary.py.
+//  The finish screen, built entirely from the server's FinishResponse.
 //
 
 import SwiftUI
 
 struct SummaryView: View {
-    let summary: WorkoutSummary
+    let result: FinishResult
+    let unit: WeightUnit
     var onDone: () -> Void
 
-    private var hasPR: Bool { !summary.newPrs.isEmpty }
+    private var lead: PREvent? { result.prEvents.celebrated }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -20,34 +21,54 @@ struct SummaryView: View {
                     ZStack {
                         RoundedRectangle(cornerRadius: 26)
                             .fill(LinearGradient(colors: [Theme.gold, Theme.goldDeep], startPoint: .topLeading, endPoint: .bottomTrailing))
-                        Image(systemName: hasPR ? "trophy.fill" : "checkmark.circle.fill")
+                        Image(systemName: lead == nil ? "checkmark.circle.fill" : "trophy.fill")
                             .font(.system(size: 40, weight: .semibold))
                             .foregroundStyle(Theme.bg)
                     }
                     .frame(width: 88, height: 88)
                     .shadow(color: Theme.gold.opacity(0.3), radius: 16, y: 16)
 
-                    Text(hasPR ? "New Personal Record!" : "Workout Complete")
+                    Text(lead == nil ? "Workout Complete" : "New Personal Record!")
                         .font(Theme.display(26, .heavy))
                         .foregroundStyle(Theme.text)
                         .padding(.top, 18)
 
-                    if let pr = summary.headlinePR {
-                        Text("\(pr.exerciseName) · \(pr.detail)")
+                    if let lead {
+                        Text(lead.headline(in: unit))
                             .font(.system(size: 14))
                             .foregroundStyle(Theme.dim)
+                            .multilineTextAlignment(.center)
                             .padding(.top, 6)
                     }
 
                     HStack(spacing: 12) {
-                        StatTile(value: "\(summary.durationMin)", label: "Duration", unit: "min")
-                        StatTile(value: formatNumber(summary.totalVolumeKg), label: "Volume", unit: "kg")
-                        StatTile(value: "\(summary.totalSets)", label: "Sets")
+                        StatTile(value: "\(max(1, result.session.durationSeconds / 60))", label: "Duration", unit: "min")
+                        StatTile(value: formatNumber(unit.fromKilograms(result.session.totalVolumeKg).rounded()), label: "Volume", unit: unit.rawValue)
+                        StatTile(value: "\(result.session.workingSets)", label: "Sets")
                     }
                     .padding(.top, 26)
 
+                    if !result.qualified {
+                        HStack(alignment: .top, spacing: 10) {
+                            Image(systemName: "info.circle")
+                            Text("Short workout: under 10 minutes or fewer than 3 working sets, so no completion bonus or streak credit. Your set points still count.")
+                        }
+                        .font(.system(size: 12))
+                        .foregroundStyle(Theme.dim)
+                        .padding(12)
+                        .cardStyle(cornerRadius: 14)
+                        .padding(.top, 14)
+                        .accessibilityElement(children: .combine)
+                        .accessibilityIdentifier("unqualifiedNote")
+                    }
+
                     pointsCard
                         .padding(.top, 14)
+
+                    Text("\(result.streak.weeks)-week streak · \(result.streak.thisWeekSessions)/\(result.streak.target) workouts this week")
+                        .font(.system(size: 12))
+                        .foregroundStyle(Theme.dim)
+                        .padding(.top, 12)
                 }
                 .padding(.horizontal, 28)
                 .padding(.top, 56)
@@ -74,24 +95,27 @@ struct SummaryView: View {
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(Theme.dim)
                 Spacer()
-                Text("+\(summary.totalPoints)")
+                Text("+\(result.breakdown.total)")
                     .font(Theme.display(26, .heavy))
                     .foregroundStyle(Theme.fire)
             }
             VStack(spacing: 4) {
-                breakdownRow("Sets logged", summary.pointsBreakdown.sets)
-                breakdownRow("Session completed", summary.pointsBreakdown.sessionCompleted)
-                breakdownRow("PR bonus", summary.pointsBreakdown.prBonus)
-                breakdownRow("Streak bonus", summary.pointsBreakdown.streakBonus)
+                breakdownRow("Sets logged", result.breakdown.setPoints)
+                breakdownRow("Workout completed", result.breakdown.sessionBonus)
+                breakdownRow("PR bonus", result.breakdown.prBonus)
+                breakdownRow("Streak bonus", result.breakdown.streakBonus)
+                if result.breakdown.reversals != 0 {
+                    breakdownRow("Adjustments", result.breakdown.reversals)
+                }
             }
             .padding(.top, 12)
-            XPBar(progress: summary.level.progress)
-                .padding(.top, 14)
-            Text("Level \(summary.level.level) — \(summary.level.xpRemaining) XP to next level")
-                .font(.system(size: 11))
-                .foregroundStyle(Theme.dim)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.top, 6)
+            if !result.progression.hint.isEmpty {
+                Text(result.progression.hint)
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundStyle(Theme.fire)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.top, 12)
+            }
         }
         .padding(18)
         .background {
@@ -108,7 +132,7 @@ struct SummaryView: View {
         HStack {
             Text(label)
             Spacer()
-            Text("+\(points)")
+            Text(points >= 0 ? "+\(points)" : "\(points)")
         }
         .font(.system(size: 12))
         .foregroundStyle(Theme.faint)
