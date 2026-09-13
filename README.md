@@ -65,7 +65,8 @@ In development there is no Caddy: the API is on `:8000` and the web app on `:300
 | [`deploy/`](deploy) | Production stack: Compose file, Caddyfile, backups, privacy and support pages |
 | [`docs/`](docs) | API contract, workout API guide, data model, deployment guide |
 | [`scripts/`](scripts) | API contract generator, smoke test, browser end-to-end test |
-| [`.github/workflows/ci.yml`](.github/workflows/ci.yml) | CI: backend tests, image builds, iOS tests |
+| [`.github/workflows/ci.yml`](.github/workflows/ci.yml) | CI: backend tests and image builds, on every push and pull request |
+| [`.github/workflows/ios.yml`](.github/workflows/ios.yml) | iOS tests, when `ios/` changes, on pushes to `main`, or on demand |
 
 ---
 

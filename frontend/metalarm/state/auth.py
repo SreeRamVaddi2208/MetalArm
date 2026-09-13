@@ -1,21 +1,49 @@
-"""Authentication state: token, identity, and progression.
+"""Authentication state: tokens, identity, and progression.
 
-The token lives in browser LocalStorage so a refresh does not log the user out.
+The tokens live in browser LocalStorage so a refresh does not log the user out.
 Note the API calls themselves run server-side in the Reflex process; only the
-token is client-persisted.
+tokens are client-persisted.
+
+Access tokens are short-lived. The refresh token keeps the session going: it is
+swapped for a new pair on page load when the access token is about to expire,
+and by a timer in the page shell (components/layout.py) while a page stays open,
+so a long workout never hits an expired token mid-set.
 """
 
 from __future__ import annotations
+
+import base64
+import json
+import time
 
 import reflex as rx
 
 from metalarm import api
 from metalarm.models import Progress
 
+# Refresh when the access token has less than this left. The shell's timer
+# fires every 5 minutes, so this keeps a margin of at least one tick.
+REFRESH_MARGIN_SECONDS = 10 * 60
+
+
+def seconds_until_expiry(token: str) -> float:
+    """Seconds until the access token's `exp`, read from its payload.
+
+    Not verified here - the server verifies every request; this only decides
+    when to refresh. An unreadable token reads as already expiring.
+    """
+    try:
+        payload = token.split(".")[1]
+        payload += "=" * (-len(payload) % 4)
+        return float(json.loads(base64.urlsafe_b64decode(payload))["exp"]) - time.time()
+    except (IndexError, ValueError, KeyError, TypeError):
+        return 0.0
+
 
 class AuthState(rx.State):
     # Persisted per browser. Survives reload; never leaves this origin.
     token: str = rx.LocalStorage("", name="lf_token")
+    refresh_token: str = rx.LocalStorage("", name="lf_refresh")
 
     display_name: str = ""
     email: str = ""
@@ -136,6 +164,37 @@ class AuthState(rx.State):
     def set_form_timezone(self, value: str) -> None:
         self.form_timezone = value
 
+    # --- Tokens -----------------------------------------------------------
+
+    def _store_tokens(self, data: dict) -> None:
+        self.token = data["access_token"]
+        # Older backends did not return one; the session then simply ends when
+        # the access token does, as before.
+        self.refresh_token = data.get("refresh_token") or ""
+
+    async def _refresh_tokens(self) -> bool:
+        """Swap the refresh token for a new pair. False if there is none or
+        the server rejected it (which ends the session). A network failure
+        keeps the current tokens: a blip must not sign the user out."""
+        if not self.refresh_token:
+            return False
+        try:
+            self._store_tokens(await api.refresh(self.refresh_token))
+            return True
+        except api.ApiError as exc:
+            if exc.status == 401:
+                self.token = ""
+                self.refresh_token = ""
+            return False
+
+    async def keep_fresh(self, _tick: str = ""):
+        """Called by the page shell's timer while a signed-in page is open."""
+        if not self.token or seconds_until_expiry(self.token) > REFRESH_MARGIN_SECONDS:
+            return
+        await self._refresh_tokens()
+        if not self.token:
+            return AuthState.do_logout
+
     # --- Actions ----------------------------------------------------------
 
     async def do_login(self):
@@ -152,8 +211,7 @@ class AuthState(rx.State):
 
         ok = False
         try:
-            data = await api.login(self.form_email, self.form_password)
-            self.token = data["access_token"]
+            self._store_tokens(await api.login(self.form_email, self.form_password))
             self.form_password = ""
             await self._load_me()
             ok = True
@@ -183,8 +241,7 @@ class AuthState(rx.State):
                 self.form_timezone or "UTC",
             )
             # Sign straight in, so a new account never lands on a login form.
-            data = await api.login(self.form_email, self.form_password)
-            self.token = data["access_token"]
+            self._store_tokens(await api.login(self.form_email, self.form_password))
             self.form_password = ""
             await self._load_me()
             ok = True
@@ -198,6 +255,7 @@ class AuthState(rx.State):
 
     def do_logout(self):
         self.token = ""
+        self.refresh_token = ""
         self.display_name = ""
         self.email = ""
         self.weight_unit = "kg"
@@ -215,17 +273,33 @@ class AuthState(rx.State):
         self.loaded = True
 
     async def refresh_me(self):
-        """Re-fetch identity and progression. Safe to call on every page load."""
+        """Re-fetch identity and progression. Safe to call on every page load.
+
+        Runs first on every signed-in page, so it also renews an access token
+        that is about to expire before the page's own requests use it.
+        """
         if not self.token:
             return
+        if seconds_until_expiry(self.token) <= REFRESH_MARGIN_SECONDS:
+            await self._refresh_tokens()
+            if not self.token:
+                return AuthState.do_logout
         try:
             await self._load_me()
         except api.ApiError as exc:
             # An expired or revoked token must not leave a stale session
-            # rendering as if it were live.
-            if exc.status == 401:
-                return AuthState.do_logout
-            self.error = exc.detail
+            # rendering as if it were live - but try the refresh token once
+            # before giving up on it.
+            if exc.status != 401:
+                self.error = exc.detail
+                return
+            if await self._refresh_tokens():
+                try:
+                    await self._load_me()
+                    return
+                except api.ApiError:
+                    pass
+            return AuthState.do_logout
 
     async def require_auth(self):
         """Page guard. Redirects out when there is no usable session."""

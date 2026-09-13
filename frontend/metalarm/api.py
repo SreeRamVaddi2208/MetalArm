@@ -116,6 +116,11 @@ async def login(email: str, password: str) -> dict:
     return await request("POST", "/auth/login", json={"email": email, "password": password})
 
 
+async def refresh(refresh_token: str) -> dict:
+    """Swap a refresh token for a new access + refresh pair."""
+    return await request("POST", "/auth/refresh", json={"refresh_token": refresh_token})
+
+
 async def me(token: str) -> dict:
     return await request("GET", "/auth/me", token=token)
 

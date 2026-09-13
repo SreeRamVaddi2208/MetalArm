@@ -14,6 +14,35 @@ Entry format:
 
 ---
 
+## 2026-09-14 (14) - Opus - web sessions survive the 60-minute access token
+
+**Changed**
+- The Reflex frontend now keeps the `refresh_token` (LocalStorage `lf_refresh`)
+  next to the access token and renews the pair before it expires:
+  `AuthState.refresh_me` (first handler on every signed-in page) refreshes a
+  token with under 10 minutes left and retries once on a 401 before signing
+  out; a hidden 5-minute `rx.moment` tick in `components/layout.py:shell()`
+  calls `AuthState.keep_fresh`, so a page left open (a long workout) never
+  hits an expired token mid-set. A rejected refresh ends the session; a
+  network failure keeps it.
+- New `api.refresh()`. Expiry is read from the JWT payload without verifying
+  it (the server verifies every request).
+
+**Verified (real output)**
+- `docker compose build frontend` (runs `reflex export`) succeeded.
+- `scripts/e2e`: **ALL PASSED (72)** against the rebuilt frontend.
+- Short-expiry check with `ACCESS_TOKEN_EXPIRE_MINUTES=1`: signed in through
+  the login page, both tokens stored, waited 75 s, reopened the dashboard ->
+  still signed in, account loaded, access token replaced; the backend served
+  2 `POST /auth/refresh` -> 200. Backend restored to 60 minutes afterwards.
+
+**Blocked**
+- Nothing.
+
+**Other agent needs to know**
+- Other states still read `AuthState.token` directly; freshness is handled
+  centrally, so they need no change.
+
 ## 2026-09-13 (13) - Opus - deployment readiness: mobile auth, production stack, CI, iOS app
 
 Made the project deployable end to end and moved the native iPhone app into
