@@ -55,6 +55,7 @@ final class AppModel {
     var parties: [Party] = []
     var selectedPartyID: String?
     var partyBoard: PartyBoard?
+    var partyRaid: PartyRaid?
 
     // Profile
     var profile: Profile?
@@ -185,6 +186,7 @@ final class AppModel {
         parties = []
         selectedPartyID = nil
         partyBoard = nil
+        partyRaid = nil
     }
 
     // MARK: - Home
@@ -480,6 +482,17 @@ final class AppModel {
             }
             partyBoard = try await selectedPartyID.asyncMap { try await api.partyLeaderboard(partyID: $0) }
         }
+        await loadRaid()
+    }
+
+    /// This week's party boss. A raid that fails to load hides its card and
+    /// leaves the leaderboard as it is.
+    func loadRaid() async {
+        guard let partyID = selectedPartyID else {
+            partyRaid = nil
+            return
+        }
+        partyRaid = try? await api.partyRaid(partyID: partyID)
     }
 
     func selectParty(_ partyID: String) async {
@@ -487,6 +500,7 @@ final class AppModel {
         await run("Couldn't load the leaderboard") {
             partyBoard = try await api.partyLeaderboard(partyID: partyID)
         }
+        await loadRaid()
     }
 
     func createParty(name: String) async {

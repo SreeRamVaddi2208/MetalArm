@@ -336,6 +336,41 @@ struct PartyBoard: Codable, Equatable {
     var entries: [PartyBoardEntry]
 }
 
+struct RaidHitter: Codable, Equatable, Identifiable {
+    var userId: String
+    var displayName: String
+    var damage: Int
+    var hits: Int
+    var isMe: Bool
+
+    var id: String { userId }
+}
+
+/// This week's party boss (GET /parties/{id}/raid; the rules are in the
+/// backend's app/core/raids.py). Every finished workout hits it for the
+/// weight lifted; on days nobody trains it heals.
+struct PartyRaid: Codable, Equatable {
+    var partyId: String
+    var weekKey: String
+    var name: String
+    var maxHp: Int
+    var hpRemaining: Int
+    var damageDealt: Int
+    var healed: Int
+    var idleDays: Int
+    var defeated: Bool
+    var defeatedAt: String?
+    var endsAt: String
+    var hitters: [RaidHitter]
+
+    var hpFraction: Double { maxHp > 0 ? Double(hpRemaining) / Double(maxHp) : 0 }
+
+    func daysLeft(from now: Date = .now) -> Int {
+        guard let end = parseServerDate(endsAt) else { return 0 }
+        return max(0, Int((end.timeIntervalSince(now) / 86_400).rounded(.up)))
+    }
+}
+
 // MARK: - Units and wording
 
 enum WeightUnit: String, Codable, CaseIterable, Identifiable {

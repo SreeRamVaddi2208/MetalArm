@@ -181,6 +181,7 @@ final class MetalARMUITests: XCTestCase {
         openTab(app, "Ranks")
         XCTAssertTrue(app.staticTexts["Meera"].waitForExistence(timeout: 5), "Party board did not load")
         XCTAssertTrue(app.staticTexts["(you)"].exists)
+        XCTAssertTrue(element(app, "raidCard").exists, "Party raid missing")
         attachScreenshot(app, named: "09 Ranks")
 
         openTab(app, "Profile")

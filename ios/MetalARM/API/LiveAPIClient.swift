@@ -161,6 +161,10 @@ final class LiveAPIClient: MetalArmAPI {
         try await send(.get("parties/\(partyID)/workout-leaderboard", query: ["period": "week"]))
     }
 
+    func partyRaid(partyID: String) async throws -> PartyRaid {
+        try await send(.get("parties/\(partyID)/raid"))
+    }
+
     // MARK: - Transport
 
     private struct RequestSpec {

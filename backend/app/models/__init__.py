@@ -13,6 +13,7 @@ from app.models.party import (
     PartyQuestCompletion,
 )
 from app.models.quest import Quest, QuestCompletion
+from app.models.raid import RaidBoss, RaidHit
 from app.models.reward import RewardItem, RewardRedemption
 from app.models.user import LevelProgress, User
 from app.models.workout import (
@@ -38,6 +39,8 @@ __all__ = [
     "PartyMembership",
     "PartyQuest",
     "PartyQuestCompletion",
+    "RaidBoss",
+    "RaidHit",
     "Exercise",
     "Routine",
     "RoutineExercise",

@@ -41,6 +41,9 @@ struct LeaderboardView: View {
                     if !model.isBusy { emptyState }
                 } else {
                     partyHeader
+                    if let raid = model.partyRaid {
+                        raidCard(raid)
+                    }
                     ForEach(model.partyBoard?.entries ?? []) { entry in
                         row(entry)
                     }
@@ -166,6 +169,80 @@ struct LeaderboardView: View {
         .padding(.vertical, 12)
         .background(entry.isMe ? Theme.accent.opacity(0.16) : Color.clear, in: RoundedRectangle(cornerRadius: 14))
         .overlay(RoundedRectangle(cornerRadius: 14).stroke(entry.isMe ? Theme.accent.opacity(0.3) : Color.clear))
+    }
+
+    /// This week's party boss: HP, idle-day healing, and the top hitters.
+    private func raidCard(_ raid: PartyRaid) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .firstTextBaseline) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("PARTY RAID")
+                        .font(Theme.body(11, .bold))
+                        .kerning(1)
+                        .foregroundStyle(Theme.dim)
+                    Text(raid.name)
+                        .font(Theme.display(20))
+                        .foregroundStyle(Theme.text)
+                }
+                Spacer()
+                if raid.defeated {
+                    Text("DEFEATED")
+                        .font(Theme.body(11, .bold))
+                        .foregroundStyle(Theme.bg)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Theme.accent, in: RoundedRectangle(cornerRadius: 6))
+                } else {
+                    let days = raid.daysLeft()
+                    Text("\(days) day\(days == 1 ? "" : "s") left")
+                        .font(Theme.body(12, .semibold))
+                        .foregroundStyle(Theme.dim)
+                }
+            }
+            GeometryReader { geometry in
+                ZStack(alignment: .leading) {
+                    Capsule().fill(Theme.bg)
+                    Capsule()
+                        .fill(LinearGradient(colors: [Theme.accent, Theme.accentDeep], startPoint: .leading, endPoint: .trailing))
+                        .frame(width: geometry.size.width * max(0, min(1, raid.hpFraction)))
+                }
+            }
+            .frame(height: 10)
+            .accessibilityElement()
+            .accessibilityLabel("Boss health")
+            .accessibilityValue("\(raid.hpRemaining) of \(raid.maxHp)")
+            HStack {
+                Text("\(raid.hpRemaining.formatted()) / \(raid.maxHp.formatted()) HP")
+                Spacer()
+                if raid.healed > 0 && !raid.defeated {
+                    Text("+\(raid.healed.formatted()) healed on idle days")
+                }
+            }
+            .font(Theme.body(11.5))
+            .foregroundStyle(Theme.dim)
+            if raid.hitters.isEmpty {
+                Text("No hits yet. Finish a workout to strike first.")
+                    .font(Theme.body(12))
+                    .foregroundStyle(Theme.dim)
+            } else {
+                ForEach(raid.hitters.prefix(3)) { hitter in
+                    HStack {
+                        Text(hitter.displayName + (hitter.isMe ? " (you)" : ""))
+                            .font(Theme.body(13, hitter.isMe ? .bold : .regular))
+                            .foregroundStyle(Theme.text)
+                        Spacer()
+                        Text("\(hitter.damage.formatted()) dmg")
+                            .font(Theme.display(13))
+                            .foregroundStyle(hitter.isMe ? Theme.text : Theme.dim)
+                    }
+                }
+            }
+        }
+        .padding(16)
+        .cardStyle(cornerRadius: 16)
+        .padding(.bottom, 6)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("raidCard")
     }
 
     private func inviteCard(party: Party, code: String) -> some View {

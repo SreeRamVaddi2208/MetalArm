@@ -333,6 +333,18 @@ class PointsBreakdownOut(BaseModel):
     total: int
 
 
+class RaidHitOut(BaseModel):
+    """A party boss this workout hit (app/core/raids.py)."""
+
+    party_id: uuid.UUID
+    party_name: str
+    boss_name: str
+    damage: int
+    hp_remaining: int
+    defeated: bool
+    defeated_now: bool
+
+
 class FinishResponse(BaseModel):
     session: SessionSummaryOut
     qualified: bool
@@ -344,6 +356,8 @@ class FinishResponse(BaseModel):
     pr_events: list[PrEventOut]
     streak: StreakOut
     progression: ProgressionDeltaOut
+    # Party bosses hit by this workout (qualified workouts only).
+    raids: list[RaidHitOut] = []
 
 
 class AbandonResponse(BaseModel):

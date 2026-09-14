@@ -34,7 +34,7 @@ MetalArm has three parts that share one API:
 - **Records** - heaviest set, estimated 1RM, session volume and most reps at a weight, detected on the server as you log.
 - **Progression** - points become XP, levels and ranks from E to S. Weekly workout streaks, badges and a rewards shop.
 - **Quests** - daily, weekly and one-off goals in your own time zone.
-- **Parties** - invite codes, a shared quest board, and weekly workout leaderboards.
+- **Parties** - invite codes, a shared quest board, weekly workout leaderboards, and a weekly raid boss the whole party brings down with its workouts (it heals on days nobody trains).
 - **Accounts** - sign-up and login with refresh tokens, sign-out on every device, and in-app account deletion.
 
 Every number (points, XP, records, streaks) is computed on the server. No

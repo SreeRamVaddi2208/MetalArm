@@ -46,4 +46,5 @@ protocol MetalArmAPI: AnyObject {
     func createParty(name: String) async throws -> Party
     func joinParty(inviteCode: String) async throws -> Party
     func partyLeaderboard(partyID: String) async throws -> PartyBoard
+    func partyRaid(partyID: String) async throws -> PartyRaid
 }

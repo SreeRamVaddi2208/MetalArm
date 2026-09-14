@@ -256,6 +256,9 @@ try {
   await page.goto(UI + '/parties');
   await page.getByText('WORKOUT BOARD').waitFor({ timeout: 15000 });
   check('party page shows the workout leaderboard', await visible(page.getByText(/\d+ PTS/).first()));
+  // This week's party boss (backend core/raids.py): the workouts above already hit it.
+  check('party page shows the party raid', await visible(page.getByText('PARTY RAID')));
+  check('the raid lists who hit the boss', await visible(page.getByText(/\d[\d,]* dmg/).first()));
   await page.getByText('ALL TIME', { exact: true }).click();
   await page.waitForTimeout(800);
   check('leaderboard period toggles', await visible(page.getByText(/\d+ workouts?$/).first()));

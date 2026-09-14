@@ -230,6 +230,11 @@ async def party_leaderboard(token: str, party_id: str) -> dict:
     return await request("GET", f"/parties/{party_id}/leaderboard", token=token)
 
 
+async def party_raid(token: str, party_id: str) -> dict:
+    """This week's party boss (GET /parties/{id}/raid)."""
+    return await request("GET", f"/parties/{party_id}/raid", token=token)
+
+
 async def list_party_quests(token: str, party_id: str) -> list[dict]:
     return await request("GET", f"/parties/{party_id}/quests", token=token)
 

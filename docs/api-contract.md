@@ -10,7 +10,7 @@
 
 - **API title:** MetalArm API
 - **API version:** 0.1.0
-- **Generated:** 2026-09-13 21:42 UTC
+- **Generated:** 2026-09-14 15:20 UTC
 - **Source:** `http://127.0.0.1:8000/openapi.json`
 
 ---
@@ -695,6 +695,27 @@ XP counts only what was earned while a member, with no extra bookkeeping.
 |---|---|---|---|
 | `party_id` | path | `string` | yes |
 | `quest_id` | path | `string` | yes |
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `GET /api/v1/parties/{party_id}/raid`
+
+**Party Raid**
+
+This week's party boss: its HP, what the party has dealt, what it healed
+on idle days, and who hit it hardest. Members only - an outsider gets 404,
+as for every party read. The rules are in app/core/raids.py.
+
+*Tags:* `parties`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `party_id` | path | `string` | yes |
 
 | Status | Description |
 |---|---|
@@ -1580,6 +1601,7 @@ otherwise 503 with per-dependency detail.
 | `pr_events` | `PrEventOut[]` | yes |
 | `streak` | `StreakOut` | yes |
 | `progression` | `ProgressionDeltaOut` | yes |
+| `raids` | `RaidHitOut[]` | no |
 
 #### `HTTPValidationError`
 
@@ -1923,6 +1945,45 @@ otherwise 503 with per-dependency detail.
 | `recurrence` | `Recurrence | null` | no |
 | `status` | `QuestStatus | null` | no |
 | `due_at` | `string | null` | no |
+
+#### `RaidHitOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `party_id` | `string` | yes |
+| `party_name` | `string` | yes |
+| `boss_name` | `string` | yes |
+| `damage` | `integer` | yes |
+| `hp_remaining` | `integer` | yes |
+| `defeated` | `boolean` | yes |
+| `defeated_now` | `boolean` | yes |
+
+#### `RaidHitterOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `user_id` | `string` | yes |
+| `display_name` | `string` | yes |
+| `damage` | `integer` | yes |
+| `hits` | `integer` | yes |
+| `is_me` | `boolean` | yes |
+
+#### `RaidOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `party_id` | `string` | yes |
+| `week_key` | `string` | yes |
+| `name` | `string` | yes |
+| `max_hp` | `integer` | yes |
+| `hp_remaining` | `integer` | yes |
+| `damage_dealt` | `integer` | yes |
+| `healed` | `integer` | yes |
+| `idle_days` | `integer` | yes |
+| `defeated` | `boolean` | yes |
+| `defeated_at` | `string | null` | yes |
+| `ends_at` | `string` | yes |
+| `hitters` | `RaidHitterOut[]` | yes |
 
 #### `RecordOut`
 
