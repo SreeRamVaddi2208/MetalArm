@@ -14,6 +14,11 @@ final class MockAPIClient: MetalArmAPI {
 
     /// When set, every call throws this instead of returning data.
     var failure: Error?
+    /// Simulates a reply lost on the way back: the next set is recorded, then
+    /// the call fails as if the network dropped.
+    var dropNextLogSetResponse = false
+    // Replies already given, by client_set_id - the server's dedupe.
+    private var logSetReplies: [UUID: SetLogResult] = [:]
     var onSignedOut: (() -> Void)?
     private(set) var isSignedIn: Bool
 
@@ -27,8 +32,12 @@ final class MockAPIClient: MetalArmAPI {
     // -UITestRankUp: finishing a workout reaches a new rank (level 20, C -> B).
     private let rankUpOnFinish: Bool
 
-    init(signedIn: Bool = true, levelUpOnFinish: Bool = false, rankUpOnFinish: Bool = false) {
+    // -UITestOffline: logging a set fails as if the phone had no signal.
+    var isOffline: Bool
+
+    init(signedIn: Bool = true, levelUpOnFinish: Bool = false, rankUpOnFinish: Bool = false, offline: Bool = false) {
         isSignedIn = signedIn
+        isOffline = offline
         self.levelUpOnFinish = levelUpOnFinish
         self.rankUpOnFinish = rankUpOnFinish
         partyList = []
@@ -160,6 +169,12 @@ final class MockAPIClient: MetalArmAPI {
     // The first set of each exercise beats the last session's best, so it pays the PR bonus.
     func logSet(sessionID: String, exerciseID: String, weight: Double, unit: WeightUnit, reps: Int, clientSetID: UUID) async throws -> SetLogResult {
         try check()
+        if isOffline { throw URLError(.notConnectedToInternet) }
+        // Like the server: a repeated client_set_id gets the original reply.
+        if var earlier = logSetReplies[clientSetID] {
+            earlier.isDuplicate = true
+            return earlier
+        }
         guard var session = current, session.id == sessionID else { throw APIError.http(status: 404, detail: "Workout not found") }
         let library: [Exercise] = fixture(ContractFixtures.exercises)
         guard let exercise = library.first(where: { $0.id == exerciseID }) else {
@@ -192,10 +207,16 @@ final class MockAPIClient: MetalArmAPI {
             setId: loggedSet.id)] : []
         var awards = [Award(sourceType: "set_logged", points: 2, reason: "Set logged")]
         if isFirst { awards.append(Award(sourceType: "pr_achieved", points: 50, reason: "New PR: max_weight")) }
-        return SetLogResult(
+        let reply = SetLogResult(
             loggedSet: loggedSet, prEvents: prEvents, awards: awards, pointsAwarded: points,
             sessionPoints: session.pointsTotal, setCapReached: false,
             progression: steadyProgression(points), isDuplicate: false)
+        logSetReplies[clientSetID] = reply
+        if dropNextLogSetResponse {
+            dropNextLogSetResponse = false
+            throw URLError(.networkConnectionLost)
+        }
+        return reply
     }
 
     func finishSession(sessionID: String) async throws -> FinishResult {

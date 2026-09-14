@@ -42,6 +42,8 @@ final class AppModel {
     var pickerResults: [Exercise] = []
     var finishResult: FinishResult?
     var showingSummary = false
+    // Logged with no connection; sent in order once the network is back.
+    private(set) var pendingSets: [PendingSet] = []
 
     // Progress
     var progressTabs: [ProgressTab] = []
@@ -61,11 +63,23 @@ final class AppModel {
     var isBusy = false
 
     @ObservationIgnored private var restTask: Task<Void, Never>?
+    @ObservationIgnored private let pendingStore: PendingSetStore
+    @ObservationIgnored private let connectivity = ConnectivityMonitor()
+    @ObservationIgnored private var isFlushing = false
 
-    init(api: MetalArmAPI) {
+    init(api: MetalArmAPI, pendingStore: PendingSetStore = .inMemory) {
         self.api = api
+        self.pendingStore = pendingStore
         isSignedIn = api.isSignedIn
+        pendingSets = pendingStore.load()
         api.onSignedOut = { [weak self] in self?.resetAfterSignOut() }
+    }
+
+    /// Sends queued sets whenever the network comes back.
+    func startSyncingWhenOnline() {
+        connectivity.start { [weak self] in
+            Task { await self?.flushPendingSets() }
+        }
     }
 
     // MARK: - Derived values
@@ -159,6 +173,8 @@ final class AppModel {
         points = nil
         profile = nil
         clearWorkout()
+        pendingSets = []
+        pendingStore.save([])
         ghostSets = [:]
         finishResult = nil
         showingSummary = false
@@ -189,6 +205,7 @@ final class AppModel {
             session = try await api.activeSession()
         }
         if selectedExercise == nil { selectDefaultExercise() }
+        await flushPendingSets()
     }
 
     func startWorkout() async {
@@ -257,23 +274,114 @@ final class AppModel {
             errorMessage = "Enter a weight and a number of reps."
             return
         }
-        // One id per tap: a retry of this same request can never log twice.
-        let clientSetID = UUID()
-        await run("Couldn't log that set") {
-            let result = try await api.logSet(
-                sessionID: current.id, exerciseID: exercise.id, weight: weight, unit: weightUnit,
-                reps: reps, clientSetID: clientSetID)
+        // One id per tap: a retry of this same set - now, or after the phone was
+        // offline - can never log it twice.
+        let set = PendingSet(
+            clientSetID: UUID(), sessionID: current.id, exerciseID: exercise.id, weight: weight, unit: weightUnit,
+            reps: reps)
+        let rest = selectedSessionExercise?.target?.restSeconds ?? Self.defaultRestSeconds
+
+        // Sets already waiting go first, so the server gets them in the order they were done.
+        guard pendingSets.isEmpty else {
+            queue(set)
+            startRestTimer(seconds: rest)
+            await flushPendingSets()
+            return
+        }
+
+        isBusy = true
+        defer { isBusy = false }
+        do {
+            let result = try await send(set)
             prHint = result.prEvents.celebrated?.headline(in: weightUnit) ?? ""
             progressionHint = result.progression.hint
             session = try await api.session(id: current.id)
             pendingExercises.removeAll { $0.id == exercise.id }
-            let rest = selectedSessionExercise?.target?.restSeconds ?? Self.defaultRestSeconds
+            errorMessage = ""
+            startRestTimer(seconds: selectedSessionExercise?.target?.restSeconds ?? rest)
+        } catch let error where error.isConnectivityFailure {
+            // No answer from the server: keep the set and send it when the network is back.
+            // If it did arrive and only the answer was lost, the resend is ignored.
+            queue(set)
+            errorMessage = ""
             startRestTimer(seconds: rest)
+        } catch APIError.signedOut {
+            errorMessage = APIError.signedOut.localizedDescription
+        } catch {
+            errorMessage = "Couldn't log that set: \(error.localizedDescription)"
         }
+    }
+
+    /// Sets saved offline for this exercise in the current workout.
+    func queuedSets(for exerciseID: String) -> [PendingSet] {
+        pendingSets.filter { $0.sessionID == session?.id && $0.exerciseID == exerciseID }
+    }
+
+    var syncStatusText: String {
+        let count = pendingSets.count
+        return "\(count) \(count == 1 ? "set" : "sets") saved offline. They'll sync when you're back online."
+    }
+
+    /// Sends queued sets in order. Stops at the first one that still can't
+    /// reach the server; drops (and reports) any the server rejects - say,
+    /// because that workout was finished on another device.
+    func flushPendingSets() async {
+        guard !isFlushing, !pendingSets.isEmpty else { return }
+        isFlushing = true
+        defer { isFlushing = false }
+
+        var sentAny = false
+        var rejections: [String] = []
+        while let next = pendingSets.first {
+            do {
+                let result = try await send(next)
+                sentAny = true
+                if let headline = result.prEvents.celebrated?.headline(in: weightUnit) { prHint = headline }
+                progressionHint = result.progression.hint
+            } catch let error where error.isConnectivityFailure {
+                break
+            } catch APIError.signedOut {
+                break
+            } catch {
+                rejections.append(error.localizedDescription)
+            }
+            pendingSets.removeFirst()
+            pendingStore.save(pendingSets)
+        }
+
+        if let first = rejections.first {
+            errorMessage = rejections.count == 1
+                ? "A set saved offline couldn't be logged: \(first)"
+                : "\(rejections.count) sets saved offline couldn't be logged: \(first)"
+        }
+        if sentAny, let current = session {
+            if let latest = try? await api.session(id: current.id) { session = latest }
+            let logged = Set(session?.exercises.map(\.exercise.id) ?? [])
+            pendingExercises.removeAll { logged.contains($0.id) }
+        }
+    }
+
+    private func send(_ set: PendingSet) async throws -> SetLogResult {
+        try await api.logSet(
+            sessionID: set.sessionID, exerciseID: set.exerciseID, weight: set.weight, unit: set.unit,
+            reps: set.reps, clientSetID: set.clientSetID)
+    }
+
+    private func queue(_ set: PendingSet) {
+        pendingSets.append(set)
+        pendingStore.save(pendingSets)
     }
 
     func finishWorkout() async {
         guard let current = session else { return }
+        // Queued sets have to reach the server first, or they wouldn't count.
+        await flushPendingSets()
+        let unsynced = pendingSets.filter { $0.sessionID == current.id }.count
+        guard unsynced == 0 else {
+            errorMessage = "\(unsynced) \(unsynced == 1 ? "set hasn't" : "sets haven't") synced yet. "
+                + "Finish once you're back online so they count."
+            return
+        }
         await run("Couldn't finish the workout") {
             finishResult = try await api.finishSession(sessionID: current.id)
             clearWorkout()
@@ -286,6 +394,9 @@ final class AppModel {
         guard let current = session else { return }
         await run("Couldn't discard the workout") {
             try await api.abandonSession(sessionID: current.id)
+            // A discarded workout's queued sets have nowhere to go.
+            pendingSets.removeAll { $0.sessionID == current.id }
+            pendingStore.save(pendingSets)
             clearWorkout()
         }
         await refreshStats()

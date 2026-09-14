@@ -79,6 +79,10 @@ struct WorkoutView: View {
                     banner(icon: "timer", text: "Rest — \(model.restDisplay) until next set", tint: Theme.accent, textColor: Theme.text)
                         .accessibilityIdentifier("restBanner")
                 }
+                if !model.pendingSets.isEmpty {
+                    banner(icon: "icloud.slash", text: model.syncStatusText, tint: Theme.silver, textColor: Theme.text)
+                        .accessibilityIdentifier("offlineBanner")
+                }
                 if !model.progressionHint.isEmpty {
                     banner(icon: "arrow.up.circle.fill", text: model.progressionHint, tint: Theme.silver, textColor: Theme.text)
                         .accessibilityIdentifier("progressionBanner")
@@ -235,8 +239,23 @@ struct WorkoutView: View {
                         .foregroundStyle(loggedSet.isPr ? Theme.success : Theme.dim)
                 )
             }
+            // Saved offline: shown in place, with a clock until they sync.
+            let queued = model.queuedSets(for: exercise.id)
+            ForEach(Array(queued.enumerated()), id: \.element.id) { offset, queuedSet in
+                setColumns(
+                    Text("\(sets.count + offset + 1)")
+                        .font(Theme.display(13))
+                        .foregroundStyle(Theme.dim),
+                    valueBox(formatNumber(unit.fromKilograms(queuedSet.weightKg))),
+                    valueBox(String(queuedSet.reps)),
+                    Image(systemName: "clock.arrow.circlepath")
+                        .foregroundStyle(Theme.faint)
+                        .accessibilityLabel("Waiting to sync")
+                )
+                .accessibilityIdentifier("queuedSet")
+            }
             setColumns(
-                Text("\(sets.count + 1)")
+                Text("\(sets.count + queued.count + 1)")
                     .font(Theme.display(13))
                     .foregroundStyle(Theme.accent),
                 inputField("Weight", text: $model.weightInput, keyboard: .decimalPad, field: .weight)
