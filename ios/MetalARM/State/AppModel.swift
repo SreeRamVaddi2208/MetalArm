@@ -319,7 +319,9 @@ final class AppModel {
 
     var syncStatusText: String {
         let count = pendingSets.count
-        return "\(count) \(count == 1 ? "set" : "sets") saved offline. They'll sync when you're back online."
+        return count == 1
+            ? "1 set saved offline. It'll sync when you're back online."
+            : "\(count) sets saved offline. They'll sync when you're back online."
     }
 
     /// Sends queued sets in order. Stops at the first one that still can't
