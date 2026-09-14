@@ -11,6 +11,8 @@ import SwiftUI
 
 struct LevelUpView: View {
     let progression: ProgressionDelta
+    /// The summary's story card, offered right when the moment is biggest.
+    var shareCard: Image? = nil
     var onContinue: () -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -95,6 +97,18 @@ struct LevelUpView: View {
                     .padding(.top, 18)
                     .opacity(appeared ? 1 : 0)
                     .animation(.easeOut(duration: 0.3).delay(reduceMotion ? 0 : 0.5), value: appeared)
+
+                if let shareCard {
+                    ShareLink(item: shareCard, preview: SharePreview("MetalArm", image: shareCard)) {
+                        Label("Share", systemImage: "square.and.arrow.up")
+                            .font(Theme.body(14, .semibold))
+                            .foregroundStyle(Theme.dim)
+                            .padding(8)
+                    }
+                    .accessibilityIdentifier("levelUpShareButton")
+                    .opacity(appeared ? 1 : 0)
+                    .animation(.easeOut(duration: 0.3).delay(reduceMotion ? 0 : 0.6), value: appeared)
+                }
             }
             .padding(.horizontal, 24)
         }

@@ -23,8 +23,10 @@ from typing import Any
 
 import reflex as rx
 
+from metalarm import api as core_api
 from metalarm import workout_api as wapi
 from metalarm.api import ApiError
+from metalarm.share_card import share_card_script
 from metalarm.state.auth import AuthState
 from metalarm.state.quests import QuestState
 from metalarm.workout_models import (
@@ -673,6 +675,35 @@ class WorkoutState(rx.State):
         self._apply_session(session)
         await self._show_outcome(exercise_id, result)
         yield AuthState.refresh_me
+
+    # --- sharing ----------------------------------------------------------
+
+    async def share_card(self):
+        """Draw this workout's story card in the browser and share or download it.
+        The footer invites friends into the user's first active party."""
+        summary = self.summary
+        auth = await self._auth()
+        invite = ""
+        try:
+            parties = await core_api.list_parties(auth.token)
+            active = [p for p in parties if p.get("is_active", True)]
+            if active:
+                invite = active[0].get("invite_code") or ""
+        except ApiError:
+            pass  # the card still works without an invite
+        card = {
+            "kind": summary.share_kind or "workout",
+            "eyebrow": summary.share_eyebrow,
+            "headline": summary.share_headline,
+            "caption": summary.share_caption,
+            "stats": [
+                {"value": summary.duration_label, "label": "Duration"},
+                {"value": summary.volume_label, "label": "Volume"},
+                {"value": summary.sets_label, "label": "Sets"},
+            ],
+            "footer": f"Join my party: {invite}" if invite else "Level up every workout",
+        }
+        return rx.call_script(share_card_script(card))
 
     # --- finishing --------------------------------------------------------
 

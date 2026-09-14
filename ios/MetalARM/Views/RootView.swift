@@ -57,7 +57,9 @@ struct RootView: View {
         }
         .fullScreenCover(isPresented: $model.showingSummary) {
             if let result = model.finishResult {
-                SummaryView(result: result, unit: model.weightUnit) { model.showingSummary = false }
+                SummaryView(result: result, unit: model.weightUnit, inviteCode: model.shareInviteCode) {
+                    model.showingSummary = false
+                }
             }
         }
     }

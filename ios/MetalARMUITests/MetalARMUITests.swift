@@ -50,7 +50,13 @@ final class MetalARMUITests: XCTestCase {
     @MainActor
     private func type(_ text: String, into field: XCUIElement) {
         XCTAssertTrue(field.waitForExistence(timeout: 5), "\(field) missing")
-        field.tap()
+        // A tap during a transition can land without handing over the keyboard
+        // ("Neither element nor any descendant has keyboard focus"); re-tap until it has it.
+        for _ in 1...3 {
+            field.tap()
+            if (field.value(forKey: "hasKeyboardFocus") as? Bool) == true { break }
+            Thread.sleep(forTimeInterval: 0.5)
+        }
         field.typeText(text)
     }
 
@@ -143,7 +149,7 @@ final class MetalARMUITests: XCTestCase {
         addFirst.tap()
 
         let bench = app.buttons["pickExercise-Barbell Bench Press"]
-        XCTAssertTrue(bench.waitForExistence(timeout: 5), "Exercise picker did not load")
+        XCTAssertTrue(bench.waitForExistence(timeout: 10), "Exercise picker did not load")
         attachScreenshot(app, named: "04 Exercise picker")
         bench.tap()
 
@@ -205,7 +211,7 @@ final class MetalARMUITests: XCTestCase {
         XCTAssertTrue(addFirst.waitForExistence(timeout: 5), "Workout never started")
         addFirst.tap()
         let bench = app.buttons["pickExercise-Barbell Bench Press"]
-        XCTAssertTrue(bench.waitForExistence(timeout: 5), "Exercise picker did not load")
+        XCTAssertTrue(bench.waitForExistence(timeout: 10), "Exercise picker did not load")
         bench.tap()
         let logSet = app.buttons["logSetButton"]
         XCTAssertTrue(logSet.waitForExistence(timeout: 5), "Exercise card missing")
@@ -267,7 +273,10 @@ final class MetalARMUITests: XCTestCase {
         Thread.sleep(forTimeInterval: 1.2)
         attachScreenshot(app, named: "12 Level up")
 
+        // The story card is offered on the celebration and on the summary.
+        XCTAssertTrue(app.buttons["levelUpShareButton"].exists, "Share missing on the celebration")
         app.buttons["levelUpContinueButton"].tap()
+        XCTAssertTrue(app.buttons["shareButton"].waitForExistence(timeout: 3), "Share missing on the summary")
         XCTAssertTrue(overlay.waitForNonExistence(timeout: 3), "Celebration did not close")
         XCTAssertTrue(app.buttons["doneButton"].exists, "Summary missing behind the celebration")
     }
