@@ -24,10 +24,13 @@ final class MockAPIClient: MetalArmAPI {
 
     // -UITestLevelUp: finishing a workout levels the user up (14 -> 15).
     private let levelUpOnFinish: Bool
+    // -UITestRankUp: finishing a workout reaches a new rank (level 20, C -> B).
+    private let rankUpOnFinish: Bool
 
-    init(signedIn: Bool = true, levelUpOnFinish: Bool = false) {
+    init(signedIn: Bool = true, levelUpOnFinish: Bool = false, rankUpOnFinish: Bool = false) {
         isSignedIn = signedIn
         self.levelUpOnFinish = levelUpOnFinish
+        self.rankUpOnFinish = rankUpOnFinish
         partyList = []
         partyList = fixture(ContractFixtures.parties)
     }
@@ -220,12 +223,23 @@ final class MockAPIClient: MetalArmAPI {
                 pointsTotal: breakdown.total, prCount: prSets.count),
             qualified: qualified, awards: [], breakdown: breakdown, pointsCredited: breakdown.total,
             prEvents: prEvents, streak: fixture(ContractFixtures.streak),
-            progression: levelUpOnFinish ? levelUpProgression(breakdown.total) : steadyProgression(breakdown.total))
+            progression: finishProgression(breakdown.total))
     }
 
     func abandonSession(sessionID: String) async throws {
         try check()
         current = nil
+    }
+
+    private func finishProgression(_ points: Int) -> ProgressionDelta {
+        if rankUpOnFinish { return rankUpProgression(points) }
+        return levelUpOnFinish ? levelUpProgression(points) : steadyProgression(points)
+    }
+
+    private func rankUpProgression(_ points: Int) -> ProgressionDelta {
+        ProgressionDelta(
+            xpAwarded: points, pointsAwarded: points, totalXp: 38_000 + points, levelBefore: 19, levelAfter: 20,
+            rankBefore: "C", rankAfter: "B", currentStreak: 6, longestStreak: 12, leveledUp: true, rankedUp: true)
     }
 
     private func levelUpProgression(_ points: Int) -> ProgressionDelta {

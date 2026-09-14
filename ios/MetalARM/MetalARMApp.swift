@@ -25,7 +25,8 @@ struct MetalARMApp: App {
         let api: MetalArmAPI
         if arguments.contains("-UITestMockAPI") {
             api = MockAPIClient(
-                signedIn: arguments.contains("-UITestSignedIn"), levelUpOnFinish: arguments.contains("-UITestLevelUp"))
+                signedIn: arguments.contains("-UITestSignedIn"), levelUpOnFinish: arguments.contains("-UITestLevelUp"),
+                rankUpOnFinish: arguments.contains("-UITestRankUp"))
         } else {
             let tokens = KeychainTokenStore()
             if resetOnboarding { tokens.tokens = nil }

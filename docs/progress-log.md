@@ -14,6 +14,42 @@ Entry format:
 
 ---
 
+## 2026-09-14 (18) - Opus - launch prep: listing text, launch checklist, grey static pages
+
+**Changed**
+- `docs/launch-checklist.md`: every remaining launch step in order (domain and
+  DNS, server, `deploy/.env.production`, first start and smoke test, Apple
+  enrolment, Xcode Team and Release URLs, App Store Connect, archive, TestFlight,
+  demo account for review, submit). Linked first in the README's Docs list and
+  from `docs/deployment.md` section 8.
+- `ios/AppStore/metadata.md`: paste-ready App Store Connect text (subtitle,
+  promotional text, description, keywords, category, age rating), privacy
+  label answers matching `PrivacyInfo.xcprivacy`, and App Review notes.
+- `deploy/site/privacy.html` and `support.html` (served by Caddy at
+  `/privacy` and `/support`): restyled in the grey palette. Privacy now lists
+  routines, levels and per-device sign-in sessions; support answers
+  "I lost a phone" (Profile -> Sign Out of All Devices).
+- Mock backend `-UITestRankUp` (level 19 -> 20, rank C -> B) and UI test
+  `testRankUpCelebration`; the level-up and rank-up tests share
+  `finishOneSetWorkout(flag:)`.
+
+**Verified (real output)**
+- `xcodebuild test` on the iPhone 17 simulator: **TEST SUCCEEDED** - MetalARMTests
+  35 passed; `testRankUpCelebration` and `testLevelUpCelebration` passed.
+- Both static pages rendered in Chrome (390 px wide): grey palette, new
+  privacy entries and the lost-phone answer present.
+
+**Blocked**
+- Nothing on the code side. Launch itself waits on the owner's steps in
+  `docs/launch-checklist.md`.
+
+**Other agent needs to know**
+- `/privacy` and `/support` exist only behind Caddy in production (static
+  files with `{{env "SUPPORT_EMAIL"}}` templates); the local Reflex dev server
+  has no such routes, so the iOS Debug build's Privacy link 404s locally.
+
+---
+
 ## 2026-09-14 (17) - Opus - grey identity: palette, app icon, level-up celebration
 
 **Changed**

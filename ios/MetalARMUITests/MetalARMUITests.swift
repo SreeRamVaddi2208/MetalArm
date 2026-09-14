@@ -194,10 +194,10 @@ final class MetalARMUITests: XCTestCase {
         deleteAccount(app, screenshot: "11 Delete account")
     }
 
+    /// Signs in to the mock backend with `flag`, logs one set, and finishes.
     @MainActor
-    func testLevelUpCelebration() throws {
-        // The mock backend reports a level-up (14 -> 15) when the workout finishes.
-        let app = launch(["-UITestSignedIn", "-UITestSkipOnboarding", "-UITestLevelUp"])
+    private func finishOneSetWorkout(flag: String) -> XCUIApplication {
+        let app = launch(["-UITestSignedIn", "-UITestSkipOnboarding", flag])
         XCTAssertTrue(app.staticTexts["Level 14 · Rank C"].waitForExistence(timeout: 10), "Home never loaded")
 
         app.buttons["homeStartWorkoutButton"].tap()
@@ -211,6 +211,30 @@ final class MetalARMUITests: XCTestCase {
         XCTAssertTrue(logSet.waitForExistence(timeout: 5), "Exercise card missing")
         logSet.tap()
         app.buttons["finishButton"].tap()
+        return app
+    }
+
+    @MainActor
+    func testRankUpCelebration() throws {
+        // The mock backend reports a new rank (level 20, C -> B) when the workout finishes.
+        let app = finishOneSetWorkout(flag: "-UITestRankUp")
+        let overlay = element(app, "levelUpOverlay")
+        XCTAssertTrue(overlay.waitForExistence(timeout: 5), "Rank-up celebration never appeared")
+        XCTAssertTrue(app.staticTexts["RANK UP"].exists)
+        XCTAssertTrue(app.staticTexts["You're now rank B at level 20."].exists)
+        Thread.sleep(forTimeInterval: 1.2)
+        attachScreenshot(app, named: "Rank up")
+
+        // Tapping anywhere dismisses it too.
+        overlay.tap()
+        XCTAssertTrue(overlay.waitForNonExistence(timeout: 3), "Celebration did not close")
+        XCTAssertTrue(app.buttons["doneButton"].exists, "Summary missing behind the celebration")
+    }
+
+    @MainActor
+    func testLevelUpCelebration() throws {
+        // The mock backend reports a level-up (14 -> 15) when the workout finishes.
+        let app = finishOneSetWorkout(flag: "-UITestLevelUp")
 
         let overlay = element(app, "levelUpOverlay")
         XCTAssertTrue(overlay.waitForExistence(timeout: 5), "Level-up celebration never appeared")

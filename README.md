@@ -386,5 +386,7 @@ call when, and the rules clients must follow.
 - [`docs/api-contract.md`](docs/api-contract.md) - generated endpoint reference
 - [`docs/workouts-api.md`](docs/workouts-api.md) - workout module behaviour and client rules
 - [`docs/data-model.md`](docs/data-model.md) - the schema and why it is shaped that way
+- [`docs/launch-checklist.md`](docs/launch-checklist.md) - **start here to launch**: every remaining step, in order
 - [`docs/deployment.md`](docs/deployment.md) - production deployment and iOS release checklist
+- [`ios/AppStore/metadata.md`](ios/AppStore/metadata.md) - App Store listing text, privacy answers and review notes
 - [`docs/progress-log.md`](docs/progress-log.md) - session-by-session development log
