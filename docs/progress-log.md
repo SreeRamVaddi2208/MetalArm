@@ -43,7 +43,9 @@ Entry format:
 - iOS `xcodebuild test` with the live tour: **TEST SUCCEEDED** - MetalARMTests
   42 passed (raid decoding, `AppModel` loading the raid), MetalARMUITests 9
   passed with the Ranks test asserting the raid card. Ranks screenshot checked.
-- RAIDS_E2E_PENDING
+- `scripts/e2e` against the rebuilt web image: **ALL PASSED (75)**, including the
+  PARTY RAID panel, its HP line, and a new party's "No hits yet" (the run's
+  workouts come before the party exists, and only a member's workouts hit).
 
 **Blocked**
 - Nothing.
