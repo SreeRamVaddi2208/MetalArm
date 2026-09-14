@@ -857,6 +857,8 @@ def summary_view() -> rx.Component:
         ),
         rx.hstack(
             button("DONE", WorkoutState.close_summary, flex="1", height="52px", font_size="0.82rem"),
+            # A 1080 x 1920 story card of this workout (metalarm/share_card.py).
+            button("SHARE", WorkoutState.share_card, color=theme.ACCENT, solid=False, height="52px"),
             rx.link(
                 button("PROGRESS", color=theme.ACCENT, solid=False, height="52px"),
                 href="/progress",

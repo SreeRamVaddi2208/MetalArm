@@ -35,6 +35,7 @@ MetalArm has three parts that share one API:
 - **Progression** - points become XP, levels and ranks from E to S. Weekly workout streaks, badges and a rewards shop.
 - **Quests** - daily, weekly and one-off goals in your own time zone.
 - **Parties** - invite codes, a shared quest board, weekly workout leaderboards, and a weekly raid boss the whole party brings down with its workouts (it heals on days nobody trains).
+- **Sharing** - a 1080 x 1920 story card of the workout's biggest moment (a rank-up, level-up, record or the points), with your party's invite code, from the iPhone or web summary.
 - **Accounts** - sign-up and login with refresh tokens, sign-out on every device, and in-app account deletion.
 
 Every number (points, XP, records, streaks) is computed on the server. No
@@ -170,6 +171,7 @@ A native SwiftUI app in [`ios/`](ios) for iPhone, iOS 18 and later.
 - Progress: a top-set chart and personal records for each exercise you have trained.
 - Ranks: your party's weekly leaderboard, with create, join and share-invite.
 - Profile: stats, badges, kg/lb preference, privacy policy, sign out, and delete account.
+- Share: the summary and the level-up celebration offer a story card for Instagram, TikTok or Messages.
 
 **Run it:** start the backend (above), open `ios/MetalARM.xcodeproj` in Xcode,
 and run the `MetalARM` scheme on an iPhone simulator. The Debug build talks to
