@@ -41,7 +41,7 @@ def reward_card(reward: Reward) -> rx.Component:
                     on_click=RewardState.redeem(reward.id),
                     disabled=~can_buy,
                     background=rx.cond(can_buy, theme.WARNING, "transparent"),
-                    color=rx.cond(can_buy, "#1a1206", theme.FAINT),
+                    color=rx.cond(can_buy, theme.ON_ACCENT, theme.FAINT),
                     border=rx.cond(can_buy, "none", f"1px solid {theme.BORDER}"),
                     border_radius="9px",
                     font_size="0.72rem",

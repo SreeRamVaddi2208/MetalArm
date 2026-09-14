@@ -78,7 +78,7 @@ struct AuthView: View {
                     model.errorMessage = ""
                 }
                 .font(Theme.body(14, .semibold))
-                .foregroundStyle(Theme.fire)
+                .foregroundStyle(Theme.accent)
                 .frame(maxWidth: .infinity)
                 .accessibilityIdentifier("authModeToggle")
 

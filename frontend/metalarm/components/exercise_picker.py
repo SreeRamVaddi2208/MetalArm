@@ -49,7 +49,7 @@ def _row(item: ExercisePick) -> rx.Component:
         padding="0.7rem 0.8rem",
         border_radius="10px",
         border=f"1px solid {theme.BORDER}",
-        background="#0b1220",
+        background=theme.FIELD,
         cursor="pointer",
         _hover={"border_color": theme.ACCENT},
     )
@@ -80,7 +80,7 @@ def _create_form() -> rx.Component:
             "CREATE AND ADD",
             on_click=PickerState.create_custom,
             background=theme.ACCENT,
-            color="#04121c",
+            color=theme.ON_ACCENT,
             border="none",
             border_radius="9px",
             font_weight="800",
@@ -130,7 +130,7 @@ def picker_dialog() -> rx.Component:
                     debounce_timeout=250,
                     width="100%",
                     size="3",
-                    background="#0b1220",
+                    background=theme.FIELD,
                     color=theme.TEXT,
                 ),
                 rx.flex(

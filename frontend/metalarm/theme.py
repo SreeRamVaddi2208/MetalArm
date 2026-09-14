@@ -1,40 +1,47 @@
 """Visual language for MetalArm.
 
-Original work. Inspired by the hunter-rank RPG aesthetic - a dark field, a
-single cold glowing accent, wide-tracked uppercase labels - but no Solo Leveling
-asset, logo, colour value, or line of copy is reproduced anywhere.
+Original work: a grey, machined-steel identity - a near-black field, graphite
+panels, wide-tracked uppercase labels, and white/silver as the only accent.
+Red is reserved for errors and destructive actions. The values match the iOS
+app's ios/MetalARM/Theme/Theme.swift.
 
 Single source of truth for colour and spacing so pages stay consistent and a
 retheme touches one file.
 """
 
 # --- Core palette ----------------------------------------------------------
-BG = "#080b12"          # page field
-PANEL = "#111726"       # raised surface
-PANEL_HI = "#18203100"  # transparent hover wash, layered over PANEL
-BORDER = "#1f2a3d"
-BORDER_HI = "#2b3a54"
+BG = "#0b0b0c"          # page field
+PANEL = "#1a1a1d"       # raised surface
+PANEL_HI = "#2a2a2e00"  # transparent hover wash, layered over PANEL
+FIELD = "#121214"       # inputs and inset wells
+BORDER = "#2a2a2e"
+BORDER_HI = "#3a3a40"
 
-ACCENT = "#38bdf8"      # the one glowing accent
-ACCENT_DIM = "#0ea5e9"
-SUCCESS = "#34d399"
-WARNING = "#fbbf24"
-DANGER = "#f87171"
+ACCENT = "#ffffff"      # white: primary actions and highlights
+ACCENT_DIM = "#9a9aa2"  # silver
+ON_ACCENT = "#0b0b0c"   # text on a white or silver fill
+SUCCESS = "#b8b8bf"
+WARNING = "#d4d4da"
+DANGER = "#e5484d"      # the one colour left: errors and destructive actions
+SUCCESS_BG = "#1c1c1f"
+WARNING_BG = "#1e1e21"
+DANGER_BG = "#2a1416"
+VEIL = "rgba(8, 8, 9, 0.84)"  # behind overlays
 
-TEXT = "#e8eef8"
-MUTED = "#8b9bb4"
-FAINT = "#5a6b85"
+TEXT = "#f2f2f4"
+MUTED = "#a8a8b0"
+FAINT = "#7c7c84"
 
 # --- Rank identity ---------------------------------------------------------
-# Each rank gets its own colour so the badge reads at a glance. Ascending
-# warmth: cold greys at the bottom, gold at the top.
+# Each rank gets its own shade so the badge reads at a glance: brighter metal
+# the higher the rank, from dark grey at E to white at S.
 RANK_COLORS: dict[str, str] = {
-    "E": "#8b9bb4",
-    "D": "#34d399",
-    "C": "#38bdf8",
-    "B": "#a78bfa",
-    "A": "#fb923c",
-    "S": "#fbbf24",
+    "E": "#5a5a62",
+    "D": "#7a7a82",
+    "C": "#9a9aa2",
+    "B": "#c0c0c8",
+    "A": "#e0e0e6",
+    "S": "#ffffff",
 }
 
 

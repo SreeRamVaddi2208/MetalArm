@@ -12,6 +12,16 @@ struct SummaryView: View {
     let unit: WeightUnit
     var onDone: () -> Void
 
+    /// Every level-up (and rank-up) opens with the celebration.
+    @State private var showingLevelUp: Bool
+
+    init(result: FinishResult, unit: WeightUnit, onDone: @escaping () -> Void) {
+        self.result = result
+        self.unit = unit
+        self.onDone = onDone
+        _showingLevelUp = State(initialValue: result.progression.leveledUp || result.progression.rankedUp)
+    }
+
     private var lead: PREvent? { result.prEvents.celebrated }
 
     var body: some View {
@@ -20,13 +30,13 @@ struct SummaryView: View {
                 VStack(spacing: 0) {
                     ZStack {
                         RoundedRectangle(cornerRadius: 26)
-                            .fill(LinearGradient(colors: [Theme.gold, Theme.goldDeep], startPoint: .topLeading, endPoint: .bottomTrailing))
+                            .fill(LinearGradient(colors: [Theme.silver, Theme.silverDeep], startPoint: .topLeading, endPoint: .bottomTrailing))
                         Image(systemName: lead == nil ? "checkmark.circle.fill" : "trophy.fill")
                             .font(Theme.body(40, .semibold))
                             .foregroundStyle(Theme.bg)
                     }
                     .frame(width: 88, height: 88)
-                    .shadow(color: Theme.gold.opacity(0.3), radius: 16, y: 16)
+                    .shadow(color: Theme.silver.opacity(0.3), radius: 16, y: 16)
 
                     Text(lead == nil ? "Workout Complete" : "New Personal Record!")
                         .font(Theme.display(26, .heavy))
@@ -82,9 +92,17 @@ struct SummaryView: View {
         .background {
             ZStack {
                 Theme.bg
-                RadialGradient(colors: [Theme.fire.opacity(0.22), .clear], center: UnitPoint(x: 0.5, y: 0.18), startRadius: 0, endRadius: 320)
+                RadialGradient(colors: [Theme.accent.opacity(0.22), .clear], center: UnitPoint(x: 0.5, y: 0.18), startRadius: 0, endRadius: 320)
             }
             .ignoresSafeArea()
+        }
+        .overlay {
+            if showingLevelUp {
+                LevelUpView(progression: result.progression) {
+                    withAnimation(.easeOut(duration: 0.25)) { showingLevelUp = false }
+                }
+                .transition(.opacity)
+            }
         }
     }
 
@@ -97,7 +115,7 @@ struct SummaryView: View {
                 Spacer()
                 Text("+\(result.breakdown.total)")
                     .font(Theme.display(26, .heavy))
-                    .foregroundStyle(Theme.fire)
+                    .foregroundStyle(Theme.accent)
             }
             VStack(spacing: 4) {
                 breakdownRow("Sets logged", result.breakdown.setPoints)
@@ -112,7 +130,7 @@ struct SummaryView: View {
             if !result.progression.hint.isEmpty {
                 Text(result.progression.hint)
                     .font(Theme.body(13, .bold))
-                    .foregroundStyle(Theme.fire)
+                    .foregroundStyle(Theme.accent)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.top, 12)
             }
@@ -121,7 +139,7 @@ struct SummaryView: View {
         .background {
             ZStack {
                 Theme.card
-                LinearGradient(colors: [Theme.fire.opacity(0.16), Theme.violet.opacity(0.16)], startPoint: .topLeading, endPoint: .bottomTrailing)
+                LinearGradient(colors: [Theme.accent.opacity(0.16), Theme.silver.opacity(0.16)], startPoint: .topLeading, endPoint: .bottomTrailing)
             }
             .clipShape(RoundedRectangle(cornerRadius: 18))
         }

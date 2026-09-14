@@ -194,6 +194,37 @@ final class MetalARMUITests: XCTestCase {
         deleteAccount(app, screenshot: "11 Delete account")
     }
 
+    @MainActor
+    func testLevelUpCelebration() throws {
+        // The mock backend reports a level-up (14 -> 15) when the workout finishes.
+        let app = launch(["-UITestSignedIn", "-UITestSkipOnboarding", "-UITestLevelUp"])
+        XCTAssertTrue(app.staticTexts["Level 14 · Rank C"].waitForExistence(timeout: 10), "Home never loaded")
+
+        app.buttons["homeStartWorkoutButton"].tap()
+        let addFirst = app.buttons["addFirstExerciseButton"]
+        XCTAssertTrue(addFirst.waitForExistence(timeout: 5), "Workout never started")
+        addFirst.tap()
+        let bench = app.buttons["pickExercise-Barbell Bench Press"]
+        XCTAssertTrue(bench.waitForExistence(timeout: 5), "Exercise picker did not load")
+        bench.tap()
+        let logSet = app.buttons["logSetButton"]
+        XCTAssertTrue(logSet.waitForExistence(timeout: 5), "Exercise card missing")
+        logSet.tap()
+        app.buttons["finishButton"].tap()
+
+        let overlay = element(app, "levelUpOverlay")
+        XCTAssertTrue(overlay.waitForExistence(timeout: 5), "Level-up celebration never appeared")
+        XCTAssertTrue(app.staticTexts["LEVEL UP"].exists)
+        XCTAssertTrue(app.staticTexts["You reached level 15. Keep going."].exists)
+        // Let the rings and sparks settle before the screenshot.
+        Thread.sleep(forTimeInterval: 1.2)
+        attachScreenshot(app, named: "12 Level up")
+
+        app.buttons["levelUpContinueButton"].tap()
+        XCTAssertTrue(overlay.waitForNonExistence(timeout: 3), "Celebration did not close")
+        XCTAssertTrue(app.buttons["doneButton"].exists, "Summary missing behind the celebration")
+    }
+
     // End-to-end against the real backend (the LevelForge stack on 127.0.0.1:8000):
     // signs up a fresh account, logs a workout, then deletes the account again.
     // Runs only when xcodebuild is given TEST_RUNNER_METALARM_LIVE_UI=1.

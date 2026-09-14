@@ -60,7 +60,7 @@ def badge_tile(badge: Badge) -> rx.Component:
                         ),
                         width="100%",
                         height="4px",
-                        background="#0b1220",
+                        background=theme.FIELD,
                         border_radius="999px",
                         overflow="hidden",
                     ),

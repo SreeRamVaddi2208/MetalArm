@@ -30,7 +30,7 @@ struct LeaderboardView: View {
                         } label: {
                             Image(systemName: "plus.circle.fill")
                                 .font(Theme.body(24))
-                                .foregroundStyle(Theme.fire)
+                                .foregroundStyle(Theme.accent)
                         }
                         .accessibilityLabel("Add a party")
                     }
@@ -85,7 +85,7 @@ struct LeaderboardView: View {
         VStack(spacing: 14) {
             Image(systemName: "person.3.fill")
                 .font(Theme.body(40))
-                .foregroundStyle(Theme.fire)
+                .foregroundStyle(Theme.accent)
             Text("Train with friends")
                 .font(Theme.display(22))
                 .foregroundStyle(Theme.text)
@@ -130,7 +130,7 @@ struct LeaderboardView: View {
                 .foregroundStyle(Theme.bg)
                 .padding(.horizontal, 10)
                 .padding(.vertical, 6)
-                .background(Theme.fire, in: RoundedRectangle(cornerRadius: 8))
+                .background(Theme.accent, in: RoundedRectangle(cornerRadius: 8))
         }
         .padding(.bottom, 4)
     }
@@ -139,7 +139,7 @@ struct LeaderboardView: View {
         HStack(spacing: 12) {
             Text("\(entry.position)")
                 .font(Theme.display(14, .heavy))
-                .foregroundStyle(entry.isMe ? Theme.fire : Theme.faint)
+                .foregroundStyle(entry.isMe ? Theme.accent : Theme.faint)
                 .frame(width: 20)
             AvatarBadge(initials: initials(of: entry.displayName), size: 34, cornerRadius: 10, fontSize: 12)
             VStack(alignment: .leading, spacing: 2) {
@@ -164,8 +164,8 @@ struct LeaderboardView: View {
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 12)
-        .background(entry.isMe ? Theme.fire.opacity(0.16) : Color.clear, in: RoundedRectangle(cornerRadius: 14))
-        .overlay(RoundedRectangle(cornerRadius: 14).stroke(entry.isMe ? Theme.fire.opacity(0.3) : Color.clear))
+        .background(entry.isMe ? Theme.accent.opacity(0.16) : Color.clear, in: RoundedRectangle(cornerRadius: 14))
+        .overlay(RoundedRectangle(cornerRadius: 14).stroke(entry.isMe ? Theme.accent.opacity(0.3) : Color.clear))
     }
 
     private func inviteCard(party: Party, code: String) -> some View {
@@ -185,7 +185,7 @@ struct LeaderboardView: View {
                 Label("Share", systemImage: "square.and.arrow.up")
                     .font(Theme.body(13, .semibold))
             }
-            .foregroundStyle(Theme.fire)
+            .foregroundStyle(Theme.accent)
         }
         .padding(14)
         .cardStyle(cornerRadius: 14)

@@ -14,13 +14,13 @@ struct OnboardingView: View {
             VStack(spacing: 28) {
                 ZStack {
                     RoundedRectangle(cornerRadius: 28)
-                        .fill(LinearGradient(colors: [Theme.fire, Theme.fireDeep], startPoint: .topLeading, endPoint: .bottomTrailing))
+                        .fill(LinearGradient(colors: [Theme.accent, Theme.accentDeep], startPoint: .topLeading, endPoint: .bottomTrailing))
                     Image(systemName: "bolt.fill")
                         .font(Theme.body(48, .bold))
                         .foregroundStyle(Theme.bg)
                 }
                 .frame(width: 104, height: 104)
-                .shadow(color: Theme.fire.opacity(0.3), radius: 20, y: 16)
+                .shadow(color: Theme.accent.opacity(0.3), radius: 20, y: 16)
 
                 VStack(spacing: 10) {
                     Text("Every rep counts.\nLiterally.")
@@ -52,7 +52,7 @@ struct OnboardingView: View {
         .background {
             ZStack {
                 Theme.bg
-                RadialGradient(colors: [Theme.fire.opacity(0.18), .clear], center: .top, startRadius: 0, endRadius: 420)
+                RadialGradient(colors: [Theme.accent.opacity(0.18), .clear], center: .top, startRadius: 0, endRadius: 420)
             }
             .ignoresSafeArea()
         }

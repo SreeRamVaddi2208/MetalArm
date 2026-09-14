@@ -2,27 +2,40 @@
 //  Theme.swift
 //  MetalARM
 //
-//  Design tokens from frontend/frontend/styles.py (the MetalArm design canvas:
-//  dark, molten fire + violet accents). oklch values converted to sRGB.
+//  Design tokens: MetalArm's grey, machined-steel identity. Near-black ground,
+//  graphite surfaces, white and silver as the only accents; red is kept for
+//  errors and destructive actions. The same values as frontend/metalarm/theme.py.
 //
 
 import SwiftUI
 
+private extension Color {
+    init(hex: UInt32) {
+        self.init(
+            red: Double((hex >> 16) & 0xFF) / 255,
+            green: Double((hex >> 8) & 0xFF) / 255,
+            blue: Double(hex & 0xFF) / 255)
+    }
+}
+
 enum Theme {
-    static let bg = Color(red: 0.020, green: 0.036, blue: 0.068)
-    static let bg2 = Color(red: 0.048, green: 0.077, blue: 0.130)
-    static let card = Color(red: 0.077, green: 0.103, blue: 0.159)
-    static let cardBorder = Color(red: 0.146, green: 0.179, blue: 0.250)
-    static let text = Color(red: 0.946, green: 0.962, blue: 0.988)
-    static let dim = Color(red: 0.573, green: 0.598, blue: 0.647)
-    static let faint = Color(red: 0.345, green: 0.367, blue: 0.413)
-    static let fire = Color(red: 0.988, green: 0.420, blue: 0.200)
-    static let fireDeep = Color(red: 0.800, green: 0.143, blue: 0.240)
-    static let violet = Color(red: 0.638, green: 0.429, blue: 0.940)
-    static let violetDeep = Color(red: 0.413, green: 0.156, blue: 0.692)
-    static let green = Color(red: 0.295, green: 0.796, blue: 0.444)
-    static let gold = Color(red: 0.891, green: 0.723, blue: 0.192)
-    static let goldDeep = Color(red: 0.719, green: 0.424, blue: 0.000)
+    static let bg = Color(hex: 0x0B0B0C)
+    static let bg2 = Color(hex: 0x121214)
+    static let card = Color(hex: 0x1A1A1D)
+    static let cardBorder = Color(hex: 0x2A2A2E)
+    static let borderStrong = Color(hex: 0x3A3A40)
+    static let text = Color(hex: 0xF2F2F4)
+    static let dim = Color(hex: 0xA8A8B0)
+    static let faint = Color(hex: 0x7C7C84)
+    /// Primary actions, highlights and the XP bar's bright end.
+    static let accent = Color(hex: 0xFFFFFF)
+    static let accentDeep = Color(hex: 0x9A9AA2)
+    /// Metal surfaces: badges, trophies, secondary highlights.
+    static let silver = Color(hex: 0xC0C0C8)
+    static let silverDeep = Color(hex: 0x6A6A72)
+    static let success = Color(hex: 0xB8B8BF)
+    /// The one colour left: errors and destructive actions.
+    static let danger = Color(hex: 0xE5484D)
 
     // The design's typefaces, bundled under Fonts/ (SIL Open Font License) and
     // registered through UIAppFonts: Space Grotesk for headings and numbers,
@@ -60,7 +73,7 @@ struct PrimaryButtonStyle: ButtonStyle {
             .foregroundStyle(Theme.bg)
             .frame(maxWidth: .infinity)
             .padding(15)
-            .background(Theme.fire.opacity(configuration.isPressed ? 0.8 : 1), in: RoundedRectangle(cornerRadius: 14))
+            .background(Theme.accent.opacity(configuration.isPressed ? 0.8 : 1), in: RoundedRectangle(cornerRadius: 14))
     }
 }
 
@@ -84,7 +97,7 @@ extension View {
     }
 }
 
-/// Fire-to-violet XP progress bar.
+/// White-to-silver XP progress bar.
 struct XPBar: View {
     let progress: Double
     var track: Color = Theme.bg
@@ -94,7 +107,7 @@ struct XPBar: View {
             ZStack(alignment: .leading) {
                 Capsule().fill(track)
                 Capsule()
-                    .fill(LinearGradient(colors: [Theme.fire, Theme.violet], startPoint: .leading, endPoint: .trailing))
+                    .fill(LinearGradient(colors: [Theme.accent, Theme.accentDeep], startPoint: .leading, endPoint: .trailing))
                     .frame(width: geometry.size.width * max(0, min(1, progress)))
             }
         }
@@ -146,11 +159,12 @@ struct AvatarBadge: View {
             .foregroundStyle(Theme.text)
             .frame(width: size, height: size)
             .background(
-                LinearGradient(colors: [Theme.violet, Theme.violetDeep], startPoint: .topLeading, endPoint: .bottomTrailing),
+                // Dark silver, so the white initials keep their contrast.
+                LinearGradient(colors: [Theme.silverDeep, Theme.borderStrong], startPoint: .topLeading, endPoint: .bottomTrailing),
                 in: RoundedRectangle(cornerRadius: cornerRadius))
             .overlay {
                 if bordered {
-                    RoundedRectangle(cornerRadius: cornerRadius).stroke(Theme.fire, lineWidth: 3)
+                    RoundedRectangle(cornerRadius: cornerRadius).stroke(Theme.accent, lineWidth: 3)
                 }
             }
     }
@@ -164,7 +178,7 @@ struct ErrorText: View {
         if !message.isEmpty {
             Text(message)
                 .font(Theme.body(12))
-                .foregroundStyle(Theme.fire)
+                .foregroundStyle(Theme.danger)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
     }

@@ -190,7 +190,7 @@ xcodebuild test -project MetalARM.xcodeproj -scheme MetalARM \
 
 That runs about 30 unit tests (response decoding, token refresh against a
 stubbed network, the app model's workflows) and the UI tests (sign-up, the
-full workout loop, every tab, account deletion) against an in-memory backend
+full workout loop, the level-up celebration, every tab, account deletion) against an in-memory backend
 (the `-UITestMockAPI` launch argument). One more UI test drives the real
 backend end to end: it signs up a throwaway account, logs a workout, and
 deletes the account. It runs only when you opt in:
@@ -202,6 +202,39 @@ TEST_RUNNER_METALARM_LIVE_UI=1 xcodebuild test -project MetalARM.xcodeproj -sche
 
 The UI tests on an iPhone 17 Pro Max produce the App Store screenshot set in
 [`ios/AppStore/screenshots/`](ios/AppStore/screenshots).
+
+---
+
+## Look and feel
+
+Both apps share one grey, machined-steel palette, with identical values in
+[`ios/MetalARM/Theme/Theme.swift`](ios/MetalARM/Theme/Theme.swift) and
+[`frontend/metalarm/theme.py`](frontend/metalarm/theme.py):
+
+| Role | Colour |
+|---|---|
+| Background, raised, card | `#0B0B0C`, `#121214`, `#1A1A1D` |
+| Borders | `#2A2A2E`, `#3A3A40` |
+| Text, muted, faint | `#F2F2F4`, `#A8A8B0`, `#7C7C84` |
+| Accent (buttons, highlights, XP bar) | white `#FFFFFF` to silver `#9A9AA2` |
+| Danger (errors and destructive actions only) | `#E5484D` |
+| Ranks E to S | darker to brighter grey, ending in white |
+
+Red is the only colour; everything else is a shade of grey. Use the theme
+tokens rather than raw colour values.
+
+Every level-up and rank-up gets a celebration: on iPhone, the new level punches
+in with silver rings, metal sparks and a haptic (`Views/LevelUpView.swift`); on
+the web, the level-up overlay (`components/level_up.py`). Both fall back to a
+plain fade when the system asks for reduced motion.
+
+The app icon's source is [`scripts/icon/metalarm-icon.svg`](scripts/icon/metalarm-icon.svg).
+After editing it, re-render the iOS icon (including the tinted variant) and the
+web favicons with:
+
+```bash
+node scripts/icon/render_icon.mjs
+```
 
 ---
 
