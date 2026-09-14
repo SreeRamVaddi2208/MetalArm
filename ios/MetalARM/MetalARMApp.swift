@@ -26,13 +26,15 @@ struct MetalARMApp: App {
         if arguments.contains("-UITestMockAPI") {
             api = MockAPIClient(
                 signedIn: arguments.contains("-UITestSignedIn"), levelUpOnFinish: arguments.contains("-UITestLevelUp"),
-                rankUpOnFinish: arguments.contains("-UITestRankUp"))
+                rankUpOnFinish: arguments.contains("-UITestRankUp"), offline: arguments.contains("-UITestOffline"))
         } else {
             let tokens = KeychainTokenStore()
             if resetOnboarding { tokens.tokens = nil }
             api = LiveAPIClient(baseURL: AppConfig.apiBaseURL, tokenStore: tokens)
         }
-        _model = State(initialValue: AppModel(api: api))
+        // The mock backend starts fresh every launch, so its offline queue does too.
+        let pendingStore: PendingSetStore = arguments.contains("-UITestMockAPI") ? .inMemory : .onDisk
+        _model = State(initialValue: AppModel(api: api, pendingStore: pendingStore))
     }
 
     var body: some Scene {

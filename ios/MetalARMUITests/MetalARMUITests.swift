@@ -232,6 +232,29 @@ final class MetalARMUITests: XCTestCase {
     }
 
     @MainActor
+    func testLoggingOfflineQueuesTheSet() throws {
+        // The mock backend is out of reach, like a gym with no signal.
+        let app = launch(["-UITestSignedIn", "-UITestSkipOnboarding", "-UITestOffline"])
+        XCTAssertTrue(app.staticTexts["Level 14 · Rank C"].waitForExistence(timeout: 10), "Home never loaded")
+
+        app.buttons["homeStartWorkoutButton"].tap()
+        let addFirst = app.buttons["addFirstExerciseButton"]
+        XCTAssertTrue(addFirst.waitForExistence(timeout: 5), "Workout never started")
+        addFirst.tap()
+        let bench = app.buttons["pickExercise-Barbell Bench Press"]
+        XCTAssertTrue(bench.waitForExistence(timeout: 5), "Exercise picker did not load")
+        bench.tap()
+        let logSet = app.buttons["logSetButton"]
+        XCTAssertTrue(logSet.waitForExistence(timeout: 5), "Exercise card missing")
+        logSet.tap()
+
+        // Kept on the phone instead of an error.
+        XCTAssertTrue(element(app, "offlineBanner").waitForExistence(timeout: 5), "Offline banner missing")
+        XCTAssertTrue(element(app, "queuedSet").exists, "Queued set not shown")
+        attachScreenshot(app, named: "Offline set")
+    }
+
+    @MainActor
     func testLevelUpCelebration() throws {
         // The mock backend reports a level-up (14 -> 15) when the workout finishes.
         let app = finishOneSetWorkout(flag: "-UITestLevelUp")
