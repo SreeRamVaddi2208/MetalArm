@@ -14,6 +14,48 @@ Entry format:
 
 ---
 
+## 2026-09-14 (21) - Opus - party raids
+
+**Changed**
+- New tables `raid_bosses` (one per party per ISO week in UTC, unique on
+  party + week) and `raid_hits` (unique on boss + workout session), migration
+  `1c724fa16b8e`.
+- `app/core/raids.py`: a boss's HP is 15,000 kg of volume per member, fixed
+  when the week's boss first appears. A qualified workout hits the boss of every
+  active party the user is in for the session's working-set volume (minimum
+  1,000, so bodyweight and cardio count). For each full idle day of the week
+  so far with no hit, the boss heals 5% of its max HP - derived on read, never
+  stored - and it stays down once defeated. Bosses and hits are inserted with
+  ON CONFLICT DO NOTHING, so racing requests and retried finishes can't
+  double up. Raids never touch points or XP.
+- API: `GET /parties/{party_id}/raid` (members only, 404 otherwise) and a
+  `raids` list on the finish response. `docs/api-contract.md` regenerated.
+- Web: a PARTY RAID panel on the parties page (HP bar, damage dealt, healing,
+  days left or DEFEATED, hitters). iOS: the same as a card on the Ranks tab
+  (`PartyRaid`, `AppModel.loadRaid()`; a raid that fails to load hides the card).
+
+**Verified (real output)**
+- Backend suite passes, including 9 new `test_raids.py` tests (boss sized to
+  the party, a qualified workout's volume as damage, no damage from a short
+  one, the minimum hit, one hit per session, idle-day healing on fixed dates,
+  a beaten boss staying down, a new boss each week, members only). The dev
+  database is migrated and `alembic check` reports no drift.
+- iOS `xcodebuild test` with the live tour: **TEST SUCCEEDED** - MetalARMTests
+  42 passed (raid decoding, `AppModel` loading the raid), MetalARMUITests 9
+  passed with the Ranks test asserting the raid card. Ranks screenshot checked.
+- `scripts/e2e` against the rebuilt web image: **ALL PASSED (75)**, including the
+  PARTY RAID panel, its HP line, and a new party's "No hits yet" (the run's
+  workouts come before the party exists, and only a member's workouts hit).
+
+**Blocked**
+- Nothing.
+
+**Other agent needs to know**
+- Raid weeks are UTC ISO weeks on purpose (one clock for a party spread over
+  timezones); the personal workout streak stays on each user's own week.
+
+---
+
 ## 2026-09-14 (20) - Opus - share cards
 
 **Changed**

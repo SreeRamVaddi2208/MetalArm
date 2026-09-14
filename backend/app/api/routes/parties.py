@@ -19,7 +19,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.api.deps import CurrentUser, DbSession
-from app.core import leaderboard, leveling
+from app.core import leaderboard, leveling, raids
 from app.core.invites import generate_invite_code, normalize_invite_code
 from app.core.periods import local_date, local_now, period_key, resolve_timezone
 from app.core.progression import apply_completion, lock_progress
@@ -45,6 +45,7 @@ from app.schemas.party import (
     PartyQuestOut,
     PartyQuestUpdate,
     PartyUpdate,
+    RaidOut,
     WorkoutLeaderboardEntry,
     WorkoutLeaderboardOut,
 )
@@ -604,6 +605,18 @@ def party_workout_leaderboard(
             for position, (user, progress) in enumerate(ranked, start=1)
         ],
     )
+
+
+@router.get("/{party_id}/raid", response_model=RaidOut)
+def party_raid(party_id: uuid.UUID, current_user: CurrentUser, db: DbSession) -> RaidOut:
+    """This week's party boss: its HP, what the party has dealt, what it healed
+    on idle days, and who hit it hardest. Members only - an outsider gets 404,
+    as for every party read. The rules are in app/core/raids.py."""
+    party, _ = _membership_or_404(db, party_id, current_user)
+    view = raids.raid_view(db, party, current_user.id, dt.datetime.now(dt.timezone.utc))
+    # The week's boss may have just been created on this read.
+    db.commit()
+    return RaidOut(**view)
 
 
 # ---------------------------------------------------------------------------

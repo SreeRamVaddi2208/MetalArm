@@ -14,7 +14,7 @@ import reflex as rx
 
 from metalarm import api
 from metalarm import workout_api as wapi
-from metalarm.models import LeaderboardRow, Party, PartyQuest, WorkoutBoardRow
+from metalarm.models import LeaderboardRow, Party, PartyQuest, RaidView, WorkoutBoardRow
 from metalarm.state.auth import AuthState
 
 
@@ -26,6 +26,8 @@ class PartyState(rx.State):
     # The gym module's friend competition: members by workout points.
     workout_board: list[WorkoutBoardRow] = []
     workout_period: str = "week"
+    # This week's party boss (core/raids.py on the backend).
+    raid: RaidView = RaidView()
 
     loading: bool = False
     error: str = ""
@@ -114,6 +116,7 @@ class PartyState(rx.State):
             board = await api.party_leaderboard(token, self.selected.id)
             self.board = [LeaderboardRow.from_api(e) for e in board.get("entries", [])]
             await self._load_workout_board(token)
+            await self._load_raid(token)
             # REPLACE rather than mutate a field in place. Reflex marks a state
             # var dirty on assignment to the var itself, so an in-place nested
             # write can leave the rendered value stale - and `selected` is
@@ -124,6 +127,13 @@ class PartyState(rx.State):
             )
         except api.ApiError as exc:
             self.error = exc.detail
+
+    async def _load_raid(self, token: str) -> None:
+        """A raid that fails to load hides the panel; the boards still show."""
+        try:
+            self.raid = RaidView.from_api(await api.party_raid(token, self.selected.id))
+        except api.ApiError:
+            self.raid = RaidView()
 
     async def _load_workout_board(self, token: str) -> None:
         data = await wapi.party_workout_leaderboard(token, self.selected.id, self.workout_period)

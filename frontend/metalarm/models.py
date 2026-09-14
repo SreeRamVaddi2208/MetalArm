@@ -16,6 +16,8 @@ string "None".
 from __future__ import annotations
 
 import dataclasses
+import datetime as dt
+import math
 from typing import Any
 
 
@@ -325,4 +327,64 @@ class WorkoutBoardRow:
             level=data.get("level") or 1,
             rank=data.get("rank") or "E",
             is_me=bool(data.get("is_me")),
+        )
+
+
+@dataclasses.dataclass
+class RaidHitterRow:
+    display_name: str = ""
+    damage_label: str = ""
+    hits_label: str = ""
+    is_me: bool = False
+
+    @classmethod
+    def from_api(cls, data: dict[str, Any]) -> "RaidHitterRow":
+        hits = int(data.get("hits") or 0)
+        return cls(
+            display_name=data.get("display_name") or "",
+            damage_label=f"{int(data.get('damage') or 0):,} dmg",
+            hits_label=f"{hits} hit{'' if hits == 1 else 's'}",
+            is_me=bool(data.get("is_me")),
+        )
+
+
+@dataclasses.dataclass
+class RaidView:
+    """This week's party boss (GET /parties/{id}/raid), ready to render."""
+
+    name: str = ""
+    hp_label: str = ""
+    # 0-100, the HP bar's width.
+    hp_pct: int = 0
+    damage_label: str = ""
+    healed_label: str = ""
+    days_left_label: str = ""
+    defeated: bool = False
+    loaded: bool = False
+    hitters: list[RaidHitterRow] = dataclasses.field(default_factory=list)
+
+    @classmethod
+    def from_api(cls, data: dict[str, Any], now: dt.datetime | None = None) -> "RaidView":
+        max_hp = int(data.get("max_hp") or 0)
+        remaining = int(data.get("hp_remaining") or 0)
+        healed = int(data.get("healed") or 0)
+        defeated = bool(data.get("defeated"))
+        days = 0
+        if data.get("ends_at"):
+            try:
+                end = dt.datetime.fromisoformat(str(data["ends_at"]).replace("Z", "+00:00"))
+                moment = now or dt.datetime.now(dt.timezone.utc)
+                days = max(0, math.ceil((end - moment).total_seconds() / 86400))
+            except ValueError:
+                days = 0
+        return cls(
+            name=data.get("name") or "",
+            hp_label=f"{remaining:,} / {max_hp:,} HP",
+            hp_pct=round(100 * remaining / max_hp) if max_hp else 0,
+            damage_label=f"{int(data.get('damage_dealt') or 0):,} damage dealt",
+            healed_label=f"+{healed:,} healed on idle days" if healed and not defeated else "",
+            days_left_label="DEFEATED" if defeated else f"{days} day{'' if days == 1 else 's'} left",
+            defeated=defeated,
+            loaded=True,
+            hitters=[RaidHitterRow.from_api(h) for h in data.get("hitters") or []],
         )

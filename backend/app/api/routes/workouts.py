@@ -40,6 +40,7 @@ from app.core import personal_records as prs
 from app.core import points_engine as pe
 from app.core import workout_rules as rules
 from app.core import workout_store as store
+from app.core import raids
 from app.core import workout_streaks as streaks
 from app.core.periods import local_now, resolve_timezone
 from app.core.progression import (
@@ -814,6 +815,15 @@ def finish_session(
             apply_xp(progress, xp=completion_xp, at=now, tz_name=tz), points_awarded=credit
         )
 
+    # A real workout hits the boss of every party the user is in.
+    raid_hits = (
+        raids.hit_parties(
+            db, user_id=current_user.id, session_id=session.id, volume=_volume(working), now=now
+        )
+        if qualified
+        else []
+    )
+
     records = list(
         db.scalars(
             select(PersonalRecord)
@@ -846,6 +856,7 @@ def finish_session(
         pr_events=_pr_events_out(records, names, ledger.pr_bonus_set_ids()),
         streak=_streak_out(state),
         progression=_delta_out(delta),
+        raids=raid_hits,
     )
     db.commit()
     return response

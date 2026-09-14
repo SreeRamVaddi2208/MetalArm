@@ -78,6 +78,12 @@ struct DecodingTests {
         #expect(try decode([WorkoutRecord].self, ContractFixtures.records).first?.label == "Heaviest")
         #expect(try decode([Party].self, ContractFixtures.parties).first?.inviteCode == "IRON2345")
         #expect(try decode(PartyBoard.self, ContractFixtures.partyBoard).entries.first?.isMe == true)
+        let raid = try decode(PartyRaid.self, ContractFixtures.partyRaid)
+        #expect(raid.name == "Iron Golem")
+        #expect(raid.hpRemaining == 41_250)
+        #expect(abs(raid.hpFraction - 41_250.0 / 60_000.0) < 0.0001)
+        #expect(raid.hitters.first?.isMe == true)
+        #expect(raid.daysLeft(from: parseServerDate("2026-09-17T12:00:00Z")!) == 4)
         #expect(try decode(PointsSummary.self, ContractFixtures.points).thisWeekPoints == 185)
         let profile = try decode(Profile.self, ContractFixtures.profile)
         #expect(profile.stats.workoutsCompleted == 142)
@@ -570,6 +576,13 @@ struct AppModelTests {
         // An empty queue leaves no file behind.
         PendingSetStore(fileURL: file).save([])
         #expect(!FileManager.default.fileExists(atPath: file.path()))
+    }
+
+    @Test func partiesLoadThisWeeksRaid() async {
+        let (model, _) = signedInModel()
+        await model.loadParties()
+        #expect(model.partyRaid?.name == "Iron Golem")
+        #expect(model.partyRaid?.partyId == model.selectedPartyID)
     }
 
     @Test func progressTabsComeFromTheUsersRecords() async {

@@ -149,3 +149,29 @@ class PartyQuestCompleteResponse(BaseModel):
     ranked_up: bool
     party_xp_contributed: int
     total_party_xp: int
+
+
+class RaidHitterOut(BaseModel):
+    user_id: uuid.UUID
+    display_name: str
+    damage: int
+    hits: int
+    is_me: bool
+
+
+class RaidOut(BaseModel):
+    """This week's party boss (app/core/raids.py)."""
+
+    party_id: uuid.UUID
+    week_key: str
+    name: str
+    max_hp: int
+    hp_remaining: int
+    damage_dealt: int
+    # HP won back on idle days this week (0 once the boss is down).
+    healed: int
+    idle_days: int
+    defeated: bool
+    defeated_at: dt.datetime | None
+    ends_at: dt.datetime
+    hitters: list[RaidHitterOut]

@@ -17,7 +17,7 @@ from metalarm.components.party_card import (
     rank_letter,
 )
 from metalarm.components.scroll_reveal import reveal, reveal_assets
-from metalarm.models import WorkoutBoardRow
+from metalarm.models import RaidHitterRow, WorkoutBoardRow
 from metalarm.state.parties import PartyState
 
 
@@ -252,6 +252,7 @@ def party_detail() -> rx.Component:
             spacing="3",
             width="100%",
         ),
+        rx.cond(PartyState.raid.loaded, raid_panel()),
         # --- leaderboard ---
         rx.vstack(
             section_heading("LEADERBOARD"),
@@ -295,6 +296,87 @@ def party_detail() -> rx.Component:
             width="100%",
         ),
         spacing="5",
+        width="100%",
+    )
+
+
+def raid_hitter_row(hitter: RaidHitterRow) -> rx.Component:
+    return rx.hstack(
+        rx.text(
+            hitter.display_name,
+            color=theme.TEXT,
+            font_weight=rx.cond(hitter.is_me, "800", "600"),
+            font_size="0.85rem",
+        ),
+        rx.cond(hitter.is_me, rx.text("(you)", color=theme.MUTED, font_size="0.8rem")),
+        rx.spacer(),
+        rx.text(hitter.hits_label, color=theme.FAINT, font_size="0.72rem"),
+        rx.text(hitter.damage_label, color=theme.TEXT, font_weight="800", font_size="0.85rem"),
+        width="100%",
+        align="center",
+        spacing="2",
+        padding_block="0.35rem",
+    )
+
+
+def raid_panel() -> rx.Component:
+    """This week's party boss (backend core/raids.py)."""
+    raid = PartyState.raid
+    return rx.vstack(
+        section_heading(
+            "PARTY RAID",
+            rx.text(
+                raid.days_left_label,
+                color=rx.cond(raid.defeated, theme.ACCENT, theme.MUTED),
+                font_size="0.72rem",
+                font_weight="800",
+                letter_spacing="0.14em",
+            ),
+        ),
+        rx.vstack(
+            rx.hstack(
+                rx.heading(raid.name, size="5", color=theme.TEXT),
+                rx.spacer(),
+                rx.text(raid.hp_label, color=theme.MUTED, font_size="0.8rem", font_weight="700"),
+                width="100%",
+                align="center",
+            ),
+            rx.box(
+                rx.box(
+                    width=f"{raid.hp_pct}%",
+                    height="100%",
+                    border_radius="999px",
+                    background=f"linear-gradient(90deg, #ffffff, {theme.ACCENT_DIM})",
+                    transition="width 600ms ease",
+                ),
+                width="100%",
+                height="10px",
+                border_radius="999px",
+                background=theme.FIELD,
+                overflow="hidden",
+            ),
+            rx.hstack(
+                rx.text(raid.damage_label, color=theme.MUTED, font_size="0.75rem"),
+                rx.spacer(),
+                rx.text(raid.healed_label, color=theme.FAINT, font_size="0.75rem"),
+                width="100%",
+            ),
+            rx.cond(
+                raid.hitters.length() > 0,
+                rx.vstack(rx.foreach(raid.hitters, raid_hitter_row), spacing="0", width="100%"),
+                rx.text("No hits yet. Finish a workout to strike first.", color=theme.FAINT, font_size="0.8rem"),
+            ),
+            spacing="3",
+            **theme.panel(),
+        ),
+        rx.text(
+            "Every finished workout hits the boss for the weight you lifted. On days nobody "
+            "trains, it heals. A new boss arrives every Monday.",
+            color=theme.FAINT,
+            font_size="0.72rem",
+            line_height="1.5",
+        ),
+        spacing="3",
         width="100%",
     )
 

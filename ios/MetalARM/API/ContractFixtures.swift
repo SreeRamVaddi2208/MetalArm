@@ -146,6 +146,15 @@ enum ContractFixtures {
       {"position": 4, "user_id": "u4", "display_name": "Divya", "points": 2340, "workouts": 3, "level": 11, "rank": "D", "is_me": false}]}
     """
 
+    static let partyRaid = """
+    {"party_id": "\(partyID)", "week_key": "2026-W38", "name": "Iron Golem", "max_hp": 60000, "hp_remaining": 41250,
+     "damage_dealt": 21750, "healed": 3000, "idle_days": 1, "defeated": false, "defeated_at": null,
+     "ends_at": "2026-09-21T00:00:00Z", "hitters": [
+      {"user_id": "\(userID)", "display_name": "Sree Ram", "damage": 9200, "hits": 3, "is_me": true},
+      {"user_id": "u2", "display_name": "Meera", "damage": 7400, "hits": 2, "is_me": false},
+      {"user_id": "u3", "display_name": "Arjun", "damage": 5150, "hits": 2, "is_me": false}]}
+    """
+
     static let profile = """
     {"user": {"id": "\(userID)", "email": "sree@metalarm.dev", "display_name": "Sree Ram", "timezone": "Asia/Kolkata", "created_at": "2026-09-01T10:00:00Z", "weight_unit": "kg"},
      "progress": \(progress),
