@@ -100,6 +100,10 @@ All secrets live only in `deploy/.env.production` (gitignored).
 
 ## 8. iOS app release checklist
 
+The full launch, in order and including the web steps above, is in
+[`launch-checklist.md`](launch-checklist.md); the listing text is in
+[`ios/AppStore/metadata.md`](../ios/AppStore/metadata.md).
+
 The app lives in `ios/`. Each build configuration has its own server
 addresses, set as the `METALARM_API_BASE_URL` and `METALARM_WEB_BASE_URL`
 build settings (Debug: the local stack; Release: `https://api.metalarm.example.com`
