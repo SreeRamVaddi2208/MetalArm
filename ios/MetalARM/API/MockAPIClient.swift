@@ -304,6 +304,11 @@ final class MockAPIClient: MetalArmAPI {
         return raid
     }
 
+    func rankTrials() async throws -> [RankTrial] {
+        try check()
+        return fixture(ContractFixtures.rankTrials)
+    }
+
     func partyLeaderboard(partyID: String) async throws -> PartyBoard {
         try check()
         var board: PartyBoard = fixture(ContractFixtures.partyBoard)

@@ -150,6 +150,15 @@ def stat_panel() -> rx.Component:
         stat_row("POINTS", AuthState.progress.points_balance.to_string(), theme.WARNING),
         gate_notice(),
         rx.cond(
+            AuthState.progress.next_rank_trial != "",
+            rx.text(
+                f"TRIAL: {AuthState.progress.next_rank_trial}",
+                color=theme.MUTED,
+                font_size="0.75rem",
+                font_weight="600",
+            ),
+        ),
+        rx.cond(
             AuthState.progress.next_rank != "",
             rx.text(
                 f"Next rank {AuthState.progress.next_rank} at level "

@@ -59,6 +59,7 @@ final class AppModel {
 
     // Profile
     var profile: Profile?
+    var rankTrials: [RankTrial] = []
 
     var errorMessage = ""
     var isBusy = false
@@ -179,6 +180,7 @@ final class AppModel {
         me = nil
         points = nil
         profile = nil
+        rankTrials = []
         clearWorkout()
         pendingSets = []
         pendingStore.save([])
@@ -544,6 +546,8 @@ final class AppModel {
         await run("Couldn't load your profile") {
             profile = try await api.profile()
         }
+        // Secondary to the profile itself: a failure leaves the last trials shown.
+        if let trials = try? await api.rankTrials() { rankTrials = trials }
     }
 
     func setWeightUnit(_ unit: WeightUnit) async {

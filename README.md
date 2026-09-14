@@ -32,7 +32,7 @@ MetalArm has three parts that share one API:
 
 - **Workouts** - live sessions that survive a refresh or a device switch, an exercise library of 91 starters plus your own, routines, ghost values from your last session, a rest timer, and editing or deleting sets.
 - **Records** - heaviest set, estimated 1RM, session volume and most reps at a weight, detected on the server as you log.
-- **Progression** - points become XP, levels and ranks from E to S. Weekly workout streaks, badges and a rewards shop.
+- **Progression** - points become XP, levels and ranks from E to S. Ranks B, A and S also need a strength trial: a bench at 1x, squat at 1.5x and deadlift at 2x bodyweight. Weekly workout streaks, badges and a rewards shop.
 - **Quests** - daily, weekly and one-off goals in your own time zone.
 - **Parties** - invite codes, a shared quest board, weekly workout leaderboards, and a weekly raid boss the whole party brings down with its workouts (it heals on days nobody trains).
 - **Sharing** - a 1080 x 1920 story card of the workout's biggest moment (a rank-up, level-up, record or the points), with your party's invite code, from the iPhone or web summary.

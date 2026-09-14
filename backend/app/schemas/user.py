@@ -44,6 +44,11 @@ class ProgressOut(BaseModel):
     next_rank: str | None
     next_rank_level: int | None
     next_rank_streak: int | None
+    # The strength trial between the user and the next rank, e.g.
+    # "Barbell Bench Press at 1x bodyweight" (app/core/rank_trials.py).
+    next_rank_trial: str | None = None
+    # Rank trials passed so far, e.g. "BA".
+    trials_passed: str = ""
 
 
 class UserOut(BaseModel):

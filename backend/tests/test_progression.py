@@ -136,22 +136,39 @@ def test_rank_by_level_ignores_the_streak_gate(level: int, expected: str) -> Non
     ],
 )
 def test_rank_applies_the_streak_gate(level: int, streak: int, expected: str) -> None:
-    assert leveling.rank_for(level, streak).value == expected
+    # All trials passed, so only level and streak are in play here.
+    assert leveling.rank_for(level, streak, "BAS").value == expected
 
 
 def test_a_lapsed_top_rank_falls_back_not_to_the_floor() -> None:
     """Losing a streak costs the badge, never the level or the XP behind it."""
-    assert leveling.rank_for(65, 30).value == "S"
-    assert leveling.rank_for(65, 0).value == "B"
+    assert leveling.rank_for(65, 30, "BAS").value == "S"
+    assert leveling.rank_for(65, 0, "BAS").value == "B"
 
 
 def test_next_rank_requirement_reports_both_gates() -> None:
-    target, level_needed, streak_needed = leveling.next_rank_requirement(30, 0)
+    target, level_needed, streak_needed = leveling.next_rank_requirement(30, 0, "BAS")
     assert (target.value, level_needed, streak_needed) == ("A", 45, 14)
 
 
 def test_next_rank_requirement_is_none_at_the_top() -> None:
-    assert leveling.next_rank_requirement(65, 30) is None
+    assert leveling.next_rank_requirement(65, 30, "BAS") is None
+
+
+def test_the_top_ranks_need_their_strength_trials() -> None:
+    """B, A and S also need a bodyweight-relative lift (core/rank_trials.py),
+    and the trials are cumulative: a deadlift alone doesn't skip the bench."""
+    assert leveling.rank_for(65, 30, "").value == "C"
+    assert leveling.rank_for(65, 30, "B").value == "B"
+    assert leveling.rank_for(65, 30, "BA").value == "A"
+    assert leveling.rank_for(65, 30, "BAS").value == "S"
+    assert leveling.rank_for(65, 30, "S").value == "C"
+    assert leveling.rank_for(65, 30, "AS").value == "C"
+
+
+def test_next_rank_requirement_waits_on_a_trial() -> None:
+    target, level_needed, streak_needed = leveling.next_rank_requirement(30, 0, "")
+    assert (target.value, level_needed, streak_needed) == ("B", 30, 0)
 
 
 # --------------------------------------------------------------------------
@@ -192,8 +209,8 @@ def test_a_dormant_user_loses_the_top_rank() -> None:
     lapsed = leveling.effective_streak(
         stored_streak, TODAY_ - dt.timedelta(days=10), TODAY_
     )
-    assert leveling.rank_for(level, active).value == "S"
-    assert leveling.rank_for(level, lapsed).value == "B"
+    assert leveling.rank_for(level, active, "BAS").value == "S"
+    assert leveling.rank_for(level, lapsed, "BAS").value == "B"
 
 
 def test_progress_into_level_matches_the_curve() -> None:

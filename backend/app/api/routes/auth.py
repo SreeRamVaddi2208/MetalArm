@@ -14,7 +14,7 @@ from sqlalchemy.exc import IntegrityError
 
 from app.api.deps import CurrentUser, DbSession, get_current_user, oauth2_scheme, session_is_live
 from app.api.routes.parties import release_membership
-from app.core import leaderboard, leveling, rate_limit
+from app.core import leaderboard, leveling, rank_trials, rate_limit
 from app.core.periods import local_now
 from app.core.security import (
     REFRESH_TOKEN_TYPE,
@@ -73,9 +73,12 @@ def _serialize_me(user: User) -> MeOut:
     streak = leveling.effective_streak(
         progress.current_streak, progress.last_completed_on, today
     )
-    rank = leveling.rank_for(progress.current_level, streak)
+    rank = leveling.rank_for(progress.current_level, streak, progress.trials_passed)
     earned_by_level = leveling.rank_by_level(progress.current_level)
-    next_up = leveling.next_rank_requirement(progress.current_level, streak)
+    next_up = leveling.next_rank_requirement(
+        progress.current_level, streak, progress.trials_passed
+    )
+    trial = rank_trials.next_trial(progress.current_level, streak, progress.trials_passed)
     into, needed = leveling.progress_into_level(progress.total_xp)
 
     return MeOut(
@@ -102,6 +105,8 @@ def _serialize_me(user: User) -> MeOut:
             next_rank=next_up[0].value if next_up else None,
             next_rank_level=next_up[1] if next_up else None,
             next_rank_streak=next_up[2] if next_up else None,
+            next_rank_trial=trial.description if trial else None,
+            trials_passed=progress.trials_passed,
         ),
     )
 

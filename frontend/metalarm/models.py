@@ -40,6 +40,9 @@ class Progress:
     next_rank: str = ""
     next_rank_level: int = 0
     next_rank_streak: int = 0
+    # The strength trial between the user and the next rank, e.g.
+    # "Barbell Bench Press at 1x bodyweight" (backend app/core/rank_trials.py).
+    next_rank_trial: str = ""
 
     @classmethod
     def from_api(cls, data: dict[str, Any]) -> "Progress":
@@ -57,6 +60,7 @@ class Progress:
             next_rank=data.get("next_rank") or "",
             next_rank_level=data.get("next_rank_level") or 0,
             next_rank_streak=data.get("next_rank_streak") or 0,
+            next_rank_trial=data.get("next_rank_trial") or "",
         )
 
     # NOTE: no @property helpers here on purpose - see Quest.recurrence_label.
@@ -387,4 +391,40 @@ class RaidView:
             defeated=defeated,
             loaded=True,
             hitters=[RaidHitterRow.from_api(h) for h in data.get("hitters") or []],
+        )
+
+
+@dataclasses.dataclass
+class TrialRow:
+    """A strength trial gating rank B, A or S - one row of the Rank Trials panel."""
+
+    rank: str = ""
+    description: str = ""
+    passed: bool = False
+    # 0-100: best lift against the target; 0 until a bodyweight is logged.
+    pct: int = 0
+    progress_label: str = ""
+
+    @classmethod
+    def from_api(cls, data: dict[str, Any], unit: str) -> "TrialRow":
+        # Local import: workout_models imports from this module.
+        from metalarm.workout_models import weight_label
+
+        target = data.get("target_kg")
+        best = data.get("best_kg")
+        passed = bool(data.get("passed"))
+        if not target:
+            label, pct = "Log your bodyweight to set a target", 0
+        elif passed:
+            label, pct = f"Passed - best {weight_label(best, unit)}", 100
+        else:
+            best_text = weight_label(best, unit) if best else "none yet"
+            label = f"Best {best_text} of {weight_label(target, unit)}"
+            pct = min(100, round(100 * (best or 0) / target))
+        return cls(
+            rank=data.get("rank") or "",
+            description=data.get("description") or "",
+            passed=passed,
+            pct=pct,
+            progress_label=label,
         )

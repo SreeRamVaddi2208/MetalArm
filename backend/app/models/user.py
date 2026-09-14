@@ -107,6 +107,9 @@ class LevelProgress(Timestamps, Base):
     )
     # Stored as the user's LOCAL date, so streaks don't break across timezones.
     last_completed_on: Mapped[dt.date | None] = mapped_column(Date, nullable=True)
+    # Rank trials passed, e.g. "BA" (app/core/rank_trials.py). Re-judged when a
+    # lift or a bodyweight changes; rank derivation reads it everywhere.
+    trials_passed: Mapped[str] = mapped_column(String(3), nullable=False, server_default="")
 
     user: Mapped["User"] = relationship(back_populates="progress")
 

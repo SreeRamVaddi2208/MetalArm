@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import CurrentUser, DbSession
 from app.core import badges as badge_rules
-from app.core import leveling
+from app.core import leveling, rank_trials
 from app.core import workout_streaks
 from app.core.periods import local_now
 from app.core.workout_store import qualified_weeks, workout_points_credited
@@ -24,7 +24,7 @@ from app.models.party import (
 )
 from app.models.quest import QuestCompletion
 from app.models.reward import RewardRedemption
-from app.schemas.profile import BadgeOut, LifetimeStats, ProfileOut
+from app.schemas.profile import BadgeOut, LifetimeStats, ProfileOut, TrialOut
 from app.schemas.user import ProgressOut, UserOut
 
 router = APIRouter(prefix="/profile", tags=["profile"])
@@ -133,9 +133,12 @@ def read_profile(current_user: CurrentUser, db: DbSession) -> ProfileOut:
     streak = leveling.effective_streak(
         progress.current_streak, progress.last_completed_on, today
     )
-    rank = leveling.rank_for(progress.current_level, streak)
+    rank = leveling.rank_for(progress.current_level, streak, progress.trials_passed)
     earned_by_level = leveling.rank_by_level(progress.current_level)
-    next_up = leveling.next_rank_requirement(progress.current_level, streak)
+    next_up = leveling.next_rank_requirement(
+        progress.current_level, streak, progress.trials_passed
+    )
+    trial = rank_trials.next_trial(progress.current_level, streak, progress.trials_passed)
     into, needed = leveling.progress_into_level(progress.total_xp)
 
     return ProfileOut(
@@ -164,6 +167,8 @@ def read_profile(current_user: CurrentUser, db: DbSession) -> ProfileOut:
             next_rank=next_up[0].value if next_up else None,
             next_rank_level=next_up[1] if next_up else None,
             next_rank_streak=next_up[2] if next_up else None,
+            next_rank_trial=trial.description if trial else None,
+            trials_passed=progress.trials_passed,
         ),
         stats=LifetimeStats(
             quests_completed=personal_completions,
@@ -195,3 +200,11 @@ def read_profile(current_user: CurrentUser, db: DbSession) -> ProfileOut:
         badges_earned=badge_rules.earned_count(computed),
         badges_total=len(computed),
     )
+
+
+@router.get("/trials", response_model=list[TrialOut])
+def rank_trial_status(current_user: CurrentUser, db: DbSession) -> list[TrialOut]:
+    """The strength trials that gate ranks B, A and S: each lift's target at
+    the user's latest bodyweight, their best so far, and whether it is passed
+    (app/core/rank_trials.py). Targets are null until a bodyweight is logged."""
+    return [TrialOut(**vars(status)) for status in rank_trials.statuses(db, current_user.id)]

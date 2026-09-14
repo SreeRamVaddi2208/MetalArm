@@ -5,6 +5,10 @@ columns, so these tests exercise the derivation, not the cache.
 """
 
 from fastapi.testclient import TestClient
+import uuid
+from sqlalchemy import update
+from sqlalchemy.orm import Session
+from app.models.user import LevelProgress
 
 from app.core import leveling
 
@@ -75,7 +79,7 @@ def _grind_to_high_level(client: TestClient, auth: dict, quests: int = 10) -> di
 
 
 def test_level_can_earn_a_rank_the_streak_still_withholds(
-    client: TestClient, auth: dict
+    client: TestClient, auth: dict, db: Session
 ) -> None:
     """The streak gate, end to end.
 
@@ -84,6 +88,14 @@ def test_level_can_earn_a_rank_the_streak_still_withholds(
     reports the A they have earned on level alone. The UI should say "reach a
     14-day streak to claim A" rather than silently showing B.
     """
+    # The B and A strength trials are passed, so only the streak is in play.
+    me = client.get("/api/v1/auth/me", headers=auth).json()
+    db.execute(
+        update(LevelProgress)
+        .where(LevelProgress.user_id == uuid.UUID(me["id"]))
+        .values(trials_passed="BA")
+    )
+    db.flush()
     p = _grind_to_high_level(client, auth)
 
     assert p["current_level"] >= 45
