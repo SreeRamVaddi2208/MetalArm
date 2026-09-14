@@ -50,10 +50,10 @@ struct HomeView: View {
                 HStack(spacing: 12) {
                     Text("\(progress.currentLevel)")
                         .font(Theme.display(17))
-                        .foregroundStyle(Theme.fire)
+                        .foregroundStyle(Theme.accent)
                         .frame(width: 44, height: 44)
                         .background(Theme.bg, in: RoundedRectangle(cornerRadius: 14))
-                        .overlay(RoundedRectangle(cornerRadius: 14).stroke(Theme.fire, lineWidth: 2))
+                        .overlay(RoundedRectangle(cornerRadius: 14).stroke(Theme.accent, lineWidth: 2))
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Level \(progress.currentLevel) · Rank \(progress.rank)")
                             .font(Theme.display(15))
@@ -67,7 +67,7 @@ struct HomeView: View {
                 HStack(spacing: 4) {
                     Image(systemName: "flame.fill")
                         .font(Theme.body(13))
-                        .foregroundStyle(progress.streakIsActive ? Theme.fire : Theme.faint)
+                        .foregroundStyle(progress.streakIsActive ? Theme.accent : Theme.faint)
                     Text("\(progress.currentStreak)")
                         .font(Theme.display(13))
                         .foregroundStyle(Theme.text)
@@ -91,7 +91,7 @@ struct HomeView: View {
         .background {
             ZStack {
                 Theme.card
-                LinearGradient(colors: [Theme.violet.opacity(0.16), Theme.fire.opacity(0.16)], startPoint: .topLeading, endPoint: .bottomTrailing)
+                LinearGradient(colors: [Theme.silver.opacity(0.16), Theme.accent.opacity(0.16)], startPoint: .topLeading, endPoint: .bottomTrailing)
             }
             .clipShape(RoundedRectangle(cornerRadius: 20))
         }
@@ -143,7 +143,7 @@ struct HomeView: View {
                  ? "Weekly goal met - your streak is safe."
                  : "\(points.streak.sessionsToGo) more workout\(points.streak.sessionsToGo == 1 ? "" : "s") this week keeps your streak.")
                 .font(Theme.body(12))
-                .foregroundStyle(points.streak.thisWeekDone ? Theme.green : Theme.dim)
+                .foregroundStyle(points.streak.thisWeekDone ? Theme.success : Theme.dim)
         }
     }
 }

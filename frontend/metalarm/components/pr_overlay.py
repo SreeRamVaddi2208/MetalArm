@@ -140,7 +140,7 @@ def pr_overlay() -> rx.Component:
                         "KEEP LIFTING",
                         on_click=WorkoutState.dismiss_pr,
                         background=PR_COLOR,
-                        color="#1c0d04",
+                        color=theme.ON_ACCENT,
                         border="none",
                         border_radius="12px",
                         font_weight="900",
@@ -171,7 +171,7 @@ def pr_overlay() -> rx.Component:
             left="0",
             width="100vw",
             height="100vh",
-            background="rgba(12, 6, 2, 0.84)",
+            background=theme.VEIL,
             backdrop_filter="blur(3px)",
             z_index="110",
             # Tap anywhere to dismiss: it must never trap a lifter mid-set.

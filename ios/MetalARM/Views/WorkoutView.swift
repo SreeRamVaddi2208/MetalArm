@@ -51,7 +51,7 @@ struct WorkoutView: View {
         VStack(spacing: 16) {
             Image(systemName: "dumbbell.fill")
                 .font(Theme.body(44))
-                .foregroundStyle(Theme.fire)
+                .foregroundStyle(Theme.accent)
             Text("No active workout")
                 .font(Theme.display(22))
                 .foregroundStyle(Theme.text)
@@ -76,15 +76,15 @@ struct WorkoutView: View {
             VStack(spacing: 16) {
                 header(session)
                 if model.resting {
-                    banner(icon: "timer", text: "Rest — \(model.restDisplay) until next set", tint: Theme.fire, textColor: Theme.text)
+                    banner(icon: "timer", text: "Rest — \(model.restDisplay) until next set", tint: Theme.accent, textColor: Theme.text)
                         .accessibilityIdentifier("restBanner")
                 }
                 if !model.progressionHint.isEmpty {
-                    banner(icon: "arrow.up.circle.fill", text: model.progressionHint, tint: Theme.violet, textColor: Theme.text)
+                    banner(icon: "arrow.up.circle.fill", text: model.progressionHint, tint: Theme.silver, textColor: Theme.text)
                         .accessibilityIdentifier("progressionBanner")
                 }
                 if !model.prHint.isEmpty {
-                    banner(icon: "sparkles", text: model.prHint, tint: Theme.green, textColor: Theme.green)
+                    banner(icon: "sparkles", text: model.prHint, tint: Theme.success, textColor: Theme.success)
                         .accessibilityIdentifier("prBanner")
                 }
                 exerciseChips
@@ -122,7 +122,7 @@ struct WorkoutView: View {
                     .foregroundStyle(Theme.text)
                 Text("\(session.pointsTotal) pts")
                     .font(Theme.body(12, .semibold))
-                    .foregroundStyle(Theme.fire)
+                    .foregroundStyle(Theme.accent)
             }
             Spacer()
             Button("Finish") {
@@ -130,7 +130,7 @@ struct WorkoutView: View {
                 Task { await model.finishWorkout() }
             }
             .font(Theme.display(14))
-            .foregroundStyle(Theme.fire)
+            .foregroundStyle(Theme.accent)
             .frame(width: 60, alignment: .trailing)
             .disabled(model.isBusy)
             .accessibilityIdentifier("finishButton")
@@ -150,7 +150,7 @@ struct WorkoutView: View {
                             .foregroundStyle(active ? Theme.bg : Theme.dim)
                             .padding(.horizontal, 14)
                             .padding(.vertical, 8)
-                            .background(active ? Theme.fire : Theme.card, in: Capsule())
+                            .background(active ? Theme.accent : Theme.card, in: Capsule())
                             .overlay(Capsule().stroke(active ? Color.clear : Theme.cardBorder))
                     }
                     .buttonStyle(.plain)
@@ -160,10 +160,10 @@ struct WorkoutView: View {
                 } label: {
                     Label("Add", systemImage: "plus")
                         .font(Theme.body(12.5, .semibold))
-                        .foregroundStyle(Theme.fire)
+                        .foregroundStyle(Theme.accent)
                         .padding(.horizontal, 14)
                         .padding(.vertical, 8)
-                        .overlay(Capsule().strokeBorder(Theme.fire.opacity(0.5), style: StrokeStyle(lineWidth: 1, dash: [4])))
+                        .overlay(Capsule().strokeBorder(Theme.accent.opacity(0.5), style: StrokeStyle(lineWidth: 1, dash: [4])))
                 }
                 .buttonStyle(.plain)
                 .accessibilityIdentifier("addExerciseButton")
@@ -232,13 +232,13 @@ struct WorkoutView: View {
                     valueBox(formatNumber(unit.fromKilograms(loggedSet.weightKg))),
                     valueBox(loggedSet.reps.map(String.init) ?? "–"),
                     Image(systemName: loggedSet.isPr ? "checkmark.seal.fill" : "checkmark")
-                        .foregroundStyle(loggedSet.isPr ? Theme.green : Theme.dim)
+                        .foregroundStyle(loggedSet.isPr ? Theme.success : Theme.dim)
                 )
             }
             setColumns(
                 Text("\(sets.count + 1)")
                     .font(Theme.display(13))
-                    .foregroundStyle(Theme.fire),
+                    .foregroundStyle(Theme.accent),
                 inputField("Weight", text: $model.weightInput, keyboard: .decimalPad, field: .weight)
                     .accessibilityIdentifier("weightField"),
                 inputField("Reps", text: $model.repsInput, keyboard: .numberPad, field: .reps)
@@ -246,7 +246,7 @@ struct WorkoutView: View {
                 Color.clear.frame(height: 1)
             )
             .padding(.vertical, 4)
-            .background(Theme.fire.opacity(0.16), in: RoundedRectangle(cornerRadius: 10))
+            .background(Theme.accent.opacity(0.16), in: RoundedRectangle(cornerRadius: 10))
             Button {
                 focusedField = nil
                 Task { await model.logSet() }
@@ -306,7 +306,7 @@ struct WorkoutView: View {
             .padding(.horizontal, 12)
             .padding(.vertical, 10)
             .background(Theme.bg2, in: RoundedRectangle(cornerRadius: 10))
-            .overlay(RoundedRectangle(cornerRadius: 10).stroke(Theme.fire))
+            .overlay(RoundedRectangle(cornerRadius: 10).stroke(Theme.accent))
     }
 
     private func banner(icon: String, text: String, tint: Color, textColor: Color) -> some View {

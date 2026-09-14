@@ -96,6 +96,11 @@ class RouteState(rx.State):
 
 
 app = rx.App(
+    # The app icon (scripts/icon/render_icon.mjs writes both files).
+    head_components=[
+        rx.el.link(rel="icon", type="image/png", href="/favicon.png"),
+        rx.el.link(rel="apple-touch-icon", href="/apple-touch-icon.png"),
+    ],
     # Applied to <body>; without it the page shows the browser default behind
     # the layout on overscroll.
     style={

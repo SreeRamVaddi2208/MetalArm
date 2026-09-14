@@ -1,0 +1,96 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <!--
+    MetalArm app icon: a faceted-steel flexing arm resting on a polished "MA"
+    wordmark, on near-black with a soft silver light - the app's grey
+    identity (ios/MetalARM/Theme/Theme.swift, frontend/metalarm/theme.py).
+    Each flat facet is a muscle plane (deltoid, biceps, triceps, forearm,
+    fist), lit from the top left. Rendered by render_icon.mjs; edit here,
+    then re-render.
+  -->
+  <defs>
+    <style>
+      @font-face {
+        font-family: "SpaceGroteskIcon";
+        src: url("../../ios/MetalARM/Fonts/SpaceGrotesk-Bold.ttf") format("truetype");
+      }
+      .f { stroke-linejoin: round; stroke-width: 1.5; }
+    </style>
+
+    <!-- Molten glow behind the arm: fire -> deep red -> violet -> navy. -->
+    <radialGradient id="glow" cx="512" cy="430" r="520" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#D4D4DA" stop-opacity="0.26"/>
+      <stop offset="0.38" stop-color="#8A8A92" stop-opacity="0.14"/>
+      <stop offset="0.7" stop-color="#4A4A50" stop-opacity="0.08"/>
+      <stop offset="1" stop-color="#0B0B0C" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Polished steel for the wordmark: a hard horizon line, like chrome. -->
+    <linearGradient id="steel" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="0.46" stop-color="#C9D0DA"/>
+      <stop offset="0.5" stop-color="#6A7383"/>
+      <stop offset="0.78" stop-color="#A9B1BE"/>
+      <stop offset="1" stop-color="#3E4553"/>
+    </linearGradient>
+
+    <filter id="shadow" filterUnits="userSpaceOnUse" x="0" y="0" width="1024" height="1024">
+      <feDropShadow dx="0" dy="14" stdDeviation="16" flood-color="#000000" flood-opacity="0.75"/>
+    </filter>
+    <filter id="edgeGlow" filterUnits="userSpaceOnUse" x="0" y="0" width="1024" height="1024">
+      <feGaussianBlur stdDeviation="5"/>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect id="bg" width="1024" height="1024" fill="#0B0B0C"/>
+  <rect id="glowLayer" width="1024" height="1024" fill="url(#glow)"/>
+
+  <g transform="translate(8 62)">
+    <!-- "MA" wordmark, bound under the arm: the arm rests on its top edge. -->
+    <text x="504" y="772" text-anchor="middle" textLength="660" lengthAdjust="spacingAndGlyphs"
+          font-family="SpaceGroteskIcon" font-size="300" font-weight="700" fill="url(#steel)">MA</text>
+
+    <!-- The arm -->
+    <g filter="url(#shadow)">
+      <!-- Silhouette underneath the facets, so no seam ever shows through. -->
+      <path fill="#6B7382" d="M160 440 L215 375 L300 390 L360 335 L430 305 L500 302 L565 330 L620 395
+        L650 260 L630 262 L616 215 L628 170 L690 145 L760 150 L800 185 L808 235 L795 275
+        L835 430 L790 560 L680 545 L500 560 L330 565 L215 565 L170 525 L148 485 Z"/>
+
+      <!-- Deltoid (shoulder cap) -->
+      <polygon class="f" fill="#E4E8EF" stroke="#E4E8EF" points="160,440 215,375 300,390 270,455"/>
+      <polygon class="f" fill="#A6AEBB" stroke="#A6AEBB" points="160,440 270,455 250,535 170,525 148,485"/>
+      <polygon class="f" fill="#5A6271" stroke="#5A6271" points="170,525 250,535 215,565"/>
+      <!-- Biceps: a rounded peak of bright facets over a mid-tone belly -->
+      <polygon class="f" fill="#F6F8FB" stroke="#F6F8FB" points="300,390 360,335 430,305 440,400 270,455"/>
+      <polygon class="f" fill="#DADFE7" stroke="#DADFE7" points="430,305 500,302 565,330 520,405 440,400"/>
+      <polygon class="f" fill="#B3BBC7" stroke="#B3BBC7" points="565,330 620,395 520,405"/>
+      <polygon class="f" fill="#8E97A6" stroke="#8E97A6" points="270,455 440,400 520,405 620,395 560,470 400,480"/>
+      <!-- Triceps / underside -->
+      <polygon class="f" fill="#666E7D" stroke="#666E7D" points="250,535 270,455 400,480 330,565 215,565"/>
+      <polygon class="f" fill="#535B6A" stroke="#535B6A" points="400,480 560,470 500,560 330,565"/>
+      <polygon class="f" fill="#454C5A" stroke="#454C5A" points="560,470 680,500 680,545 500,560"/>
+      <!-- Forearm: lit inner face, brachioradialis bulge, elbow -->
+      <polygon class="f" fill="#DDE2EA" stroke="#DDE2EA" points="620,395 650,260 720,272 700,430"/>
+      <polygon class="f" fill="#A3ACBA" stroke="#A3ACBA" points="720,272 795,275 835,430 745,445 700,430"/>
+      <polygon class="f" fill="#7C8594" stroke="#7C8594" points="620,395 700,430 745,445 680,500 560,470"/>
+      <polygon class="f" fill="#565E6D" stroke="#565E6D" points="745,445 835,430 790,560 680,545 680,500"/>
+      <!-- Fist: knuckle row, curled fingers, side of the hand -->
+      <polygon class="f" fill="#F8FAFC" stroke="#F8FAFC" points="628,170 690,145 760,150 800,185 745,200 662,205"/>
+      <polygon class="f" fill="#C8CFD9" stroke="#C8CFD9" points="628,170 662,205 670,262 630,262 616,215"/>
+      <polygon class="f" fill="#E2E7EE" stroke="#E2E7EE" points="662,205 745,200 770,270 670,262"/>
+      <polygon class="f" fill="#8792A1" stroke="#8792A1" points="745,200 800,185 808,235 795,275 770,270"/>
+
+      <!-- Crisp light seams: biceps/triceps split, peak, forearm, knuckles. -->
+      <path d="M270 455 L400 480 L560 470 L680 500 M440 400 L430 305 M520 405 L565 330 M300 390 L270 455
+               M700 430 L650 260 M745 445 L720 272 M662 205 L745 200 L800 185"
+            fill="none" stroke="#FFFFFF" stroke-opacity="0.4" stroke-width="2" stroke-linecap="round"/>
+      <!-- Wrist line and finger grooves. -->
+      <path d="M626 264 L672 262 L772 272 L796 276" fill="none" stroke="#1E232C" stroke-opacity="0.55" stroke-width="5" stroke-linecap="round"/>
+      <path d="M620 222 L664 228 M624 246 L668 250" fill="none" stroke="#2A303B" stroke-opacity="0.5" stroke-width="4" stroke-linecap="round"/>
+      <!-- Silver edge light on the outer forearm and elbow. -->
+      <path d="M796 276 L835 430 L790 560" fill="none" stroke="#FFFFFF" stroke-width="10" stroke-opacity="0.35" filter="url(#edgeGlow)"/>
+      <path d="M796 276 L835 430 L790 560" fill="none" stroke="#F2F2F4" stroke-width="3" stroke-linecap="round"/>
+    </g>
+  </g>
+</svg>

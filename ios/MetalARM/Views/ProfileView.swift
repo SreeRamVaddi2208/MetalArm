@@ -52,7 +52,7 @@ struct ProfileView: View {
                 .padding(.top, 12)
             Text("Level \(profile.progress.currentLevel) · Rank \(profile.progress.rank)")
                 .font(Theme.body(12.5, .bold))
-                .foregroundStyle(Theme.fire)
+                .foregroundStyle(Theme.accent)
                 .padding(.top, 5)
             XPBar(progress: profile.progress.xpProgress, track: Theme.card)
                 .padding(.top, 16)
@@ -81,7 +81,7 @@ struct ProfileView: View {
                 Spacer()
                 Text("\(profile.badgesEarned) / \(profile.badgesTotal)")
                     .font(Theme.body(12))
-                    .foregroundStyle(Theme.fire)
+                    .foregroundStyle(Theme.accent)
             }
             LazyVGrid(columns: badgeColumns, spacing: 12) {
                 ForEach(profile.badges) { badge in
@@ -97,7 +97,7 @@ struct ProfileView: View {
             ZStack {
                 if badge.earned {
                     RoundedRectangle(cornerRadius: 14)
-                        .fill(LinearGradient(colors: [Theme.gold, Theme.goldDeep], startPoint: .topLeading, endPoint: .bottomTrailing))
+                        .fill(LinearGradient(colors: [Theme.silver, Theme.silverDeep], startPoint: .topLeading, endPoint: .bottomTrailing))
                 } else {
                     RoundedRectangle(cornerRadius: 14)
                         .fill(Theme.card)
@@ -201,7 +201,7 @@ struct ProfileView: View {
                 .foregroundStyle(Theme.faint)
         }
         .font(Theme.body(15))
-        .foregroundStyle(destructive ? Theme.fire : Theme.text)
+        .foregroundStyle(destructive ? Theme.danger : Theme.text)
         .padding(.horizontal, 16)
         .padding(.vertical, 14)
         .contentShape(Rectangle())
@@ -234,7 +234,7 @@ struct DeleteAccountSheet: View {
                         .foregroundStyle(Theme.text)
                         .frame(maxWidth: .infinity)
                         .padding(15)
-                        .background(Color.red.opacity(password.isEmpty ? 0.35 : 0.85), in: RoundedRectangle(cornerRadius: 14))
+                        .background(Theme.danger.opacity(password.isEmpty ? 0.35 : 0.85), in: RoundedRectangle(cornerRadius: 14))
                 }
                 .disabled(password.isEmpty || model.isBusy)
                 .accessibilityIdentifier("confirmDeleteButton")

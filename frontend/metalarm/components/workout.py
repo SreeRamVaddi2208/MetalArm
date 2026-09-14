@@ -29,7 +29,7 @@ from metalarm.workout_models import (
 )
 
 PR_COLOR = theme.RANK_COLORS["A"]
-FIELD_BG = "#0b1220"
+FIELD_BG = theme.FIELD
 
 
 # ---------------------------------------------------------------------------
@@ -40,7 +40,7 @@ FIELD_BG = "#0b1220"
 def button(label, on_click=None, *, color: str = theme.ACCENT, solid: bool = True, **overrides):
     style = {
         "background": color if solid else "transparent",
-        "color": "#04121c" if solid else color,
+        "color": theme.ON_ACCENT if solid else color,
         "border": "none" if solid else f"1px solid {color}66",
         "border_radius": "10px",
         "font_weight": "800",
@@ -654,7 +654,7 @@ def _log_row(card: ExerciseCard, index) -> rx.Component:
             flex="1",
             height="52px",
             background=rx.cond(card.warmup, theme.WARNING, theme.ACCENT),
-            color="#04121c",
+            color=theme.ON_ACCENT,
             border="none",
             border_radius="10px",
             font_size="0.85rem",
@@ -828,7 +828,7 @@ def summary_view() -> rx.Component:
                 rx.text(s.qualified_note, color=theme.WARNING, font_size="0.8rem", line_height="1.5"),
                 width="100%",
                 padding="0.75rem 1rem",
-                background="#241d0c",
+                background=theme.WARNING_BG,
                 border=f"1px solid {theme.WARNING}44",
                 border_radius="10px",
             ),

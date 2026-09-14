@@ -47,7 +47,7 @@ struct RootView: View {
                 ProfileView()
             }
         }
-        .tint(Theme.fire)
+        .tint(Theme.accent)
         .fullScreenCover(isPresented: $model.showingSummary) {
             if let result = model.finishResult {
                 SummaryView(result: result, unit: model.weightUnit) { model.showingSummary = false }

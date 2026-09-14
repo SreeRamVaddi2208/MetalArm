@@ -14,6 +14,51 @@ Entry format:
 
 ---
 
+## 2026-09-14 (17) - Opus - grey identity: palette, app icon, level-up celebration
+
+**Changed**
+- One grey, machined-steel palette in both apps (`ios/MetalARM/Theme/Theme.swift`,
+  `frontend/metalarm/theme.py`, identical values): near-black ground `#0B0B0C`,
+  graphite panels, text `#F2F2F4` / muted `#A8A8B0` / faint `#7C7C84`, white and
+  silver as the only accents. Red `#E5484D` is kept only for errors and
+  destructive actions. Ranks are told apart by brightness (E dark grey to S white).
+- iOS tokens renamed from colours to roles (`fire` -> `accent`, `violet`/`gold`
+  -> `silver`, `green` -> `success`, new `danger`, `borderStrong`); primary
+  buttons are white with near-black text; the XP bar is white to silver.
+- Web: ~25 hard-coded hex values moved onto new tokens (`FIELD`, `ON_ACCENT`,
+  `SUCCESS_BG`, `WARNING_BG`, `DANGER_BG`, `VEIL`).
+- App icon: a faceted-steel flexing arm resting on a polished "MA", on
+  near-black with a soft silver light. Source `scripts/icon/metalarm-icon.svg`;
+  `node scripts/icon/render_icon.mjs` renders the iOS icon (plus the iOS 18
+  tinted variant, now in `Contents.json`) and the web `favicon.png` /
+  `apple-touch-icon.png`, all opaque. The web app links both in `rx.App`.
+- Level-up celebration on iOS (`Views/LevelUpView.swift`): shown over the
+  summary for every level-up or rank-up in the FinishResponse. The new level
+  punches in, silver rings burst, 24 metal sparks fly, and a success haptic plays;
+  rank-up is bigger (extra ring, double heavy haptic). Reduce Motion gives a
+  fade; VoiceOver announces the level. Tap or Continue to dismiss.
+- Web level-up overlay restyled in silver with sparks and a shine sweep;
+  reduced-motion still collapses it to a fade.
+- Mock backend: `-UITestLevelUp` makes finishing a workout level up (14 -> 15);
+  new UI test `testLevelUpCelebration`.
+
+**Verified (real output)**
+- iOS `xcodebuild test` with the live tour on the iPhone 17 Pro Max: **TEST SUCCEEDED**,
+  MetalARMTests 35 passed, MetalARMUITests 7 passed (including `testLevelUpCelebration`).
+- `scripts/e2e` against the rebuilt web image: **ALL PASSED (72)**, level-up moment included.
+- `/favicon.png` and `/apple-touch-icon.png` return 200 and both `<link>` tags are in the page.
+- Icons are 1024x1024 (180 and 64 for the web) with `hasAlpha: no`.
+- No old accent colour values remain in `frontend/`, `ios/` or `scripts/`.
+
+**Blocked**
+- Nothing.
+
+**Other agent needs to know**
+- Use `Theme.accent`/`silver`/`danger` (iOS) and `theme.ACCENT`/`ON_ACCENT`/
+  `DANGER` (web); no raw colour values outside the two theme files.
+
+---
+
 ## 2026-09-14 (16) - Opus - iOS app uses the design fonts
 
 **Changed**

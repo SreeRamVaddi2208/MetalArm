@@ -88,7 +88,7 @@ struct ProgressScreen: View {
                             .foregroundStyle(active ? Theme.bg : Theme.dim)
                             .padding(.horizontal, 14)
                             .padding(.vertical, 7)
-                            .background(active ? Theme.fire : Theme.card, in: RoundedRectangle(cornerRadius: 10))
+                            .background(active ? Theme.accent : Theme.card, in: RoundedRectangle(cornerRadius: 10))
                             .overlay(RoundedRectangle(cornerRadius: 10).stroke(active ? Color.clear : Theme.cardBorder))
                     }
                     .buttonStyle(.plain)
@@ -114,14 +114,14 @@ struct ProgressScreen: View {
                     let change = last.value - first.value
                     Text("\(change >= 0 ? "▲" : "▼") \(formatNumber(abs(change))) \(unit) since \(first.date.formatted(.dateTime.month().day()))")
                         .font(Theme.body(12, .semibold))
-                        .foregroundStyle(change >= 0 ? Theme.green : Theme.fire)
+                        .foregroundStyle(change >= 0 ? Theme.success : Theme.dim)
                 }
                 Chart(points) { point in
                     AreaMark(x: .value("Date", point.date), y: .value(unit, point.value))
-                        .foregroundStyle(LinearGradient(colors: [Theme.fire.opacity(0.35), Theme.fire.opacity(0.02)], startPoint: .top, endPoint: .bottom))
+                        .foregroundStyle(LinearGradient(colors: [Theme.accent.opacity(0.35), Theme.accent.opacity(0.02)], startPoint: .top, endPoint: .bottom))
                         .interpolationMethod(.monotone)
                     LineMark(x: .value("Date", point.date), y: .value(unit, point.value))
-                        .foregroundStyle(Theme.fire)
+                        .foregroundStyle(Theme.accent)
                         .interpolationMethod(.monotone)
                 }
                 .chartXAxis(.hidden)
@@ -144,7 +144,7 @@ struct ProgressScreen: View {
         HStack(spacing: 12) {
             Image(systemName: "medal.fill")
                 .font(Theme.body(18))
-                .foregroundStyle(Theme.gold)
+                .foregroundStyle(Theme.silver)
             VStack(alignment: .leading, spacing: 2) {
                 Text("\(record.label) — \(record.exerciseName)")
                     .font(Theme.body(13.5, .bold))
@@ -156,7 +156,7 @@ struct ProgressScreen: View {
             Spacer()
             Text(record.valueText(in: model.weightUnit))
                 .font(Theme.display(13))
-                .foregroundStyle(Theme.fire)
+                .foregroundStyle(Theme.accent)
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 12)

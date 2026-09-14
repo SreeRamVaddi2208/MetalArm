@@ -22,8 +22,12 @@ final class MockAPIClient: MetalArmAPI {
     private var weightUnit = WeightUnit.kg
     private let decoder = LiveAPIClient.makeDecoder()
 
-    init(signedIn: Bool = true) {
+    // -UITestLevelUp: finishing a workout levels the user up (14 -> 15).
+    private let levelUpOnFinish: Bool
+
+    init(signedIn: Bool = true, levelUpOnFinish: Bool = false) {
         isSignedIn = signedIn
+        self.levelUpOnFinish = levelUpOnFinish
         partyList = []
         partyList = fixture(ContractFixtures.parties)
     }
@@ -216,12 +220,18 @@ final class MockAPIClient: MetalArmAPI {
                 pointsTotal: breakdown.total, prCount: prSets.count),
             qualified: qualified, awards: [], breakdown: breakdown, pointsCredited: breakdown.total,
             prEvents: prEvents, streak: fixture(ContractFixtures.streak),
-            progression: steadyProgression(breakdown.total))
+            progression: levelUpOnFinish ? levelUpProgression(breakdown.total) : steadyProgression(breakdown.total))
     }
 
     func abandonSession(sessionID: String) async throws {
         try check()
         current = nil
+    }
+
+    private func levelUpProgression(_ points: Int) -> ProgressionDelta {
+        ProgressionDelta(
+            xpAwarded: points, pointsAwarded: points, totalXp: 18450 + points, levelBefore: 14, levelAfter: 15,
+            rankBefore: "C", rankAfter: "C", currentStreak: 6, longestStreak: 12, leveledUp: true, rankedUp: false)
     }
 
     private func steadyProgression(_ points: Int) -> ProgressionDelta {

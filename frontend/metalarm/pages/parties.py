@@ -27,7 +27,7 @@ def text_input(placeholder: str, on_change, value=None, accent=theme.ACCENT):
         on_change=on_change,
         value=value,
         width="100%",
-        background="#0b1220",
+        background=theme.FIELD,
         border=f"1px solid {theme.BORDER}",
         border_radius="9px",
         color=theme.TEXT,
@@ -37,7 +37,7 @@ def text_input(placeholder: str, on_change, value=None, accent=theme.ACCENT):
     )
 
 
-def action_button(label, on_click, color=theme.ACCENT, fg="#04121c"):
+def action_button(label, on_click, color=theme.ACCENT, fg=theme.ON_ACCENT):
     return rx.button(
         label,
         on_click=on_click,

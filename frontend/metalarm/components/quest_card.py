@@ -67,7 +67,7 @@ def quest_card(quest: Quest) -> rx.Component:
                     on_click=QuestState.complete(quest.id),
                     disabled=done,
                     background=rx.cond(done, "transparent", theme.ACCENT),
-                    color=rx.cond(done, theme.FAINT, "#04121c"),
+                    color=rx.cond(done, theme.FAINT, theme.ON_ACCENT),
                     border=rx.cond(done, f"1px solid {theme.BORDER}", "none"),
                     border_radius="9px",
                     font_size="0.72rem",
