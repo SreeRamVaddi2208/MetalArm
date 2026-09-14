@@ -22,6 +22,9 @@ struct ProfileView: View {
                 if let profile = model.profile {
                     header(profile)
                     stats(profile.stats)
+                    if !model.rankTrials.isEmpty {
+                        trials(model.rankTrials)
+                    }
                     badges(profile)
                 }
                 settings
@@ -70,6 +73,61 @@ struct ProfileView: View {
             StatTile(value: "\(stats.longestWorkoutStreak)", label: "Best streak", unit: "wk")
         }
         .padding(.top, 22)
+    }
+
+    /// The strength trials that gate ranks B, A and S, with progress to each.
+    private func trials(_ trials: [RankTrial]) -> some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Rank trials")
+                .font(Theme.display(16))
+                .foregroundStyle(Theme.text)
+            Text("Ranks B, A and S also need a lift at a multiple of your bodyweight.")
+                .font(Theme.body(11))
+                .foregroundStyle(Theme.dim)
+            ForEach(trials) { trial in
+                trialRow(trial)
+            }
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .cardStyle(cornerRadius: 16)
+        .padding(.top, 22)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("rankTrialsCard")
+    }
+
+    private func trialRow(_ trial: RankTrial) -> some View {
+        VStack(alignment: .leading, spacing: 7) {
+            HStack(spacing: 10) {
+                Text(trial.rank)
+                    .font(Theme.display(14))
+                    .foregroundStyle(trial.passed ? Theme.bg : Theme.text)
+                    .frame(width: 28, height: 28)
+                    .background(trial.passed ? Theme.accent : Theme.bg, in: RoundedRectangle(cornerRadius: 8))
+                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(Theme.cardBorder))
+                Text(trial.description)
+                    .font(Theme.body(12.5, .semibold))
+                    .foregroundStyle(Theme.text)
+                Spacer(minLength: 0)
+                if trial.passed {
+                    Image(systemName: "checkmark.seal.fill")
+                        .foregroundStyle(Theme.success)
+                }
+            }
+            XPBar(progress: trial.fraction, track: Theme.bg)
+            Text(trialProgress(trial))
+                .font(Theme.body(10.5))
+                .foregroundStyle(Theme.dim)
+        }
+        .accessibilityElement(children: .combine)
+    }
+
+    private func trialProgress(_ trial: RankTrial) -> String {
+        guard let target = trial.targetKg else { return "Log your bodyweight to set a target" }
+        let unit = model.weightUnit
+        let best = trial.bestKg.map { unit.format(kilograms: $0) }
+        if trial.passed { return "Passed · best \(best ?? "")" }
+        return "Best \(best ?? "none yet") of \(unit.format(kilograms: target))"
     }
 
     private func badges(_ profile: Profile) -> some View {

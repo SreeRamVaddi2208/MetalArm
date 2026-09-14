@@ -88,6 +88,11 @@ struct DecodingTests {
         let profile = try decode(Profile.self, ContractFixtures.profile)
         #expect(profile.stats.workoutsCompleted == 142)
         #expect(profile.badgesEarned == 3)
+        #expect(profile.progress.nextRankTrial == "Barbell Bench Press at 1x bodyweight")
+        let trials = try decode([RankTrial].self, ContractFixtures.rankTrials)
+        #expect(trials.map(\.rank) == ["B", "A", "S"])
+        #expect(abs(trials[0].fraction - 72.5 / 80.0) < 0.0001)
+        #expect(trials[2].bestKg == nil && trials[2].fraction == 0)
     }
 }
 
@@ -583,6 +588,13 @@ struct AppModelTests {
         await model.loadParties()
         #expect(model.partyRaid?.name == "Iron Golem")
         #expect(model.partyRaid?.partyId == model.selectedPartyID)
+    }
+
+    @Test func profileLoadsTheRankTrials() async {
+        let (model, _) = signedInModel()
+        await model.loadProfile()
+        #expect(model.rankTrials.map(\.rank) == ["B", "A", "S"])
+        #expect(model.rankTrials.first?.description == "Barbell Bench Press at 1x bodyweight")
     }
 
     @Test func progressTabsComeFromTheUsersRecords() async {

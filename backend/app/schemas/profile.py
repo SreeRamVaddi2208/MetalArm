@@ -48,3 +48,16 @@ class ProfileOut(BaseModel):
     badges: list[BadgeOut]
     badges_earned: int
     badges_total: int
+
+
+class TrialOut(BaseModel):
+    """A strength trial gating rank B, A or S (app/core/rank_trials.py)."""
+
+    rank: str
+    lift: str
+    description: str
+    multiplier: float
+    # Null until a bodyweight is logged.
+    target_kg: float | None
+    best_kg: float | None
+    passed: bool

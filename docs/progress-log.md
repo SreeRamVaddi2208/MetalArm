@@ -14,6 +14,46 @@ Entry format:
 
 ---
 
+## 2026-09-14 (22) - Opus - rank trials
+
+**Changed**
+- `app/core/rank_trials.py`: ranks B, A and S now also need a strength trial,
+  a heaviest set at a multiple of the latest logged bodyweight - B bench press
+  1x, A back squat 1.5x, S deadlift 2x. Trials are cumulative (A needs the B
+  trial too), count library lifts only (by slug, never a user's own exercise),
+  and can't pass before a bodyweight is logged.
+- `leveling.rank_for` / `next_rank_requirement` take the passed letters; a rank
+  whose trial is missing is skipped on the way down the ladder.
+- New column `level_progress.trials_passed` (migration `5a043429ab94`),
+  re-judged whenever an input changes: a set logged, edited or deleted, a
+  workout finished or discarded, a bodyweight logged or deleted. Passing a
+  trial mid-workout reports the new rank as the delta's `rank_after`, so the
+  existing rank-up celebration fires. `scripts/recompute_progression.py`
+  keeps the stored trials when it re-derives ranks.
+- API: `GET /profile/trials` (target and best per lift, null targets until a
+  bodyweight exists); `next_rank_trial` and `trials_passed` on the progress
+  object. `docs/api-contract.md` regenerated.
+- Web: a TRIAL line on the stat panel and a RANK TRIALS panel on the profile.
+  iOS: a "Trial:" line on Home and a Rank trials card on Profile (`RankTrial`,
+  `AppModel.rankTrials`, loaded with the profile; a failure keeps the last list).
+
+**Verified (real output)**
+- Backend suite passes, including 6 new `test_rank_trials.py` tests and the
+  updated `test_progression.py` / `test_stat_panel.py` (trial gating, the next
+  requirement waiting on a trial, a mid-workout trial as a rank-up).
+- iOS: `MetalARMTests` plus `testProgressRanksAndProfile` - TEST SUCCEEDED
+  (trial decoding, `profileLoadsTheRankTrials`, the Profile trials card).
+- Web e2e against the rebuilt images: ALL PASSED (78), including the RANK
+  TRIALS panel and the bench target at the logged 80.5 kg bodyweight.
+
+**Blocked:** nothing.
+
+**Other agent needs to know:** no real users yet, so nobody is grandfathered -
+anyone at B or above without the trials drops to C on their next progress
+change. Seeded test users need a bodyweight plus the lifts to show B+.
+
+---
+
 ## 2026-09-14 (21) - Opus - party raids
 
 **Changed**

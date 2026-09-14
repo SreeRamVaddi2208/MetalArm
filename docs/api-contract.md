@@ -10,8 +10,8 @@
 
 - **API title:** MetalArm API
 - **API version:** 0.1.0
-- **Generated:** 2026-09-14 15:20 UTC
-- **Source:** `http://127.0.0.1:8000/openapi.json`
+- **Generated:** 2026-09-14 15:43 UTC
+- **Source:** `http://localhost:8000/openapi.json`
 
 ---
 
@@ -777,6 +777,22 @@ a reversal landing this week of an award from last week is clamped at 0.
 ### `GET /api/v1/profile`
 
 **Read Profile**
+
+*Tags:* `profile`
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+
+---
+
+### `GET /api/v1/profile/trials`
+
+**Rank Trial Status**
+
+The strength trials that gate ranks B, A and S: each lift's target at
+the user's latest bodyweight, their best so far, and whether it is passed
+(app/core/rank_trials.py). Targets are null until a bodyweight is logged.
 
 *Tags:* `profile`
 
@@ -1884,6 +1900,8 @@ otherwise 503 with per-dependency detail.
 | `next_rank` | `string | null` | yes |
 | `next_rank_level` | `integer | null` | yes |
 | `next_rank_streak` | `integer | null` | yes |
+| `next_rank_trial` | `string | null` | no |
+| `trials_passed` | `string` | no |
 
 #### `ProgressionDeltaOut`
 
@@ -2251,6 +2269,18 @@ otherwise 503 with per-dependency detail.
 | `expires_in` | `integer` | yes |
 | `refresh_token` | `string` | yes |
 | `refresh_expires_in` | `integer` | yes |
+
+#### `TrialOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `rank` | `string` | yes |
+| `lift` | `string` | yes |
+| `description` | `string` | yes |
+| `multiplier` | `number` | yes |
+| `target_kg` | `number | null` | yes |
+| `best_kg` | `number | null` | yes |
+| `passed` | `boolean` | yes |
 
 #### `UserOut`
 

@@ -5,7 +5,7 @@ from __future__ import annotations
 import reflex as rx
 
 from metalarm import api
-from metalarm.models import Badge, LifetimeStats
+from metalarm.models import Badge, LifetimeStats, TrialRow
 from metalarm.state.auth import AuthState
 
 
@@ -14,6 +14,7 @@ class ProfileState(rx.State):
     stats: LifetimeStats = LifetimeStats()
     badges_earned: int = 0
     badges_total: int = 0
+    trials: list[TrialRow] = []
     loading: bool = False
     error: str = ""
 
@@ -35,6 +36,8 @@ class ProfileState(rx.State):
             self.stats = LifetimeStats.from_api(data.get("stats") or {}, auth.weight_unit)
             self.badges_earned = data.get("badges_earned") or 0
             self.badges_total = data.get("badges_total") or 0
+            trials = await api.rank_trials(auth.token)
+            self.trials = [TrialRow.from_api(t, auth.weight_unit) for t in trials]
         except api.ApiError as exc:
             self.error = exc.detail
         finally:

@@ -12,6 +12,8 @@ from fastapi import APIRouter, HTTPException, Query, status
 from sqlalchemy import select
 
 from app.api.deps import CurrentUser, DbSession
+from app.core import rank_trials
+from app.core.progression import lock_progress
 from app.models.workout import BodyMeasurement
 from app.models.workout_enums import MeasurementMetric
 from app.schemas.workout import BodyMeasurementCreate, BodyMeasurementOut
@@ -47,6 +49,9 @@ def create_measurement(
         recorded_at=payload.recorded_at or dt.datetime.now(dt.timezone.utc),
     )
     db.add(row)
+    db.flush()
+    # A new bodyweight moves every trial's target.
+    rank_trials.refresh(db, lock_progress(db, current_user.id), current_user)
     db.commit()
     db.refresh(row)
     return BodyMeasurementOut.model_validate(row)
@@ -65,4 +70,6 @@ def delete_measurement(
     if row is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Measurement not found")
     db.delete(row)
+    db.flush()
+    rank_trials.refresh(db, lock_progress(db, current_user.id), current_user)
     db.commit()

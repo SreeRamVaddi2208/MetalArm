@@ -151,30 +151,47 @@ def rank_by_level(level: int) -> Rank:
     return rank
 
 
-def rank_for(level: int, streak: int) -> Rank:
-    """The rank actually held, applying the streak gate to A and S.
+# Ranks that also need strength trials (app/core/rank_trials.py): a bench,
+# squat and deadlift at a multiple of bodyweight, so a high rank means real
+# strength and not only time spent. Cumulative - A needs the B trial too.
+TRIAL_RANKS: tuple[Rank, ...] = (Rank.B, Rank.A, Rank.S)
 
-    Walks the ladder downward and returns the highest rank whose level AND
-    streak requirements are both met, so a lapsed S lands on A or B rather
-    than falling all the way to E.
+
+def trials_needed(rank: Rank) -> tuple[Rank, ...]:
+    """The trials a rank requires: its own and every trial rank below it."""
+    if rank not in TRIAL_RANKS:
+        return ()
+    return TRIAL_RANKS[: TRIAL_RANKS.index(rank) + 1]
+
+
+def rank_for(level: int, streak: int, trials: str = "") -> Rank:
+    """The rank actually held, applying the streak gate to A and S and the
+    strength trials to B, A and S (`trials`: the letters passed, e.g. "BA").
+
+    Walks the ladder downward and returns the highest rank whose level,
+    streak AND trial requirements are all met, so a lapsed S lands on A or B
+    rather than falling all the way to E.
     """
     for threshold, candidate in reversed(RANK_THRESHOLDS):
         if level < threshold:
             continue
-        if streak >= RANK_STREAK_REQUIREMENTS.get(candidate, 0):
-            return candidate
+        if streak < RANK_STREAK_REQUIREMENTS.get(candidate, 0):
+            continue
+        if any(needed.value not in trials for needed in trials_needed(candidate)):
+            continue
+        return candidate
     return Rank.E
 
 
 def next_rank_requirement(
-    level: int, streak: int
+    level: int, streak: int, trials: str = ""
 ) -> tuple[Rank, int, int] | None:
     """What it takes to reach the next rank up: (rank, level needed, streak needed).
 
     Returns None at the top of the ladder. Drives the Stat Panel's "next rank"
     line without the frontend hardcoding a single threshold.
     """
-    held = rank_for(level, streak)
+    held = rank_for(level, streak, trials)
     order = [rank for _, rank in RANK_THRESHOLDS]
     position = order.index(held)
     if position + 1 >= len(order):

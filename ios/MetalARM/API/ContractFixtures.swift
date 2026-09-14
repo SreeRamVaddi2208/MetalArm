@@ -26,7 +26,8 @@ enum ContractFixtures {
     static let progress = """
     {"total_xp": 18450, "current_level": 14, "points_balance": 640, "longest_streak": 12, "last_completed_on": "2026-09-12",
      "xp_into_level": 2140, "xp_for_next_level": 3000, "current_streak": 6, "streak_is_active": true,
-     "rank": "C", "rank_by_level": "C", "next_rank": "B", "next_rank_level": 20, "next_rank_streak": null}
+     "rank": "C", "rank_by_level": "C", "next_rank": "B", "next_rank_level": 20, "next_rank_streak": null,
+     "next_rank_trial": "Barbell Bench Press at 1x bodyweight", "trials_passed": ""}
     """
 
     static let me = """
@@ -153,6 +154,15 @@ enum ContractFixtures {
       {"user_id": "\(userID)", "display_name": "Sree Ram", "damage": 9200, "hits": 3, "is_me": true},
       {"user_id": "u2", "display_name": "Meera", "damage": 7400, "hits": 2, "is_me": false},
       {"user_id": "u3", "display_name": "Arjun", "damage": 5150, "hits": 2, "is_me": false}]}
+    """
+
+    static let rankTrials = """
+    [{"rank": "B", "lift": "Barbell Bench Press", "description": "Barbell Bench Press at 1x bodyweight", "multiplier": 1.0,
+      "target_kg": 80.0, "best_kg": 72.5, "passed": false},
+     {"rank": "A", "lift": "Back Squat", "description": "Back Squat at 1.5x bodyweight", "multiplier": 1.5,
+      "target_kg": 120.0, "best_kg": 100.0, "passed": false},
+     {"rank": "S", "lift": "Deadlift", "description": "Deadlift at 2x bodyweight", "multiplier": 2.0,
+      "target_kg": 160.0, "best_kg": null, "passed": false}]
     """
 
     static let profile = """

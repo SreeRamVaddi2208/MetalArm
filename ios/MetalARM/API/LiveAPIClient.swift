@@ -95,6 +95,7 @@ final class LiveAPIClient: MetalArmAPI {
     }
 
     func profile() async throws -> Profile { try await send(.get("profile")) }
+    func rankTrials() async throws -> [RankTrial] { try await send(.get("profile/trials")) }
 
     func points() async throws -> PointsSummary { try await send(.get("workouts/points")) }
 

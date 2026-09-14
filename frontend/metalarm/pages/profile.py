@@ -6,7 +6,7 @@ from metalarm import theme
 from metalarm.components.layout import error_banner, section_heading, shell
 from metalarm.components.scroll_reveal import pinned, reveal, reveal_assets
 from metalarm.components.stat_panel import stat_panel
-from metalarm.models import Badge
+from metalarm.models import Badge, TrialRow
 from metalarm.state.profile import ProfileState
 
 
@@ -125,6 +125,59 @@ def lifetime_panel() -> rx.Component:
     )
 
 
+def trial_row(trial: TrialRow) -> rx.Component:
+    return rx.vstack(
+        rx.hstack(
+            rx.center(
+                rx.text(trial.rank, font_weight="800", font_size="0.85rem"),
+                width="1.75rem",
+                height="1.75rem",
+                border_radius="8px",
+                border=f"1px solid {theme.BORDER}",
+                background=rx.cond(trial.passed, theme.ACCENT, theme.FIELD),
+                color=rx.cond(trial.passed, theme.ON_ACCENT, theme.TEXT),
+                flex_shrink="0",
+            ),
+            rx.text(trial.description, color=theme.TEXT, font_weight="600", font_size="0.85rem"),
+            rx.spacer(),
+            rx.cond(trial.passed, rx.icon("badge-check", size=18, color=theme.SUCCESS)),
+            width="100%",
+            align="center",
+        ),
+        rx.box(
+            rx.box(
+                width=f"{trial.pct}%",
+                height="100%",
+                background=theme.ACCENT,
+                border_radius="999px",
+            ),
+            width="100%",
+            height="6px",
+            background=theme.FIELD,
+            border_radius="999px",
+            overflow="hidden",
+        ),
+        rx.text(trial.progress_label, color=theme.FAINT, font_size="0.72rem"),
+        spacing="2",
+        width="100%",
+    )
+
+
+def trials_panel() -> rx.Component:
+    return rx.vstack(
+        rx.text("RANK TRIALS", **theme.LABEL_STYLE),
+        rx.text(
+            "Ranks B, A and S also need a lift at a multiple of your bodyweight.",
+            color=theme.MUTED,
+            font_size="0.78rem",
+        ),
+        rx.divider(border_color=theme.BORDER),
+        rx.foreach(ProfileState.trials, trial_row),
+        spacing="3",
+        **theme.panel(),
+    )
+
+
 def profile_page() -> rx.Component:
     return shell(
         reveal_assets(),
@@ -137,6 +190,7 @@ def profile_page() -> rx.Component:
             ),
             rx.vstack(
                 reveal(lifetime_panel()),
+                rx.cond(ProfileState.trials.length() > 0, reveal(trials_panel())),
                 rx.vstack(
                     section_heading(
                         "BADGES",

@@ -261,6 +261,9 @@ try {
   const badgesLoaded = await page.getByText('Iron Initiate').waitFor({ timeout: 15000 }).then(() => true).catch(() => false);
   check('workout badges are on the profile', badgesLoaded);
   check('profile shows training stats', await visible(page.getByText('VOLUME LIFTED')));
+  // The 80.5 kg bodyweight logged above sets every trial's target.
+  check('profile shows the rank trials', await visible(page.getByText('RANK TRIALS')));
+  check('the bench trial targets 1x bodyweight', await visible(page.getByText(/of 80\.5 kg/)));
 
   const party = await api('/parties', 'POST', { name: 'E2E Crew' }, token);
   check('party created', party.status === 201);

@@ -85,6 +85,12 @@ struct HomeView: View {
                     .font(Theme.body(11))
                     .foregroundStyle(Theme.dim)
             }
+            if let trial = progress.nextRankTrial {
+                Label("Trial: \(trial)", systemImage: "scalemass")
+                    .font(Theme.body(11, .semibold))
+                    .foregroundStyle(Theme.silver)
+                    .accessibilityIdentifier("nextTrialText")
+            }
         }
         .padding(.horizontal, 18)
         .padding(.vertical, 16)
