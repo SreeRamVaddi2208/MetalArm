@@ -70,6 +70,12 @@ final class AppModel {
 
     // MARK: - Derived values
 
+    /// The party to invite friends into from a share card: the one on the
+    /// Ranks tab, else the first.
+    var shareInviteCode: String? {
+        parties.first { $0.id == selectedPartyID }?.inviteCode ?? parties.first?.inviteCode
+    }
+
     var weightUnit: WeightUnit {
         WeightUnit(rawValue: me?.weightUnit ?? profile?.user.weightUnit ?? "kg") ?? .kg
     }
@@ -277,6 +283,11 @@ final class AppModel {
         await run("Couldn't finish the workout") {
             finishResult = try await api.finishSession(sessionID: current.id)
             clearWorkout()
+            // The share card carries the party invite code; parties load on the
+            // Ranks tab, which the user may not have opened yet.
+            if parties.isEmpty, let loaded = try? await api.parties() {
+                parties = loaded.filter(\.isActive)
+            }
             showingSummary = true
         }
         await refreshStats()

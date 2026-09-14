@@ -422,6 +422,27 @@ class FinishSummary:
     lines: list[AwardLine] = dataclasses.field(default_factory=list)
     prs: list[PrView] = dataclasses.field(default_factory=list)
     streak: StreakView = dataclasses.field(default_factory=StreakView)
+    # The story card (metalarm/share_card.py): the workout's biggest moment.
+    share_kind: str = ""
+    share_eyebrow: str = ""
+    share_headline: str = ""
+    share_caption: str = ""
+
+    @staticmethod
+    def share_moment(data: dict[str, Any], prs: list[PrView]) -> tuple[str, str, str, str]:
+        """(kind, eyebrow, headline, caption): rank-up, then level-up, then a
+        record, then the points - the same order as the iOS card."""
+        progression = data.get("progression") or {}
+        if progression.get("ranked_up"):
+            rank = str(progression.get("rank_after") or "")
+            return "rank", "RANK UP", rank, f"Rank {rank} at level {progression.get('level_after')}"
+        if progression.get("leveled_up"):
+            level = str(progression.get("level_after") or "")
+            return "level", "LEVEL UP", level, f"Level {level} reached"
+        if prs:
+            lead = next((p for p in prs if p.bonus_awarded), prs[0])
+            return "record", "NEW PERSONAL RECORD", lead.headline, lead.exercise_name
+        return "workout", "WORKOUT COMPLETE", f"+{data.get('points_credited') or 0}", "points earned"
 
     @classmethod
     def from_api(cls, data: dict[str, Any], title: str, unit: str) -> "FinishSummary":
@@ -450,7 +471,12 @@ class FinishSummary:
             if not e.get("is_baseline")
         ]
         qualified = bool(data.get("qualified"))
+        share_kind, share_eyebrow, share_headline, share_caption = cls.share_moment(data, prs)
         return cls(
+            share_kind=share_kind,
+            share_eyebrow=share_eyebrow,
+            share_headline=share_headline,
+            share_caption=share_caption,
             title=title or "Workout",
             duration_label=clock(session.get("duration_seconds")),
             volume_label=f"{thousands(to_unit(session.get('total_volume_kg'), unit))} {unit}",

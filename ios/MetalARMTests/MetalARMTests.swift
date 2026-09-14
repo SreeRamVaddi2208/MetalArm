@@ -301,6 +301,78 @@ struct LiveAPIClientTests {
 // MARK: - AppModel with the in-memory backend
 
 @MainActor
+struct ShareCardTests {
+    private func finishResult() throws -> FinishResult {
+        try LiveAPIClient.makeDecoder().decode(FinishResult.self, from: Data(ContractFixtures.finishResult.utf8))
+    }
+
+    @Test func aRankUpLeadsTheCard() throws {
+        var result = try finishResult()
+        result.progression.rankedUp = true
+        result.progression.leveledUp = true
+        result.progression.rankAfter = "B"
+        result.progression.levelAfter = 20
+        let card = ShareCardContent.make(result: result, unit: .kg, inviteCode: "IRON2345")
+        #expect(card.kind == .rankUp)
+        #expect(card.headline == "B")
+        #expect(card.caption == "Rank B at level 20")
+        #expect(card.inviteCode == "IRON2345")
+    }
+
+    @Test func aLevelUpComesNext() throws {
+        var result = try finishResult()
+        result.progression.rankedUp = false
+        result.progression.leveledUp = true
+        result.progression.levelAfter = 15
+        let card = ShareCardContent.make(result: result, unit: .kg, inviteCode: nil)
+        #expect(card.kind == .levelUp)
+        #expect(card.headline == "15")
+        #expect(card.inviteCode == nil)
+    }
+
+    @Test func thenARecordThenThePoints() throws {
+        var result = try finishResult()
+        result.progression.rankedUp = false
+        result.progression.leveledUp = false
+        let record = PREvent(
+            exerciseId: ContractFixtures.benchID, exerciseName: "Barbell Bench Press", recordType: "max_weight",
+            value: 100, weightKg: 100, previousValue: 95, isBaseline: false, bonusAwarded: true, setId: "s1")
+        result.prEvents = [record]
+        let withRecord = ShareCardContent.make(result: result, unit: .kg, inviteCode: "")
+        #expect(withRecord.kind == .record)
+        #expect(withRecord.caption == record.headline(in: .kg))
+        // An empty invite code is never printed.
+        #expect(withRecord.inviteCode == nil)
+
+        result.prEvents = []
+        let plain = ShareCardContent.make(result: result, unit: .kg, inviteCode: nil)
+        #expect(plain.kind == .workout)
+        #expect(plain.headline == "+\(result.breakdown.total)")
+    }
+
+    @Test func theCardRendersAtStorySize() throws {
+        let card = ShareCardContent.make(result: try finishResult(), unit: .kg, inviteCode: "IRON2345")
+        let image = try #require(ShareCardRenderer.render(card))
+        #expect(image.size.width * image.scale == 1080)
+        #expect(image.size.height * image.scale == 1920)
+        // Kept with the test results, so the card itself can be looked at.
+        Attachment.record(try #require(image.pngData()), named: "share-card.png")
+    }
+
+    @Test func finishingLoadsPartiesForTheInviteCode() async throws {
+        let api = MockAPIClient()
+        let model = AppModel(api: api)
+        #expect(model.parties.isEmpty)
+        await model.startWorkout()
+        await model.addExercise(try #require(try await api.searchExercises(query: "bench").first))
+        await model.logSet()
+        await model.finishWorkout()
+        #expect(!model.parties.isEmpty)
+        #expect(model.shareInviteCode == model.parties.first?.inviteCode)
+    }
+}
+
+@MainActor
 struct AppModelTests {
     private func signedInModel() -> (AppModel, MockAPIClient) {
         let api = MockAPIClient()

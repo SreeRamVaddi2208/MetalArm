@@ -15,9 +15,14 @@ struct SummaryView: View {
     /// Every level-up (and rank-up) opens with the celebration.
     @State private var showingLevelUp: Bool
 
-    init(result: FinishResult, unit: WeightUnit, onDone: @escaping () -> Void) {
+    /// Printed on the share card, so a share can bring a friend into the party.
+    let inviteCode: String?
+    @State private var shareCard: Image?
+
+    init(result: FinishResult, unit: WeightUnit, inviteCode: String? = nil, onDone: @escaping () -> Void) {
         self.result = result
         self.unit = unit
+        self.inviteCode = inviteCode
         self.onDone = onDone
         _showingLevelUp = State(initialValue: result.progression.leveledUp || result.progression.rankedUp)
     }
@@ -83,11 +88,20 @@ struct SummaryView: View {
                 .padding(.horizontal, 28)
                 .padding(.top, 56)
             }
-            Button("Done", action: onDone)
-                .buttonStyle(PrimaryButtonStyle())
-                .accessibilityIdentifier("doneButton")
-                .padding(.horizontal, 24)
-                .padding(.bottom, 24)
+            VStack(spacing: 10) {
+                if let shareCard {
+                    ShareLink(item: shareCard, preview: SharePreview("My MetalArm workout", image: shareCard)) {
+                        Label("Share", systemImage: "square.and.arrow.up")
+                    }
+                    .buttonStyle(SecondaryButtonStyle())
+                    .accessibilityIdentifier("shareButton")
+                }
+                Button("Done", action: onDone)
+                    .buttonStyle(PrimaryButtonStyle())
+                    .accessibilityIdentifier("doneButton")
+            }
+            .padding(.horizontal, 24)
+            .padding(.bottom, 24)
         }
         .background {
             ZStack {
@@ -98,11 +112,20 @@ struct SummaryView: View {
         }
         .overlay {
             if showingLevelUp {
-                LevelUpView(progression: result.progression) {
+                LevelUpView(progression: result.progression, shareCard: shareCard) {
                     withAnimation(.easeOut(duration: 0.25)) { showingLevelUp = false }
                 }
                 .transition(.opacity)
             }
+        }
+        .task { renderShareCard() }
+    }
+
+    private func renderShareCard() {
+        guard shareCard == nil else { return }
+        let content = ShareCardContent.make(result: result, unit: unit, inviteCode: inviteCode)
+        if let image = ShareCardRenderer.render(content) {
+            shareCard = Image(uiImage: image)
         }
     }
 

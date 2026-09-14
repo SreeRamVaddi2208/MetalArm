@@ -14,6 +14,47 @@ Entry format:
 
 ---
 
+## 2026-09-14 (20) - Opus - share cards
+
+**Changed**
+- iOS `Views/ShareCard.swift`: `ShareCardContent.make` picks the workout's
+  biggest moment from the FinishResponse - rank-up, then level-up, then the
+  celebrated record, then the points - with duration, volume and sets, and the
+  party invite code ("Join my party: CODE"; an empty code is never printed).
+  `ShareCardView` lays it out at 360 x 640 pt in the grey palette;
+  `ShareCardRenderer` renders it at 3x = 1080 x 1920 px (story size).
+- The summary has a Share button (`ShareLink`) above Done; the level-up
+  celebration offers a smaller Share link under Continue. Finishing a workout
+  loads the parties when they haven't been, so the invite code is there.
+- Web: `FinishSummary.share_moment` picks the same moment from the finish
+  response; `WorkoutState.share_card` fetches the first active party's invite
+  code and runs `metalarm/share_card.py`, which draws the same 1080 x 1920 card
+  on a `<canvas>` and shares it (Web Share with files, on phones) or downloads
+  `metalarm-<kind>.png`. SHARE sits between DONE and PROGRESS on the summary.
+- `scripts/e2e`: clicking SHARE must download a 1080 x 1920 PNG.
+- UI tests: `type()` re-taps until the field really has keyboard focus, and the
+  exercise picker gets 10 s to load - both failed once on a slow simulator.
+
+**Verified (real output)**
+- iOS `xcodebuild test`: MetalARMTests **40 passed** (5 new `ShareCardTests`,
+  including a render at exactly 1080 x 1920); the rank-up, level-up and live
+  tour UI tests passed after the test hardening above (6 others passed in the
+  full run). The rendered card was checked by eye: level 10 with the party code.
+- `scripts/e2e` against the rebuilt web image: **ALL PASSED (73)**, including
+  "share makes a 1080x1920 story card". Desktop Chrome reports it can share
+  files, and headless its share sheet never resolves, so the sheet is used only
+  on touch screens and a desktop downloads the PNG.
+
+**Blocked**
+- Nothing.
+
+**Other agent needs to know**
+- The card's wording comes only from the finish response; keep the two
+  platforms' order of moments in step (iOS `ShareCardContent.make`, web
+  `FinishSummary.share_moment`).
+
+---
+
 ## 2026-09-14 (18) - Opus - launch prep: listing text, launch checklist, grey static pages
 
 **Changed**

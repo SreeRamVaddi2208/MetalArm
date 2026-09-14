@@ -14,7 +14,7 @@
 // the only test that exercises Reflex's websocket events, hydration, and the
 // client-side scripts.
 
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { chromium } from 'playwright-core';
@@ -184,6 +184,17 @@ try {
   check('summary points match the API',
     await visible(page.getByText(`+${last.points_total}`, { exact: true }).first()), `api=${last.points_total}`);
   await page.screenshot({ path: `${OUT}/05-summary.png`, fullPage: true });
+  // SHARE draws the story card in the browser; a desktop browser downloads it.
+  const [card] = await Promise.all([
+    page.waitForEvent('download', { timeout: 15000 }),
+    page.getByText('SHARE', { exact: true }).click(),
+  ]);
+  const cardPath = `${OUT}/05b-share-card.png`;
+  await card.saveAs(cardPath);
+  const png = readFileSync(cardPath);
+  check('share makes a 1080x1920 story card',
+    card.suggestedFilename().startsWith('metalarm-') && png.readUInt32BE(16) === 1080 && png.readUInt32BE(20) === 1920,
+    `${card.suggestedFilename()} ${png.readUInt32BE(16)}x${png.readUInt32BE(20)}`);
   await page.getByText('DONE', { exact: true }).click();
   await page.getByText('START EMPTY WORKOUT').waitFor({ timeout: 15000 });
   await page.getByText(/\d+ sets · /).first().waitFor({ timeout: 10000 }).catch(() => {});
