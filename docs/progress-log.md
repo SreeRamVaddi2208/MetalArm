@@ -55,6 +55,42 @@ Entry format:
 
 ---
 
+## 2026-09-14 (19) - Opus - offline set logging on iOS
+
+**Changed**
+- `ios/MetalARM/State/PendingSetStore.swift`: `PendingSet` (the tap's
+  `client_set_id`, session, exercise, weight, unit, reps), a file-backed store
+  in Application Support (in memory for tests and the mock backend), an
+  `isConnectivityFailure` check for `URLError`s that got no answer, and an
+  `NWPathMonitor` wrapper.
+- `AppModel.logSet`: when the request gets no answer, the set is queued instead
+  of shown as an error; the rest timer still starts. Sets already waiting go
+  first, so the server sees them in order. `flushPendingSets()` sends them in
+  order when the network returns, when the app comes to the foreground and when
+  the workout loads; a set the server rejects is dropped with a message.
+  Finishing waits until the workout's queued sets have synced. Discarding drops
+  them; signing out clears the queue.
+- `WorkoutView`: queued sets appear in the set list with a clock icon, under an
+  "N sets saved offline" banner.
+- Mock backend: dedupes by `client_set_id` like the server, can drop a reply
+  after recording the set, and has `-UITestOffline`.
+
+**Verified (real output)**
+- iOS `xcodebuild test` with the live tour: **TEST SUCCEEDED** - MetalARMTests
+  41 passed (6 new: queue then sync, order kept, a lost reply resent without
+  logging twice, finish waits for the queue, a rejected set dropped with a
+  message, the queue surviving a relaunch); MetalARMUITests 9 passed, including
+  the new `testLoggingOfflineQueuesTheSet` and the live-backend tour.
+
+**Blocked**
+- Nothing.
+
+**Other agent needs to know**
+- A resend after a lost reply is safe only because the server dedupes on
+  `client_set_id` (`workout_store`); keep that contract if set logging changes.
+
+---
+
 ## 2026-09-14 (18) - Opus - launch prep: listing text, launch checklist, grey static pages
 
 **Changed**

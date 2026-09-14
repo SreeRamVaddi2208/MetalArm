@@ -11,6 +11,7 @@ struct RootView: View {
     }
 
     @Environment(AppModel.self) private var model
+    @Environment(\.scenePhase) private var scenePhase
     @AppStorage("hasOnboarded") private var hasOnboarded = false
     @State private var selectedTab: AppTab = .home
     @State private var authMode: AuthView.Mode = .signUp
@@ -48,6 +49,12 @@ struct RootView: View {
             }
         }
         .tint(Theme.accent)
+        // Sets saved offline go out as soon as the network is back, or when
+        // the app returns to the foreground.
+        .task { model.startSyncingWhenOnline() }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active { Task { await model.flushPendingSets() } }
+        }
         .fullScreenCover(isPresented: $model.showingSummary) {
             if let result = model.finishResult {
                 SummaryView(result: result, unit: model.weightUnit, inviteCode: model.shareInviteCode) {

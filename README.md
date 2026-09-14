@@ -167,7 +167,7 @@ A native SwiftUI app in [`ios/`](ios) for iPhone, iOS 18 and later.
 
 - Sign up or sign in; tokens are stored in the Keychain and refreshed automatically.
 - Home: level, rank, XP and this week's streak progress.
-- Workout: pick exercises from the library, see last session's numbers, log sets, and get PR, level-up and rest-timer banners. Finish or discard the session.
+- Workout: pick exercises from the library, see last session's numbers, log sets, and get PR, level-up and rest-timer banners. Finish or discard the session. Sets logged without a connection are saved on the phone and sync on their own when it's back.
 - Progress: a top-set chart and personal records for each exercise you have trained.
 - Ranks: your party's weekly leaderboard, with create, join and share-invite.
 - Profile: stats, badges, kg/lb preference, privacy policy, sign out, and delete account.

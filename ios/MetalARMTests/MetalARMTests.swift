@@ -469,6 +469,109 @@ struct AppModelTests {
         #expect(!model.sessionActive)
     }
 
+    // MARK: Offline logging
+
+    @Test func aSetLoggedOfflineIsQueuedAndSyncsLater() async throws {
+        let (model, api) = signedInModel()
+        await model.startWorkout()
+        await model.addExercise(try await bench(api))
+
+        api.failure = URLError(.notConnectedToInternet)
+        await model.logSet()
+        #expect(model.pendingSets.count == 1)
+        #expect(model.errorMessage.isEmpty)
+        #expect(model.setsLoggedCount == 0)
+        #expect(model.resting)
+
+        api.failure = nil
+        await model.flushPendingSets()
+        #expect(model.pendingSets.isEmpty)
+        #expect(model.setsLoggedCount == 1)
+    }
+
+    @Test func queuedSetsSyncInTheOrderTheyWereDone() async throws {
+        let (model, api) = signedInModel()
+        await model.startWorkout()
+        await model.addExercise(try await bench(api))
+
+        api.failure = URLError(.notConnectedToInternet)
+        for weight in ["80", "82.5", "85"] {
+            model.weightInput = weight
+            model.repsInput = "5"
+            await model.logSet()
+        }
+        #expect(model.pendingSets.map(\.weight) == [80, 82.5, 85])
+
+        api.failure = nil
+        await model.flushPendingSets()
+        let logged = try #require(model.session?.exercises.first?.sets)
+        #expect(logged.map(\.weightKg) == [80, 82.5, 85])
+    }
+
+    @Test func aLostReplyIsResentWithoutLoggingTwice() async throws {
+        let (model, api) = signedInModel()
+        await model.startWorkout()
+        await model.addExercise(try await bench(api))
+
+        // The set reaches the server; the reply never comes back.
+        api.dropNextLogSetResponse = true
+        await model.logSet()
+        #expect(model.pendingSets.count == 1)
+
+        await model.flushPendingSets()
+        #expect(model.pendingSets.isEmpty)
+        #expect(model.setsLoggedCount == 1)
+    }
+
+    @Test func finishingWaitsForQueuedSets() async throws {
+        let (model, api) = signedInModel()
+        await model.startWorkout()
+        await model.addExercise(try await bench(api))
+
+        api.failure = URLError(.notConnectedToInternet)
+        await model.logSet()
+        await model.finishWorkout()
+        #expect(model.sessionActive)
+        #expect(!model.showingSummary)
+        #expect(model.errorMessage == "1 set hasn't synced yet. Finish once you're back online so they count.")
+
+        api.failure = nil
+        await model.finishWorkout()
+        #expect(model.showingSummary)
+        #expect(model.finishResult?.session.workingSets == 1)
+        #expect(model.pendingSets.isEmpty)
+    }
+
+    @Test func aQueuedSetTheServerRejectsIsDroppedWithAMessage() async throws {
+        let (model, api) = signedInModel()
+        await model.startWorkout()
+        await model.addExercise(try await bench(api))
+
+        api.failure = URLError(.notConnectedToInternet)
+        await model.logSet()
+        // Meanwhile the workout was ended on another device.
+        api.failure = nil
+        try await api.abandonSession(sessionID: try #require(model.session?.id))
+
+        await model.flushPendingSets()
+        #expect(model.pendingSets.isEmpty)
+        #expect(model.errorMessage == "A set saved offline couldn't be logged: Workout not found")
+    }
+
+    @Test func theQueueSurvivesARelaunch() throws {
+        let file = FileManager.default.temporaryDirectory.appending(path: "pending-\(UUID().uuidString).json")
+        defer { try? FileManager.default.removeItem(at: file) }
+        let set = PendingSet(clientSetID: UUID(), sessionID: "s1", exerciseID: "e1", weight: 100, unit: .lb, reps: 5)
+
+        PendingSetStore(fileURL: file).save([set])
+        let relaunched = AppModel(api: MockAPIClient(), pendingStore: PendingSetStore(fileURL: file))
+        #expect(relaunched.pendingSets == [set])
+
+        // An empty queue leaves no file behind.
+        PendingSetStore(fileURL: file).save([])
+        #expect(!FileManager.default.fileExists(atPath: file.path()))
+    }
+
     @Test func progressTabsComeFromTheUsersRecords() async {
         let (model, _) = signedInModel()
         await model.loadProgress()
