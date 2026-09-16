@@ -262,6 +262,10 @@ async def profile(token: str) -> dict:
     return await request("GET", "/profile", token=token)
 
 
+async def league(token: str) -> dict:
+    return await request("GET", "/leagues/current", token=token)
+
+
 async def character(token: str) -> dict:
     return await request("GET", "/profile/character", token=token)
 

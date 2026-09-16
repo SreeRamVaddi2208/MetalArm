@@ -6,6 +6,7 @@ from app.api.routes import (
     auth,
     body,
     exercises,
+    leagues,
     parties,
     profile,
     quests,
@@ -28,3 +29,4 @@ api_router.include_router(exercises.router)
 api_router.include_router(routines.router)
 api_router.include_router(workouts.router)
 api_router.include_router(body.router)
+api_router.include_router(leagues.router)

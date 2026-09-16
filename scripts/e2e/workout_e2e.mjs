@@ -303,6 +303,9 @@ try {
   check('party page shows the workout leaderboard', await visible(page.getByText(/\d+ PTS/).first()));
   // This week's party boss (backend core/raids.py): the workouts above already hit it.
   check('party page shows the party raid', await visible(page.getByText('PARTY RAID')));
+  // This week's league: asking for it is what enters the user.
+  check('the page shows this week\'s league', await visible(page.getByText('LEAGUE', { exact: true })));
+  check('the league says where you stand', await visible(page.getByText(/You're \d+ of \d+ with \d+ points/)));
   check('the raid shows the boss HP', await visible(page.getByText(/[\d,]+ \/ [\d,]+ HP/).first()));
   // The party was made after this run's workouts, and only a member's workouts hit it.
   check('a new party\'s boss has no hits yet', await visible(page.getByText('No hits yet', { exact: false })));

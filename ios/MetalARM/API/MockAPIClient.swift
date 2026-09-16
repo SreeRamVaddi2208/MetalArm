@@ -314,6 +314,11 @@ final class MockAPIClient: MetalArmAPI {
         return fixture(ContractFixtures.rankTrials)
     }
 
+    func league() async throws -> League {
+        try check()
+        return fixture(ContractFixtures.league)
+    }
+
     func character() async throws -> CharacterSheet {
         try check()
         var sheet: CharacterSheet = fixture(ContractFixtures.character)

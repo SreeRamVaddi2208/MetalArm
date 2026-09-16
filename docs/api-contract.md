@@ -10,7 +10,7 @@
 
 - **API title:** MetalArm API
 - **API version:** 0.1.0
-- **Generated:** 2026-09-16 21:23 UTC
+- **Generated:** 2026-09-16 21:39 UTC
 - **Source:** `http://localhost:8000/openapi.json`
 
 ---
@@ -401,6 +401,23 @@ added mid-workout. Empty `sets` when it has never been done.
 |---|---|
 | `200` | Successful Response |
 | `422` | Validation Error |
+
+---
+
+### `GET /api/v1/leagues/current`
+
+**Current League**
+
+This week's league. The placement is created on first access, which is
+also when last week's result is judged (app/core/leagues.py) - so leagues
+need no scheduled job. Standings are the points ledger summed over the ISO
+week in UTC, never a stored score.
+
+*Tags:* `leagues`
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
 
 ---
 
@@ -1721,6 +1738,32 @@ otherwise 503 with per-dependency detail.
 | `party_id` | `string` | yes |
 | `total_party_xp` | `integer` | yes |
 | `entries` | `LeaderboardEntry[]` | yes |
+
+#### `LeagueEntryOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `position` | `integer` | yes |
+| `user_id` | `string` | yes |
+| `display_name` | `string` | yes |
+| `points` | `integer` | yes |
+| `level` | `integer` | yes |
+| `rank` | `string` | yes |
+| `is_me` | `boolean` | yes |
+
+#### `LeagueOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `week_key` | `string` | yes |
+| `division` | `integer` | yes |
+| `division_label` | `string` | yes |
+| `group_no` | `integer` | yes |
+| `ends_at` | `string` | yes |
+| `promoted_from` | `integer | null` | yes |
+| `promote_cutoff` | `integer` | yes |
+| `demote_cutoff` | `integer` | yes |
+| `entries` | `LeagueEntryOut[]` | yes |
 
 #### `LedgerEntryOut`
 

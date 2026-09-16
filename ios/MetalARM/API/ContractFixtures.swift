@@ -162,6 +162,15 @@ enum ContractFixtures {
      "exercises_created": ["Cable Kickback (Cable)"], "xp_awarded": 420, "duplicate": false, "progression": \(progression)}
     """
 
+    static let league = """
+    {"week_key": "2026-W38", "division": 1, "division_label": "Silver", "group_no": 0,
+     "ends_at": "2026-09-21T00:00:00Z", "promoted_from": 3, "promote_cutoff": 5, "demote_cutoff": 15,
+     "entries": [
+      {"position": 1, "user_id": "u9", "display_name": "Kiran", "points": 940, "level": 16, "rank": "C", "is_me": false},
+      {"position": 2, "user_id": "\(userID)", "display_name": "Sree Ram", "points": 815, "level": 14, "rank": "C", "is_me": true},
+      {"position": 3, "user_id": "u2", "display_name": "Meera", "points": 660, "level": 13, "rank": "D", "is_me": false}]}
+    """
+
     static let character = """
     {"character_class": "", "class_label": "", "stats": [
       {"key": "strength", "label": "Strength", "value": 42, "detail": "2.5x bodyweight across bench, squat and deadlift", "highlighted": false},

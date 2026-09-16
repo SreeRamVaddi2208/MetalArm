@@ -174,6 +174,8 @@ final class LiveAPIClient: MetalArmAPI {
         try await send(.get("parties/\(partyID)/raid"))
     }
 
+    func league() async throws -> League { try await send(.get("leagues/current")) }
+
     // MARK: - Transport
 
     private struct RequestSpec {

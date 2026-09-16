@@ -58,6 +58,7 @@ final class AppModel {
     var selectedPartyID: String?
     var partyBoard: PartyBoard?
     var partyRaid: PartyRaid?
+    var league: League?
 
     // Profile
     var profile: Profile?
@@ -209,6 +210,7 @@ final class AppModel {
         selectedPartyID = nil
         partyBoard = nil
         partyRaid = nil
+        league = nil
     }
 
     // MARK: - Home
@@ -553,6 +555,12 @@ final class AppModel {
             selectedPartyID = joined.id
             await loadParties()
         }
+    }
+
+    /// This week's league. The placement is made server-side on first read,
+    /// so simply asking is what enters the user into the week.
+    func loadLeague() async {
+        league = try? await api.league()
     }
 
     // MARK: - Profile

@@ -37,6 +37,9 @@ struct LeaderboardView: View {
                 }
                 .padding(.bottom, 6)
 
+                if let league = model.league {
+                    leagueCard(league)
+                }
                 if model.parties.isEmpty {
                     if !model.isBusy { emptyState }
                 } else {
@@ -57,6 +60,7 @@ struct LeaderboardView: View {
         }
         .background(Theme.bg)
         .task { await model.loadParties() }
+        .task { await model.loadLeague() }
         .refreshable { await model.loadParties() }
         .alert("Create a party", isPresented: $showingCreate) {
             TextField("Party name", text: $partyName)
@@ -82,6 +86,51 @@ struct LeaderboardView: View {
         } message: {
             Text("Enter the code a party member shared with you.")
         }
+    }
+
+    /// This week's league: division, where the user sits, and the cutoffs.
+    private func leagueCard(_ league: League) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text(league.divisionLabel.uppercased())
+                    .font(Theme.display(15))
+                    .foregroundStyle(Theme.text)
+                Spacer()
+                Text("\(league.daysLeft(from: Date())) days left")
+                    .font(Theme.body(11))
+                    .foregroundStyle(Theme.dim)
+            }
+            if let me = league.me {
+                Text("You're \(me.position) of \(league.entries.count) with \(me.points) points")
+                    .font(Theme.body(12, .semibold))
+                    .foregroundStyle(Theme.accent)
+            }
+            Text("Top \(league.promoteCutoff) move up. Bottom places move down.")
+                .font(Theme.body(10.5))
+                .foregroundStyle(Theme.dim)
+            ForEach(league.entries.prefix(5)) { entry in
+                HStack(spacing: 10) {
+                    Text("\(entry.position)")
+                        .font(Theme.display(12))
+                        .foregroundStyle(entry.position <= league.promoteCutoff ? Theme.accent : Theme.dim)
+                        .frame(width: 20, alignment: .leading)
+                    Text(entry.displayName)
+                        .font(Theme.body(12, entry.isMe ? .bold : .regular))
+                        .foregroundStyle(entry.isMe ? Theme.accent : Theme.text)
+                    Spacer()
+                    Text("\(entry.points)")
+                        .font(Theme.body(12, .semibold))
+                        .foregroundStyle(Theme.text)
+                }
+                .accessibilityElement(children: .combine)
+            }
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .cardStyle(cornerRadius: 16)
+        .padding(.bottom, 6)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("leagueCard")
     }
 
     private var emptyState: some View {

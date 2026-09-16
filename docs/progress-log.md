@@ -14,6 +14,49 @@ Entry format:
 
 ---
 
+## 2026-09-17 (26) - Opus - weekly leagues
+
+**Changed**
+- New table `league_memberships` (one row per user per ISO week, unique on
+  user + week, migration `676864270370`) and `app/core/leagues.py`: leagues of
+  at most 20 per division (Bronze to Diamond), the top 5 promoted and the
+  bottom 5 relegated.
+- **No cron anywhere.** The current week's placement is created lazily on first
+  access, and that is the moment last week's result is judged - the same
+  derive-on-read shape as the streak grace logic. Someone who never opens the
+  app simply has no membership for the weeks they missed, which is the honest
+  answer: they were not in a league.
+- Standings are never stored: they are the points ledger summed over the ISO
+  week in UTC (one window for everyone on a board, rather than each viewer's
+  timezone), clamped at 0 so a reversal of an older award can't show a negative
+  score. A league therefore can never drift out of step with the wallet.
+- API: `GET /leagues/current`. `docs/api-contract.md` regenerated.
+- Web: a LEAGUE panel on the parties page. iOS: a league card at the top of the
+  Ranks tab, with the division, your place and the promotion cutoff.
+
+**Verified (real output)**
+- Backend suite passes, including 7 new `test_leagues.py` tests: a first league
+  starts in Bronze, this week's ledger points order the board, a reversal never
+  drags a score below zero, a top finish promotes and a bottom finish
+  relegates, asking twice keeps one placement, and a full league opens another.
+- `alembic check` clean with migration `676864270370` on the dev DB.
+- iOS: `MetalARMTests` plus `testProgressRanksAndProfile` - TEST SUCCEEDED.
+- Web e2e: ALL PASSED (85), including the LEAGUE panel and the standing line.
+- A Reflex trap worth knowing: the view model first called its list `entries`,
+  which collides with `ObjectVar.entries` (the built-in Object.entries
+  operation). The field was invisible to `rx.foreach` - it resolved to the
+  METHOD - and the page failed to compile with "Cannot pass a Var to a built-in
+  function". Renamed to `rows`. Avoid field names that are Var operations
+  (`entries`, `keys`, `values`, `items`, `length`).
+
+**Blocked:** nothing.
+
+**Other agent needs to know:** promotion is judged before relegation, so in a
+tiny league (fewer than PROMOTE + DEMOTE members) everyone who places in the
+top 5 goes up. That is intentional while the user base is small.
+
+---
+
 ## 2026-09-17 (25) - Opus - character stats and classes
 
 **Changed**

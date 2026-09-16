@@ -35,6 +35,7 @@ MetalArm has three parts that share one API:
 - **Progression** - points become XP, levels and ranks from E to S. Ranks B, A and S also need a strength trial: a bench at 1x, squat at 1.5x and deadlift at 2x bodyweight. Weekly workout streaks, badges and a rewards shop.
 - **Quests** - daily, weekly and one-off goals in your own time zone.
 - **Parties** - invite codes, a shared quest board, weekly workout leaderboards, and a weekly raid boss the whole party brings down with its workouts (it heals on days nobody trains).
+- **Weekly leagues** - twenty lifters, one week, points from the ledger. The top five move up a division, the bottom five move down, and the placement is made the first time you look - no scheduled job anywhere.
 - **Character sheet** - Strength from your bodyweight-relative lifts, Endurance from four weeks of volume, Discipline from weeks on target. Pick Powerlifter, Bodybuilder or Athlete to highlight what you care about; a class never changes a score.
 - **What to try next** - each exercise card suggests the next set by double progression, calls a plateau after three sessions with no new best, and asks for a lighter week after a long unbroken climb.
 - **Import** - bring your history from Strong or Hevy: drop their CSV export on the web profile, or pick it from Profile on iPhone. Records, rank trials and charts count it; points, streaks and leaderboards don't.

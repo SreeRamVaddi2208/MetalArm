@@ -467,3 +467,65 @@ class StatRow:
             detail=data.get("detail") or "",
             highlighted=bool(data.get("highlighted")),
         )
+
+
+@dataclasses.dataclass
+class LeagueEntryRow:
+    position: int = 0
+    display_name: str = ""
+    points: int = 0
+    level: int = 0
+    rank: str = "E"
+    is_me: bool = False
+    # True while the position is inside the promotion places.
+    promoting: bool = False
+
+    @classmethod
+    def from_api(cls, data: dict[str, Any], promote_cutoff: int) -> "LeagueEntryRow":
+        position = int(data.get("position") or 0)
+        return cls(
+            position=position,
+            display_name=data.get("display_name") or "",
+            points=int(data.get("points") or 0),
+            level=int(data.get("level") or 0),
+            rank=data.get("rank") or "E",
+            is_me=bool(data.get("is_me")),
+            promoting=0 < position <= promote_cutoff,
+        )
+
+
+@dataclasses.dataclass
+class LeagueView:
+    """This week's league (backend app/core/leagues.py)."""
+
+    loaded: bool = False
+    division_label: str = ""
+    week_key: str = ""
+    promote_cutoff: int = 0
+    days_left_label: str = ""
+    standing_label: str = ""
+    # NOT `entries`: that name collides with Reflex's ObjectVar.entries
+    # operation, and the field becomes invisible to rx.foreach.
+    rows: list[LeagueEntryRow] = dataclasses.field(default_factory=list)
+
+    @classmethod
+    def from_api(cls, data: dict[str, Any]) -> "LeagueView":
+        cutoff = int(data.get("promote_cutoff") or 0)
+        entries = [LeagueEntryRow.from_api(e, cutoff) for e in data.get("entries") or []]
+        me = next((e for e in entries if e.is_me), None)
+        ends_at = data.get("ends_at") or ""
+        days = 0
+        if ends_at:
+            end = dt.datetime.fromisoformat(ends_at.replace("Z", "+00:00"))
+            days = max(0, math.ceil((end - dt.datetime.now(dt.timezone.utc)).total_seconds() / 86400))
+        return cls(
+            loaded=True,
+            division_label=data.get("division_label") or "",
+            week_key=data.get("week_key") or "",
+            promote_cutoff=cutoff,
+            days_left_label=f"{days} day{'' if days == 1 else 's'} left",
+            standing_label=(
+                f"You're {me.position} of {len(entries)} with {me.points} points" if me else ""
+            ),
+            rows=entries,
+        )
