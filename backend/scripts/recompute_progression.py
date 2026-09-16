@@ -16,7 +16,8 @@ app and talks to Postgres over the compose network. Root scripts/ holds
 host-run tooling that only speaks HTTP (generate_api_contract.py).
 
 Rank additionally depends on the user's streak, which is judged against their
-LOCAL date - hence the join to users.timezone rather than a bare UPDATE.
+LOCAL date - hence the join to users.timezone rather than a bare UPDATE -
+and on the strength trials passed, read from level_progress.trials_passed.
 """
 
 from __future__ import annotations
@@ -51,6 +52,9 @@ def recompute(dry_run: bool = False) -> int:
                 leveling.effective_streak(
                     progress.current_streak, progress.last_completed_on, today
                 ),
+                # Trials depend on lifts and bodyweight, not the curve, so the
+                # stored letters stay valid (app/core/rank_trials.py).
+                progress.trials_passed,
             )
 
             if new_level == progress.current_level and new_rank == progress.rank:

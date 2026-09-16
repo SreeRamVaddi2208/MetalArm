@@ -81,13 +81,13 @@ def apply_xp(
         progress.current_streak, progress.last_completed_on, today
     )
     level_before = progress.current_level
-    rank_before = leveling.rank_for(level_before, streak)
+    rank_before = leveling.rank_for(level_before, streak, progress.trials_passed)
 
     # Clamped: a reversal can never take more XP than exists, and
     # ck_progress_xp_non_negative would reject the row outright if it did.
     progress.total_xp = max(0, progress.total_xp + xp)
     progress.current_level = leveling.level_for_xp(progress.total_xp)
-    progress.rank = leveling.rank_for(progress.current_level, streak)
+    progress.rank = leveling.rank_for(progress.current_level, streak, progress.trials_passed)
 
     return ProgressionDelta(
         xp_awarded=xp,
@@ -127,6 +127,7 @@ def apply_completion(
         leveling.effective_streak(
             progress.current_streak, progress.last_completed_on, today
         ),
+        progress.trials_passed,
     )
 
     progress.total_xp += xp
@@ -138,7 +139,9 @@ def apply_completion(
     # completion.
     _apply_streak(progress, today)
 
-    progress.rank = leveling.rank_for(progress.current_level, progress.current_streak)
+    progress.rank = leveling.rank_for(
+        progress.current_level, progress.current_streak, progress.trials_passed
+    )
 
     return ProgressionDelta(
         xp_awarded=xp,

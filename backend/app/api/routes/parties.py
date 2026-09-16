@@ -136,7 +136,7 @@ def _derive_rank(progress: LevelProgress, tz_name: str, now: dt.datetime) -> str
     streak = leveling.effective_streak(
         progress.current_streak, progress.last_completed_on, today
     )
-    return leveling.rank_for(progress.current_level, streak).value
+    return leveling.rank_for(progress.current_level, streak, progress.trials_passed).value
 
 
 def _serialize_party(

@@ -108,12 +108,23 @@ final class MetalARMUITests: XCTestCase {
     }
 
     @MainActor
+    private func scrollUntilHittable(_ element: XCUIElement, in app: XCUIApplication, maxSwipes: Int = 8) {
+        var swipes = 0
+        while !element.isHittable && swipes < maxSwipes {
+            app.swipeUp()
+            swipes += 1
+        }
+        XCTAssertTrue(element.isHittable, "\(element) never scrolled into view")
+    }
+
+    @MainActor
     private func deleteAccount(_ app: XCUIApplication, screenshot: String? = nil) {
         openTab(app, "Profile")
         let delete = app.buttons["deleteAccountButton"]
         XCTAssertTrue(delete.waitForExistence(timeout: 10), "Delete Account missing")
-        app.swipeUp()
-        app.swipeUp()
+        // Profile grows with its cards (badges, rank trials); scroll until the
+        // button is actually on screen rather than a fixed number of swipes.
+        scrollUntilHittable(delete, in: app)
         delete.tap()
         type(password, into: app.secureTextFields["deletePasswordField"])
         if let screenshot { attachScreenshot(app, named: screenshot) }
@@ -192,6 +203,7 @@ final class MetalARMUITests: XCTestCase {
 
         openTab(app, "Profile")
         XCTAssertTrue(app.staticTexts["Badges"].waitForExistence(timeout: 5), "Profile did not load")
+        XCTAssertTrue(element(app, "rankTrialsCard").waitForExistence(timeout: 5), "Rank trials missing")
         attachScreenshot(app, named: "10 Profile")
     }
 

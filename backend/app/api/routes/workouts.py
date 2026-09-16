@@ -40,7 +40,7 @@ from app.core import personal_records as prs
 from app.core import points_engine as pe
 from app.core import workout_rules as rules
 from app.core import workout_store as store
-from app.core import raids
+from app.core import raids, rank_trials
 from app.core import workout_streaks as streaks
 from app.core.periods import local_now, resolve_timezone
 from app.core.progression import (
@@ -602,6 +602,8 @@ def log_set(
 
     outcome = _award_set(db, user=current_user, session=session, entry=entry, events=events)
     delta = apply_xp(progress, xp=outcome.total, at=now, tz_name=current_user.timezone)
+    # A new heaviest lift can pass a rank trial - and level up the rank here.
+    delta = rank_trials.refresh(db, progress, current_user, delta)
 
     response = _set_response(
         db, session=session, entry=entry, exercise=exercise, outcome=outcome,
@@ -678,6 +680,7 @@ def update_set(
     )
     net = outcome.total - reversed_points
     delta = apply_xp(progress, xp=net, at=now, tz_name=current_user.timezone)
+    delta = rank_trials.refresh(db, progress, current_user, delta)
 
     exercise = db.get(Exercise, entry.exercise_id)
     response = _set_response(
@@ -723,6 +726,7 @@ def delete_set(
     store.replay_exercise(db, current_user.id, exercise_id)
 
     delta = apply_xp(progress, xp=-reversed_points, at=_now(), tz_name=current_user.timezone)
+    delta = rank_trials.refresh(db, progress, current_user, delta)
     session_points = store.session_ledger(db, session.id).total
     db.commit()
     return SetDeleteResponse(
@@ -815,6 +819,8 @@ def finish_session(
             apply_xp(progress, xp=completion_xp, at=now, tz_name=tz), points_awarded=credit
         )
 
+    delta = rank_trials.refresh(db, progress, current_user, delta, now)
+
     # A real workout hits the boss of every party the user is in.
     raid_hits = (
         raids.hit_parties(
@@ -893,6 +899,7 @@ def abandon_session(
         store.replay_exercise(db, current_user.id, exercise_id)
 
     delta = apply_xp(progress, xp=-reversed_points, at=now, tz_name=current_user.timezone)
+    delta = rank_trials.refresh(db, progress, current_user, delta)
     summary = _summaries(db, [session])[0]
     db.commit()
     return AbandonResponse(

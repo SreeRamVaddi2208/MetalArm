@@ -36,6 +36,11 @@ struct ProgressInfo: Codable, Equatable {
     var nextRank: String?
     var nextRankLevel: Int?
     var nextRankStreak: Int?
+    /// The strength trial between the user and the next rank, e.g.
+    /// "Barbell Bench Press at 1x bodyweight".
+    var nextRankTrial: String?
+    /// Rank trials passed so far, e.g. "BA".
+    var trialsPassed: String?
 
     var xpProgress: Double {
         xpForNextLevel > 0 ? min(1, Double(xpIntoLevel) / Double(xpForNextLevel)) : 0
@@ -349,6 +354,26 @@ struct RaidHitter: Codable, Equatable, Identifiable {
 /// This week's party boss (GET /parties/{id}/raid; the rules are in the
 /// backend's app/core/raids.py). Every finished workout hits it for the
 /// weight lifted; on days nobody trains it heals.
+/// GET /profile/trials: a strength standard that gates rank B, A or S.
+struct RankTrial: Codable, Equatable, Identifiable {
+    var rank: String
+    var lift: String
+    var description: String
+    var multiplier: Double
+    /// Nil until a bodyweight is logged.
+    var targetKg: Double?
+    var bestKg: Double?
+    var passed: Bool
+
+    var id: String { rank }
+
+    /// How close the best lift is to the target, 0...1.
+    var fraction: Double {
+        guard let targetKg, targetKg > 0 else { return 0 }
+        return min(1, (bestKg ?? 0) / targetKg)
+    }
+}
+
 struct PartyRaid: Codable, Equatable {
     var partyId: String
     var weekKey: String
