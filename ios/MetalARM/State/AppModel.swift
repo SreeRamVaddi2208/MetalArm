@@ -27,6 +27,10 @@ final class AppModel {
     /// in a spy - a unit-test host has no notification centre worth talking to.
     var notifier: NotificationScheduling = SystemNotificationScheduler()
     var notificationSettings = NotificationSettings.load()
+    /// Apple Health. A var for the same reason as `notifier`: a unit-test host
+    /// has no HealthKit store, so tests inject a spy.
+    var healthWriter: HealthWriting = AppleHealthWriter()
+    var healthSettings = HealthSettings.load()
 
     // Home
     var me: Me?
@@ -433,6 +437,46 @@ final class AppModel {
         // reminder for tonight stops being needed.
         await askForNotificationsAfterFirstWorkout()
         await refreshStreakReminder()
+        await saveToHealthIfEnabled()
+    }
+
+    /// Adds the finished workout to Apple Health, if the user asked for that.
+    /// Failure is silent on purpose: Health is a nice-to-have, and a workout
+    /// that is already saved on the server must not look like it failed.
+    func saveToHealthIfEnabled() async {
+        guard healthSettings.enabled,
+              let summary = finishResult?.session,
+              let start = parseServerDate(summary.startedAt),
+              let endedAt = summary.endedAt,
+              let end = parseServerDate(endedAt)
+        else { return }
+        _ = await healthWriter.save(
+            FinishedWorkout(
+                start: start,
+                end: end,
+                volumeKg: summary.totalVolumeKg,
+                workingSets: summary.workingSets
+            )
+        )
+    }
+
+    /// Turning it on asks for permission the first time - never at launch.
+    func setHealthSync(_ on: Bool) async {
+        guard on else {
+            healthSettings.enabled = false
+            healthSettings.save()
+            return
+        }
+        if !healthSettings.asked {
+            healthSettings.asked = true
+            healthSettings.save()
+            guard await healthWriter.requestAuthorization() else {
+                errorMessage = "Health didn't allow that. You can change it in Settings > Health > Data Access."
+                return
+            }
+        }
+        healthSettings.enabled = true
+        healthSettings.save()
     }
 
     func abandonWorkout() async {

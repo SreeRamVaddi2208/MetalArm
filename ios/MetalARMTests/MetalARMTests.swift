@@ -414,6 +414,26 @@ final class SpyNotifier: NotificationScheduling, @unchecked Sendable {
     func cancel(_ ids: [String]) async { cancelled.append(contentsOf: ids) }
 }
 
+/// Records what WOULD reach Apple Health.
+final class SpyHealthWriter: HealthWriting, @unchecked Sendable {
+    var available = true
+    var allow = true
+    var askedCount = 0
+    var saved: [FinishedWorkout] = []
+
+    var isAvailable: Bool { available }
+
+    func requestAuthorization() async -> Bool {
+        askedCount += 1
+        return allow
+    }
+
+    func save(_ workout: FinishedWorkout) async -> Bool {
+        saved.append(workout)
+        return true
+    }
+}
+
 @MainActor
 struct AppModelTests {
     private func signedInModel() -> (AppModel, MockAPIClient) {
@@ -641,6 +661,42 @@ struct AppModelTests {
         await model.chooseClass("powerlifter")
         #expect(model.characterSheet?.characterClass == "")
         #expect(model.characterSheet?.stats.contains { $0.highlighted } == false)
+    }
+
+    @Test func aFinishedWorkoutReachesHealthOnlyWhenAskedFor() async throws {
+        let (model, _) = signedInModel()
+        let spy = SpyHealthWriter()
+        model.healthWriter = spy
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        model.finishResult = try decoder.decode(
+            FinishResult.self, from: Data(ContractFixtures.finishResult.utf8)
+        )
+
+        // Off until the user turns it on: an integration that starts writing
+        // on its own is a surprise.
+        model.healthSettings = HealthSettings()
+        await model.saveToHealthIfEnabled()
+        #expect(spy.saved.isEmpty)
+
+        model.healthSettings.enabled = true
+        await model.saveToHealthIfEnabled()
+        let saved = try #require(spy.saved.first)
+        #expect(saved.volumeKg > 0)
+        #expect(saved.end > saved.start)
+    }
+
+    @Test func turningHealthOnAsksOnce() async {
+        let (model, _) = signedInModel()
+        let spy = SpyHealthWriter()
+        model.healthWriter = spy
+        model.healthSettings = HealthSettings()
+
+        await model.setHealthSync(true)
+        await model.setHealthSync(false)
+        await model.setHealthSync(true)
+        #expect(spy.askedCount == 1)
+        #expect(model.healthSettings.enabled)
     }
 
     @Test func theRestTimerSchedulesAndCancelsItsAlert() async throws {

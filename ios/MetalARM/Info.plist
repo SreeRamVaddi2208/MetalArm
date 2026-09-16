@@ -25,6 +25,9 @@
 	<key>METALARMWebBaseURL</key>
 	<string>$(METALARM_WEB_BASE_URL)</string>
 	<!-- Plain HTTP only to local addresses, for the Debug build's local stack. -->
+	<!-- Shown by iOS when the Health permission sheet appears. -->
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>MetalArm adds your finished workouts to Apple Health, so they appear in Fitness alongside everything else you do. It never reads your health data.</string>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsLocalNetworking</key>

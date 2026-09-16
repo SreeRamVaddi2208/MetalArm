@@ -308,6 +308,15 @@ struct ProfileView: View {
                 .padding(.vertical, 10)
                 divider
                 Toggle(isOn: Binding(
+                    get: { model.healthSettings.enabled },
+                    set: { on in Task { await model.setHealthSync(on) } }
+                )) {
+                    settingsLabel("Save to Apple Health", icon: "heart")
+                }
+                .padding(.trailing, 16)
+                .accessibilityIdentifier("healthSyncToggle")
+                divider
+                Toggle(isOn: Binding(
                     get: { model.notificationSettings.restAlerts },
                     set: { on in Task { await model.setRestAlerts(on) } }
                 )) {
