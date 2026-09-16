@@ -262,6 +262,14 @@ async def profile(token: str) -> dict:
     return await request("GET", "/profile", token=token)
 
 
+async def character(token: str) -> dict:
+    return await request("GET", "/profile/character", token=token)
+
+
+async def set_character_class(token: str, value: str) -> dict:
+    return await request("PATCH", "/auth/me", token=token, json={"character_class": value})
+
+
 async def rank_trials(token: str) -> list[dict]:
     return await request("GET", "/profile/trials", token=token)
 

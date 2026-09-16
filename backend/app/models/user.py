@@ -51,6 +51,10 @@ class User(UUIDPrimaryKey, Timestamps, Base):
     )
     # Bumped to revoke every token issued so far ("sign out everywhere").
     # Access and refresh tokens carry the value they were minted with.
+    # Cosmetic character class, "" until one is picked (app/core/character.py).
+    character_class: Mapped[str] = mapped_column(
+        String(16), nullable=False, server_default=""
+    )
     token_version: Mapped[int] = mapped_column(
         Integer, nullable=False, server_default="0"
     )
@@ -62,6 +66,10 @@ class User(UUIDPrimaryKey, Timestamps, Base):
     __table_args__ = (
         CheckConstraint("length(display_name) >= 1", name="ck_users_display_name"),
         CheckConstraint("weight_unit IN ('kg', 'lb')", name="ck_users_weight_unit"),
+        CheckConstraint(
+            "character_class IN ('', 'powerlifter', 'bodybuilder', 'athlete')",
+            name="ck_users_character_class",
+        ),
     )
 
 

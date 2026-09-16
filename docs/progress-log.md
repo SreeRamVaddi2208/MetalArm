@@ -14,6 +14,45 @@ Entry format:
 
 ---
 
+## 2026-09-17 (25) - Opus - character stats and classes
+
+**Changed**
+- `app/core/character.py`: three stats from real training, each 0-100 with the
+  number behind it - Strength (best estimated 1RM on the bench, squat and
+  deadlift relative to the latest bodyweight, 6x bodyweight total = 100),
+  Endurance (working-set volume over four weeks, 40,000 kg = 100) and
+  Discipline (how many of the last eight weeks hit the workout target).
+- Classes are cosmetic by design: `users.character_class` (migration
+  `4e45653249de`, "" until picked, CHECK-constrained) only decides which stats
+  are highlighted. Nothing about a class touches points, XP, records, raids or
+  a leaderboard, so no one can pick a class to score better.
+- API: `GET /profile/character`, and `character_class` on `PATCH /auth/me` and
+  the identity payload. `docs/api-contract.md` regenerated.
+- Web: a CHARACTER panel on the profile with bars and three class buttons
+  (tapping the current one clears it). iOS: the same as a Character card.
+
+**Verified (real output)**
+- Backend suite passes, including 6 new `test_character.py` tests: a new
+  account scores zero and says why, training moves the stats, a class
+  highlights without changing a single score, each class highlights its own,
+  an unknown class is a 422, and the class can be cleared.
+- `alembic check` clean with migration `4e45653249de` on the dev DB.
+- iOS: `MetalARMTests` plus `testProgressRanksAndProfile` - TEST SUCCEEDED.
+- Web e2e: ALL PASSED (83), including picking a class on the profile.
+- One self-inflicted bug worth recording: the panel first used a `theme.SILVER`
+  token that doesn't exist. The frontend Dockerfile compiles every page at
+  BUILD time, so the image build failed instead of shipping a broken profile -
+  the e2e then ran against the stale image, which is what the failures were.
+  The token is `ACCENT_DIM`.
+
+**Blocked:** nothing.
+
+**Other agent needs to know:** the ceilings (`STRENGTH_TOTAL_FOR_MAX`,
+`ENDURANCE_VOLUME_FOR_MAX`, `DISCIPLINE_WEEKS`) are what "100" means; changing
+one re-scores everybody at once, since nothing is stored.
+
+---
+
 ## 2026-09-17 (24) - Opus - progression hints
 
 **Changed**

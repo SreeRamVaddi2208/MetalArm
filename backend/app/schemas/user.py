@@ -2,9 +2,11 @@
 
 import datetime as dt
 import uuid
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict
 
+from app.models.enums import CharacterClass
 from app.models.workout_enums import WeightUnit
 
 
@@ -61,6 +63,8 @@ class UserOut(BaseModel):
     created_at: dt.datetime
     # Workout display unit. Weights are always stored in kg.
     weight_unit: str = "kg"
+    # Cosmetic character class, "" until one is picked.
+    character_class: str = ""
 
 
 class MeOut(UserOut):
@@ -71,3 +75,5 @@ class MeUpdate(BaseModel):
     """PATCH /auth/me. Fields left out are unchanged."""
 
     weight_unit: WeightUnit | None = None
+    # "" clears the class; anything outside the enum is a 422.
+    character_class: CharacterClass | Literal[""] | None = None

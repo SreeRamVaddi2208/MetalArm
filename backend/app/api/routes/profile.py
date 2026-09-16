@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import CurrentUser, DbSession
 from app.core import badges as badge_rules
+from app.core import character as character_sheet
 from app.core import leveling, rank_trials
 from app.core import workout_streaks
 from app.core.periods import local_now
@@ -24,7 +25,14 @@ from app.models.party import (
 )
 from app.models.quest import QuestCompletion
 from app.models.reward import RewardRedemption
-from app.schemas.profile import BadgeOut, LifetimeStats, ProfileOut, TrialOut
+from app.schemas.profile import (
+    BadgeOut,
+    CharacterOut,
+    LifetimeStats,
+    ProfileOut,
+    StatOut,
+    TrialOut,
+)
 from app.schemas.user import ProgressOut, UserOut
 
 router = APIRouter(prefix="/profile", tags=["profile"])
@@ -208,3 +216,16 @@ def rank_trial_status(current_user: CurrentUser, db: DbSession) -> list[TrialOut
     the user's latest bodyweight, their best so far, and whether it is passed
     (app/core/rank_trials.py). Targets are null until a bodyweight is logged."""
     return [TrialOut(**vars(status)) for status in rank_trials.statuses(db, current_user.id)]
+
+
+@router.get("/character", response_model=CharacterOut)
+def character(current_user: CurrentUser, db: DbSession) -> CharacterOut:
+    """The character sheet: Strength, Endurance and Discipline, each 0-100 with
+    the number behind it (app/core/character.py). The class only marks which
+    stats are highlighted - it never changes a score."""
+    sheet = character_sheet.sheet(db, current_user)
+    return CharacterOut(
+        character_class=sheet.character_class,
+        class_label=sheet.class_label,
+        stats=[StatOut(**vars(stat)) for stat in sheet.stats],
+    )

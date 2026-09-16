@@ -64,6 +64,7 @@ struct Me: Codable, Equatable {
     var createdAt: String
     var weightUnit: String
     var progress: ProgressInfo
+    var characterClass: String?
 }
 
 struct Badge: Codable, Equatable, Identifiable {
@@ -365,6 +366,25 @@ struct RaidHitter: Codable, Equatable, Identifiable {
 /// This week's party boss (GET /parties/{id}/raid; the rules are in the
 /// backend's app/core/raids.py). Every finished workout hits it for the
 /// weight lifted; on days nobody trains it heals.
+/// GET /profile/character: one character stat, 0-100 with the number behind it.
+struct CharacterStat: Codable, Equatable, Identifiable {
+    var key: String
+    var label: String
+    var value: Int
+    var detail: String
+    var highlighted: Bool
+
+    var id: String { key }
+    var fraction: Double { min(1, max(0, Double(value) / 100)) }
+}
+
+/// The character sheet. The class only highlights stats - it changes no score.
+struct CharacterSheet: Codable, Equatable {
+    var characterClass: String
+    var classLabel: String
+    var stats: [CharacterStat]
+}
+
 /// POST /workouts/import: what a Strong or Hevy export added to the history.
 struct WorkoutImportResult: Codable, Equatable {
     var source: String

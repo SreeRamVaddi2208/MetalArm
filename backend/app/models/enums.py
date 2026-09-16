@@ -26,6 +26,15 @@ class Rank(str, enum.Enum):
     S = "S"
 
 
+class CharacterClass(str, enum.Enum):
+    """Cosmetic only: a class decides which character stats are highlighted
+    (app/core/character.py). It never touches points, XP or a leaderboard."""
+
+    POWERLIFTER = "powerlifter"
+    BODYBUILDER = "bodybuilder"
+    ATHLETE = "athlete"
+
+
 class QuestStatus(str, enum.Enum):
     """Lifecycle of a quest DEFINITION.
 

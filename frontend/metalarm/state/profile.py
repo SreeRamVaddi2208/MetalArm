@@ -5,7 +5,7 @@ from __future__ import annotations
 import reflex as rx
 
 from metalarm import api
-from metalarm.models import Badge, LifetimeStats, TrialRow, import_summary
+from metalarm.models import Badge, LifetimeStats, StatRow, TrialRow, import_summary
 from metalarm.state.auth import AuthState
 
 
@@ -15,6 +15,9 @@ class ProfileState(rx.State):
     badges_earned: int = 0
     badges_total: int = 0
     trials: list[TrialRow] = []
+    stats_sheet: list[StatRow] = []
+    character_class: str = ""
+    class_label: str = ""
     importing: bool = False
     import_message: str = ""
     loading: bool = False
@@ -40,6 +43,10 @@ class ProfileState(rx.State):
             self.badges_total = data.get("badges_total") or 0
             trials = await api.rank_trials(auth.token)
             self.trials = [TrialRow.from_api(t, auth.weight_unit) for t in trials]
+            sheet = await api.character(auth.token)
+            self.stats_sheet = [StatRow.from_api(s) for s in sheet.get("stats") or []]
+            self.character_class = sheet.get("character_class") or ""
+            self.class_label = sheet.get("class_label") or ""
         except api.ApiError as exc:
             self.error = exc.detail
         finally:
@@ -63,5 +70,18 @@ class ProfileState(rx.State):
         finally:
             self.importing = False
         # Imported history moves XP, records and trials.
+        yield AuthState.refresh_me
+        yield ProfileState.load
+
+    async def choose_class(self, value: str):
+        """Pick (or clear) the cosmetic character class."""
+        auth = await self.get_state(AuthState)
+        if not auth.token:
+            return
+        try:
+            await api.set_character_class(auth.token, "" if value == self.character_class else value)
+        except api.ApiError as exc:
+            self.error = exc.detail
+            return
         yield AuthState.refresh_me
         yield ProfileState.load

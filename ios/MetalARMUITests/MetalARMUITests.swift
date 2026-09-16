@@ -204,7 +204,8 @@ final class MetalARMUITests: XCTestCase {
 
         openTab(app, "Profile")
         XCTAssertTrue(app.staticTexts["Badges"].waitForExistence(timeout: 5), "Profile did not load")
-        XCTAssertTrue(element(app, "rankTrialsCard").waitForExistence(timeout: 5), "Rank trials missing")
+        XCTAssertTrue(element(app, "characterCard").waitForExistence(timeout: 5), "Character sheet missing")
+        XCTAssertTrue(element(app, "rankTrialsCard").exists, "Rank trials missing")
         XCTAssertTrue(app.buttons["importWorkoutsButton"].exists, "Import from Strong or Hevy missing")
         attachScreenshot(app, named: "10 Profile")
     }

@@ -89,6 +89,9 @@ struct DecodingTests {
         #expect(profile.stats.workoutsCompleted == 142)
         #expect(profile.badgesEarned == 3)
         #expect(profile.progress.nextRankTrial == "Barbell Bench Press at 1x bodyweight")
+        let sheet = try decode(CharacterSheet.self, ContractFixtures.character)
+        #expect(sheet.stats.map(\.key) == ["strength", "endurance", "discipline"])
+        #expect(sheet.stats[1].fraction == 0.61)
         let trials = try decode([RankTrial].self, ContractFixtures.rankTrials)
         #expect(trials.map(\.rank) == ["B", "A", "S"])
         #expect(abs(trials[0].fraction - 72.5 / 80.0) < 0.0001)
@@ -593,6 +596,21 @@ struct AppModelTests {
         await model.loadParties()
         #expect(model.partyRaid?.name == "Iron Golem")
         #expect(model.partyRaid?.partyId == model.selectedPartyID)
+    }
+
+    @Test func choosingAClassHighlightsItsStats() async {
+        let (model, _) = signedInModel()
+        await model.loadProfile()
+        #expect(model.characterSheet?.stats.allSatisfy { !$0.highlighted } == true)
+
+        await model.chooseClass("powerlifter")
+        #expect(model.characterSheet?.classLabel == "Powerlifter")
+        #expect(model.characterSheet?.stats.filter(\.highlighted).map(\.key) == ["strength"])
+
+        // Tapping the same class again clears it.
+        await model.chooseClass("powerlifter")
+        #expect(model.characterSheet?.characterClass == "")
+        #expect(model.characterSheet?.stats.contains { $0.highlighted } == false)
     }
 
     @Test func profileLoadsTheRankTrials() async {

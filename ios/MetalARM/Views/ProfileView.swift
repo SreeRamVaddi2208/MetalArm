@@ -24,6 +24,9 @@ struct ProfileView: View {
                 if let profile = model.profile {
                     header(profile)
                     stats(profile.stats)
+                    if let sheet = model.characterSheet {
+                        character(sheet)
+                    }
                     if !model.rankTrials.isEmpty {
                         trials(model.rankTrials)
                     }
@@ -93,6 +96,66 @@ struct ProfileView: View {
             StatTile(value: "\(stats.longestWorkoutStreak)", label: "Best streak", unit: "wk")
         }
         .padding(.top, 22)
+    }
+
+    /// Three stats from real training, plus the cosmetic class that highlights them.
+    private func character(_ sheet: CharacterSheet) -> some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                Text("Character")
+                    .font(Theme.display(16))
+                    .foregroundStyle(Theme.text)
+                Spacer()
+                if !sheet.classLabel.isEmpty {
+                    Text(sheet.classLabel)
+                        .font(Theme.body(12, .bold))
+                        .foregroundStyle(Theme.accent)
+                }
+            }
+            ForEach(sheet.stats) { stat in
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack {
+                        Text(stat.label)
+                            .font(Theme.body(12.5, .semibold))
+                            .foregroundStyle(stat.highlighted ? Theme.accent : Theme.text)
+                        Spacer()
+                        Text("\(stat.value)")
+                            .font(Theme.display(13))
+                            .foregroundStyle(Theme.text)
+                    }
+                    XPBar(progress: stat.fraction, track: Theme.bg)
+                    Text(stat.detail)
+                        .font(Theme.body(10.5))
+                        .foregroundStyle(Theme.dim)
+                }
+                .accessibilityElement(children: .combine)
+            }
+            Text("A class highlights the stats you care about. It never changes a score.")
+                .font(Theme.body(10.5))
+                .foregroundStyle(Theme.dim)
+            HStack(spacing: 8) {
+                ForEach(["powerlifter", "bodybuilder", "athlete"], id: \.self) { value in
+                    Button {
+                        Task { await model.chooseClass(value) }
+                    } label: {
+                        Text(value.capitalized)
+                            .font(Theme.body(11, .bold))
+                            .foregroundStyle(sheet.characterClass == value ? Theme.bg : Theme.text)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 7)
+                            .background(sheet.characterClass == value ? Theme.accent : Theme.bg, in: RoundedRectangle(cornerRadius: 9))
+                            .overlay(RoundedRectangle(cornerRadius: 9).stroke(Theme.cardBorder))
+                    }
+                    .accessibilityIdentifier("class-\(value)")
+                }
+            }
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .cardStyle(cornerRadius: 16)
+        .padding(.top, 22)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("characterCard")
     }
 
     /// The strength trials that gate ranks B, A and S, with progress to each.
