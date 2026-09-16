@@ -133,11 +133,21 @@ struct HistoryPoint: Codable, Equatable, Identifiable {
     var id: String { sessionId }
 }
 
+/// What to try next on an exercise (backend app/core/progression_hints.py).
+/// `kind` is progress, plateau or deload.
+struct ProgressionHint: Codable, Equatable {
+    var kind: String
+    var text: String
+    var targetWeightKg: Double?
+    var targetReps: Int?
+}
+
 struct LastPerformance: Codable, Equatable {
     var exerciseId: String
     var sessionId: String?
     var performedAt: String?
     var sets: [WorkoutSet]
+    var hint: ProgressionHint?
 }
 
 // MARK: - Sessions and sets
@@ -170,6 +180,7 @@ struct SessionExercise: Codable, Equatable, Identifiable {
     var sets: [WorkoutSet]
     // The last completed session's sets on this exercise: the ghost values.
     var previousSets: [WorkoutSet]
+    var hint: ProgressionHint?
 
     var id: String { exercise.id }
 }

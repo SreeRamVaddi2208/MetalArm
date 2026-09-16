@@ -31,7 +31,7 @@ protocol MetalArmAPI: AnyObject {
 
     // Exercises and progress
     func searchExercises(query: String) async throws -> [Exercise]
-    func lastPerformance(exerciseID: String) async throws -> [WorkoutSet]
+    func lastPerformance(exerciseID: String) async throws -> LastPerformance
     func exerciseHistory(exerciseID: String) async throws -> [HistoryPoint]
     func records(exerciseID: String?) async throws -> [WorkoutRecord]
 

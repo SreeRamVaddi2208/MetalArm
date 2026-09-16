@@ -121,11 +121,12 @@ final class MockAPIClient: MetalArmAPI {
         return needle.isEmpty ? all : all.filter { $0.name.lowercased().contains(needle) }
     }
 
-    func lastPerformance(exerciseID: String) async throws -> [WorkoutSet] {
+    func lastPerformance(exerciseID: String) async throws -> LastPerformance {
         try check()
-        guard exerciseID == ContractFixtures.benchID else { return [] }
-        let result: LastPerformance = fixture(ContractFixtures.lastPerformance)
-        return result.sets
+        guard exerciseID == ContractFixtures.benchID else {
+            return LastPerformance(exerciseId: exerciseID, sessionId: nil, performedAt: nil, sets: [], hint: nil)
+        }
+        return fixture(ContractFixtures.lastPerformance)
     }
 
     func exerciseHistory(exerciseID: String) async throws -> [HistoryPoint] {
@@ -183,8 +184,10 @@ final class MockAPIClient: MetalArmAPI {
         let kilograms = ((unit == .kg ? weight : weight * WeightUnit.kilogramsPerPound) * 100).rounded() / 100
 
         if !session.exercises.contains(where: { $0.exercise.id == exerciseID }) {
-            let previous = try await lastPerformance(exerciseID: exerciseID)
-            session.exercises.append(SessionExercise(exercise: exercise, target: nil, sets: [], previousSets: previous))
+            let last = try await lastPerformance(exerciseID: exerciseID)
+            session.exercises.append(
+                SessionExercise(exercise: exercise, target: nil, sets: [], previousSets: last.sets, hint: last.hint)
+            )
         }
         let index = session.exercises.firstIndex { $0.exercise.id == exerciseID }!
         let isFirst = session.exercises[index].sets.isEmpty

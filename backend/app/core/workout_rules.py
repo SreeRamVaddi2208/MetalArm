@@ -64,6 +64,18 @@ MAX_SESSION_HOURS = 6
 # Epley becomes unreliable at high reps; above this a set earns no e1RM record.
 EST_1RM_MAX_REPS = 12
 
+# --- Progression hints -------------------------------------------------------
+# Double progression: work a rep range, and add weight once its top is reached.
+HINT_REP_RANGE = (5, 8)
+# The smallest loadable jump: a pair of 1.25 kg plates on a bar, and a smaller
+# step where the load comes in single increments (dumbbells, cables, machines).
+WEIGHT_STEP_KG = 2.5
+SMALL_WEIGHT_STEP_KG = 1.0
+# Sessions with no new best estimated 1RM before it counts as a plateau.
+PLATEAU_SESSIONS = 3
+# Weeks of unbroken climbing before a lighter week is suggested.
+DELOAD_AFTER_WEEKS = 6
+
 # --- Input bounds ------------------------------------------------------------
 # Enforced in the request schemas AND by CHECK constraints. They exist to stop
 # absurd values minting records, not to judge anyone's strength.

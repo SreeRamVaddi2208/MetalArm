@@ -68,7 +68,8 @@ enum ContractFixtures {
     ].joined(separator: ",") + "]"
 
     static let lastPerformance = """
-    {"exercise_id": "\(benchID)", "session_id": "\(previousSessionID)", "performed_at": "2026-09-10T18:00:00Z", "sets": \(benchPreviousSets)}
+    {"exercise_id": "\(benchID)", "session_id": "\(previousSessionID)", "performed_at": "2026-09-10T18:00:00Z", "sets": \(benchPreviousSets),
+     "hint": {"kind": "progress", "text": "Try 87.5 kg x 5", "target_weight_kg": 87.5, "target_reps": 5}}
     """
 
     static let activeSession = """

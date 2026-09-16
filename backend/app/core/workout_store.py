@@ -21,6 +21,7 @@ from sqlalchemy import delete, func, or_, select, tuple_
 from sqlalchemy.orm import Session
 
 from app.core import personal_records as prs
+from app.core import progression_hints as hints
 from app.core import points_engine as pe
 from app.models.workout import (
     Exercise,
@@ -235,6 +236,67 @@ def replay_exercise(db: Session, user_id: uuid.UUID, exercise_id: uuid.UUID) -> 
             at=completed[session_id] or dt.datetime.now(dt.timezone.utc),  # type: ignore[index]
         )
     db.flush()
+
+
+def recent_top_sets(
+    db: Session,
+    user_id: uuid.UUID,
+    exercise_ids: Sequence[uuid.UUID],
+    limit: int = 8,
+) -> dict[uuid.UUID, list[hints.TopSet]]:
+    """Per exercise, the heaviest working set of each of the last `limit`
+    completed sessions, newest first - what progression_hints.suggest reads.
+
+    One query for any number of exercises: window functions rank the sets
+    within a session and the sessions within an exercise, so this never
+    becomes a query per card.
+    """
+    if not exercise_ids:
+        return {}
+    ranked = (
+        select(
+            SetEntry.exercise_id.label("exercise_id"),
+            WorkoutSession.started_at.label("performed_at"),
+            SetEntry.weight_kg.label("weight_kg"),
+            SetEntry.reps.label("reps"),
+            func.row_number()
+            .over(
+                partition_by=(SetEntry.exercise_id, SetEntry.session_id),
+                order_by=(SetEntry.weight_kg.desc(), SetEntry.reps.desc()),
+            )
+            .label("set_rank"),
+            func.dense_rank()
+            .over(
+                partition_by=SetEntry.exercise_id,
+                order_by=WorkoutSession.started_at.desc(),
+            )
+            .label("session_rank"),
+        )
+        .join(WorkoutSession, WorkoutSession.id == SetEntry.session_id)
+        .where(
+            SetEntry.user_id == user_id,
+            SetEntry.exercise_id.in_(exercise_ids),
+            WorkoutSession.status == SessionStatus.COMPLETED.value,
+            SetEntry.is_warmup.is_(False),
+            SetEntry.reps.is_not(None),
+            SetEntry.weight_kg > 0,
+        )
+        .subquery()
+    )
+    rows = db.execute(
+        select(ranked)
+        .where(ranked.c.set_rank == 1, ranked.c.session_rank <= limit)
+        .order_by(ranked.c.exercise_id, ranked.c.performed_at.desc())
+    ).all()
+
+    out: dict[uuid.UUID, list[hints.TopSet]] = {}
+    for row in rows:
+        out.setdefault(row.exercise_id, []).append(
+            hints.TopSet(
+                performed_at=row.performed_at, weight_kg=row.weight_kg, reps=row.reps
+            )
+        )
+    return out
 
 
 # ---------------------------------------------------------------------------

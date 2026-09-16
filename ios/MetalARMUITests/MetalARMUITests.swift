@@ -167,6 +167,7 @@ final class MetalARMUITests: XCTestCase {
         let logSet = app.buttons["logSetButton"]
         XCTAssertTrue(logSet.waitForExistence(timeout: 5), "Exercise card missing")
         XCTAssertTrue(element(app, "ghostValues").exists, "Last session's numbers missing")
+        XCTAssertTrue(element(app, "progressionHint").exists, "What to try next is missing")
         attachScreenshot(app, named: "05 Workout")
 
         logSet.tap()

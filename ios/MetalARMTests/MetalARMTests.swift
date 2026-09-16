@@ -94,6 +94,9 @@ struct DecodingTests {
         #expect(abs(trials[0].fraction - 72.5 / 80.0) < 0.0001)
         #expect(trials[2].bestKg == nil && trials[2].fraction == 0)
         let imported = try decode(WorkoutImportResult.self, ContractFixtures.importResult)
+        let last = try decode(LastPerformance.self, ContractFixtures.lastPerformance)
+        #expect(last.hint?.kind == "progress")
+        #expect(last.hint?.targetReps == 5)
         #expect(imported.summary == "Imported 42 workouts (610 sets) from Strong. 3 already in your history. 1 new exercise added. +420 XP.")
     }
 }
@@ -597,6 +600,15 @@ struct AppModelTests {
         await model.loadProfile()
         #expect(model.rankTrials.map(\.rank) == ["B", "A", "S"])
         #expect(model.rankTrials.first?.description == "Barbell Bench Press at 1x bodyweight")
+    }
+
+    @Test func addingAnExerciseLoadsWhatToTryNext() async throws {
+        let (model, _) = signedInModel()
+        await model.searchExercises("Bench")
+        let bench = try #require(model.pickerResults.first { $0.id == ContractFixtures.benchID })
+        await model.addExercise(bench)
+        #expect(model.hints[bench.id]?.text == "Try 87.5 kg x 5")
+        #expect(model.ghostSets[bench.id]?.isEmpty == false)
     }
 
     @Test func importingAnExportReportsWhatLanded() async {

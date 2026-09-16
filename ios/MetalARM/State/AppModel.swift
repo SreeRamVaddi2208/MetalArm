@@ -33,6 +33,8 @@ final class AppModel {
     // Chosen in the picker but with no set logged yet, so not on the server.
     var pendingExercises: [Exercise] = []
     var ghostSets: [String: [WorkoutSet]] = [:]
+    /// What to try next per exercise, for exercises added mid-workout.
+    var hints: [String: ProgressionHint] = [:]
     var selectedExerciseID: String?
     var weightInput = ""
     var repsInput = ""
@@ -128,6 +130,13 @@ final class AppModel {
         return fromSession.isEmpty ? ghostSets[selectedExerciseID] ?? [] : fromSession
     }
 
+    /// What to try next on the selected exercise: the session's own hint,
+    /// else the one fetched when the exercise was added.
+    var selectedHint: ProgressionHint? {
+        guard let selectedExerciseID else { return nil }
+        return selectedSessionExercise?.hint ?? hints[selectedExerciseID]
+    }
+
     var setsLoggedCount: Int { session?.exercises.reduce(0) { $0 + $1.sets.count } ?? 0 }
 
     var selectedParty: Party? { parties.first { $0.id == selectedPartyID } }
@@ -187,6 +196,7 @@ final class AppModel {
         pendingSets = []
         pendingStore.save([])
         ghostSets = [:]
+        hints = [:]
         finishResult = nil
         showingSummary = false
         progressTabs = []
@@ -246,8 +256,9 @@ final class AppModel {
         if !workoutExercises.contains(where: { $0.id == exercise.id }) {
             pendingExercises.append(exercise)
         }
-        if ghostSets[exercise.id] == nil, let sets = try? await api.lastPerformance(exerciseID: exercise.id) {
-            ghostSets[exercise.id] = sets
+        if ghostSets[exercise.id] == nil, let last = try? await api.lastPerformance(exerciseID: exercise.id) {
+            ghostSets[exercise.id] = last.sets
+            hints[exercise.id] = last.hint
         }
         select(exercise.id)
     }
