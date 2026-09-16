@@ -360,6 +360,13 @@ final class MetalARMUITests: XCTestCase {
 
     @MainActor
     func testLaunchPerformance() throws {
+        // A launch-time measurement belongs on a quiet machine. On a shared CI
+        // runner it launches the app five times, takes minutes, and fails for
+        // reasons that have nothing to do with the change under review.
+        try XCTSkipIf(
+            ProcessInfo.processInfo.environment["CI"] != nil,
+            "Launch timing is measured locally, not on CI"
+        )
         measure(metrics: [XCTApplicationLaunchMetric()]) {
             let app = XCUIApplication()
             app.launchArguments = ["-UITestMockAPI"]
