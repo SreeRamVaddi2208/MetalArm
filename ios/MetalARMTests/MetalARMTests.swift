@@ -93,6 +93,8 @@ struct DecodingTests {
         #expect(trials.map(\.rank) == ["B", "A", "S"])
         #expect(abs(trials[0].fraction - 72.5 / 80.0) < 0.0001)
         #expect(trials[2].bestKg == nil && trials[2].fraction == 0)
+        let imported = try decode(WorkoutImportResult.self, ContractFixtures.importResult)
+        #expect(imported.summary == "Imported 42 workouts (610 sets) from Strong. 3 already in your history. 1 new exercise added. +420 XP.")
     }
 }
 
@@ -595,6 +597,21 @@ struct AppModelTests {
         await model.loadProfile()
         #expect(model.rankTrials.map(\.rank) == ["B", "A", "S"])
         #expect(model.rankTrials.first?.description == "Barbell Bench Press at 1x bodyweight")
+    }
+
+    @Test func importingAnExportReportsWhatLanded() async {
+        let (model, _) = signedInModel()
+        await model.importWorkouts(csv: "Date,Workout Name,Exercise Name,Set Order\n")
+        #expect(model.importSummary.hasPrefix("Imported 42 workouts"))
+        #expect(model.errorMessage.isEmpty)
+        #expect(model.rankTrials.count == 3)
+    }
+
+    @Test func importingSomethingElseShowsTheError() async {
+        let (model, _) = signedInModel()
+        await model.importWorkouts(csv: "name,value\n")
+        #expect(model.importSummary.isEmpty)
+        #expect(model.errorMessage.hasPrefix("Couldn't import that file"))
     }
 
     @Test func progressTabsComeFromTheUsersRecords() async {

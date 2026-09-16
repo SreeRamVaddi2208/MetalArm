@@ -24,6 +24,7 @@ from app.models.workout import (
     Routine,
     RoutineExercise,
     SetEntry,
+    WorkoutImport,
     WorkoutSession,
 )
 
@@ -45,6 +46,7 @@ __all__ = [
     "Routine",
     "RoutineExercise",
     "WorkoutSession",
+    "WorkoutImport",
     "SetEntry",
     "PersonalRecord",
     "PointsLedgerEntry",

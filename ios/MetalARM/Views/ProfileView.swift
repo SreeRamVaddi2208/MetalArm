@@ -8,11 +8,13 @@
 
 import SwiftUI
 import UIKit
+import UniformTypeIdentifiers
 
 struct ProfileView: View {
     @Environment(AppModel.self) private var model
     @State private var showingDelete = false
     @State private var confirmingSignOutEverywhere = false
+    @State private var showingImporter = false
 
     private let badgeColumns = Array(repeating: GridItem(.flexible(), spacing: 12), count: 4)
 
@@ -37,6 +39,24 @@ struct ProfileView: View {
         .task { await model.loadProfile() }
         .refreshable { await model.loadProfile() }
         .sheet(isPresented: $showingDelete) { DeleteAccountSheet() }
+        .fileImporter(isPresented: $showingImporter, allowedContentTypes: [.commaSeparatedText, .plainText]) { result in
+            guard case .success(let url) = result else { return }
+            let scoped = url.startAccessingSecurityScopedResource()
+            defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+            guard let csv = try? String(contentsOf: url, encoding: .utf8) else {
+                model.errorMessage = "Couldn't read that file"
+                return
+            }
+            Task { await model.importWorkouts(csv: csv) }
+        }
+        .alert("Import finished", isPresented: Binding(
+            get: { !model.importSummary.isEmpty },
+            set: { if !$0 { model.importSummary = "" } }
+        )) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(model.importSummary)
+        }
         .confirmationDialog("Sign out of every device?", isPresented: $confirmingSignOutEverywhere, titleVisibility: .visible) {
             Button("Sign Out Everywhere", role: .destructive) {
                 Task { await model.signOutEverywhere() }
@@ -223,6 +243,9 @@ struct ProfileView: View {
                 .foregroundStyle(Theme.text)
                 .padding(.horizontal, 16)
                 .padding(.vertical, 10)
+                divider
+                Button { showingImporter = true } label: { settingsLabel("Import from Strong or Hevy", icon: "square.and.arrow.down") }
+                    .accessibilityIdentifier("importWorkoutsButton")
                 divider
                 Link(destination: AppConfig.privacyPolicyURL) { settingsLabel("Privacy Policy", icon: "hand.raised") }
                 divider

@@ -309,6 +309,14 @@ final class MockAPIClient: MetalArmAPI {
         return fixture(ContractFixtures.rankTrials)
     }
 
+    func importWorkouts(csv: String, unit: WeightUnit) async throws -> WorkoutImportResult {
+        try check()
+        guard csv.contains("Exercise Name") || csv.contains("exercise_title") else {
+            throw APIError.http(status: 422, detail: "That isn't a Strong or Hevy CSV export")
+        }
+        return fixture(ContractFixtures.importResult)
+    }
+
     func partyLeaderboard(partyID: String) async throws -> PartyBoard {
         try check()
         var board: PartyBoard = fixture(ContractFixtures.partyBoard)

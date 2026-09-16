@@ -178,6 +178,49 @@ def trials_panel() -> rx.Component:
     )
 
 
+def import_panel() -> rx.Component:
+    return rx.vstack(
+        rx.text("IMPORT HISTORY", **theme.LABEL_STYLE),
+        rx.text(
+            "Bring your history from Strong or Hevy: export a CSV in the app and drop it here. "
+            "Records and rank trials count it; points and streaks don't.",
+            color=theme.MUTED,
+            font_size="0.78rem",
+        ),
+        rx.upload(
+            rx.vstack(
+                rx.icon("upload", size=20, color=theme.MUTED),
+                rx.text(
+                    rx.cond(ProfileState.importing, "IMPORTING...", "CHOOSE OR DROP A CSV"),
+                    color=theme.TEXT,
+                    font_weight="700",
+                    font_size="0.78rem",
+                    letter_spacing="0.08em",
+                ),
+                align="center",
+                spacing="2",
+            ),
+            id="history_csv",
+            accept={"text/csv": [".csv"], "text/plain": [".txt"]},
+            max_files=1,
+            multiple=False,
+            on_drop=ProfileState.import_history(rx.upload_files(upload_id="history_csv")),
+            border=f"1px dashed {theme.BORDER}",
+            border_radius="12px",
+            padding="1.25rem",
+            width="100%",
+            cursor="pointer",
+            background=theme.FIELD,
+        ),
+        rx.cond(
+            ProfileState.import_message != "",
+            rx.text(ProfileState.import_message, color=theme.TEXT, font_size="0.8rem"),
+        ),
+        spacing="3",
+        **theme.panel(),
+    )
+
+
 def profile_page() -> rx.Component:
     return shell(
         reveal_assets(),
@@ -191,6 +234,7 @@ def profile_page() -> rx.Component:
             rx.vstack(
                 reveal(lifetime_panel()),
                 rx.cond(ProfileState.trials.length() > 0, reveal(trials_panel())),
+                reveal(import_panel()),
                 rx.vstack(
                     section_heading(
                         "BADGES",

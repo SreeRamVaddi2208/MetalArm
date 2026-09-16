@@ -428,3 +428,20 @@ class TrialRow:
             pct=pct,
             progress_label=label,
         )
+
+
+def import_summary(data: dict[str, Any]) -> str:
+    """One line for a Strong or Hevy import's result (POST /workouts/import)."""
+    if data.get("duplicate"):
+        return "That file was already imported - nothing changed."
+    source = "Strong" if data.get("source") == "strong" else "Hevy"
+    workouts = data.get("workouts_imported") or 0
+    sets = data.get("sets_imported") or 0
+    parts = [f"Imported {workouts} workout{'' if workouts == 1 else 's'} ({sets} sets) from {source}."]
+    if skipped := data.get("workouts_skipped") or 0:
+        parts.append(f"{skipped} already in your history.")
+    if created := len(data.get("exercises_created") or []):
+        parts.append(f"{created} new exercise{'' if created == 1 else 's'} added.")
+    if xp := data.get("xp_awarded") or 0:
+        parts.append(f"+{xp} XP.")
+    return " ".join(parts)

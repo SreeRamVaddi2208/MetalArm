@@ -264,3 +264,7 @@ async def profile(token: str) -> dict:
 
 async def rank_trials(token: str) -> list[dict]:
     return await request("GET", "/profile/trials", token=token)
+
+
+async def import_workouts(token: str, csv: str, unit: str) -> dict:
+    return await request("POST", "/workouts/import", token=token, json={"csv": csv, "unit": unit})

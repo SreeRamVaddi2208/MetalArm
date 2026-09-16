@@ -60,6 +60,8 @@ final class AppModel {
     // Profile
     var profile: Profile?
     var rankTrials: [RankTrial] = []
+    /// The last Strong or Hevy import's result, shown once then cleared.
+    var importSummary = ""
 
     var errorMessage = ""
     var isBusy = false
@@ -547,6 +549,18 @@ final class AppModel {
             profile = try await api.profile()
         }
         // Secondary to the profile itself: a failure leaves the last trials shown.
+        if let trials = try? await api.rankTrials() { rankTrials = trials }
+    }
+
+    /// Imports a Strong or Hevy CSV export, then reloads what it moved:
+    /// XP, the profile's records and the rank trials.
+    func importWorkouts(csv: String) async {
+        await run("Couldn't import that file") {
+            let result = try await api.importWorkouts(csv: csv, unit: weightUnit)
+            importSummary = result.summary
+            me = try await api.me()
+            profile = try await api.profile()
+        }
         if let trials = try? await api.rankTrials() { rankTrials = trials }
     }
 

@@ -40,7 +40,7 @@ from app.core import personal_records as prs
 from app.core import points_engine as pe
 from app.core import workout_rules as rules
 from app.core import workout_store as store
-from app.core import raids, rank_trials
+from app.core import importer, raids, rank_trials, rate_limit
 from app.core import workout_streaks as streaks
 from app.core.periods import local_now, resolve_timezone
 from app.core.progression import (
@@ -58,7 +58,7 @@ from app.models.workout import (
     SetEntry,
     WorkoutSession,
 )
-from app.models.workout_enums import LedgerSource, RecordType, SessionStatus
+from app.models.workout_enums import LedgerSource, RecordType, SessionStatus, WeightUnit
 from app.schemas.quest import ProgressionDeltaOut
 from app.schemas.workout import (
     AbandonResponse,
@@ -82,6 +82,8 @@ from app.schemas.workout import (
     SetOut,
     SetUpdate,
     StreakOut,
+    WorkoutImportIn,
+    WorkoutImportOut,
     to_kg,
 )
 
@@ -463,6 +465,44 @@ def start_session(payload: SessionStart, current_user: CurrentUser, db: DbSessio
     db.commit()
     db.refresh(session)
     return _session_out(db, session, current_user)
+
+
+@router.post("/import", response_model=WorkoutImportOut)
+def import_workouts(
+    payload: WorkoutImportIn, current_user: CurrentUser, db: DbSession
+) -> WorkoutImportOut:
+    """Import history from a Strong or Hevy CSV export (app/core/importer.py).
+    The same file twice imports once, and workouts already in the history are
+    skipped. Imported workouts count for records, rank trials and charts, and
+    pay a little XP - never shop points, streaks, raids or leaderboard places.
+    422 when the file isn't an export that can be read."""
+    rate_limit.enforce(rate_limit.IMPORT_PER_USER, str(current_user.id))
+    progress = lock_progress(db, current_user.id)
+    unit = payload.unit or WeightUnit(current_user.weight_unit)
+    try:
+        outcome = importer.run_import(
+            db, user=current_user, progress=progress, text=payload.csv, unit=unit.value, now=_now()
+        )
+    except importer.ImportFormatError as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(exc)
+        ) from None
+    record = outcome.record
+    fresh = not outcome.duplicate
+    response = WorkoutImportOut(
+        source=record.source,
+        workouts_imported=record.workouts if fresh else 0,
+        sets_imported=record.sets if fresh else 0,
+        workouts_skipped=outcome.workouts_skipped,
+        rows_skipped=outcome.rows_skipped,
+        exercises_created=outcome.exercises_created,
+        xp_awarded=record.xp_awarded if fresh else 0,
+        duplicate=outcome.duplicate,
+        progression=_delta_out(outcome.delta) if outcome.delta else None,
+    )
+    db.commit()
+    return response
 
 
 @router.get("/sessions/active", response_model=ActiveSessionOut)

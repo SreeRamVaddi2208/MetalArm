@@ -472,3 +472,32 @@ class BodyMeasurementOut(BaseModel):
     value: float
     unit: str
     recorded_at: dt.datetime
+
+
+# ---------------------------------------------------------------------------
+# Imports from Strong and Hevy
+# ---------------------------------------------------------------------------
+
+
+class WorkoutImportIn(BaseModel):
+    """A Strong or Hevy CSV export, as text (app/core/importer.py)."""
+
+    csv: str = Field(min_length=1, max_length=5_000_000)
+    # What Strong's weights are in - its export doesn't say. Defaults to the
+    # account's unit. Hevy's columns name their unit, so it's ignored there.
+    unit: WeightUnit | None = None
+
+
+class WorkoutImportOut(BaseModel):
+    source: str
+    workouts_imported: int
+    sets_imported: int
+    # Already in the history (same start time), so not imported again.
+    workouts_skipped: int
+    # Rows with nothing loggable: no reps, time or distance, or bad numbers.
+    rows_skipped: int
+    exercises_created: list[str]
+    xp_awarded: int
+    # True when this exact file was imported before; nothing changed.
+    duplicate: bool
+    progression: ProgressionDeltaOut | None
