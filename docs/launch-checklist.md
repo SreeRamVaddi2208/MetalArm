@@ -73,3 +73,18 @@ in [`deployment.md`](deployment.md).
   early so you know it works.
 - Updating: `git pull`, then the same `docker compose ... up -d --build`.
   Migrations run automatically.
+
+## Push notifications (after Apple Developer enrolment)
+
+The iPhone app schedules LOCAL notifications on its own (rest timer done, and
+"your streak ends tonight"); nothing below is needed for those. SERVER push -
+a party member finishing a workout, a raid boss falling - needs:
+
+- [ ] An **APNs auth key** (.p8) from the Apple Developer account, plus its Key
+      ID and the Team ID.
+- [ ] The **Push Notifications** capability on the app target, and
+      `aps-environment` in `MetalARM.entitlements`.
+- [ ] A backend device-token table and endpoint, so a device can register.
+- [ ] Decide what is worth waking someone for. Party events only, and never a
+      marketing message: the App Store treats that as a reason to reject.
+

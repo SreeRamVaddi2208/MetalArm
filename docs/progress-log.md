@@ -14,6 +14,44 @@ Entry format:
 
 ---
 
+## 2026-09-17 (27) - Opus - local notifications
+
+**Changed**
+- `ios/MetalARM/State/Notifications.swift`: a `NotificationScheduling` protocol
+  over `UNUserNotificationCenter`, the two local notifications (rest done, and
+  "your streak ends tonight" at 19:00 local), and settings remembered in
+  UserDefaults. The protocol is the seam - a unit-test host has no notification
+  centre worth talking to, so tests inject a spy and assert what WOULD be sent.
+- Permission is asked AFTER the first finished workout, never at launch: iOS
+  prompts once, and a prompt before the app has done anything earns a refusal.
+  The prompt is remembered, so a decline is not re-asked every workout.
+- The rest alert is scheduled with the in-app timer and cancelled when the
+  timer stops, so it only ever lands while the app is in the background. The
+  streak reminder is refreshed on every finished workout and cancelled the
+  moment today has been trained - or the streak is already gone.
+- Profile gains two toggles; turning one off cancels what is pending. Sign-out
+  cancels both.
+- No server push: that needs an APNs key from the Apple account, which is now
+  written down in `docs/launch-checklist.md`.
+
+**Verified (real output)**
+- iOS: `MetalARMTests` - all five notification tests pass (the rest alert
+  scheduled and cancelled, the toggle cancelling what is pending, the prompt
+  asked exactly once, the streak reminder needing a streak to lose, and
+  tonight's timing), with no failures anywhere in the suite.
+- One self-inflicted test bug on the way: the timing test first asserted exact
+  Double equality (`secondsUntilTonight(...) == 9 * 3600`), which fails while
+  printing as equal. Time arithmetic gets a tolerance now.
+
+**Blocked:** server push, until the Apple Developer enrolment is done and an
+APNs key exists.
+
+**Other agent needs to know:** nothing on the backend changed for this - it is
+entirely on-device. `AppModel.notifier` is a var precisely so tests can replace
+it; don't turn it into an init parameter without updating every test helper.
+
+---
+
 ## 2026-09-17 (26) - Opus - weekly leagues
 
 **Changed**

@@ -23,6 +23,10 @@ final class AppModel {
 
     let api: MetalArmAPI
     private(set) var isSignedIn: Bool
+    /// Local notifications. A var, not an init parameter, so a test can swap
+    /// in a spy - a unit-test host has no notification centre worth talking to.
+    var notifier: NotificationScheduling = SystemNotificationScheduler()
+    var notificationSettings = NotificationSettings.load()
 
     // Home
     var me: Me?
@@ -211,6 +215,9 @@ final class AppModel {
         partyBoard = nil
         partyRaid = nil
         league = nil
+        Task { [notifier] in
+            await notifier.cancel([NotificationID.restDone, NotificationID.streakAtRisk])
+        }
     }
 
     // MARK: - Home
@@ -422,6 +429,10 @@ final class AppModel {
             showingSummary = true
         }
         await refreshStats()
+        // A finished workout is the moment to ask, and the moment the streak
+        // reminder for tonight stops being needed.
+        await askForNotificationsAfterFirstWorkout()
+        await refreshStreakReminder()
     }
 
     func abandonWorkout() async {
@@ -455,6 +466,22 @@ final class AppModel {
     func startRestTimer(seconds: Int = defaultRestSeconds) {
         restTask?.cancel()
         restSecondsLeft = seconds
+        // The in-app timer is the real one; this only matters once the app is
+        // in the background, and re-using the id replaces any pending alert.
+        if notificationSettings.restAlerts {
+            let after = TimeInterval(seconds)
+            Task { [notifier] in
+                guard await notifier.isAuthorized() else { return }
+                await notifier.schedule(
+                    LocalNotification(
+                        id: NotificationID.restDone,
+                        title: "Rest done",
+                        body: "Time for your next set.",
+                        after: after
+                    )
+                )
+            }
+        }
         restTask = Task { [weak self] in
             while !Task.isCancelled {
                 try? await Task.sleep(for: .seconds(1))
@@ -469,6 +496,59 @@ final class AppModel {
         restTask?.cancel()
         restTask = nil
         restSecondsLeft = 0
+        Task { [notifier] in await notifier.cancel([NotificationID.restDone]) }
+    }
+
+    /// Asked AFTER the first finished workout, never at launch: iOS prompts
+    /// once, and a prompt before the app has done anything earns a refusal.
+    func askForNotificationsAfterFirstWorkout() async {
+        guard !notificationSettings.asked else { return }
+        notificationSettings.asked = true
+        notificationSettings.save()
+        _ = await notifier.requestAuthorization()
+    }
+
+    /// "Your streak ends tonight" - only when there is a streak to lose and
+    /// today has not been trained yet. Anything else cancels what is pending.
+    func refreshStreakReminder(now: Date = Date()) async {
+        let streak = me?.progress.currentStreak ?? 0
+        let trainedToday = me?.progress.lastCompletedOn == Self.isoDay(now)
+        guard notificationSettings.streakReminders,
+              streak > 0,
+              !trainedToday,
+              let after = StreakReminder.secondsUntilTonight(from: now),
+              await notifier.isAuthorized()
+        else {
+            await notifier.cancel([NotificationID.streakAtRisk])
+            return
+        }
+        await notifier.schedule(
+            LocalNotification(
+                id: NotificationID.streakAtRisk,
+                title: "Your streak ends tonight",
+                body: "A workout today keeps your \(streak)-day streak alive.",
+                after: after
+            )
+        )
+    }
+
+    func setRestAlerts(_ on: Bool) async {
+        notificationSettings.restAlerts = on
+        notificationSettings.save()
+        if !on { await notifier.cancel([NotificationID.restDone]) }
+    }
+
+    func setStreakReminders(_ on: Bool) async {
+        notificationSettings.streakReminders = on
+        notificationSettings.save()
+        await refreshStreakReminder()
+    }
+
+    static func isoDay(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.calendar = Calendar(identifier: .iso8601)
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter.string(from: date)
     }
 
     // MARK: - Progress
