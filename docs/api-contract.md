@@ -10,7 +10,7 @@
 
 - **API title:** MetalArm API
 - **API version:** 0.1.0
-- **Generated:** 2026-09-14 16:45 UTC
+- **Generated:** 2026-09-16 21:11 UTC
 - **Source:** `http://localhost:8000/openapi.json`
 
 ---
@@ -1646,6 +1646,15 @@ otherwise 503 with per-dependency detail.
 |---|---|---|
 | `detail` | `ValidationError[]` | no |
 
+#### `HintOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `kind` | `string` | yes |
+| `text` | `string` | yes |
+| `target_weight_kg` | `number | null` | yes |
+| `target_reps` | `integer | null` | yes |
+
 #### `JoinRequest`
 
 | Field | Type | Required |
@@ -1660,6 +1669,7 @@ otherwise 503 with per-dependency detail.
 | `session_id` | `string | null` | yes |
 | `performed_at` | `string | null` | yes |
 | `sets` | `SetOut[]` | yes |
+| `hint` | `HintOut | null` | no |
 
 #### `LeaderboardEntry`
 
@@ -2138,6 +2148,7 @@ otherwise 503 with per-dependency detail.
 | Field | Type | Required |
 |---|---|---|
 | `exercise` | `ExerciseOut` | yes |
+| `hint` | `HintOut | null` | no |
 | `target` | `SessionTargetOut | null` | yes |
 | `sets` | `SetOut[]` | yes |
 | `previous_sets` | `SetOut[]` | yes |

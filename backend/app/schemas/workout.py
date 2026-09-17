@@ -128,6 +128,31 @@ class SetOut(BaseModel):
     completed_at: dt.datetime
 
 
+class HintOut(BaseModel):
+    """What to try next on an exercise (app/core/progression_hints.py).
+    `kind` is progress, plateau or deload; `text` is ready to show."""
+
+    kind: str
+    text: str
+    # In kilograms, whatever unit `text` is written in.
+    target_weight_kg: float | None
+    target_reps: int | None
+
+    @classmethod
+    def from_hint(cls, hint) -> "HintOut | None":
+        """From a progression_hints.Hint, passing None straight through."""
+        if hint is None:
+            return None
+        return cls(
+            kind=hint.kind,
+            text=hint.text,
+            target_weight_kg=float(hint.target_weight_kg)
+            if hint.target_weight_kg is not None
+            else None,
+            target_reps=hint.target_reps,
+        )
+
+
 class LastPerformanceOut(BaseModel):
     """The previous session's sets on an exercise - the ghost values in the
     logging UI. Empty when the exercise has never been done."""
@@ -136,6 +161,7 @@ class LastPerformanceOut(BaseModel):
     session_id: uuid.UUID | None
     performed_at: dt.datetime | None
     sets: list[SetOut]
+    hint: HintOut | None = None
 
 
 class _SetMeasures(BaseModel):
@@ -272,6 +298,7 @@ class SessionTargetOut(BaseModel):
 
 class SessionExerciseOut(BaseModel):
     exercise: ExerciseOut
+    hint: HintOut | None = None
     target: SessionTargetOut | None
     sets: list[SetOut]
     # Last completed session's sets on this exercise: the ghost values.

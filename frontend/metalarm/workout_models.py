@@ -194,6 +194,9 @@ class ExerciseCard:
     previous: list[SetRow] = dataclasses.field(default_factory=list)
     previous_label: str = ""
     ghost_label: str = ""
+    # What to try next (backend app/core/progression_hints.py).
+    hint_label: str = ""
+    hint_kind: str = ""
     weight_input: str = ""
     reps_input: str = ""
     rpe_input: str = ""

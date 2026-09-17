@@ -253,6 +253,18 @@ try {
   await page.getByText('80.5 kg').waitFor({ timeout: 15000 });
   check('body measurement logged', true);
 
+  // What to try next (double progression). The bench has history now, so a
+  // second workout's card carries the hint - no set is logged, so the records
+  // and rank trials the profile checks below stay as they were.
+  await page.goto(UI + '/workout');
+  await page.getByText('START EMPTY WORKOUT').click();
+  await page.getByText('IN PROGRESS').waitFor({ timeout: 15000 });
+  await page.getByText('+ ADD EXERCISE').click();
+  await page.getByPlaceholder('Search exercises…').fill('Barbell Bench');
+  await page.getByText('Barbell Bench Press', { exact: true }).first().click();
+  const hint = await page.getByText(/Try .* x \d+/).waitFor({ timeout: 15000 }).then(() => true).catch(() => false);
+  check('the card suggests what to try next', hint);
+
   // ---------------------------------------------------------------------
   section('Profile and parties');
   await page.goto(UI + '/profile');

@@ -14,6 +14,43 @@ Entry format:
 
 ---
 
+## 2026-09-17 (24) - Opus - progression hints
+
+**Changed**
+- `app/core/progression_hints.py`: what to try next on an exercise. Double
+  progression against `rules.HINT_REP_RANGE` (5-8) - add a rep until the top of
+  the range, then add the smallest loadable jump (2.5 kg on a bar, 1 kg where
+  the load comes in single steps) and drop back to the bottom. Two overrides:
+  no new best estimated 1RM for 3 sessions is a plateau (back off ~10% and
+  build up), and an unbroken climb over 6 weeks earns a lighter week. Pure, so
+  the rules are tested without a database.
+- `workout_store.recent_top_sets`: the heaviest working set of each of the last
+  8 completed sessions, for any number of exercises in ONE query (window
+  functions rank sets within a session and sessions within an exercise), so a
+  workout with ten cards still costs one round trip.
+- API: `hint` on `GET /exercises/{id}/last-performance` and on every exercise
+  of a session response, written in the user's unit with the target in
+  kilograms. `docs/api-contract.md` regenerated (51 paths, 90 schemas).
+- Web: the hint sits under the ghost values on the exercise card. iOS: the same
+  line, with `AppModel.selectedHint` preferring the session's own hint.
+
+**Verified (real output)**
+- Backend suite passes, including 10 new `test_progression_hints.py` tests: a
+  rep added below the top of the range, weight added at it, the jump sized by
+  equipment, the text written in the user's unit, a plateau after three
+  sessions with no new best, a deload after six weeks of climbing (and not
+  inside six), and the endpoint's hint.
+- iOS: `MetalARMTests` plus `testWorkoutLoopFromStartToSummary` - TEST SUCCEEDED.
+- Web e2e: ALL PASSED (80), including a second workout's card showing what to
+  try next.
+
+**Blocked:** nothing.
+
+**Other agent needs to know:** hints never touch points or XP - they are advice,
+not scoring. `WEIGHT_STEP_KG` and the rep range live in `workout_rules.py`.
+
+---
+
 ## 2026-09-14 (23) - Opus - import from Strong and Hevy
 
 **Changed**

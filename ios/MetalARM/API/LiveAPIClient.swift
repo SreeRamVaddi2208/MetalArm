@@ -111,9 +111,8 @@ final class LiveAPIClient: MetalArmAPI {
         return try await send(.get("exercises", query: parameters))
     }
 
-    func lastPerformance(exerciseID: String) async throws -> [WorkoutSet] {
-        let result: LastPerformance = try await send(.get("exercises/\(exerciseID)/last-performance"))
-        return result.sets
+    func lastPerformance(exerciseID: String) async throws -> LastPerformance {
+        try await send(.get("exercises/\(exerciseID)/last-performance"))
     }
 
     func exerciseHistory(exerciseID: String) async throws -> [HistoryPoint] {

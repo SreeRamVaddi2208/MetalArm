@@ -718,6 +718,15 @@ def exercise_card(card: ExerciseCard, index) -> rx.Component:
         ),
         rx.cond(card.is_cardio, _cardio_entry(card, index), _strength_entry(card, index)),
         rx.cond(card.ghost_label != "", rx.text(card.ghost_label, color=theme.MUTED, font_size="0.72rem")),
+        rx.cond(
+            card.hint_label != "",
+            rx.text(
+                card.hint_label,
+                color=rx.cond(card.hint_kind == "progress", theme.ACCENT, theme.WARNING),
+                font_size="0.74rem",
+                font_weight="600",
+            ),
+        ),
         _log_row(card, index),
         spacing="3",
         **theme.panel(

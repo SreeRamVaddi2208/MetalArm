@@ -37,6 +37,7 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import CurrentUser, DbSession
 from app.core import personal_records as prs
+from app.core import progression_hints as hints
 from app.core import points_engine as pe
 from app.core import workout_rules as rules
 from app.core import workout_store as store
@@ -61,6 +62,7 @@ from app.models.workout import (
 from app.models.workout_enums import LedgerSource, RecordType, SessionStatus, WeightUnit
 from app.schemas.quest import ProgressionDeltaOut
 from app.schemas.workout import (
+    HintOut,
     AbandonResponse,
     ActiveSessionOut,
     AwardOut,
@@ -248,6 +250,8 @@ def _session_out(db: Session, session: WorkoutSession, user: User) -> SessionOut
         e.id: e for e in db.scalars(select(Exercise).where(Exercise.id.in_(order)))
     } if order else {}
     previous = store.previous_sets(db, user.id, order, exclude_session_id=session.id)
+    # One query for every card: what to try next on each exercise.
+    top_sets = store.recent_top_sets(db, user.id, order)
 
     grouped: dict[uuid.UUID, list[SetEntry]] = defaultdict(list)
     for entry in sets:
@@ -275,6 +279,13 @@ def _session_out(db: Session, session: WorkoutSession, user: User) -> SessionOut
                 previous_sets=[
                     SetOut.model_validate(s) for s in previous.get(ex_id, (None, []))[1]
                 ],
+                hint=HintOut.from_hint(
+                    hints.suggest(
+                        top_sets.get(ex_id, []),
+                        equipment=exercises[ex_id].equipment,
+                        unit=user.weight_unit,
+                    )
+                ),
             )
             for ex_id in order
             if ex_id in exercises

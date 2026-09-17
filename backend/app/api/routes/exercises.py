@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import CurrentUser, DbSession
 from app.core import personal_records as prs
+from app.core import progression_hints as hints
 from app.core import workout_store as store
 from app.core.exercise_names import clean_name, name_key
 from app.models.user import User
@@ -31,6 +32,7 @@ from app.models.workout_enums import (
     values,
 )
 from app.schemas.workout import (
+    HintOut,
     ExerciseCreate,
     ExerciseHistoryPoint,
     ExerciseMetaOut,
@@ -276,10 +278,19 @@ def last_performance(
     """The previous completed session's sets - ghost values for an exercise
     added mid-workout. Empty `sets` when it has never been done."""
     exercise = _get_visible(db, exercise_id, current_user)
+    hint = hints.suggest(
+        store.recent_top_sets(db, current_user.id, [exercise.id]).get(exercise.id, []),
+        equipment=exercise.equipment,
+        unit=current_user.weight_unit,
+    )
     found = store.previous_sets(db, current_user.id, [exercise.id]).get(exercise.id)
     if found is None:
         return LastPerformanceOut(
-            exercise_id=exercise.id, session_id=None, performed_at=None, sets=[]
+            exercise_id=exercise.id,
+            session_id=None,
+            performed_at=None,
+            sets=[],
+            hint=HintOut.from_hint(hint),
         )
     session, sets = found
     return LastPerformanceOut(
@@ -287,4 +298,5 @@ def last_performance(
         session_id=session.id,
         performed_at=session.started_at,
         sets=[SetOut.model_validate(s) for s in sets],
+        hint=HintOut.from_hint(hint),
     )

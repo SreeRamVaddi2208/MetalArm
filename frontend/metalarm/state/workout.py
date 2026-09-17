@@ -65,6 +65,7 @@ def build_card(
     target: dict[str, Any] | None,
     unit: str,
     keep: ExerciseCard | None,
+    hint: dict[str, Any] | None = None,
 ) -> ExerciseCard:
     """An exercise card from API data.
 
@@ -102,6 +103,8 @@ def build_card(
             if prev
             else ("" if rows else "First time - this sets your baseline")
         ),
+        hint_label=(hint or {}).get("text") or "",
+        hint_kind=(hint or {}).get("kind") or "",
     )
 
     if keep is not None:
@@ -322,6 +325,7 @@ class WorkoutState(rx.State):
                     item.get("target"),
                     unit,
                     existing.get(exercise.get("id") or ""),
+                    hint=item.get("hint"),
                 )
             )
         if same:
@@ -342,7 +346,9 @@ class WorkoutState(rx.State):
             except ApiError:
                 # Deleted or no longer visible: drop it quietly.
                 continue
-            cards.append(build_card(exercise, [], last.get("sets") or [], None, self.unit, None))
+            cards.append(
+                build_card(exercise, [], last.get("sets") or [], None, self.unit, None, hint=last.get("hint"))
+            )
             present.add(exercise_id)
         self.cards = cards
         self._save_pending()
@@ -442,7 +448,7 @@ class WorkoutState(rx.State):
             return
         self.cards = [
             *self.cards,
-            build_card(exercise, [], last.get("sets") or [], None, self.unit, None),
+            build_card(exercise, [], last.get("sets") or [], None, self.unit, None, hint=last.get("hint")),
         ]
         self._save_pending()
 

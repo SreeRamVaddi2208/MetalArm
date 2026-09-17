@@ -221,6 +221,12 @@ struct WorkoutView: View {
                     .foregroundStyle(Theme.dim)
                     .accessibilityIdentifier("ghostValues")
             }
+            if let hint = model.selectedHint {
+                Label(hint.text, systemImage: hint.kind == "progress" ? "arrow.up.right" : "arrow.triangle.2.circlepath")
+                    .font(Theme.body(12, .semibold))
+                    .foregroundStyle(hint.kind == "progress" ? Theme.accent : Theme.silver)
+                    .accessibilityIdentifier("progressionHint")
+            }
             setColumns(
                 columnLabel("SET"),
                 columnLabel("WEIGHT (\(unit.rawValue))"),
