@@ -14,6 +14,37 @@ Entry format:
 
 ---
 
+## 2026-09-17 (28) - Opus - workouts in Apple Health
+
+**Changed**
+- `ios/MetalARM/State/HealthStore.swift`: a `HealthWriting` protocol over
+  HealthKit, plus the settings that remember whether the user wants it. A
+  finished workout is added as a `traditionalStrengthTraining` workout with the
+  session's start, end, volume and working sets (the last two as metadata,
+  since Health has no field for them).
+- WRITE ONLY, and off until asked for. The permission sheet appears the first
+  time the toggle is turned on - never at launch - and a refusal says where to
+  change it. A failed write is silent: the workout is already safe on the
+  server, so a Health hiccup must not look like a lost workout.
+- `NSHealthUpdateUsageDescription` and the HealthKit entitlement are in; the
+  privacy strings to re-read before upload are in `docs/launch-checklist.md`.
+
+**Verified (real output)**
+- iOS: `MetalARMTests` - TEST SUCCEEDED, including the two new tests (nothing
+  reaches Health until the toggle is on, and turning it on asks exactly once).
+
+**Blocked:** the Live Activity and the Watch app both need NEW Xcode targets
+(a widget extension and a watchOS app). The project uses file-system
+synchronized groups, which pick up new FILES automatically but not new
+TARGETS - those mean editing `project.pbxproj` by hand, which risks breaking
+the whole iOS build. Add the targets from Xcode (File > New > Target) and the
+code can follow.
+
+**Other agent needs to know:** nothing on the backend changed. `AppModel.
+healthWriter` is a var so tests can swap in a spy, exactly like `notifier`.
+
+---
+
 ## 2026-09-17 (27) - Opus - local notifications
 
 **Changed**

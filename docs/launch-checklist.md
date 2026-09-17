@@ -88,3 +88,12 @@ a party member finishing a workout, a raid boss falling - needs:
 - [ ] Decide what is worth waking someone for. Party events only, and never a
       marketing message: the App Store treats that as a reason to reject.
 
+## Apple Health (before the first upload)
+
+- [ ] Review `NSHealthUpdateUsageDescription` in `ios/MetalARM/Info.plist`. App
+      Review reads it, and it must say what is written and why.
+- [ ] Confirm the HealthKit capability is on the App ID in the developer
+      portal; the entitlement alone is not enough for a real device build.
+- [ ] MetalArm asks to WRITE workouts only - never to read. Keep it that way
+      unless a feature genuinely needs reading, because the ask gets harder.
+
