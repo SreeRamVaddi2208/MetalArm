@@ -14,7 +14,7 @@ import reflex as rx
 
 from metalarm import api
 from metalarm import workout_api as wapi
-from metalarm.models import LeaderboardRow, Party, PartyQuest, RaidView, WorkoutBoardRow
+from metalarm.models import LeaderboardRow, LeagueView, Party, PartyQuest, RaidView, WorkoutBoardRow
 from metalarm.state.auth import AuthState
 
 
@@ -28,6 +28,8 @@ class PartyState(rx.State):
     workout_period: str = "week"
     # This week's party boss (core/raids.py on the backend).
     raid: RaidView = RaidView()
+    # This week's league (core/leagues.py). Personal, not per party.
+    league: LeagueView = LeagueView()
 
     loading: bool = False
     error: str = ""
@@ -92,6 +94,7 @@ class PartyState(rx.State):
         self.error = ""
         yield
         try:
+            await self._load_league(auth.token)
             data = await api.list_parties(auth.token)
             self.parties = [Party.from_api(p) for p in data]
             # Keep the current selection if it still exists, else pick the
@@ -127,6 +130,14 @@ class PartyState(rx.State):
             )
         except api.ApiError as exc:
             self.error = exc.detail
+
+    async def _load_league(self, token: str) -> None:
+        """Asking is what enters the user into this week's league. A failure
+        hides the panel rather than breaking the page."""
+        try:
+            self.league = LeagueView.from_api(await api.league(token))
+        except api.ApiError:
+            self.league = LeagueView()
 
     async def _load_raid(self, token: str) -> None:
         """A raid that fails to load hides the panel; the boards still show."""

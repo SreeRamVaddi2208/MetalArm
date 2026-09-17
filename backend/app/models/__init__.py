@@ -12,6 +12,7 @@ from app.models.party import (
     PartyQuest,
     PartyQuestCompletion,
 )
+from app.models.league import LeagueMembership
 from app.models.quest import Quest, QuestCompletion
 from app.models.raid import RaidBoss, RaidHit
 from app.models.reward import RewardItem, RewardRedemption
@@ -30,6 +31,7 @@ from app.models.workout import (
 
 __all__ = [
     "AuthSession",
+    "LeagueMembership",
     "User",
     "LevelProgress",
     "Quest",

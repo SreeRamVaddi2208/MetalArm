@@ -17,7 +17,7 @@ from metalarm.components.party_card import (
     rank_letter,
 )
 from metalarm.components.scroll_reveal import reveal, reveal_assets
-from metalarm.models import RaidHitterRow, WorkoutBoardRow
+from metalarm.models import LeagueEntryRow, RaidHitterRow, WorkoutBoardRow
 from metalarm.state.parties import PartyState
 
 
@@ -252,6 +252,7 @@ def party_detail() -> rx.Component:
             spacing="3",
             width="100%",
         ),
+        rx.cond(PartyState.league.loaded, league_panel()),
         rx.cond(PartyState.raid.loaded, raid_panel()),
         # --- leaderboard ---
         rx.vstack(
@@ -316,6 +317,66 @@ def raid_hitter_row(hitter: RaidHitterRow) -> rx.Component:
         align="center",
         spacing="2",
         padding_block="0.35rem",
+    )
+
+
+def league_entry_row(entry: LeagueEntryRow) -> rx.Component:
+    return rx.hstack(
+        rx.text(
+            entry.position.to_string(),
+            color=rx.cond(entry.promoting, theme.ACCENT, theme.FAINT),
+            font_weight="800",
+            font_size="0.8rem",
+            width="1.5rem",
+        ),
+        rx.text(
+            entry.display_name,
+            color=rx.cond(entry.is_me, theme.ACCENT, theme.TEXT),
+            font_weight=rx.cond(entry.is_me, "800", "500"),
+            font_size="0.85rem",
+        ),
+        rx.spacer(),
+        rx.text(f"LV {entry.level}", color=theme.FAINT, font_size="0.72rem"),
+        rx.text(entry.points.to_string(), color=theme.TEXT, font_weight="700", font_size="0.85rem"),
+        width="100%",
+        align="center",
+        spacing="3",
+    )
+
+
+def league_panel() -> rx.Component:
+    return rx.vstack(
+        rx.hstack(
+            rx.text("LEAGUE", **theme.LABEL_STYLE),
+            rx.spacer(),
+            rx.text(PartyState.league.days_left_label, color=theme.FAINT, font_size="0.72rem"),
+            width="100%",
+            align="center",
+        ),
+        rx.text(
+            PartyState.league.division_label,
+            color=theme.TEXT,
+            font_weight="800",
+            font_size="1.05rem",
+        ),
+        rx.cond(
+            PartyState.league.standing_label != "",
+            rx.text(
+                PartyState.league.standing_label,
+                color=theme.ACCENT,
+                font_size="0.8rem",
+                font_weight="600",
+            ),
+        ),
+        rx.divider(border_color=theme.BORDER),
+        rx.foreach(PartyState.league.rows, league_entry_row),
+        rx.text(
+            f"Top {PartyState.league.promote_cutoff} move up at the end of the week.",
+            color=theme.MUTED,
+            font_size="0.72rem",
+        ),
+        spacing="3",
+        **theme.panel(),
     )
 
 

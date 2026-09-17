@@ -78,6 +78,10 @@ struct DecodingTests {
         #expect(try decode([WorkoutRecord].self, ContractFixtures.records).first?.label == "Heaviest")
         #expect(try decode([Party].self, ContractFixtures.parties).first?.inviteCode == "IRON2345")
         #expect(try decode(PartyBoard.self, ContractFixtures.partyBoard).entries.first?.isMe == true)
+        let league = try decode(League.self, ContractFixtures.league)
+        #expect(league.divisionLabel == "Silver")
+        #expect(league.me?.position == 2)
+        #expect(league.daysLeft(from: parseServerDate("2026-09-18T00:00:00Z")!) == 3)
         let raid = try decode(PartyRaid.self, ContractFixtures.partyRaid)
         #expect(raid.name == "Iron Golem")
         #expect(raid.hpRemaining == 41_250)
@@ -589,6 +593,13 @@ struct AppModelTests {
         // An empty queue leaves no file behind.
         PendingSetStore(fileURL: file).save([])
         #expect(!FileManager.default.fileExists(atPath: file.path()))
+    }
+
+    @Test func theRanksTabLoadsThisWeeksLeague() async {
+        let (model, _) = signedInModel()
+        await model.loadLeague()
+        #expect(model.league?.divisionLabel == "Silver")
+        #expect(model.league?.me?.points == 815)
     }
 
     @Test func partiesLoadThisWeeksRaid() async {

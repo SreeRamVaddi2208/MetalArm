@@ -430,6 +430,41 @@ struct RankTrial: Codable, Equatable, Identifiable {
     }
 }
 
+/// GET /leagues/current: one lifter's line on this week's league board.
+struct LeagueEntry: Codable, Equatable, Identifiable {
+    var position: Int
+    var userId: String
+    var displayName: String
+    var points: Int
+    var level: Int
+    var rank: String
+    var isMe: Bool
+
+    var id: String { userId }
+}
+
+/// This week's league: twenty lifters, promotion at the top, relegation at
+/// the bottom. Standings come from the points ledger, never a stored score.
+struct League: Codable, Equatable {
+    var weekKey: String
+    var division: Int
+    var divisionLabel: String
+    var groupNo: Int
+    var endsAt: String
+    var promotedFrom: Int?
+    var promoteCutoff: Int
+    var demoteCutoff: Int
+    var entries: [LeagueEntry]
+
+    func daysLeft(from now: Date) -> Int {
+        guard let end = parseServerDate(endsAt) else { return 0 }
+        return max(0, Int((end.timeIntervalSince(now) / 86_400).rounded(.up)))
+    }
+
+    /// Where the viewer stands, if they are on the board.
+    var me: LeagueEntry? { entries.first(where: \.isMe) }
+}
+
 struct PartyRaid: Codable, Equatable {
     var partyId: String
     var weekKey: String
