@@ -14,6 +14,49 @@ Entry format:
 
 ---
 
+## 2026-09-14 (23) - Opus - import from Strong and Hevy
+
+**Changed**
+- `app/core/importer.py`: parses both apps' CSV exports (Strong comma or
+  semicolon, "W" warm-ups, "1h 5m" durations, weights in the chosen unit or its
+  Weight Unit column; Hevy kg or lb and km or miles columns). Rows are grouped
+  into workouts by start time and name, local times read in the user's
+  timezone, future rows and sets with nothing loggable skipped.
+- Exercise names match the library by slug ("Bench Press (Barbell)" ->
+  barbell-bench-press), then a small alias table, then the bare name only when
+  the equipment agrees - "Squat (Smith Machine)" never lands on the barbell
+  Back Squat or its rank trial. The rest become the user's own exercises,
+  reused by later imports.
+- New table `workout_imports` (unique per user and file hash) and
+  `workout_sessions.import_id` (migration `6fcf270d2e3d`, named FK). Imported
+  sessions are completed but never qualified: they count for records (rebuilt
+  in date order with `replay_exercise`), rank trials, history and charts, and
+  pay 10 XP per workout (capped at 500 per file) - never shop points, streaks,
+  raids or leaderboard places. The same file imports once; a workout already in
+  the history (same start time) is skipped, so a newer cumulative export only
+  adds what is new. Rate limited to 10 imports an hour per user.
+- API: `POST /workouts/import` (CSV as text, 422 with a readable message for
+  anything else). `docs/api-contract.md` regenerated.
+- Web: an IMPORT HISTORY drop zone on the profile. iOS: Profile -> "Import from
+  Strong or Hevy" with the Files picker and a result alert.
+
+**Verified (real output)**
+- Backend suite passes, including 12 new `test_import.py` tests (both formats,
+  units, the equipment guard, history and records, no points or streak, one
+  import per file, newer exports, an imported lift passing a rank trial).
+- `alembic check` clean; migration downgraded and upgraded again on the dev DB.
+- Web e2e against the rebuilt images: ALL PASSED (79), including a Strong
+  export uploaded on the profile landing as history.
+- iOS: `MetalARMTests` plus `testProgressRanksAndProfile` - TEST SUCCEEDED.
+
+**Blocked:** nothing.
+
+**Other agent needs to know:** Strong's export doesn't say its weight unit -
+the client sends the account's unit, and the web/iOS copy says so implicitly.
+Add names to `importer.ALIASES` when a common one lands as a custom exercise.
+
+---
+
 ## 2026-09-14 (22) - Opus - rank trials
 
 **Changed**

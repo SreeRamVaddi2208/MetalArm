@@ -5,7 +5,7 @@ from __future__ import annotations
 import reflex as rx
 
 from metalarm import api
-from metalarm.models import Badge, LifetimeStats, TrialRow
+from metalarm.models import Badge, LifetimeStats, TrialRow, import_summary
 from metalarm.state.auth import AuthState
 
 
@@ -15,6 +15,8 @@ class ProfileState(rx.State):
     badges_earned: int = 0
     badges_total: int = 0
     trials: list[TrialRow] = []
+    importing: bool = False
+    import_message: str = ""
     loading: bool = False
     error: str = ""
 
@@ -42,3 +44,24 @@ class ProfileState(rx.State):
             self.error = exc.detail
         finally:
             self.loading = False
+
+    async def import_history(self, files: list[rx.UploadFile]):
+        """A Strong or Hevy CSV dropped on the IMPORT HISTORY panel."""
+        auth = await self.get_state(AuthState)
+        if not auth.token or not files:
+            return
+        self.importing = True
+        self.import_message = ""
+        self.error = ""
+        yield
+        try:
+            text = (await files[0].read()).decode("utf-8-sig", errors="replace")
+            result = await api.import_workouts(auth.token, text, auth.weight_unit)
+            self.import_message = import_summary(result)
+        except api.ApiError as exc:
+            self.error = exc.detail
+        finally:
+            self.importing = False
+        # Imported history moves XP, records and trials.
+        yield AuthState.refresh_me
+        yield ProfileState.load

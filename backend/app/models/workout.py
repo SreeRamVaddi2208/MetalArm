@@ -205,6 +205,31 @@ class RoutineExercise(UUIDPrimaryKey, Base):
     )
 
 
+class WorkoutImport(UUIDPrimaryKey, Timestamps, Base):
+    """One Strong or Hevy export imported into a user's history
+    (app/core/importer.py)."""
+
+    __tablename__ = "workout_imports"
+
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    source: Mapped[str] = mapped_column(String(8), nullable=False)
+    # sha256 of the file: the same export imports once.
+    file_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    workouts: Mapped[int] = mapped_column(Integer, nullable=False)
+    sets: Mapped[int] = mapped_column(Integer, nullable=False)
+    exercises_created: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    xp_awarded: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+
+    __table_args__ = (
+        UniqueConstraint("user_id", "file_hash", name="uq_workout_imports_user_file"),
+        CheckConstraint("source IN ('strong', 'hevy')", name="ck_workout_imports_source"),
+    )
+
+
 class WorkoutSession(UUIDPrimaryKey, Timestamps, Base):
     """One workout, from start to finish (or abandonment)."""
 
@@ -242,6 +267,14 @@ class WorkoutSession(UUIDPrimaryKey, Timestamps, Base):
     # ledger total at that moment. See routes/workouts.py.
     points_credited: Mapped[int] = mapped_column(
         Integer, nullable=False, server_default="0"
+    )
+    # Set on a workout imported from another app. Imported sessions are
+    # completed but never qualified: history, not streaks, raids or points.
+    import_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("workout_imports.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
     )
 
     sets: Mapped[list["SetEntry"]] = relationship(

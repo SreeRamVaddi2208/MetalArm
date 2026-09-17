@@ -97,6 +97,10 @@ final class LiveAPIClient: MetalArmAPI {
     func profile() async throws -> Profile { try await send(.get("profile")) }
     func rankTrials() async throws -> [RankTrial] { try await send(.get("profile/trials")) }
 
+    func importWorkouts(csv: String, unit: WeightUnit) async throws -> WorkoutImportResult {
+        try await send(.post("workouts/import", ImportBody(csv: csv, unit: unit.rawValue), encoder))
+    }
+
     func points() async throws -> PointsSummary { try await send(.get("workouts/points")) }
 
     // MARK: - Exercises and progress
@@ -311,4 +315,10 @@ final class LiveAPIClient: MetalArmAPI {
         case let .issues(issues): return issues.map { $0.msg.replacingOccurrences(of: "Value error, ", with: "") }.joined(separator: "\n")
         }
     }
+}
+
+/// A Strong or Hevy CSV export, sent as text.
+private struct ImportBody: Encodable {
+    var csv: String
+    var unit: String
 }

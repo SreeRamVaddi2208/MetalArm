@@ -354,6 +354,31 @@ struct RaidHitter: Codable, Equatable, Identifiable {
 /// This week's party boss (GET /parties/{id}/raid; the rules are in the
 /// backend's app/core/raids.py). Every finished workout hits it for the
 /// weight lifted; on days nobody trains it heals.
+/// POST /workouts/import: what a Strong or Hevy export added to the history.
+struct WorkoutImportResult: Codable, Equatable {
+    var source: String
+    var workoutsImported: Int
+    var setsImported: Int
+    var workoutsSkipped: Int
+    var rowsSkipped: Int
+    var exercisesCreated: [String]
+    var xpAwarded: Int
+    var duplicate: Bool
+    var progression: ProgressionDelta?
+
+    var summary: String {
+        if duplicate { return "That file was already imported - nothing changed." }
+        let app = source == "strong" ? "Strong" : "Hevy"
+        var parts = ["Imported \(workoutsImported) workout\(workoutsImported == 1 ? "" : "s") (\(setsImported) sets) from \(app)."]
+        if workoutsSkipped > 0 { parts.append("\(workoutsSkipped) already in your history.") }
+        if !exercisesCreated.isEmpty {
+            parts.append("\(exercisesCreated.count) new exercise\(exercisesCreated.count == 1 ? "" : "s") added.")
+        }
+        if xpAwarded > 0 { parts.append("+\(xpAwarded) XP.") }
+        return parts.joined(separator: " ")
+    }
+}
+
 /// GET /profile/trials: a strength standard that gates rank B, A or S.
 struct RankTrial: Codable, Equatable, Identifiable {
     var rank: String

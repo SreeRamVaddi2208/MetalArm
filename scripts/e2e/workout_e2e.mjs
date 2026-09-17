@@ -262,8 +262,20 @@ try {
   check('workout badges are on the profile', badgesLoaded);
   check('profile shows training stats', await visible(page.getByText('VOLUME LIFTED')));
   // The 80.5 kg bodyweight logged above sets every trial's target.
-  check('profile shows the rank trials', await visible(page.getByText('RANK TRIALS')));
+  // The trials are a second request, so they can land after the badges.
+  // exact: the import panel's copy also says "rank trials", and a plain
+  // string match is case-insensitive and would hit both.
+  const trialsLoaded = await page.getByText('RANK TRIALS', { exact: true }).waitFor({ timeout: 15000 }).then(() => true).catch(() => false);
+  check('profile shows the rank trials', trialsLoaded);
   check('the bench trial targets 1x bodyweight', await visible(page.getByText(/of 80\.5 kg/)));
+
+  // A Strong export dropped on the profile becomes history.
+  const strongCsv = 'Date,Workout Name,Duration,Exercise Name,Set Order,Weight,Reps,Distance,Seconds,Notes,Workout Notes,RPE\n'
+    + '2026-09-01 18:00:00,Imported Push,45m,Bench Press (Barbell),1,60,5,0,0,,,\n'
+    + '2026-09-01 18:00:00,Imported Push,45m,Bench Press (Barbell),2,62.5,5,0,0,,,\n';
+  await page.locator('input[type=file]').first().setInputFiles({ name: 'strong.csv', mimeType: 'text/csv', buffer: Buffer.from(strongCsv) });
+  const imported = await page.getByText(/Imported 1 workout \(2 sets\) from Strong/).waitFor({ timeout: 15000 }).then(() => true).catch(() => false);
+  check('a Strong export imports from the profile', imported);
 
   const party = await api('/parties', 'POST', { name: 'E2E Crew' }, token);
   check('party created', party.status === 201);

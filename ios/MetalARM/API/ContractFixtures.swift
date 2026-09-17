@@ -156,6 +156,11 @@ enum ContractFixtures {
       {"user_id": "u3", "display_name": "Arjun", "damage": 5150, "hits": 2, "is_me": false}]}
     """
 
+    static let importResult = """
+    {"source": "strong", "workouts_imported": 42, "sets_imported": 610, "workouts_skipped": 3, "rows_skipped": 2,
+     "exercises_created": ["Cable Kickback (Cable)"], "xp_awarded": 420, "duplicate": false, "progression": \(progression)}
+    """
+
     static let rankTrials = """
     [{"rank": "B", "lift": "Barbell Bench Press", "description": "Barbell Bench Press at 1x bodyweight", "multiplier": 1.0,
       "target_kg": 80.0, "best_kg": 72.5, "passed": false},

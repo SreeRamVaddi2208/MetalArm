@@ -204,6 +204,7 @@ final class MetalARMUITests: XCTestCase {
         openTab(app, "Profile")
         XCTAssertTrue(app.staticTexts["Badges"].waitForExistence(timeout: 5), "Profile did not load")
         XCTAssertTrue(element(app, "rankTrialsCard").waitForExistence(timeout: 5), "Rank trials missing")
+        XCTAssertTrue(app.buttons["importWorkoutsButton"].exists, "Import from Strong or Hevy missing")
         attachScreenshot(app, named: "10 Profile")
     }
 
@@ -359,6 +360,13 @@ final class MetalARMUITests: XCTestCase {
 
     @MainActor
     func testLaunchPerformance() throws {
+        // A launch-time measurement belongs on a quiet machine. On a shared CI
+        // runner it launches the app five times, takes minutes, and fails for
+        // reasons that have nothing to do with the change under review.
+        try XCTSkipIf(
+            ProcessInfo.processInfo.environment["CI"] != nil,
+            "Launch timing is measured locally, not on CI"
+        )
         measure(metrics: [XCTApplicationLaunchMetric()]) {
             let app = XCUIApplication()
             app.launchArguments = ["-UITestMockAPI"]

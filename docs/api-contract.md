@@ -10,7 +10,7 @@
 
 - **API title:** MetalArm API
 - **API version:** 0.1.0
-- **Generated:** 2026-09-14 15:43 UTC
+- **Generated:** 2026-09-14 16:45 UTC
 - **Source:** `http://localhost:8000/openapi.json`
 
 ---
@@ -1179,6 +1179,27 @@ Full replace. The ordered exercise list is swapped as a whole.
 
 ---
 
+### `POST /api/v1/workouts/import`
+
+**Import Workouts**
+
+Import history from a Strong or Hevy CSV export (app/core/importer.py).
+The same file twice imports once, and workouts already in the history are
+skipped. Imported workouts count for records, rank trials and charts, and
+pay a little XP - never shop points, streaks, raids or leaderboard places.
+422 when the file isn't an export that can be read.
+
+*Tags:* `workouts`
+
+*Request body* (`application/json`): `WorkoutImportIn`
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
 ### `GET /api/v1/workouts/points`
 
 **Points Summary**
@@ -2316,6 +2337,27 @@ otherwise 503 with per-dependency detail.
 | Field | Type | Required |
 |---|---|---|
 | _(no properties)_ | | |
+
+#### `WorkoutImportIn`
+
+| Field | Type | Required |
+|---|---|---|
+| `csv` | `string` | yes |
+| `unit` | `WeightUnit | null` | no |
+
+#### `WorkoutImportOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `source` | `string` | yes |
+| `workouts_imported` | `integer` | yes |
+| `sets_imported` | `integer` | yes |
+| `workouts_skipped` | `integer` | yes |
+| `rows_skipped` | `integer` | yes |
+| `exercises_created` | `string[]` | yes |
+| `xp_awarded` | `integer` | yes |
+| `duplicate` | `boolean` | yes |
+| `progression` | `ProgressionDeltaOut | null` | yes |
 
 #### `WorkoutLeaderboardEntry`
 
