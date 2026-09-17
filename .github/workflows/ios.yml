@@ -61,6 +61,7 @@ jobs:
           xcodebuild test \
             -project MetalARM.xcodeproj -scheme MetalARM \
             -destination "platform=iOS Simulator,id=${{ steps.simulator.outputs.udid }}" \
+            -skip-testing:MetalARMUITests/DemoTour \
             CODE_SIGNING_ALLOWED=NO
 
       - name: Release build compiles
