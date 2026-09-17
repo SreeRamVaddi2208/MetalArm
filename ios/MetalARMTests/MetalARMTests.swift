@@ -395,6 +395,25 @@ struct ShareCardTests {
     }
 }
 
+/// Records what WOULD be scheduled, so notification behaviour is testable
+/// without a notification centre.
+final class SpyNotifier: NotificationScheduling, @unchecked Sendable {
+    var authorized = true
+    var asked = 0
+    var scheduled: [LocalNotification] = []
+    var cancelled: [String] = []
+
+    func isAuthorized() async -> Bool { authorized }
+
+    func requestAuthorization() async -> Bool {
+        asked += 1
+        return authorized
+    }
+
+    func schedule(_ notification: LocalNotification) async { scheduled.append(notification) }
+    func cancel(_ ids: [String]) async { cancelled.append(contentsOf: ids) }
+}
+
 @MainActor
 struct AppModelTests {
     private func signedInModel() -> (AppModel, MockAPIClient) {
@@ -622,6 +641,82 @@ struct AppModelTests {
         await model.chooseClass("powerlifter")
         #expect(model.characterSheet?.characterClass == "")
         #expect(model.characterSheet?.stats.contains { $0.highlighted } == false)
+    }
+
+    @Test func theRestTimerSchedulesAndCancelsItsAlert() async throws {
+        let (model, _) = signedInModel()
+        let spy = SpyNotifier()
+        model.notifier = spy
+        model.notificationSettings.restAlerts = true
+
+        model.startRestTimer(seconds: 90)
+        try await Task.sleep(for: .milliseconds(80))
+        #expect(spy.scheduled.first?.id == NotificationID.restDone)
+        #expect(spy.scheduled.first?.after == 90)
+
+        model.stopRestTimer()
+        try await Task.sleep(for: .milliseconds(80))
+        #expect(spy.cancelled.contains(NotificationID.restDone))
+    }
+
+    @Test func turningRestAlertsOffCancelsWhatIsPending() async {
+        let (model, _) = signedInModel()
+        let spy = SpyNotifier()
+        model.notifier = spy
+        await model.setRestAlerts(false)
+        #expect(spy.cancelled.contains(NotificationID.restDone))
+        #expect(model.notificationSettings.restAlerts == false)
+    }
+
+    @Test func permissionIsAskedOnceAndOnlyAfterAWorkout() async {
+        let (model, _) = signedInModel()
+        let spy = SpyNotifier()
+        model.notifier = spy
+        model.notificationSettings.asked = false
+
+        await model.askForNotificationsAfterFirstWorkout()
+        await model.askForNotificationsAfterFirstWorkout()
+        #expect(spy.asked == 1)
+    }
+
+    @Test func theStreakReminderNeedsAStreakToLose() async throws {
+        let (model, _) = signedInModel()
+        let spy = SpyNotifier()
+        model.notifier = spy
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        model.me = try decoder.decode(Me.self, from: Data(ContractFixtures.me.utf8))
+
+        // Morning, a live streak, nothing logged today: worth a reminder.
+        var components = DateComponents()
+        components.year = 2026
+        components.month = 9
+        components.day = 14
+        components.hour = 10
+        let morning = try #require(Calendar.current.date(from: components))
+        await model.refreshStreakReminder(now: morning)
+        #expect(spy.scheduled.contains { $0.id == NotificationID.streakAtRisk })
+
+        // Trained today: nothing to save, so the pending one goes.
+        model.me?.progress.lastCompletedOn = AppModel.isoDay(morning)
+        await model.refreshStreakReminder(now: morning)
+        #expect(spy.cancelled.contains(NotificationID.streakAtRisk))
+    }
+
+    @Test func tonightsReminderIsOnlyScheduledWhileTheEveningIsAhead() throws {
+        var components = DateComponents()
+        components.year = 2026
+        components.month = 9
+        components.day = 14
+        components.hour = 10
+        let morning = try #require(Calendar.current.date(from: components))
+        // Time arithmetic: a tolerance, never exact Double equality.
+        let seconds = try #require(StreakReminder.secondsUntilTonight(from: morning))
+        #expect(abs(seconds - Double(9 * 3600)) < 1)
+
+        components.hour = 22
+        let night = try #require(Calendar.current.date(from: components))
+        #expect(StreakReminder.secondsUntilTonight(from: night) == nil)
     }
 
     @Test func profileLoadsTheRankTrials() async {

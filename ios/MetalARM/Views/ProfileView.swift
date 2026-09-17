@@ -307,6 +307,24 @@ struct ProfileView: View {
                 .padding(.horizontal, 16)
                 .padding(.vertical, 10)
                 divider
+                Toggle(isOn: Binding(
+                    get: { model.notificationSettings.restAlerts },
+                    set: { on in Task { await model.setRestAlerts(on) } }
+                )) {
+                    settingsLabel("Rest timer alerts", icon: "bell")
+                }
+                .padding(.trailing, 16)
+                .accessibilityIdentifier("restAlertsToggle")
+                divider
+                Toggle(isOn: Binding(
+                    get: { model.notificationSettings.streakReminders },
+                    set: { on in Task { await model.setStreakReminders(on) } }
+                )) {
+                    settingsLabel("Streak reminders", icon: "flame")
+                }
+                .padding(.trailing, 16)
+                .accessibilityIdentifier("streakRemindersToggle")
+                divider
                 Button { showingImporter = true } label: { settingsLabel("Import from Strong or Hevy", icon: "square.and.arrow.down") }
                     .accessibilityIdentifier("importWorkoutsButton")
                 divider
