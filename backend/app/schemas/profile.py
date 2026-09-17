@@ -61,3 +61,21 @@ class TrialOut(BaseModel):
     target_kg: float | None
     best_kg: float | None
     passed: bool
+
+
+class StatOut(BaseModel):
+    """One character stat, 0-100 with the number behind it."""
+
+    key: str
+    label: str
+    value: int
+    detail: str
+    highlighted: bool
+
+
+class CharacterOut(BaseModel):
+    """The character sheet (app/core/character.py). The class is cosmetic."""
+
+    character_class: str
+    class_label: str
+    stats: list[StatOut]

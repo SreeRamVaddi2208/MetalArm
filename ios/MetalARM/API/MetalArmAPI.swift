@@ -26,6 +26,8 @@ protocol MetalArmAPI: AnyObject {
     func updateWeightUnit(_ unit: WeightUnit) async throws -> Me
     func profile() async throws -> Profile
     func rankTrials() async throws -> [RankTrial]
+    func character() async throws -> CharacterSheet
+    func updateCharacterClass(_ value: String) async throws -> Me
     func importWorkouts(csv: String, unit: WeightUnit) async throws -> WorkoutImportResult
     func points() async throws -> PointsSummary
 

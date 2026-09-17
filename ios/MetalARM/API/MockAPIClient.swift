@@ -25,6 +25,8 @@ final class MockAPIClient: MetalArmAPI {
     private var current: WorkoutSession?
     private var partyList: [Party]
     private var weightUnit = WeightUnit.kg
+    /// The cosmetic class the mock remembers, like the server would.
+    var characterClass = ""
     private let decoder = LiveAPIClient.makeDecoder()
 
     // -UITestLevelUp: finishing a workout levels the user up (14 -> 15).
@@ -310,6 +312,32 @@ final class MockAPIClient: MetalArmAPI {
     func rankTrials() async throws -> [RankTrial] {
         try check()
         return fixture(ContractFixtures.rankTrials)
+    }
+
+    func character() async throws -> CharacterSheet {
+        try check()
+        var sheet: CharacterSheet = fixture(ContractFixtures.character)
+        let highlights: [String: [String]] = [
+            "powerlifter": ["strength"],
+            "bodybuilder": ["strength", "endurance"],
+            "athlete": ["endurance", "discipline"],
+        ]
+        let labels = ["powerlifter": "Powerlifter", "bodybuilder": "Bodybuilder", "athlete": "Athlete"]
+        let chosen = highlights[characterClass] ?? []
+        sheet.characterClass = characterClass
+        sheet.classLabel = labels[characterClass] ?? ""
+        sheet.stats = sheet.stats.map { stat in
+            var marked = stat
+            marked.highlighted = chosen.contains(stat.key)
+            return marked
+        }
+        return sheet
+    }
+
+    func updateCharacterClass(_ value: String) async throws -> Me {
+        try check()
+        characterClass = value
+        return try await me()
     }
 
     func importWorkouts(csv: String, unit: WeightUnit) async throws -> WorkoutImportResult {

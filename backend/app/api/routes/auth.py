@@ -88,6 +88,7 @@ def _serialize_me(user: User) -> MeOut:
         timezone=user.timezone,
         created_at=user.created_at,
         weight_unit=user.weight_unit,
+        character_class=user.character_class,
         progress=ProgressOut(
             total_xp=progress.total_xp,
             current_level=progress.current_level,
@@ -317,13 +318,19 @@ def read_me(current_user: CurrentUser) -> MeOut:
 
 @router.patch("/me", response_model=MeOut)
 def update_me(payload: MeUpdate, current_user: CurrentUser, db: DbSession) -> MeOut:
-    """Update account preferences - currently the workout weight unit.
+    """Update account preferences: the workout weight unit and the cosmetic
+    character class.
 
     Stored on the account rather than in the browser, so the choice follows
     the user across devices.
     """
     if payload.weight_unit is not None:
         current_user.weight_unit = payload.weight_unit.value
+    if payload.character_class is not None:
+        # "" clears it; the enum's own value otherwise.
+        current_user.character_class = getattr(
+            payload.character_class, "value", payload.character_class
+        )
     db.commit()
     db.refresh(current_user)
     return _serialize_me(current_user)

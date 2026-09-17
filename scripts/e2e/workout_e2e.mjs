@@ -281,6 +281,13 @@ try {
   check('profile shows the rank trials', trialsLoaded);
   check('the bench trial targets 1x bodyweight', await visible(page.getByText(/of 80\.5 kg/)));
 
+  // The character sheet: three stats, and a class that only highlights them.
+  check('profile shows the character sheet', await visible(page.getByText('CHARACTER', { exact: true })));
+  check('character stats are scored', await visible(page.getByText(/lifted in four weeks/)));
+  await page.getByText('POWERLIFTER', { exact: true }).click();
+  const classPicked = await page.getByText('Powerlifter', { exact: true }).waitFor({ timeout: 15000 }).then(() => true).catch(() => false);
+  check('picking a class shows it on the sheet', classPicked);
+
   // A Strong export dropped on the profile becomes history.
   const strongCsv = 'Date,Workout Name,Duration,Exercise Name,Set Order,Weight,Reps,Distance,Seconds,Notes,Workout Notes,RPE\n'
     + '2026-09-01 18:00:00,Imported Push,45m,Bench Press (Barbell),1,60,5,0,0,,,\n'

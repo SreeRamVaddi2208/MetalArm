@@ -445,3 +445,25 @@ def import_summary(data: dict[str, Any]) -> str:
     if xp := data.get("xp_awarded") or 0:
         parts.append(f"+{xp} XP.")
     return " ".join(parts)
+
+
+@dataclasses.dataclass
+class StatRow:
+    """One character stat (backend app/core/character.py): 0-100 with the
+    number behind it."""
+
+    key: str = ""
+    label: str = ""
+    value: int = 0
+    detail: str = ""
+    highlighted: bool = False
+
+    @classmethod
+    def from_api(cls, data: dict[str, Any]) -> "StatRow":
+        return cls(
+            key=data.get("key") or "",
+            label=data.get("label") or "",
+            value=int(data.get("value") or 0),
+            detail=data.get("detail") or "",
+            highlighted=bool(data.get("highlighted")),
+        )

@@ -162,6 +162,13 @@ enum ContractFixtures {
      "exercises_created": ["Cable Kickback (Cable)"], "xp_awarded": 420, "duplicate": false, "progression": \(progression)}
     """
 
+    static let character = """
+    {"character_class": "", "class_label": "", "stats": [
+      {"key": "strength", "label": "Strength", "value": 42, "detail": "2.5x bodyweight across bench, squat and deadlift", "highlighted": false},
+      {"key": "endurance", "label": "Endurance", "value": 61, "detail": "24,400 kg lifted in four weeks", "highlighted": false},
+      {"key": "discipline", "label": "Discipline", "value": 75, "detail": "6 of the last 8 weeks on target", "highlighted": false}]}
+    """
+
     static let rankTrials = """
     [{"rank": "B", "lift": "Barbell Bench Press", "description": "Barbell Bench Press at 1x bodyweight", "multiplier": 1.0,
       "target_kg": 80.0, "best_kg": 72.5, "passed": false},

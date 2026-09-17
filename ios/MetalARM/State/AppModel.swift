@@ -62,6 +62,7 @@ final class AppModel {
     // Profile
     var profile: Profile?
     var rankTrials: [RankTrial] = []
+    var characterSheet: CharacterSheet?
     /// The last Strong or Hevy import's result, shown once then cleared.
     var importSummary = ""
 
@@ -192,6 +193,7 @@ final class AppModel {
         points = nil
         profile = nil
         rankTrials = []
+        characterSheet = nil
         clearWorkout()
         pendingSets = []
         pendingStore.save([])
@@ -559,8 +561,9 @@ final class AppModel {
         await run("Couldn't load your profile") {
             profile = try await api.profile()
         }
-        // Secondary to the profile itself: a failure leaves the last trials shown.
+        // Secondary to the profile itself: a failure leaves the last ones shown.
         if let trials = try? await api.rankTrials() { rankTrials = trials }
+        if let sheet = try? await api.character() { characterSheet = sheet }
     }
 
     /// Imports a Strong or Hevy CSV export, then reloads what it moved:
@@ -573,6 +576,16 @@ final class AppModel {
             profile = try await api.profile()
         }
         if let trials = try? await api.rankTrials() { rankTrials = trials }
+    }
+
+    /// Pick a class, or tap the current one again to clear it. Cosmetic: it
+    /// changes which stats are highlighted and nothing else.
+    func chooseClass(_ value: String) async {
+        let next = characterSheet?.characterClass == value ? "" : value
+        await run("Couldn't change your class") {
+            me = try await api.updateCharacterClass(next)
+            characterSheet = try await api.character()
+        }
     }
 
     func setWeightUnit(_ unit: WeightUnit) async {

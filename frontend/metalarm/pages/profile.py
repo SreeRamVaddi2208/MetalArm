@@ -6,7 +6,7 @@ from metalarm import theme
 from metalarm.components.layout import error_banner, section_heading, shell
 from metalarm.components.scroll_reveal import pinned, reveal, reveal_assets
 from metalarm.components.stat_panel import stat_panel
-from metalarm.models import Badge, TrialRow
+from metalarm.models import Badge, StatRow, TrialRow
 from metalarm.state.profile import ProfileState
 
 
@@ -125,6 +125,86 @@ def lifetime_panel() -> rx.Component:
     )
 
 
+def stat_bar(stat: StatRow) -> rx.Component:
+    return rx.vstack(
+        rx.hstack(
+            rx.text(
+                stat.label,
+                color=rx.cond(stat.highlighted, theme.ACCENT, theme.TEXT),
+                font_weight="700",
+                font_size="0.85rem",
+            ),
+            rx.spacer(),
+            rx.text(stat.value.to_string(), color=theme.TEXT, font_weight="800", font_size="0.85rem"),
+            width="100%",
+        ),
+        rx.box(
+            rx.box(
+                width=f"{stat.value}%",
+                height="100%",
+                background=rx.cond(stat.highlighted, theme.ACCENT, theme.ACCENT_DIM),
+                border_radius="999px",
+            ),
+            width="100%",
+            height="6px",
+            background=theme.FIELD,
+            border_radius="999px",
+            overflow="hidden",
+        ),
+        rx.text(stat.detail, color=theme.FAINT, font_size="0.72rem"),
+        spacing="2",
+        width="100%",
+    )
+
+
+def class_button(value: str, label: str) -> rx.Component:
+    chosen = ProfileState.character_class == value
+    return rx.button(
+        label,
+        on_click=ProfileState.choose_class(value),
+        background=rx.cond(chosen, theme.ACCENT, "transparent"),
+        color=rx.cond(chosen, theme.ON_ACCENT, theme.TEXT),
+        border=f"1px solid {theme.BORDER}",
+        border_radius="10px",
+        font_size="0.72rem",
+        font_weight="700",
+        letter_spacing="0.06em",
+        padding="0.45rem 0.7rem",
+        cursor="pointer",
+    )
+
+
+def character_panel() -> rx.Component:
+    return rx.vstack(
+        rx.hstack(
+            rx.text("CHARACTER", **theme.LABEL_STYLE),
+            rx.spacer(),
+            rx.cond(
+                ProfileState.class_label != "",
+                rx.text(ProfileState.class_label, color=theme.ACCENT, font_size="0.75rem", font_weight="700"),
+            ),
+            width="100%",
+            align="center",
+        ),
+        rx.divider(border_color=theme.BORDER),
+        rx.foreach(ProfileState.stats_sheet, stat_bar),
+        rx.text(
+            "A class highlights the stats you care about. It never changes a score.",
+            color=theme.MUTED,
+            font_size="0.72rem",
+        ),
+        rx.hstack(
+            class_button("powerlifter", "POWERLIFTER"),
+            class_button("bodybuilder", "BODYBUILDER"),
+            class_button("athlete", "ATHLETE"),
+            spacing="2",
+            wrap="wrap",
+        ),
+        spacing="3",
+        **theme.panel(),
+    )
+
+
 def trial_row(trial: TrialRow) -> rx.Component:
     return rx.vstack(
         rx.hstack(
@@ -233,6 +313,7 @@ def profile_page() -> rx.Component:
             ),
             rx.vstack(
                 reveal(lifetime_panel()),
+                rx.cond(ProfileState.stats_sheet.length() > 0, reveal(character_panel())),
                 rx.cond(ProfileState.trials.length() > 0, reveal(trials_panel())),
                 reveal(import_panel()),
                 rx.vstack(

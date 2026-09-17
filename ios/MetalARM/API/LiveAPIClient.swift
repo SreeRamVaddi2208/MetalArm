@@ -96,6 +96,11 @@ final class LiveAPIClient: MetalArmAPI {
 
     func profile() async throws -> Profile { try await send(.get("profile")) }
     func rankTrials() async throws -> [RankTrial] { try await send(.get("profile/trials")) }
+    func character() async throws -> CharacterSheet { try await send(.get("profile/character")) }
+
+    func updateCharacterClass(_ value: String) async throws -> Me {
+        try await send(.patch("auth/me", CharacterClassBody(characterClass: value), encoder))
+    }
 
     func importWorkouts(csv: String, unit: WeightUnit) async throws -> WorkoutImportResult {
         try await send(.post("workouts/import", ImportBody(csv: csv, unit: unit.rawValue), encoder))
@@ -320,4 +325,9 @@ final class LiveAPIClient: MetalArmAPI {
 private struct ImportBody: Encodable {
     var csv: String
     var unit: String
+}
+
+/// PATCH auth/me: the cosmetic class, "" to clear it.
+private struct CharacterClassBody: Encodable {
+    var characterClass: String
 }

@@ -10,7 +10,7 @@
 
 - **API title:** MetalArm API
 - **API version:** 0.1.0
-- **Generated:** 2026-09-16 21:11 UTC
+- **Generated:** 2026-09-16 21:23 UTC
 - **Source:** `http://localhost:8000/openapi.json`
 
 ---
@@ -122,7 +122,8 @@ The signed-in user plus progression - what the Stat Panel renders.
 
 **Update Me**
 
-Update account preferences - currently the workout weight unit.
+Update account preferences: the workout weight unit and the cosmetic
+character class.
 
 Stored on the account rather than in the browser, so the choice follows
 the user across devices.
@@ -777,6 +778,22 @@ a reversal landing this week of an award from last week is clamped at 0.
 ### `GET /api/v1/profile`
 
 **Read Profile**
+
+*Tags:* `profile`
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+
+---
+
+### `GET /api/v1/profile/character`
+
+**Character**
+
+The character sheet: Strength, Endurance and Discipline, each 0-100 with
+the number behind it (app/core/character.py). The class only marks which
+stats are highlighted - it never changes a score.
 
 *Tags:* `profile`
 
@@ -1523,6 +1540,20 @@ otherwise 503 with per-dependency detail.
 | `client_id` | `string | null` | no |
 | `client_secret` | `string | null` | no |
 
+#### `CharacterClass`
+
+| Field | Type | Required |
+|---|---|---|
+| _(no properties)_ | | |
+
+#### `CharacterOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `character_class` | `string` | yes |
+| `class_label` | `string` | yes |
+| `stats` | `StatOut[]` | yes |
+
 #### `CompleteQuestResponse`
 
 | Field | Type | Required |
@@ -1743,6 +1774,7 @@ otherwise 503 with per-dependency detail.
 | `timezone` | `string` | yes |
 | `created_at` | `string` | yes |
 | `weight_unit` | `string` | no |
+| `character_class` | `string` | no |
 | `progress` | `ProgressOut` | yes |
 
 #### `MeUpdate`
@@ -1750,6 +1782,7 @@ otherwise 503 with per-dependency detail.
 | Field | Type | Required |
 |---|---|---|
 | `weight_unit` | `WeightUnit | null` | no |
+| `character_class` | `CharacterClass | string | null` | no |
 
 #### `MeasurementMetric`
 
@@ -2282,6 +2315,16 @@ otherwise 503 with per-dependency detail.
 | `display_name` | `string` | yes |
 | `timezone` | `string` | no |
 
+#### `StatOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `key` | `string` | yes |
+| `label` | `string` | yes |
+| `value` | `integer` | yes |
+| `detail` | `string` | yes |
+| `highlighted` | `boolean` | yes |
+
 #### `StreakOut`
 
 | Field | Type | Required |
@@ -2324,6 +2367,7 @@ otherwise 503 with per-dependency detail.
 | `timezone` | `string` | yes |
 | `created_at` | `string` | yes |
 | `weight_unit` | `string` | no |
+| `character_class` | `string` | no |
 
 #### `ValidationError`
 
