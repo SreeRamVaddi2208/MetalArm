@@ -417,20 +417,25 @@ final class SpyNotifier: NotificationScheduling, @unchecked Sendable {
 /// Records what WOULD reach Apple Health.
 final class SpyHealthWriter: HealthWriting, @unchecked Sendable {
     var available = true
+    /// What the user "taps" on the permission sheet.
     var allow = true
+    /// Set independently to mimic permission revoked in Settings.
+    var authorized: Bool?
     var askedCount = 0
     var saved: [FinishedWorkout] = []
+    var result: HealthWriteResult = .saved
 
     var isAvailable: Bool { available }
+    var isAuthorized: Bool { authorized ?? allow && askedCount > 0 }
 
     func requestAuthorization() async -> Bool {
         askedCount += 1
         return allow
     }
 
-    func save(_ workout: FinishedWorkout) async -> Bool {
-        saved.append(workout)
-        return true
+    func save(_ workout: FinishedWorkout) async -> HealthWriteResult {
+        if result.isSuccess { saved.append(workout) }
+        return result
     }
 }
 
@@ -684,6 +689,62 @@ struct AppModelTests {
         let saved = try #require(spy.saved.first)
         #expect(saved.volumeKg > 0)
         #expect(saved.end > saved.start)
+        #expect(!saved.sessionID.isEmpty)
+        #expect(model.healthStatus.isEmpty)
+
+        // Finishing again with the same session must not write it twice.
+        await model.saveToHealthIfEnabled()
+        #expect(spy.saved.count == 1)
+    }
+
+    @Test func refusingHealthLeavesTheToggleOff() async {
+        let (model, _) = signedInModel()
+        let spy = SpyHealthWriter()
+        spy.allow = false
+        model.healthWriter = spy
+        model.healthSettings = HealthSettings()
+
+        await model.setHealthSync(true)
+
+        // The bug this guards: HealthKit does not throw on "Don't Allow", so an
+        // earlier version switched the toggle on and then failed for ever.
+        #expect(spy.askedCount == 1)
+        #expect(model.healthSettings.enabled == false)
+        #expect(model.healthStatus.contains("Settings"))
+    }
+
+    @Test func revokedPermissionTurnsTheToggleOff() async throws {
+        let (model, _) = signedInModel()
+        let spy = SpyHealthWriter()
+        model.healthWriter = spy
+        model.healthSettings = HealthSettings(enabled: true, asked: true)
+
+        // Allowed once, then switched off in iOS Settings.
+        spy.authorized = false
+        model.refreshHealthAuthorization()
+        #expect(model.healthSettings.enabled == false)
+        #expect(model.healthStatus.contains("Health"))
+    }
+
+    @Test func aFailedWriteIsReportedButNeverInterrupts() async throws {
+        let (model, _) = signedInModel()
+        let spy = SpyHealthWriter()
+        spy.authorized = true
+        spy.result = .failed("the store was busy")
+        model.healthWriter = spy
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        model.finishResult = try decoder.decode(
+            FinishResult.self, from: Data(ContractFixtures.finishResult.utf8)
+        )
+        model.healthSettings = HealthSettings(enabled: true, asked: true)
+
+        await model.saveToHealthIfEnabled()
+        #expect(model.healthStatus.contains("couldn't save"))
+        // The failure is not promoted to the error banner the summary reads.
+        #expect(model.errorMessage.isEmpty)
+        // And it is not remembered as saved, so a later finish can retry.
+        #expect(model.healthSettings.lastSavedSessionID.isEmpty)
     }
 
     @Test func turningHealthOnAsksOnce() async {
@@ -697,6 +758,7 @@ struct AppModelTests {
         await model.setHealthSync(true)
         #expect(spy.askedCount == 1)
         #expect(model.healthSettings.enabled)
+        #expect(model.healthStatus.isEmpty)
     }
 
     @Test func theRestTimerSchedulesAndCancelsItsAlert() async throws {

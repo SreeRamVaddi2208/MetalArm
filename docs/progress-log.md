@@ -14,6 +14,73 @@ Entry format:
 
 ---
 
+## 2026-09-17 (29) - Opus - Apple Health: authorization actually checked
+
+**Changed**
+- **The bug this fixes:** `AppleHealthWriter.requestAuthorization()` returned
+  true whenever the HealthKit call did not THROW - and HealthKit does not throw
+  when the user taps "Don't Allow". The Profile toggle therefore switched on
+  after a refusal, `enabled` was persisted, and every write failed silently for
+  ever, with no log and no way to tell a broken connection from a working one.
+  Authorization is now judged by `authorizationStatus(for:)` and nothing else.
+- One long-lived `HKHealthStore` instead of a new instance per call: the store
+  owns authorization state, so throwing it away each time was wrong.
+- `save` returns a typed `HealthWriteResult` (saved / alreadySaved /
+  unavailable / notAuthorized / failed) instead of `Bool`, so a failure can say
+  why. Writes carry the session id as `HKMetadataKeyExternalUUID` - the key
+  that exists precisely so a retry cannot create a duplicate workout - and
+  `HealthSettings.lastSavedSessionID` stops a repeat before it reaches Health.
+- Failures are logged through `os.Logger` and surfaced as one line under the
+  toggle in Profile. They never reach the workout summary: the workout is
+  already safe on the server, and a Health hiccup must not look like a lost
+  session. `refreshHealthAuthorization()` runs on profile load, so permission
+  revoked in iOS Settings turns the toggle off rather than leaving it lying.
+- Still WRITE ONLY. No read scope, so bodyweight for rank trials is still typed
+  in the app by choice, keeping the permission ask to one easy-to-justify line.
+
+**Verified (real output)**
+- iOS: `MetalARMTests` - TEST SUCCEEDED. The four new AppModel tests cover the
+  bug and its neighbours: a refusal leaves the toggle OFF and explains why,
+  permission revoked in Settings turns it off, a second finish of the same
+  session does not write a duplicate, and a failed write is reported without
+  ever reaching the error banner the summary reads.
+- `HealthKitSmokeTests` run against the REAL framework, not the spy, and all
+  four pass - including `writingWithoutPermissionIsRefusedRatherThanCrashing`,
+  which returns `.notAuthorized` instead of crashing. That is the test that
+  actually proves the entitlement and `NSHealthUpdateUsageDescription` are
+  wired: a missing usage string crashes on `requestAuthorization`.
+- HealthKit IS available on the simulator (the iOS 26.5 runtime ships
+  HealthKit.framework and Health.app), so this is a real exercise of the
+  framework rather than a mock standing in for it.
+- `HealthPermissionUITests` drives the REAL permission sheet on a freshly
+  erased device: it switches the category on, taps Allow, and asserts the
+  invariant - the toggle may never claim a connection the app does not have.
+  Verified end to end (sheet answered, toggle on, nothing to report).
+- Two wrong conclusions I reached on the way, corrected here so nobody repeats
+  them. (1) "HealthKit is missing from the simulator" - I had inspected a
+  watchOS runtime. (2) "The simulator auto-authorises, so refusal cannot be
+  tested" - it does not; the sheet appears on a fresh device and
+  `UIA.Health.DoNotAllow.Button` is right beside Allow, so the refusal path is
+  reachable here too.
+- The sheet lives in the APP's element tree, not springboard, and its "Allow"
+  button (`UIA.Health.Allow.Button`) stays DISABLED until a category is
+  switched on - "Turn On All" is a cell (`UIA.Health.AuthSheet.AllCategoryButton`),
+  not a button. Guessing at labels tapped nothing and left the sheet open while
+  the app sat correctly suspended awaiting an answer.
+
+**Blocked:** a signed DEVICE build needs the HealthKit capability on the App ID
+in the developer portal and a provisioning profile carrying it - the
+entitlement file alone is not enough. That waits on the Apple Developer
+enrolment. CI cannot catch it either: it builds with CODE_SIGNING_ALLOWED=NO.
+
+**Other agent needs to know:** nothing on the backend changed. The new
+`HealthKitSmokeTests` touch the REAL framework rather than the spy, which is
+what proves the entitlement and `NSHealthUpdateUsageDescription` are wired: a
+missing usage string crashes on `requestAuthorization`, and a missing
+entitlement leaves authorization permanently undetermined.
+
+---
+
 ## 2026-09-17 (28) - Opus - workouts in Apple Health
 
 **Changed**
