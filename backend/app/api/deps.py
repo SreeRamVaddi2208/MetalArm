@@ -88,3 +88,20 @@ def get_current_user(
 
 
 CurrentUser = Annotated[User, Depends(get_current_user)]
+
+
+def get_current_session_id(
+    _user: CurrentUser,
+    token: Annotated[str | None, Depends(oauth2_scheme)],
+) -> uuid.UUID | None:
+    """The sign-in session behind this request's access token.
+
+    Depends on CurrentUser, so the token is already verified (and its session
+    live) by the time this reads it. None for a token from before device
+    sessions existed.
+    """
+    sid = decode_token(token or "").get("sid")
+    return uuid.UUID(str(sid)) if sid is not None else None
+
+
+CurrentSessionID = Annotated[uuid.UUID | None, Depends(get_current_session_id)]

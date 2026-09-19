@@ -288,3 +288,23 @@ unchanged.
 Presentation only - weights are always stored in kg. On the account rather
 than in the browser so the choice follows the user across devices; set via
 `PATCH /auth/me`.
+
+## `push_devices` (Alembic `e6ab950c84ea`)
+
+One row per APNs device token: `user_id` (FK `users`, `ON DELETE CASCADE`),
+`session_id` (FK `auth_sessions`, `ON DELETE CASCADE`, null only for a token
+from before device sessions), `token VARCHAR(200) UNIQUE` (lowercase hex),
+`environment` with `CHECK (environment IN ('sandbox', 'production'))`.
+
+- **Tied to the sign-in session, not only the user.** Sessions are revoked,
+  not deleted, so the FK cascade never fires on sign-out; `POST /auth/logout`
+  deletes that session's rows and `POST /auth/logout-all` deletes all of the
+  user's. Every row therefore belongs to a signed-in device.
+- **Token UNIQUE across users.** It identifies the app install, not the
+  person: a second account signing in on the same phone takes the row over
+  (`INSERT ... ON CONFLICT (token) DO UPDATE`) instead of both being notified.
+- **At most 10 per user**, dropping the least recently registered, so repeated
+  reinstalls cannot grow the table without bound.
+- Registered with `PUT /devices/push-token`, removed with
+  `DELETE /devices/push-token/{token}`. Nothing is sent yet: delivery waits on
+  an APNs key (`docs/launch-checklist.md`).
