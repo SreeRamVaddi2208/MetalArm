@@ -1,7 +1,13 @@
-# iOS app: unit and UI tests (mock backend) plus an unsigned Release build.
-# Kept out of ci.yml because macOS runners cost 10x Actions minutes on a
+# iOS app: unit tests and an unsigned Release build, plus UI tests in a second
+# job. Kept out of ci.yml because macOS runners cost 10x Actions minutes on a
 # private repo: runs on pull requests that touch ios/, on pushes to main, and
 # on demand from the Actions tab.
+#
+# Why two jobs. One job with a 45-minute budget kept timing out, and GitHub
+# reports a timeout as "cancelled" - which reads exactly like a flaky runner
+# and is not. A 21-minute run used to cover everything; the UI suite has since
+# grown past the budget. Splitting them means a slow UI suite can no longer
+# hide the unit result, and each gets a clock that suits it.
 name: iOS
 
 on:
@@ -18,9 +24,10 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  ios:
+  unit:
+    name: unit tests and release build
     runs-on: macos-26
-    timeout-minutes: 45
+    timeout-minutes: 30
     defaults:
       run:
         working-directory: ios
@@ -55,13 +62,13 @@ jobs:
           echo "Using simulator $udid"
           echo "udid=$udid" >> "$GITHUB_OUTPUT"
 
-      - name: Unit and UI tests (mock backend)
+      - name: Unit tests (mock backend)
         run: |
           set -o pipefail
           xcodebuild test \
             -project MetalARM.xcodeproj -scheme MetalARM \
             -destination "platform=iOS Simulator,id=${{ steps.simulator.outputs.udid }}" \
-            -skip-testing:MetalARMUITests/DemoTour \
+            -only-testing:MetalARMTests \
             CODE_SIGNING_ALLOWED=NO
 
       - name: Release build compiles
@@ -69,4 +76,75 @@ jobs:
           xcodebuild build \
             -project MetalARM.xcodeproj -scheme MetalARM -configuration Release \
             -destination 'generic/platform=iOS' \
+            CODE_SIGNING_ALLOWED=NO
+
+  ui:
+    name: UI tests
+    runs-on: macos-26
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: ios
+    steps:
+      - uses: actions/checkout@v4
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: Pick an iPhone simulator
+        id: simulator
+        run: |
+          pick() {
+            xcrun simctl list devices available -j | python3 -c '
+          import json, sys
+          devices = json.load(sys.stdin)["devices"]
+          phones = [(runtime, d["udid"]) for runtime, items in devices.items() if "iOS" in runtime for d in items if d["name"].startswith("iPhone")]
+          print(sorted(phones)[-1][1] if phones else "")'
+          }
+          udid=$(pick)
+          if [ -z "$udid" ]; then
+            echo "::warning::No iPhone simulator on this runner; downloading the iOS platform"
+            xcodebuild -downloadPlatform iOS
+            udid=$(pick)
+          fi
+          if [ -z "$udid" ]; then
+            echo "::error::No iPhone simulator is available on this runner"
+            exit 1
+          fi
+          echo "Using simulator $udid"
+          echo "udid=$udid" >> "$GITHUB_OUTPUT"
+
+      # Boot the simulator and wait until it is fully up BEFORE testing. Left
+      # to xcodebuild, the first test launched the app into a device that was
+      # still booting, and the launch failed with "Error resuming pid ...
+      # Failed to send signal 19" - failing whichever test ran first
+      # (testDeletingTheAccountReturnsToSignIn) on two runs in a row, while
+      # the same test passed locally on a freshly erased simulator. Parallel
+      # testing is off below for the same reason: it clones a fresh, cold
+      # simulator per worker, which would bring the problem straight back.
+      - name: Boot the simulator
+        run: |
+          xcrun simctl boot "${{ steps.simulator.outputs.udid }}" || true
+          xcrun simctl bootstatus "${{ steps.simulator.outputs.udid }}" -b
+
+      # Two suites stay out of CI and are run locally instead:
+      #
+      #   DemoTour                 a three-minute scripted walkthrough for
+      #                            recording a demo video - not a test.
+      #   HealthPermissionUITests  drives the OS Health permission sheet and
+      #                            needs a pristine simulator; it is verified
+      #                            locally on a freshly erased device.
+      #
+      # `-skip-testing` on an identifier that does not exist on this branch is
+      # harmless, so both are listed unconditionally.
+      - name: UI tests (mock backend)
+        run: |
+          set -o pipefail
+          xcodebuild test \
+            -project MetalARM.xcodeproj -scheme MetalARM \
+            -destination "platform=iOS Simulator,id=${{ steps.simulator.outputs.udid }}" \
+            -only-testing:MetalARMUITests \
+            -parallel-testing-enabled NO \
+            -skip-testing:MetalARMUITests/DemoTour \
+            -skip-testing:MetalARMUITests/HealthPermissionUITests \
             CODE_SIGNING_ALLOWED=NO

@@ -384,7 +384,7 @@ struct ShareCardTests {
 
     @Test func finishingLoadsPartiesForTheInviteCode() async throws {
         let api = MockAPIClient()
-        let model = AppModel(api: api)
+        let model = AppModel.forTesting(api: api)
         #expect(model.parties.isEmpty)
         await model.startWorkout()
         await model.addExercise(try #require(try await api.searchExercises(query: "bench").first))
@@ -414,23 +414,51 @@ final class SpyNotifier: NotificationScheduling, @unchecked Sendable {
     func cancel(_ ids: [String]) async { cancelled.append(contentsOf: ids) }
 }
 
+extension AppModel {
+    /// The only way a test should make an AppModel. The real notifier and
+    /// Health writer put up a system permission prompt the first time they
+    /// ask, which a unit-test host cannot answer: finishWorkout() asks for
+    /// notifications, so on a freshly erased simulator (every CI runner) the
+    /// suite waited on that prompt until the job timed out. Locally it never
+    /// showed, because `asked` was already saved from an earlier run. Settings
+    /// start fresh for the same reason - nothing carries over between runs.
+    static func forTesting(
+        api: MetalArmAPI = MockAPIClient(),
+        pendingStore: PendingSetStore = .inMemory
+    ) -> AppModel {
+        let model = AppModel(api: api, pendingStore: pendingStore)
+        model.notifier = SpyNotifier()
+        model.healthWriter = SpyHealthWriter()
+        model.notificationSettings = NotificationSettings()
+        model.healthSettings = HealthSettings()
+        return model
+    }
+}
+
 /// Records what WOULD reach Apple Health.
 final class SpyHealthWriter: HealthWriting, @unchecked Sendable {
     var available = true
+    /// What the user "taps" on the permission sheet.
     var allow = true
+    /// Set independently to mimic permission revoked in Settings.
+    var authorized: Bool?
     var askedCount = 0
     var saved: [FinishedWorkout] = []
+    var result: HealthWriteResult = .saved
 
     var isAvailable: Bool { available }
+    // Parenthesised on purpose: `??` binds tighter than `&&`, so without them
+    // `authorized = true` still read false until something had asked.
+    var isAuthorized: Bool { authorized ?? (allow && askedCount > 0) }
 
     func requestAuthorization() async -> Bool {
         askedCount += 1
         return allow
     }
 
-    func save(_ workout: FinishedWorkout) async -> Bool {
-        saved.append(workout)
-        return true
+    func save(_ workout: FinishedWorkout) async -> HealthWriteResult {
+        if result.isSuccess { saved.append(workout) }
+        return result
     }
 }
 
@@ -438,7 +466,7 @@ final class SpyHealthWriter: HealthWriting, @unchecked Sendable {
 struct AppModelTests {
     private func signedInModel() -> (AppModel, MockAPIClient) {
         let api = MockAPIClient()
-        return (AppModel(api: api), api)
+        return (AppModel.forTesting(api: api), api)
     }
 
     private func bench(_ api: MockAPIClient) async throws -> Exercise {
@@ -446,7 +474,7 @@ struct AppModelTests {
     }
 
     @Test func signingInThenLoadingHome() async {
-        let model = AppModel(api: MockAPIClient(signedIn: false))
+        let model = AppModel.forTesting(api: MockAPIClient(signedIn: false))
         #expect(!model.isSignedIn)
         await model.signIn(email: " sree@metalarm.dev ", password: MockAPIClient.password)
         #expect(model.isSignedIn)
@@ -457,7 +485,7 @@ struct AppModelTests {
     }
 
     @Test func wrongPasswordStaysSignedOut() async {
-        let model = AppModel(api: MockAPIClient(signedIn: false))
+        let model = AppModel.forTesting(api: MockAPIClient(signedIn: false))
         await model.signIn(email: "sree@metalarm.dev", password: "wrong-password")
         #expect(!model.isSignedIn)
         #expect(model.errorMessage == "Couldn't sign in: Incorrect email or password")
@@ -518,7 +546,7 @@ struct AppModelTests {
         let (model, api) = signedInModel()
         await model.startWorkout()
         // A second device sees the 409 and picks up the same workout.
-        let otherDevice = AppModel(api: api)
+        let otherDevice = AppModel.forTesting(api: api)
         await otherDevice.startWorkout()
         #expect(otherDevice.session?.id == model.session?.id)
         #expect(otherDevice.errorMessage.isEmpty)
@@ -626,7 +654,7 @@ struct AppModelTests {
         let set = PendingSet(clientSetID: UUID(), sessionID: "s1", exerciseID: "e1", weight: 100, unit: .lb, reps: 5)
 
         PendingSetStore(fileURL: file).save([set])
-        let relaunched = AppModel(api: MockAPIClient(), pendingStore: PendingSetStore(fileURL: file))
+        let relaunched = AppModel.forTesting(api: MockAPIClient(), pendingStore: PendingSetStore(fileURL: file))
         #expect(relaunched.pendingSets == [set])
 
         // An empty queue leaves no file behind.
@@ -684,6 +712,62 @@ struct AppModelTests {
         let saved = try #require(spy.saved.first)
         #expect(saved.volumeKg > 0)
         #expect(saved.end > saved.start)
+        #expect(!saved.sessionID.isEmpty)
+        #expect(model.healthStatus.isEmpty)
+
+        // Finishing again with the same session must not write it twice.
+        await model.saveToHealthIfEnabled()
+        #expect(spy.saved.count == 1)
+    }
+
+    @Test func refusingHealthLeavesTheToggleOff() async {
+        let (model, _) = signedInModel()
+        let spy = SpyHealthWriter()
+        spy.allow = false
+        model.healthWriter = spy
+        model.healthSettings = HealthSettings()
+
+        await model.setHealthSync(true)
+
+        // The bug this guards: HealthKit does not throw on "Don't Allow", so an
+        // earlier version switched the toggle on and then failed for ever.
+        #expect(spy.askedCount == 1)
+        #expect(model.healthSettings.enabled == false)
+        #expect(model.healthStatus.contains("Settings"))
+    }
+
+    @Test func revokedPermissionTurnsTheToggleOff() async throws {
+        let (model, _) = signedInModel()
+        let spy = SpyHealthWriter()
+        model.healthWriter = spy
+        model.healthSettings = HealthSettings(enabled: true, asked: true)
+
+        // Allowed once, then switched off in iOS Settings.
+        spy.authorized = false
+        model.refreshHealthAuthorization()
+        #expect(model.healthSettings.enabled == false)
+        #expect(model.healthStatus.contains("Health"))
+    }
+
+    @Test func aFailedWriteIsReportedButNeverInterrupts() async throws {
+        let (model, _) = signedInModel()
+        let spy = SpyHealthWriter()
+        spy.authorized = true
+        spy.result = .failed("the store was busy")
+        model.healthWriter = spy
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        model.finishResult = try decoder.decode(
+            FinishResult.self, from: Data(ContractFixtures.finishResult.utf8)
+        )
+        model.healthSettings = HealthSettings(enabled: true, asked: true)
+
+        await model.saveToHealthIfEnabled()
+        #expect(model.healthStatus.contains("couldn't save"))
+        // The failure is not promoted to the error banner the summary reads.
+        #expect(model.errorMessage.isEmpty)
+        // And it is not remembered as saved, so a later finish can retry.
+        #expect(model.healthSettings.lastSavedSessionID.isEmpty)
     }
 
     @Test func turningHealthOnAsksOnce() async {
@@ -697,6 +781,7 @@ struct AppModelTests {
         await model.setHealthSync(true)
         #expect(spy.askedCount == 1)
         #expect(model.healthSettings.enabled)
+        #expect(model.healthStatus.isEmpty)
     }
 
     @Test func theRestTimerSchedulesAndCancelsItsAlert() async throws {

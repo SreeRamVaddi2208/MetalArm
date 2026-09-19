@@ -31,6 +31,9 @@ final class AppModel {
     /// has no HealthKit store, so tests inject a spy.
     var healthWriter: HealthWriting = AppleHealthWriter()
     var healthSettings = HealthSettings.load()
+    /// Why the last Health write didn't land, shown under the toggle in
+    /// Profile. Empty when there is nothing to say.
+    var healthStatus = ""
 
     // Home
     var me: Me?
@@ -441,8 +444,9 @@ final class AppModel {
     }
 
     /// Adds the finished workout to Apple Health, if the user asked for that.
-    /// Failure is silent on purpose: Health is a nice-to-have, and a workout
-    /// that is already saved on the server must not look like it failed.
+    /// Never interrupts: the workout is already safe on the server, so a Health
+    /// problem is written to `healthStatus` (shown in Profile) and the log, and
+    /// the summary screen is left alone.
     func saveToHealthIfEnabled() async {
         guard healthSettings.enabled,
               let summary = finishResult?.session,
@@ -450,33 +454,70 @@ final class AppModel {
               let endedAt = summary.endedAt,
               let end = parseServerDate(endedAt)
         else { return }
-        _ = await healthWriter.save(
+        // A repeated finish (a retry, or this being called twice) must not put
+        // the same workout in Health twice.
+        guard healthSettings.lastSavedSessionID != summary.id else { return }
+
+        let result = await healthWriter.save(
             FinishedWorkout(
+                sessionID: summary.id,
                 start: start,
                 end: end,
                 volumeKg: summary.totalVolumeKg,
                 workingSets: summary.workingSets
             )
         )
+        healthStatus = result.message
+        if result.isSuccess {
+            healthSettings.lastSavedSessionID = summary.id
+            healthSettings.save()
+        } else if result == .notAuthorized {
+            // Permission was revoked in Settings; stop claiming it is on.
+            healthSettings.enabled = false
+            healthSettings.save()
+        }
     }
 
-    /// Turning it on asks for permission the first time - never at launch.
+    /// Turning it on asks for permission the first time - never at launch - and
+    /// only switches on if the user ACTUALLY allowed it. HealthKit does not
+    /// throw on a refusal, so the answer comes from the authorization status.
     func setHealthSync(_ on: Bool) async {
         guard on else {
             healthSettings.enabled = false
             healthSettings.save()
+            healthStatus = ""
             return
         }
-        if !healthSettings.asked {
+        guard healthWriter.isAvailable else {
+            healthStatus = HealthWriteResult.unavailable.message
+            return
+        }
+        var granted = healthWriter.isAuthorized
+        if !granted, !healthSettings.asked {
             healthSettings.asked = true
             healthSettings.save()
-            guard await healthWriter.requestAuthorization() else {
-                errorMessage = "Health didn't allow that. You can change it in Settings > Health > Data Access."
-                return
-            }
+            granted = await healthWriter.requestAuthorization()
+        }
+        guard granted else {
+            healthSettings.enabled = false
+            healthSettings.save()
+            healthStatus = HealthWriteResult.notAuthorized.message
+            return
         }
         healthSettings.enabled = true
         healthSettings.save()
+        healthStatus = ""
+    }
+
+    /// Keeps the toggle honest: permission revoked in Settings turns it off
+    /// instead of leaving it switched on over a connection that cannot write.
+    func refreshHealthAuthorization() {
+        guard healthSettings.enabled, healthWriter.isAvailable else { return }
+        if !healthWriter.isAuthorized {
+            healthSettings.enabled = false
+            healthSettings.save()
+            healthStatus = HealthWriteResult.notAuthorized.message
+        }
     }
 
     func abandonWorkout() async {
@@ -693,6 +734,7 @@ final class AppModel {
         await run("Couldn't load your profile") {
             profile = try await api.profile()
         }
+        refreshHealthAuthorization()
         // Secondary to the profile itself: a failure leaves the last ones shown.
         if let trials = try? await api.rankTrials() { rankTrials = trials }
         if let sheet = try? await api.character() { characterSheet = sheet }

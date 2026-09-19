@@ -315,6 +315,14 @@ struct ProfileView: View {
                 }
                 .padding(.trailing, 16)
                 .accessibilityIdentifier("healthSyncToggle")
+                if !model.healthStatus.isEmpty {
+                    Text(model.healthStatus)
+                        .font(Theme.body(10.5))
+                        .foregroundStyle(Theme.dim)
+                        .padding(.horizontal, 16)
+                        .padding(.bottom, 8)
+                        .accessibilityIdentifier("healthStatusText")
+                }
                 divider
                 Toggle(isOn: Binding(
                     get: { model.notificationSettings.restAlerts },
