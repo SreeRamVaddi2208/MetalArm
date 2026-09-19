@@ -17,10 +17,19 @@ import Testing
 
 @testable import MetalARM
 
+//  Runs only once the simulator has ANSWERED the Health permission sheet. On a
+//  fresh device (every CI runner) setHealthSync would put that sheet up, a
+//  unit-test host cannot answer it, and the suite would sit there until the
+//  job timed out - which GitHub reports as "cancelled". Answered once, the
+//  request returns at once with no sheet, so locally it still runs.
 @MainActor
+@Suite(
+    .enabled(if: permissionAlreadyAnswered(), "no Health permission answer on this device; the sheet would hang the suite"),
+    .timeLimit(.minutes(1))
+)
 struct HealthStatusProbeTests {
     @Test func turningHealthOnRecordsWhatHappened() async {
-        let model = AppModel(api: MockAPIClient())
+        let model = AppModel.forTesting()
         model.healthWriter = AppleHealthWriter()
         model.healthSettings = HealthSettings()
 
@@ -34,4 +43,9 @@ struct HealthStatusProbeTests {
             #expect(!model.healthStatus.isEmpty, "Health is off with no reason recorded")
         }
     }
+}
+
+private func permissionAlreadyAnswered() -> Bool {
+    HKHealthStore.isHealthDataAvailable()
+        && HKHealthStore().authorizationStatus(for: HKObjectType.workoutType()) != .notDetermined
 }

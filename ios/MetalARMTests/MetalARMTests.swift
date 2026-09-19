@@ -384,7 +384,7 @@ struct ShareCardTests {
 
     @Test func finishingLoadsPartiesForTheInviteCode() async throws {
         let api = MockAPIClient()
-        let model = AppModel(api: api)
+        let model = AppModel.forTesting(api: api)
         #expect(model.parties.isEmpty)
         await model.startWorkout()
         await model.addExercise(try #require(try await api.searchExercises(query: "bench").first))
@@ -412,6 +412,27 @@ final class SpyNotifier: NotificationScheduling, @unchecked Sendable {
 
     func schedule(_ notification: LocalNotification) async { scheduled.append(notification) }
     func cancel(_ ids: [String]) async { cancelled.append(contentsOf: ids) }
+}
+
+extension AppModel {
+    /// The only way a test should make an AppModel. The real notifier and
+    /// Health writer put up a system permission prompt the first time they
+    /// ask, which a unit-test host cannot answer: finishWorkout() asks for
+    /// notifications, so on a freshly erased simulator (every CI runner) the
+    /// suite waited on that prompt until the job timed out. Locally it never
+    /// showed, because `asked` was already saved from an earlier run. Settings
+    /// start fresh for the same reason - nothing carries over between runs.
+    static func forTesting(
+        api: MetalArmAPI = MockAPIClient(),
+        pendingStore: PendingSetStore = .inMemory
+    ) -> AppModel {
+        let model = AppModel(api: api, pendingStore: pendingStore)
+        model.notifier = SpyNotifier()
+        model.healthWriter = SpyHealthWriter()
+        model.notificationSettings = NotificationSettings()
+        model.healthSettings = HealthSettings()
+        return model
+    }
 }
 
 /// Records what WOULD reach Apple Health.
@@ -443,7 +464,7 @@ final class SpyHealthWriter: HealthWriting, @unchecked Sendable {
 struct AppModelTests {
     private func signedInModel() -> (AppModel, MockAPIClient) {
         let api = MockAPIClient()
-        return (AppModel(api: api), api)
+        return (AppModel.forTesting(api: api), api)
     }
 
     private func bench(_ api: MockAPIClient) async throws -> Exercise {
@@ -451,7 +472,7 @@ struct AppModelTests {
     }
 
     @Test func signingInThenLoadingHome() async {
-        let model = AppModel(api: MockAPIClient(signedIn: false))
+        let model = AppModel.forTesting(api: MockAPIClient(signedIn: false))
         #expect(!model.isSignedIn)
         await model.signIn(email: " sree@metalarm.dev ", password: MockAPIClient.password)
         #expect(model.isSignedIn)
@@ -462,7 +483,7 @@ struct AppModelTests {
     }
 
     @Test func wrongPasswordStaysSignedOut() async {
-        let model = AppModel(api: MockAPIClient(signedIn: false))
+        let model = AppModel.forTesting(api: MockAPIClient(signedIn: false))
         await model.signIn(email: "sree@metalarm.dev", password: "wrong-password")
         #expect(!model.isSignedIn)
         #expect(model.errorMessage == "Couldn't sign in: Incorrect email or password")
@@ -523,7 +544,7 @@ struct AppModelTests {
         let (model, api) = signedInModel()
         await model.startWorkout()
         // A second device sees the 409 and picks up the same workout.
-        let otherDevice = AppModel(api: api)
+        let otherDevice = AppModel.forTesting(api: api)
         await otherDevice.startWorkout()
         #expect(otherDevice.session?.id == model.session?.id)
         #expect(otherDevice.errorMessage.isEmpty)
@@ -631,7 +652,7 @@ struct AppModelTests {
         let set = PendingSet(clientSetID: UUID(), sessionID: "s1", exerciseID: "e1", weight: 100, unit: .lb, reps: 5)
 
         PendingSetStore(fileURL: file).save([set])
-        let relaunched = AppModel(api: MockAPIClient(), pendingStore: PendingSetStore(fileURL: file))
+        let relaunched = AppModel.forTesting(api: MockAPIClient(), pendingStore: PendingSetStore(fileURL: file))
         #expect(relaunched.pendingSets == [set])
 
         // An empty queue leaves no file behind.

@@ -14,6 +14,42 @@ Entry format:
 
 ---
 
+## 2026-09-19 (30) - Opus - iOS unit job: the "timeout" was a permission prompt
+
+**Changed**
+- **The bug:** every iOS CI run since `local-notifications` was cancelled at
+  the time limit. It was never slow - the build finished in a minute and then
+  nothing printed for 29. `finishWorkout()` calls
+  `askForNotificationsAfterFirstWorkout()`, and most `AppModelTests` built a
+  model with the REAL `SystemNotificationScheduler`. On a freshly erased
+  simulator (every CI runner) that puts up the iOS notification prompt, a
+  unit-test host cannot answer it, and the suite waits for ever. Locally it
+  never showed because `notifications.asked` was already saved in
+  UserDefaults from an earlier run - so it could only ever fail in CI.
+- `AppModel.forTesting(api:pendingStore:)` in `MetalARMTests.swift`: every
+  test model now gets `SpyNotifier`, `SpyHealthWriter` and fresh settings,
+  so nothing depends on what a previous run left in UserDefaults.
+- `HealthStatusProbeTests` had the same trap with the Health sheet: it now
+  runs only once the device has answered that sheet (skipped on CI, still
+  runs locally), with a one-minute time limit so a future hang fails by name.
+
+**Verified (real output)**
+- Before: `xcodebuild test -only-testing:MetalARMTests` on a newly created
+  iPhone 17 simulator hung (no output for 10+ minutes; a stack sample showed
+  every test suspended, none running). A second run on the same device
+  passed - the prompt had been "asked" - which is the local-vs-CI split.
+- After: the same command on another newly created simulator - **TEST
+  SUCCEEDED** in 65 s, 77 passed, 0 failed, 1 skipped (the probe).
+- Run locally with Xcode 27.0; CI uses Xcode 26.6.
+
+**Blocked:** nothing. Confirm on the next CI run of PR #20.
+
+**Other agent needs to know:** make test models with `AppModel.forTesting`,
+never `AppModel(api:)`. Anything that can put up a system prompt must be a
+spy in unit tests: a prompt no one answers looks exactly like a timeout.
+
+---
+
 ## 2026-09-17 (29) - Opus - Apple Health: authorization actually checked
 
 **Changed**
