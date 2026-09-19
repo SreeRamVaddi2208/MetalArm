@@ -447,7 +447,9 @@ final class SpyHealthWriter: HealthWriting, @unchecked Sendable {
     var result: HealthWriteResult = .saved
 
     var isAvailable: Bool { available }
-    var isAuthorized: Bool { authorized ?? allow && askedCount > 0 }
+    // Parenthesised on purpose: `??` binds tighter than `&&`, so without them
+    // `authorized = true` still read false until something had asked.
+    var isAuthorized: Bool { authorized ?? (allow && askedCount > 0) }
 
     func requestAuthorization() async -> Bool {
         askedCount += 1
