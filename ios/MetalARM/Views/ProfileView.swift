@@ -311,7 +311,7 @@ struct ProfileView: View {
                     get: { model.healthSettings.enabled },
                     set: { on in Task { await model.setHealthSync(on) } }
                 )) {
-                    settingsLabel("Save to Apple Health", icon: "heart")
+                    settingsLabel("Save to Apple Health", icon: "heart", chevron: false)
                 }
                 .padding(.trailing, 16)
                 .accessibilityIdentifier("healthSyncToggle")
@@ -328,7 +328,7 @@ struct ProfileView: View {
                     get: { model.notificationSettings.restAlerts },
                     set: { on in Task { await model.setRestAlerts(on) } }
                 )) {
-                    settingsLabel("Rest timer alerts", icon: "bell")
+                    settingsLabel("Rest timer alerts", icon: "bell", chevron: false)
                 }
                 .padding(.trailing, 16)
                 .accessibilityIdentifier("restAlertsToggle")
@@ -337,7 +337,7 @@ struct ProfileView: View {
                     get: { model.notificationSettings.streakReminders },
                     set: { on in Task { await model.setStreakReminders(on) } }
                 )) {
-                    settingsLabel("Streak reminders", icon: "flame")
+                    settingsLabel("Streak reminders", icon: "flame", chevron: false)
                 }
                 .padding(.trailing, 16)
                 .accessibilityIdentifier("streakRemindersToggle")
@@ -369,15 +369,19 @@ struct ProfileView: View {
             .padding(.leading, 50)
     }
 
-    private func settingsLabel(_ title: String, icon: String, destructive: Bool = false) -> some View {
+    /// `chevron: false` for a Toggle's label: a chevron says "opens something",
+    /// and beside a switch it only made the row look like a link.
+    private func settingsLabel(_ title: String, icon: String, destructive: Bool = false, chevron: Bool = true) -> some View {
         HStack {
             Image(systemName: icon)
                 .frame(width: 22)
             Text(title)
             Spacer()
-            Image(systemName: "chevron.right")
-                .font(Theme.body(12, .semibold))
-                .foregroundStyle(Theme.faint)
+            if chevron {
+                Image(systemName: "chevron.right")
+                    .font(Theme.body(12, .semibold))
+                    .foregroundStyle(Theme.faint)
+            }
         }
         .font(Theme.body(15))
         .foregroundStyle(destructive ? Theme.danger : Theme.text)

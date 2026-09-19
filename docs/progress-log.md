@@ -14,6 +14,54 @@ Entry format:
 
 ---
 
+## 2026-09-20 (32) - Opus - every button pressed, every suite run
+
+**Changed**
+- `ios/MetalARMUITests/ButtonSweepUITests.swift` (8 tests): presses every
+  control no other UI test touched and checks each one's effect - onboarding
+  and the sign-in/up switch, picker Cancel and search, the Add chip, exercise
+  chips, keyboard Done, Discard (menu + confirm), level-up and summary Share
+  sheets, Create/Join party (Cancel, a wrong code explained, the right one
+  selecting the party), the party switcher, invite Share, Progress tabs, class
+  pick/clear, kg/lb, both notification toggles surviving a relaunch, Import's
+  file picker, Privacy/Support opening Safari, Delete -> Cancel, Sign Out,
+  Sign Out Everywhere, and pull-to-refresh on every tab.
+- `MetalARMUITestCase.swift`: the helpers `MetalARMUITests` kept private, now a
+  base class both suites share (DemoTour keeps its own; same names would clash).
+- Fixed (iOS): the Health / Rest timer / Streak toggle rows showed a `>`
+  chevron, as if they opened a screen. `settingsLabel(chevron:)`.
+- Fixed (web): the level-up shine animated `background-position`, repainting
+  every frame against Section 7; the smoke test flagged it. Now a sliding
+  window over a white copy - transform only, same look.
+
+**Verified (real output)**
+- Sweep: 8/8 on three consecutive runs. Breaking Discard and Sign Out on
+  purpose made it fail with "Discard did not end the workout" / "Sign Out did
+  not sign out" - it tests effects, not just taps.
+- New simulator: `MetalARMTests` 67 passed, 1 skipped (Health probe, which
+  needs an answered sheet - it passed once one was). `MetalARMUITests` 17
+  passed, 1 skipped (live tour, run next).
+- `testLiveBackendTour` against the local API: passed (signed build).
+  `HealthPermissionUITests` on an erased device: passed. `DemoTour`: passed.
+- Backend: `alembic check` clean, pytest 403 passed. Web e2e: 85 passed.
+  Smoke test: 128/128.
+
+**Blocked:** nothing.
+
+**Other agent needs to know**
+- Unsigned simulator builds (`CODE_SIGNING_ALLOWED=NO`, as CI uses) have no
+  Keychain: the live tour signs up, then reports "Your session has ended"
+  because the token was never stored. Run it with a signed (default) build.
+  `TokenStore` ignores `SecItemAdd`'s status, which is why it is silent.
+- `scripts/smoke_test.py` signs up exactly 5 users and the limit is 5 per IP
+  per hour, so any other sign-up that hour makes it fail with 429. Clear
+  `ratelimit:signup-ip:*` in the LOCAL Redis before running it.
+- UI-test timing learned the hard way: type into alert fields only once they
+  have focus, wait for toggle values, and let the app settle ~2 s after
+  coming back from Safari before tapping.
+
+---
+
 ## 2026-09-19 (31) - Opus - push device registry
 
 **Changed**
