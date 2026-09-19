@@ -84,7 +84,14 @@ a party member finishing a workout, a raid boss falling - needs:
       ID and the Team ID.
 - [ ] The **Push Notifications** capability on the app target, and
       `aps-environment` in `MetalARM.entitlements`.
-- [ ] A backend device-token table and endpoint, so a device can register.
+- [x] A backend device-token table and endpoint, so a device can register
+      (`PUT /api/v1/devices/push-token`, table `push_devices`). Signing out
+      removes the device, so a signed-out phone is never notified.
+- [ ] The app sends its token to `PUT /api/v1/devices/push-token` after
+      registering with APNs - on every launch, since iOS can change it - with
+      `environment` `sandbox` for debug builds and `production` for TestFlight
+      and the App Store. A token sent to the wrong gateway is rejected.
+- [ ] The sender: read `push_devices` and call APNs with the key above.
 - [ ] Decide what is worth waking someone for. Party events only, and never a
       marketing message: the App Store treats that as a reason to reject.
 

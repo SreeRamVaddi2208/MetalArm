@@ -10,7 +10,7 @@
 
 - **API title:** MetalArm API
 - **API version:** 0.1.0
-- **Generated:** 2026-09-16 21:39 UTC
+- **Generated:** 2026-09-19 18:07 UTC
 - **Source:** `http://localhost:8000/openapi.json`
 
 ---
@@ -244,6 +244,50 @@ Newest first.
 | Param | In | Type | Required |
 |---|---|---|---|
 | `measurement_id` | path | `string` | yes |
+
+| Status | Description |
+|---|---|
+| `204` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `PUT /api/v1/devices/push-token`
+
+**Register Push Token**
+
+Register this device's APNs token, or refresh it.
+
+Idempotent: the app sends it on every launch, because iOS can hand out a
+new token at any time. A token already registered - to this account or
+another one signed in earlier on the same phone - moves to this account
+and this sign-in session.
+
+*Tags:* `devices`
+
+*Request body* (`application/json`): `PushDeviceRegister`
+
+| Status | Description |
+|---|---|
+| `204` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `DELETE /api/v1/devices/push-token/{token}`
+
+**Unregister Push Token**
+
+Stop notifying this device - the user turned notifications off.
+
+Succeeds whether or not the token was registered, so a retry is harmless,
+and only ever removes the caller's own token.
+
+*Tags:* `devices`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `token` | path | `string` | yes |
 
 | Status | Description |
 |---|---|
@@ -2025,6 +2069,19 @@ otherwise 503 with per-dependency detail.
 | `longest_streak` | `integer` | yes |
 | `leveled_up` | `boolean` | yes |
 | `ranked_up` | `boolean` | yes |
+
+#### `PushDeviceRegister`
+
+| Field | Type | Required |
+|---|---|---|
+| `token` | `string` | yes |
+| `environment` | `PushEnvironment` | yes |
+
+#### `PushEnvironment`
+
+| Field | Type | Required |
+|---|---|---|
+| _(no properties)_ | | |
 
 #### `QuestCreate`
 

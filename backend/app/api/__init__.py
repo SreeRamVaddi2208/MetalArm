@@ -5,6 +5,7 @@ from fastapi import APIRouter
 from app.api.routes import (
     auth,
     body,
+    devices,
     exercises,
     leagues,
     parties,
@@ -30,3 +31,4 @@ api_router.include_router(routines.router)
 api_router.include_router(workouts.router)
 api_router.include_router(body.router)
 api_router.include_router(leagues.router)
+api_router.include_router(devices.router)

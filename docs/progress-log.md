@@ -14,6 +14,49 @@ Entry format:
 
 ---
 
+## 2026-09-19 (31) - Opus - push device registry
+
+**Changed**
+- New `push_devices` table (`PushDevice`, migration `e6ab950c84ea`): one row
+  per APNs token, tied to the user AND the sign-in session that registered it.
+  Token UNIQUE across users - it names the install, not the person - so a
+  second account on the same phone takes the row over. `environment` is
+  `sandbox` or `production`, since each APNs gateway rejects the other's tokens.
+- `PUT /api/v1/devices/push-token` (204): idempotent upsert, meant to be sent on
+  every launch. Tokens are normalised to lowercase hex, so the old
+  `<a1b2 c3d4 ...>` spelling is the same device. At most 10 devices per user;
+  the least recently registered go first.
+- `DELETE /api/v1/devices/push-token/{token}` (204): removes only the caller's
+  own token; repeating it is harmless.
+- Sign-out now removes devices: `logout` deletes that session's rows (all of
+  them for a pre-session token, which already revokes everything), and
+  `logout-all` deletes every row. Sessions are revoked rather than deleted, so
+  the FK cascade alone would never have fired. Account deletion cascades.
+- `CurrentSessionID` in `app/api/deps.py`: the session behind the request's
+  access token, for any route that needs it.
+- Docs: `data-model.md` section, `api-contract.md` regenerated, launch
+  checklist item ticked with the app-side and sender steps listed after it.
+
+**Verified (real output)**
+- `alembic upgrade head && alembic check`, then `downgrade -1` and `upgrade
+  head` again: clean, head `e6ab950c84ea`.
+- `pytest`: whole suite green, including the 13 new tests in
+  `tests/test_push_devices.py` (register, spelling, refresh, takeover, cap,
+  422s, 401, delete-own-only, logout by access and by refresh token,
+  logout-all, account deletion).
+- Rebuilt backend, `/health` ready at `e6ab950c84ea`. Against the running
+  server: signup 201, register 204 (1 row in psql), logout 204 (0 rows).
+
+**Blocked:** nothing is SENT - that needs the APNs key, and the app cannot
+obtain a token until the Push capability is on. Both wait on Apple Developer
+enrolment.
+
+**Other agent needs to know:** the sender should read `push_devices` as-is;
+every row belongs to a signed-in device. If a new sign-out path is added,
+it must delete the session's `push_devices` rows too.
+
+---
+
 ## 2026-09-19 (30) - Opus - iOS unit job: the "timeout" was a permission prompt
 
 **Changed**

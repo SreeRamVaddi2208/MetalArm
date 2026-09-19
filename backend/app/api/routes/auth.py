@@ -9,7 +9,7 @@ from typing import Annotated
 import jwt
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordRequestForm
-from sqlalchemy import select, update
+from sqlalchemy import delete, select, update
 from sqlalchemy.exc import IntegrityError
 
 from app.api.deps import CurrentUser, DbSession, get_current_user, oauth2_scheme, session_is_live
@@ -28,6 +28,7 @@ from app.core.security import (
 )
 from app.models.auth_session import AuthSession
 from app.models.party import Party, PartyMembership
+from app.models.push_device import PushDevice
 from app.models.user import LevelProgress, User
 from app.schemas.auth import (
     DeleteAccountRequest,
@@ -283,6 +284,7 @@ def logout(
         # A token from before device sessions has no session to revoke, so end
         # it the only way left: every token issued so far stops working.
         user.token_version += 1
+        db.execute(delete(PushDevice).where(PushDevice.user_id == user.id))
         db.commit()
         logger.info("user %s signed out a pre-session token; all tokens revoked", user.id)
         return
@@ -292,6 +294,8 @@ def logout(
         return
     if session is not None and session.user_id == user.id and session.revoked_at is None:
         session.revoked_at = dt.datetime.now(dt.timezone.utc)
+        # A signed-out phone must stop receiving this account's notifications.
+        db.execute(delete(PushDevice).where(PushDevice.session_id == session.id))
         db.commit()
         logger.info("user %s signed out session %s", user.id, session.id)
 
@@ -306,6 +310,7 @@ def logout_everywhere(current_user: CurrentUser, db: DbSession) -> None:
         .where(AuthSession.user_id == current_user.id, AuthSession.revoked_at.is_(None))
         .values(revoked_at=dt.datetime.now(dt.timezone.utc))
     )
+    db.execute(delete(PushDevice).where(PushDevice.user_id == current_user.id))
     db.commit()
     logger.info("user %s signed out everywhere", current_user.id)
 
