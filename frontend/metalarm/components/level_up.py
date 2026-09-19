@@ -46,9 +46,19 @@ _KEYFRAMES = f"""
   0%   {{ opacity: 1; transform: rotate(var(--a)) translateY(0); }}
   100% {{ opacity: 0; transform: rotate(var(--a)) translateY(calc(-1 * var(--d))); }}
 }}
-@keyframes lf-shine {{
-  0%   {{ background-position: 100% 0; }}
-  100% {{ background-position: 0% 0; }}
+/* The shine is a narrow soft-edged window sliding right over a white copy of
+   the text, while the copy slides left by the same distance so its letters stay
+   exactly over the originals. Both are transforms: animating the gradient's
+   background-position instead repainted the text on every frame (Section 7).
+   Window = 40% of the text, copy = 250% of the window, hence -100%/250% and
+   40%/-100%: the two always cancel. */
+@keyframes lf-shine-window {{
+  0%   {{ transform: translateX(-100%); }}
+  100% {{ transform: translateX(250%); }}
+}}
+@keyframes lf-shine-copy {{
+  0%   {{ transform: translateX(40%); }}
+  100% {{ transform: translateX(-100%); }}
 }}
 
 .lf-veil  {{ animation: lf-veil 220ms ease-out both; }}
@@ -82,12 +92,29 @@ _KEYFRAMES = f"""
   color: transparent !important;
 }}
 .lf-shine {{
-  background: linear-gradient(100deg, {theme.ACCENT_DIM} 30%, #ffffff 50%, {theme.ACCENT_DIM} 70%);
-  background-size: 250% 100%;
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  animation: lf-shine 1500ms ease-out 380ms 2 both;
+  position: relative;
+  display: inline-block;
+  white-space: nowrap;
+  color: {theme.ACCENT_DIM};
+}}
+.lf-shine-window {{
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 40%;
+  overflow: hidden;
+  pointer-events: none;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 50%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 50%, transparent);
+  animation: lf-shine-window 1500ms ease-out 380ms 2 both;
+}}
+.lf-shine-copy {{
+  display: block;
+  width: 250%;
+  white-space: nowrap;
+  color: #ffffff;
+  animation: lf-shine-copy 1500ms ease-out 380ms 2 both;
 }}
 
 /* Motion sensitivity: no scaling, no travel, no sparks or shine - just a fade. */
@@ -96,7 +123,7 @@ _KEYFRAMES = f"""
     animation: lf-veil 160ms ease-out both;
   }}
   .lf-ring, .lf-spark {{ display: none; }}
-  .lf-shine {{ animation: none; background-position: 50% 0; }}
+  .lf-shine-window {{ display: none; }}
 }}
 """
 
@@ -153,7 +180,16 @@ def level_up_overlay() -> rx.Component:
                         height="128px",
                     ),
                     rx.heading(
-                        rx.el.span(QuestState.level_up_message, class_name="lf-shine"),
+                        rx.el.span(
+                            QuestState.level_up_message,
+                            # The highlight: a white copy, seen through a sliding window.
+                            rx.el.span(
+                                rx.el.span(QuestState.level_up_message, class_name="lf-shine-copy"),
+                                class_name="lf-shine-window",
+                                aria_hidden="true",
+                            ),
+                            class_name="lf-shine",
+                        ),
                         size="7",
                         letter_spacing="0.2em",
                         text_align="center",
