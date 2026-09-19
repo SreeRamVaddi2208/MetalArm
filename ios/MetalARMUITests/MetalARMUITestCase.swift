@@ -107,6 +107,12 @@ class MetalARMUITestCase: XCTestCase {
         add(attachment)
     }
 
+    /// Scrolls until `element` can really be tapped. "Hittable" alone is not
+    /// enough: the floating tab bar sits over the content, and XCUITest calls an
+    /// element under it hittable - the tap then lands on the tab bar. On a small
+    /// phone (CI's iPhone 17e) that tapped the current tab, which scrolls it to
+    /// the top, instead of the Streak reminders switch. So nudge the content up
+    /// until the element is clear of the bar.
     @MainActor
     func scrollUntilHittable(_ element: XCUIElement, in app: XCUIApplication, maxSwipes: Int = 8) {
         var swipes = 0
@@ -115,6 +121,16 @@ class MetalARMUITestCase: XCTestCase {
             swipes += 1
         }
         XCTAssertTrue(element.isHittable, "\(element) never scrolled into view")
+
+        let bar = app.tabBars.firstMatch
+        guard bar.exists else { return }
+        var nudges = 0
+        while element.frame.maxY > bar.frame.minY - 8 && nudges < 6 {
+            let from = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.6))
+            from.press(forDuration: 0.05, thenDragTo: from.withOffset(CGVector(dx: 0, dy: -120)))
+            nudges += 1
+        }
+        XCTAssertLessThanOrEqual(element.frame.maxY, bar.frame.minY - 8, "\(element) is still under the tab bar")
     }
 
     @MainActor

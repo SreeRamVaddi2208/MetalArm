@@ -59,6 +59,10 @@ Entry format:
 - UI-test timing learned the hard way: type into alert fields only once they
   have focus, wait for toggle values, and let the app settle ~2 s after
   coming back from Safari before tapping.
+- XCUITest calls an element under the floating tab bar "hittable"; the tap
+  lands on the bar. On CI's iPhone 17e that re-tapped Profile (scrolling it to
+  the top) instead of the Streak switch. `scrollUntilHittable` now also nudges
+  the element clear of the bar - test on the 17e, not only a larger phone.
 
 ---
 
