@@ -114,6 +114,19 @@ jobs:
           echo "Using simulator $udid"
           echo "udid=$udid" >> "$GITHUB_OUTPUT"
 
+      # Boot the simulator and wait until it is fully up BEFORE testing. Left
+      # to xcodebuild, the first test launched the app into a device that was
+      # still booting, and the launch failed with "Error resuming pid ...
+      # Failed to send signal 19" - failing whichever test ran first
+      # (testDeletingTheAccountReturnsToSignIn) on two runs in a row, while
+      # the same test passed locally on a freshly erased simulator. Parallel
+      # testing is off below for the same reason: it clones a fresh, cold
+      # simulator per worker, which would bring the problem straight back.
+      - name: Boot the simulator
+        run: |
+          xcrun simctl boot "${{ steps.simulator.outputs.udid }}" || true
+          xcrun simctl bootstatus "${{ steps.simulator.outputs.udid }}" -b
+
       # Two suites stay out of CI and are run locally instead:
       #
       #   DemoTour                 a three-minute scripted walkthrough for
@@ -131,6 +144,7 @@ jobs:
             -project MetalARM.xcodeproj -scheme MetalARM \
             -destination "platform=iOS Simulator,id=${{ steps.simulator.outputs.udid }}" \
             -only-testing:MetalARMUITests \
+            -parallel-testing-enabled NO \
             -skip-testing:MetalARMUITests/DemoTour \
             -skip-testing:MetalARMUITests/HealthPermissionUITests \
             CODE_SIGNING_ALLOWED=NO
