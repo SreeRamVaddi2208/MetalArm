@@ -30,6 +30,7 @@ MetalArm has three parts that share one API:
 
 ## Features
 
+- **Ready-made workouts** - three styles to start from in one tap (athletic, powerlifting, bodybuilding), each with its sets, reps and rests, and a demo clip beside every movement so you can see what you're about to do.
 - **Workouts** - live sessions that survive a refresh or a device switch, an exercise library of 91 starters plus your own, routines, ghost values from your last session, a rest timer, and editing or deleting sets.
 - **Records** - heaviest set, estimated 1RM, session volume and most reps at a weight, detected on the server as you log.
 - **Progression** - points become XP, levels and ranks: Untrained, Novice, Intermediate, Advanced, Elite and World Class (stored as E-S). Advanced, Elite and World Class also need a strength trial: a bench at 1x, squat at 1.5x and deadlift at 2x bodyweight. Weekly workout streaks, badges and a rewards shop.

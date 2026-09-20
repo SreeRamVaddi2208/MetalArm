@@ -156,15 +156,37 @@ final class MockAPIClient: MetalArmAPI {
         return current
     }
 
-    func startSession() async throws -> WorkoutSession {
+    func presets() async throws -> [WorkoutPreset] {
+        try check()
+        return fixture(ContractFixtures.presets)
+    }
+
+    func startSession(presetSlug: String? = nil) async throws -> WorkoutSession {
         try check()
         if let current {
             throw APIError.http(status: 409, detail: "A workout is already in progress (\(current.id)) - finish or abandon it first")
         }
+        // A preset starts loaded: its exercises, in order, with their targets.
+        let preset: WorkoutPreset? = presetSlug.flatMap { slug in
+            (fixture(ContractFixtures.presets) as [WorkoutPreset]).first { $0.slug == slug }
+        }
+        if presetSlug != nil && preset == nil {
+            throw APIError.http(status: 404, detail: "No such workout")
+        }
+        let planned: [SessionExercise] = (preset?.exercises ?? []).map { slot in
+            SessionExercise(
+                exercise: slot.exercise,
+                target: SessionTarget(
+                    targetSets: slot.targetSets, targetReps: slot.targetReps,
+                    targetWeightKg: nil, restSeconds: slot.restSeconds),
+                sets: [], previousSets: [], hint: nil)
+        }
         let session = WorkoutSession(
-            id: ContractFixtures.sessionID, name: nil, status: "in_progress", routineId: nil,
+            id: ContractFixtures.sessionID,
+            name: preset.map { "\($0.categoryLabel) · \($0.name)" },
+            status: "in_progress", routineId: nil,
             startedAt: "2026-09-13T18:00:00Z", endedAt: nil, durationSeconds: 0, workingSets: 0,
-            totalVolumeKg: 0, pointsTotal: 0, pointsCredited: 0, qualified: nil, exercises: [])
+            totalVolumeKg: 0, pointsTotal: 0, pointsCredited: 0, qualified: nil, exercises: planned)
         current = session
         return session
     }

@@ -66,6 +66,37 @@ final class MetalARMUITests: MetalARMUITestCase {
     }
 
     @MainActor
+    func testStartingAReadyMadeWorkout() throws {
+        let app = launchSignedIn()
+        openTab(app, "Workout")
+
+        let card = app.buttons["preset-powerlifting-heavy-day"]
+        XCTAssertTrue(card.waitForExistence(timeout: 10), "The ready-made workouts never appeared")
+        card.tap()
+
+        // The demo sits beside the plan, on the first movement.
+        XCTAssertTrue(
+            element(app, "presetDemoVideo-Barbell Back Squat").waitForExistence(timeout: 5),
+            "No demo beside the workout for its first movement")
+        attachScreenshot(app, named: "13 Ready-made workout")
+
+        // Tapping another movement moves the demo to it. That one has no clip
+        // yet, so the placeholder stands in - the layout must not jump.
+        app.buttons["presetSlot-Conventional Deadlift"].tap()
+        XCTAssertTrue(
+            element(app, "presetDemoPlaceholder-Conventional Deadlift").waitForExistence(timeout: 5),
+            "The demo did not follow the tapped movement")
+
+        app.buttons["startPresetButton"].tap()
+
+        // The workout opens already loaded: the plan's exercises, in order.
+        XCTAssertTrue(app.buttons["logSetButton"].waitForExistence(timeout: 10), "The workout did not start")
+        XCTAssertTrue(app.buttons["Barbell Back Squat"].firstMatch.exists, "The plan's first exercise is missing")
+        XCTAssertTrue(app.buttons["Conventional Deadlift"].firstMatch.exists, "The plan's last exercise is missing")
+        XCTAssertFalse(app.buttons["addFirstExerciseButton"].exists, "A loaded workout should not ask for a first exercise")
+    }
+
+    @MainActor
     func testProgressRanksAndProfile() throws {
         let app = launchSignedIn()
         attachScreenshot(app, named: "03 Home")

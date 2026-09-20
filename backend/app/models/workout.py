@@ -144,6 +144,10 @@ class Routine(UUIDPrimaryKey, Timestamps, Base):
     )
     name: Mapped[str] = mapped_column(String(80), nullable=False)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Set when this routine was materialised from a ready-made workout
+    # (app/core/presets.py). Starting the same preset again reuses this row
+    # rather than stacking up copies, and the UI can label where it came from.
+    preset_slug: Mapped[str | None] = mapped_column(String(60), nullable=True)
 
     exercises: Mapped[list["RoutineExercise"]] = relationship(
         back_populates="routine",
@@ -153,6 +157,8 @@ class Routine(UUIDPrimaryKey, Timestamps, Base):
 
     __table_args__ = (
         CheckConstraint("length(name) >= 1", name="ck_routines_name"),
+        # One copy of a given preset per user - the reuse above depends on it.
+        UniqueConstraint("user_id", "preset_slug", name="uq_routines_user_preset"),
     )
 
 

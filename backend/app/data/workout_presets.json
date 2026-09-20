@@ -1,0 +1,42 @@
+[
+  {
+    "slug": "powerlifting-heavy-day",
+    "category": "powerlifting",
+    "name": "Heavy Day",
+    "summary": "The three competition lifts, low reps and long rests. Leave a rep in the tank on every set.",
+    "exercises": [
+      { "slug": "back-squat", "target_sets": 3, "target_reps": 5, "rest_seconds": 180 },
+      { "slug": "barbell-bench-press", "target_sets": 3, "target_reps": 5, "rest_seconds": 180 },
+      { "slug": "deadlift", "target_sets": 1, "target_reps": 5, "rest_seconds": 240 },
+      { "slug": "barbell-row", "target_sets": 3, "target_reps": 8, "rest_seconds": 120 }
+    ]
+  },
+  {
+    "slug": "bodybuilding-push-day",
+    "category": "bodybuilding",
+    "name": "Push Day",
+    "summary": "Chest, shoulders and triceps in the eight-to-twelve range, short rests, the last two reps hard.",
+    "exercises": [
+      { "slug": "incline-barbell-bench-press", "target_sets": 4, "target_reps": 10, "rest_seconds": 90 },
+      { "slug": "dumbbell-bench-press", "target_sets": 3, "target_reps": 12, "rest_seconds": 75 },
+      { "slug": "machine-shoulder-press", "target_sets": 3, "target_reps": 12, "rest_seconds": 75 },
+      { "slug": "dumbbell-lateral-raise", "target_sets": 3, "target_reps": 15, "rest_seconds": 60 },
+      { "slug": "overhead-tricep-extension", "target_sets": 3, "target_reps": 12, "rest_seconds": 60 },
+      { "slug": "chest-dip", "target_sets": 3, "target_reps": 10, "rest_seconds": 75 }
+    ]
+  },
+  {
+    "slug": "athletic-power-day",
+    "category": "athletic",
+    "name": "Power Day",
+    "summary": "Move fast, stay fresh: explosive work first, then single-leg strength and a carry to finish.",
+    "exercises": [
+      { "slug": "jump-rope", "target_sets": 3, "target_reps": 30, "rest_seconds": 60 },
+      { "slug": "trap-bar-deadlift", "target_sets": 4, "target_reps": 3, "rest_seconds": 150 },
+      { "slug": "bulgarian-split-squat", "target_sets": 3, "target_reps": 8, "rest_seconds": 90 },
+      { "slug": "pull-up", "target_sets": 3, "target_reps": 8, "rest_seconds": 90 },
+      { "slug": "walking-lunge", "target_sets": 3, "target_reps": 12, "rest_seconds": 75 },
+      { "slug": "plank", "target_sets": 3, "target_reps": 45, "rest_seconds": 45 }
+    ]
+  }
+]

@@ -10,7 +10,7 @@
 
 - **API title:** MetalArm API
 - **API version:** 0.1.0
-- **Generated:** 2026-09-19 18:07 UTC
+- **Generated:** 2026-09-20 17:48 UTC
 - **Source:** `http://localhost:8000/openapi.json`
 
 ---
@@ -1313,6 +1313,23 @@ rows - nothing is ever edited or removed.
 
 ---
 
+### `GET /api/v1/workouts/presets`
+
+**List Presets**
+
+The ready-made workouts, one per training style.
+
+Each slot carries its whole exercise, `media_url` included, so a client can
+show what the movement looks like before the user commits to the session.
+
+*Tags:* `workouts`
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+
+---
+
 ### `GET /api/v1/workouts/records`
 
 **List Records**
@@ -1359,7 +1376,8 @@ Workout history, newest first.
 
 **Start Session**
 
-Start a workout, blank or from a routine. 409 if one is already live -
+Start a workout: blank, from a routine, or from a ready-made workout
+(`preset_slug`, see GET /workouts/presets). 409 if one is already live -
 finish or abandon it first (GET /workouts/sessions/active returns it).
 
 *Tags:* `workouts`
@@ -2022,6 +2040,25 @@ otherwise 503 with per-dependency detail.
 | `bonus_awarded` | `boolean` | yes |
 | `set_id` | `string | null` | yes |
 
+#### `PresetExerciseOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `exercise` | `ExerciseOut` | yes |
+| `target_sets` | `integer` | yes |
+| `target_reps` | `integer` | yes |
+| `rest_seconds` | `integer` | yes |
+
+#### `PresetOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `slug` | `string` | yes |
+| `category` | `string` | yes |
+| `name` | `string` | yes |
+| `summary` | `string` | yes |
+| `exercises` | `PresetExerciseOut[]` | yes |
+
 #### `ProfileOut`
 
 | Field | Type | Required |
@@ -2309,6 +2346,7 @@ otherwise 503 with per-dependency detail.
 | Field | Type | Required |
 |---|---|---|
 | `routine_id` | `string | null` | no |
+| `preset_slug` | `string | null` | no |
 | `name` | `string | null` | no |
 
 #### `SessionStatus`

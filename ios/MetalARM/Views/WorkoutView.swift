@@ -16,6 +16,7 @@ struct WorkoutView: View {
     @Environment(AppModel.self) private var model
     @State private var showingPicker = false
     @State private var confirmingDiscard = false
+    @State private var chosenPreset: WorkoutPreset?
     @FocusState private var focusedField: InputField?
 
     var body: some View {
@@ -30,6 +31,7 @@ struct WorkoutView: View {
         .background(Theme.bg)
         .task { await model.loadWorkout() }
         .sheet(isPresented: $showingPicker) { ExercisePickerView() }
+        .sheet(item: $chosenPreset) { preset in PresetSheet(preset: preset) }
         .confirmationDialog("Discard this workout?", isPresented: $confirmingDiscard, titleVisibility: .visible) {
             Button("Discard Workout", role: .destructive) {
                 Task { await model.abandonWorkout() }
@@ -67,6 +69,8 @@ struct WorkoutView: View {
             .buttonStyle(PrimaryButtonStyle())
             .accessibilityIdentifier("workoutStartButton")
             ErrorText(message: model.errorMessage)
+            PresetCards(chosen: $chosenPreset)
+                .padding(.top, 8)
         }
         .padding(24)
     }
@@ -206,15 +210,22 @@ struct WorkoutView: View {
         let sets = model.selectedSessionExercise?.sets ?? []
         let previous = model.selectedPreviousSets
         return VStack(alignment: .leading, spacing: 8) {
-            Text(exercise.name)
-                .font(Theme.display(18))
-                .foregroundStyle(Theme.text)
-            Text(exercise.muscleLabel)
-                .font(Theme.body(11))
-                .foregroundStyle(Theme.dim)
-                .padding(.horizontal, 9)
-                .padding(.vertical, 4)
-                .background(Theme.bg2, in: RoundedRectangle(cornerRadius: 8))
+            // The demo sits with the name: a form reminder between sets.
+            HStack(alignment: .top, spacing: 12) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(exercise.name)
+                        .font(Theme.display(18))
+                        .foregroundStyle(Theme.text)
+                    Text(exercise.muscleLabel)
+                        .font(Theme.body(11))
+                        .foregroundStyle(Theme.dim)
+                        .padding(.horizontal, 9)
+                        .padding(.vertical, 4)
+                        .background(Theme.bg2, in: RoundedRectangle(cornerRadius: 8))
+                }
+                Spacer(minLength: 0)
+                ExerciseDemo(exercise: exercise, size: 64, cornerRadius: 10, context: "cardExerciseDemo")
+            }
             if !previous.isEmpty {
                 Text("Last time: " + previous.prefix(4).map { "\(formatNumber(unit.fromKilograms($0.weightKg))) × \($0.reps ?? 0)" }.joined(separator: ", "))
                     .font(Theme.body(12))

@@ -91,8 +91,19 @@ async def delete_routine(token: str, routine_id: str) -> None:
 # --- Sessions --------------------------------------------------------------
 
 
-async def start_session(token: str, routine_id: str | None = None) -> dict:
-    body = {"routine_id": routine_id} if routine_id else {}
+async def presets(token: str) -> list[dict]:
+    """The ready-made workouts, one per training style."""
+    return await request("GET", "/workouts/presets", token=token)
+
+
+async def start_session(
+    token: str, routine_id: str | None = None, preset_slug: str | None = None
+) -> dict:
+    body: dict[str, str] = {}
+    if preset_slug:
+        body["preset_slug"] = preset_slug
+    elif routine_id:
+        body["routine_id"] = routine_id
     return await request("POST", "/workouts/sessions", token=token, json=body)
 
 

@@ -50,6 +50,8 @@ final class AppModel {
     var weightInput = ""
     var repsInput = ""
     var prHint = ""
+    /// Ready-made workouts, one per training style.
+    var presets: [WorkoutPreset] = []
     var progressionHint = ""
     var restSecondsLeft = 0
     var pickerResults: [Exercise] = []
@@ -248,10 +250,18 @@ final class AppModel {
         await flushPendingSets()
     }
 
-    func startWorkout() async {
+    /// The ready-made workouts, loaded once for the Workout tab's cards.
+    func loadPresets() async {
+        guard presets.isEmpty else { return }
+        // A failure here must not stop someone starting a blank workout, so it
+        // is not surfaced as an error: the cards simply do not appear.
+        presets = (try? await api.presets()) ?? []
+    }
+
+    func startWorkout(presetSlug: String? = nil) async {
         await run("Couldn't start a workout") {
             do {
-                session = try await api.startSession()
+                session = try await api.startSession(presetSlug: presetSlug)
             } catch let error as APIError where error.status == 409 {
                 // One is already live (started on another device): resume it.
                 session = try await api.activeSession()

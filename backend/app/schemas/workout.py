@@ -284,7 +284,34 @@ class SetDeleteResponse(BaseModel):
 
 class SessionStart(BaseModel):
     routine_id: uuid.UUID | None = None
+    # A ready-made workout (GET /workouts/presets). Mutually exclusive with
+    # routine_id: two plans for one session has no meaning.
+    preset_slug: str | None = Field(default=None, min_length=1, max_length=60)
     name: str | None = Field(default=None, min_length=1, max_length=80)
+
+    @model_validator(mode="after")
+    def _one_plan_only(self) -> "SessionStart":
+        if self.routine_id is not None and self.preset_slug is not None:
+            raise ValueError("send routine_id or preset_slug, not both")
+        return self
+
+
+class PresetExerciseOut(BaseModel):
+    """One slot of a ready-made workout, with the exercise it names - the
+    client needs the name, the muscles and media_url to show a demo."""
+
+    exercise: ExerciseOut
+    target_sets: int
+    target_reps: int
+    rest_seconds: int
+
+
+class PresetOut(BaseModel):
+    slug: str
+    category: str
+    name: str
+    summary: str
+    exercises: list[PresetExerciseOut]
 
 
 class SessionTargetOut(BaseModel):

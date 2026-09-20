@@ -137,8 +137,13 @@ final class LiveAPIClient: MetalArmAPI {
 
     func session(id: String) async throws -> WorkoutSession { try await send(.get("workouts/sessions/\(id)")) }
 
-    func startSession() async throws -> WorkoutSession {
-        try await send(.post("workouts/sessions", EmptyBody(), encoder))
+    func presets() async throws -> [WorkoutPreset] { try await send(.get("workouts/presets")) }
+
+    func startSession(presetSlug: String? = nil) async throws -> WorkoutSession {
+        guard let presetSlug else {
+            return try await send(.post("workouts/sessions", EmptyBody(), encoder))
+        }
+        return try await send(.post("workouts/sessions", PresetStart(presetSlug: presetSlug), encoder))
     }
 
     func logSet(sessionID: String, exerciseID: String, weight: Double, unit: WeightUnit, reps: Int, clientSetID: UUID) async throws -> SetLogResult {
@@ -215,6 +220,7 @@ final class LiveAPIClient: MetalArmAPI {
         let reps: Int
         let clientSetId: String
     }
+    private struct PresetStart: Encodable { let presetSlug: String }
     private struct PartyBody: Encodable { let name: String }
     private struct JoinBody: Encodable { let inviteCode: String }
 

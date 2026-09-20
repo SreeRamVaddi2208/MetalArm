@@ -4,6 +4,7 @@ exercise creation. Serves both the live workout and the routine editor."""
 import reflex as rx
 
 from metalarm import theme
+from metalarm.components.exercise_demo import exercise_demo
 from metalarm.components.layout import error_banner
 from metalarm.state.picker import PickerState
 from metalarm.workout_models import Chip, ExercisePick
@@ -30,6 +31,7 @@ def _chip(chip: Chip) -> rx.Component:
 def _row(item: ExercisePick) -> rx.Component:
     return rx.box(
         rx.hstack(
+            exercise_demo(item.media_url, item.name, size="40px", radius="8px"),
             rx.vstack(
                 rx.text(item.name, color=theme.TEXT, font_weight="700", font_size="0.92rem"),
                 rx.text(item.muscles_label, color=theme.FAINT, font_size="0.66rem", letter_spacing="0.08em"),
