@@ -147,6 +147,73 @@ struct FormattingTests {
     }
 }
 
+// MARK: - Training path
+
+@MainActor
+struct TrainingPathTests {
+    @Test func theQuestionIsAskedOnlyUntilItIsAnswered() async {
+        let model = AppModel.forTesting(api: MockAPIClient(pathUnanswered: true))
+        await model.loadHome()
+        #expect(model.needsTrainingPath)
+
+        await model.chooseTrainingPath("athlete")
+        #expect(!model.needsTrainingPath)
+        #expect(model.me?.characterClass == "athlete")
+    }
+
+    @Test func decliningCountsAsAnswering() async {
+        // Otherwise "not sure yet" would ask again on every launch.
+        let model = AppModel.forTesting(api: MockAPIClient(pathUnanswered: true))
+        await model.loadHome()
+        await model.chooseTrainingPath("")
+        #expect(!model.needsTrainingPath)
+        #expect(model.me?.characterClass == "")
+    }
+
+    @Test func anEstablishedAccountIsNotAsked() async {
+        let model = AppModel.forTesting()
+        await model.loadHome()
+        #expect(!model.needsTrainingPath)
+    }
+
+    @Test func signedOutIsNeverAsked() async {
+        let model = AppModel.forTesting(api: MockAPIClient(signedIn: false))
+        #expect(!model.needsTrainingPath)
+    }
+
+    @Test func everyPathIsDescribedByTheServer() async {
+        let model = AppModel.forTesting()
+        await model.loadTrainingPaths()
+        #expect(model.trainingPaths.map(\.category) == ["athlete", "bodybuilder", "powerlifter"])
+        #expect(model.trainingPaths.map(\.displayName) == ["Athletic", "Bodybuilder", "Powerlifter"])
+    }
+
+    @Test func aPathReadsAsHowItTrains() {
+        let paths = Dictionary(uniqueKeysWithValues: TrainingPath.fallbacks.map { ($0.category, $0) })
+        #expect(paths["athlete"]?.summary == "12-20 reps · light · short rests")
+        #expect(paths["powerlifter"]?.summary == "1-6 reps · heavy · long rests")
+    }
+
+    @Test func theCardsStillRenderWithoutTheServer() async {
+        // The question must be answerable even if /training-categories fails:
+        // the view falls back to the three paths the app knows by name.
+        let api = MockAPIClient()
+        api.failure = APIError.http(status: 500, detail: "nope")
+        let model = AppModel.forTesting(api: api)
+        await model.loadTrainingPaths()
+        #expect(model.trainingPaths.isEmpty)
+        #expect(TrainingPath.fallbacks.map(\.category) == ["athlete", "bodybuilder", "powerlifter"])
+    }
+
+    @Test func everyPathHasAPlaceholderCharacter() {
+        for path in TrainingPath.fallbacks {
+            #expect(CharacterScene.make(for: path.category) != nil)
+        }
+        // An unknown path falls back to the flat silhouette rather than crashing.
+        #expect(CharacterScene.make(for: "crossfitter") == nil)
+    }
+}
+
 // MARK: - Ready-made workouts
 
 @MainActor

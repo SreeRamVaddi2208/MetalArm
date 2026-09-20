@@ -90,7 +90,7 @@ services:
     image: metalarm-backend
     container_name: metalarm-migrate
     command:
-      ["sh", "-c", "alembic upgrade head && python -m scripts.import_exercises"]
+      ["sh", "-c", "alembic upgrade head && python -m scripts.import_exercises && python -m scripts.seed_training_paths"]
     restart: "no"
     environment:
       POSTGRES_USER: ${POSTGRES_USER}

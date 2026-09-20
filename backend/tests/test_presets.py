@@ -14,7 +14,9 @@ ROUTINES = "/api/v1/routines"
 
 def test_every_style_is_offered(client: TestClient, auth: dict) -> None:
     rows = client.get(PRESETS, headers=auth).json()
-    assert {row["category"] for row in rows} == {"athletic", "powerlifting", "bodybuilding"}
+    assert {row["category"] for row in rows} == {"athlete", "powerlifter", "bodybuilder"}
+    # The label is what the path is CALLED; the value is what is stored.
+    assert {row["category_label"] for row in rows} == {"Athletic", "Bodybuilder", "Powerlifter"}
     assert len(rows) == len(presets.all_presets())
 
 
@@ -66,7 +68,8 @@ def test_starting_the_same_preset_twice_reuses_one_routine(
 def test_a_started_preset_becomes_an_editable_routine(client: TestClient, auth: dict) -> None:
     client.post(SESSIONS, json={"preset_slug": "powerlifting-heavy-day"}, headers=auth)
     mine = client.get(ROUTINES, headers=auth).json()
-    copied = next(r for r in mine if r["name"] == "Powerlifting · Heavy Day")
+    # Named with the path's label ("Powerlifter"), not the stored value.
+    copied = next(r for r in mine if r["name"] == "Powerlifter · Heavy Day")
     assert [s["position"] for s in copied["exercises"]] == list(range(len(copied["exercises"])))
 
     dropped = client.put(

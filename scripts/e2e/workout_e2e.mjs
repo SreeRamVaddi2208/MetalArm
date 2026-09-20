@@ -248,7 +248,7 @@ try {
   const cards = page.locator('.ma-preset-card');
   await cards.first().waitFor({ timeout: 15000 });
   check('three ready-made workouts are offered', (await cards.count()) === 3);
-  check('a card names its style', await visible(page.getByText('POWERLIFTING').first()));
+  check('a card names its style', await visible(page.getByText('POWERLIFTER').first()));
   // Every card shows a demo box, whether or not a clip is linked yet.
   check(
     'every card carries a demo box',
@@ -321,12 +321,23 @@ try {
   check('profile shows the rank trials', trialsLoaded);
   check('the bench trial targets 1x bodyweight', await visible(page.getByText(/of 80\.5 kg/)));
 
-  // The character sheet: three stats, and a class that only highlights them.
+  // The character sheet: three stats, and the training path that highlights
+  // them and decides what the app suggests.
   check('profile shows the character sheet', await visible(page.getByText('CHARACTER', { exact: true })));
   check('character stats are scored', await visible(page.getByText(/lifted in four weeks/)));
-  await page.getByText('POWERLIFTER', { exact: true }).click();
-  const classPicked = await page.getByText('Powerlifter', { exact: true }).waitFor({ timeout: 15000 }).then(() => true).catch(() => false);
-  check('picking a class shows it on the sheet', classPicked);
+
+  const pathCards = page.locator('.ma-path-card');
+  await pathCards.first().waitFor({ timeout: 15000 });
+  check('all three training paths are offered', (await pathCards.count()) === 3);
+  check('a path says how it trains', await visible(page.getByText(/1-6 reps · heavy · long rests/)));
+  await page.locator('.ma-path-card[data-path="powerlifter"]').click();
+  const pathPicked = await page.getByText('Powerlifter', { exact: true }).first()
+    .waitFor({ timeout: 15000 }).then(() => true).catch(() => false);
+  check('picking a path shows it on the sheet', pathPicked);
+  // It is a preference, so it survives a reload rather than living in the page.
+  await page.reload();
+  await page.getByText('CHARACTER', { exact: true }).waitFor({ timeout: 15000 });
+  check('the chosen path stuck', await visible(page.getByText('Powerlifter', { exact: true }).first()));
 
   // A Strong export dropped on the profile becomes history.
   const strongCsv = 'Date,Workout Name,Duration,Exercise Name,Set Order,Weight,Reps,Distance,Seconds,Notes,Workout Notes,RPE\n'

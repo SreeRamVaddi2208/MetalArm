@@ -28,6 +28,8 @@ protocol MetalArmAPI: AnyObject {
     func rankTrials() async throws -> [RankTrial]
     func character() async throws -> CharacterSheet
     func updateCharacterClass(_ value: String) async throws -> Me
+    /// What each training path means, for the onboarding cards and Profile.
+    func trainingPaths() async throws -> [TrainingPath]
     func importWorkouts(csv: String, unit: WeightUnit) async throws -> WorkoutImportResult
     func points() async throws -> PointsSummary
 

@@ -5,7 +5,14 @@ from __future__ import annotations
 import reflex as rx
 
 from metalarm import api
-from metalarm.models import Badge, LifetimeStats, StatRow, TrialRow, import_summary
+from metalarm.models import (
+    Badge,
+    LifetimeStats,
+    StatRow,
+    TrainingPathRow,
+    TrialRow,
+    import_summary,
+)
 from metalarm.state.auth import AuthState
 
 
@@ -18,6 +25,9 @@ class ProfileState(rx.State):
     stats_sheet: list[StatRow] = []
     character_class: str = ""
     class_label: str = ""
+    # The training paths, from GET /training-categories: name, tagline and how
+    # each one trains. Not hardcoded here, so the copy lives in one place.
+    paths: list[TrainingPathRow] = []
     importing: bool = False
     import_message: str = ""
     loading: bool = False
@@ -47,6 +57,15 @@ class ProfileState(rx.State):
             self.stats_sheet = [StatRow.from_api(s) for s in sheet.get("stats") or []]
             self.character_class = sheet.get("character_class") or ""
             self.class_label = sheet.get("class_label") or ""
+            if not self.paths:
+                # A failure here leaves the cards out rather than the page.
+                try:
+                    self.paths = [
+                        TrainingPathRow.from_api(row)
+                        for row in await api.training_categories(auth.token)
+                    ]
+                except api.ApiError:
+                    self.paths = []
         except api.ApiError as exc:
             self.error = exc.detail
         finally:
@@ -74,7 +93,9 @@ class ProfileState(rx.State):
         yield ProfileState.load
 
     async def choose_class(self, value: str):
-        """Pick (or clear) the cosmetic character class."""
+        """Pick (or clear) the training path. It decides which stats are
+        highlighted and which ready-made workout the app leads with - never a
+        score, which is why it can be changed whenever goals change."""
         auth = await self.get_state(AuthState)
         if not auth.token:
             return

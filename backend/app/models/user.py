@@ -8,6 +8,7 @@ from sqlalchemy import (
     Boolean,
     CheckConstraint,
     Date,
+    DateTime,
     ForeignKey,
     Integer,
     String,
@@ -48,6 +49,11 @@ class User(UUIDPrimaryKey, Timestamps, Base):
     # so it follows the user from phone to laptop.
     weight_unit: Mapped[str] = mapped_column(
         String(2), nullable=False, server_default="kg"
+    )
+    # When the path was chosen, so "never asked" is told apart from "asked and
+    # cleared" - onboarding must not keep asking someone who said no.
+    character_class_set_at: Mapped[dt.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
     )
     # Bumped to revoke every token issued so far ("sign out everywhere").
     # Access and refresh tokens carry the value they were minted with.

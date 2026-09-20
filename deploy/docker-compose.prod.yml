@@ -86,7 +86,7 @@ services:
       dockerfile: Dockerfile
       target: runtime
     image: metalarm-backend:prod
-    command: ["sh", "-c", "alembic upgrade head && python -m scripts.import_exercises"]
+    command: ["sh", "-c", "alembic upgrade head && python -m scripts.import_exercises && python -m scripts.seed_training_paths"]
     restart: "no"
     environment: *backend-env
     depends_on:

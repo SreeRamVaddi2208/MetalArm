@@ -37,9 +37,17 @@ final class MockAPIClient: MetalArmAPI {
     // -UITestOffline: logging a set fails as if the phone had no signal.
     var isOffline: Bool
 
-    init(signedIn: Bool = true, levelUpOnFinish: Bool = false, rankUpOnFinish: Bool = false, offline: Bool = false) {
+    /// A brand-new account that has never been asked for a training path, so
+    /// the onboarding question appears. Established accounts have answered.
+    private var pathUnanswered: Bool
+
+    init(
+        signedIn: Bool = true, levelUpOnFinish: Bool = false, rankUpOnFinish: Bool = false,
+        offline: Bool = false, pathUnanswered: Bool = false
+    ) {
         isSignedIn = signedIn
         isOffline = offline
+        self.pathUnanswered = pathUnanswered
         self.levelUpOnFinish = levelUpOnFinish
         self.rankUpOnFinish = rankUpOnFinish
         partyList = []
@@ -93,6 +101,8 @@ final class MockAPIClient: MetalArmAPI {
         try check()
         var me: Me = fixture(ContractFixtures.me)
         me.weightUnit = weightUnit.rawValue
+        me.characterClass = characterClass
+        if pathUnanswered { me.characterClassSetAt = nil }
         return me
     }
 
@@ -361,8 +371,16 @@ final class MockAPIClient: MetalArmAPI {
         return sheet
     }
 
+    func trainingPaths() async throws -> [TrainingPath] {
+        try check()
+        return fixture(ContractFixtures.trainingPaths)
+    }
+
     func updateCharacterClass(_ value: String) async throws -> Me {
         try check()
+        // Answering - including declining - is what stops the question coming
+        // back, exactly as the server records it.
+        pathUnanswered = false
         characterClass = value
         return try await me()
     }

@@ -30,6 +30,7 @@ MetalArm has three parts that share one API:
 
 ## Features
 
+- **Training path** - Athletic, Bodybuilder or Powerlifter, asked once after you sign up and changeable whenever your goals move. It sets the reps, loads and rests MetalArm suggests, leads with the workout that suits it, and highlights the character stats you care about. It never changes your points or your rank.
 - **Ready-made workouts** - three styles to start from in one tap (athletic, powerlifting, bodybuilding), each with its sets, reps and rests, and a demo clip beside every movement so you can see what you're about to do.
 - **Workouts** - live sessions that survive a refresh or a device switch, an exercise library of 91 starters plus your own, routines, ghost values from your last session, a rest timer, and editing or deleting sets.
 - **Records** - heaviest set, estimated 1RM, session volume and most reps at a weight, detected on the server as you log.

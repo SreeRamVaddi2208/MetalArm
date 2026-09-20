@@ -32,7 +32,8 @@ enum ContractFixtures {
 
     static let me = """
     {"id": "\(userID)", "email": "sree@metalarm.dev", "display_name": "Sree Ram", "timezone": "Asia/Kolkata",
-     "created_at": "2026-09-01T10:00:00.123456Z", "weight_unit": "kg", "progress": \(progress)}
+     "created_at": "2026-09-01T10:00:00.123456Z", "weight_unit": "kg",
+     "character_class_set_at": "2026-09-01T10:05:00Z", "progress": \(progress)}
     """
 
     /// A demo clip on one exercise and none on the others, so both states -
@@ -143,19 +144,34 @@ enum ContractFixtures {
      {"exercise_id": "\(squatID)", "exercise_name": "Barbell Back Squat", "record_type": "max_weight", "value": 122.5, "weight_kg": 122.5, "achieved_at": "2026-08-26T18:20:00Z", "session_id": "b1", "set_id": null}]
     """
 
+    static let trainingPaths = """
+    [{"category": "athlete", "display_name": "Athletic", "tagline": "Conditioning first. Lean and capable, not bulked.",
+      "description": "Weight stays deliberately low; volume and variety do the work.",
+      "rep_range_low": 12, "rep_range_high": 20, "relative_load": "low", "relative_volume": "high",
+      "rest_seconds_guidance": 60, "emphasis_tags": ["mobility", "plyometric", "circuit", "compound_light"]},
+     {"category": "bodybuilder", "display_name": "Bodybuilder", "tagline": "Size and symmetry. Working sets close to failure.",
+      "description": "Moderate-to-heavy weight at moderate-to-high volume, taken near failure.",
+      "rep_range_low": 8, "rep_range_high": 15, "relative_load": "moderate_high", "relative_volume": "moderate_high",
+      "rest_seconds_guidance": 90, "emphasis_tags": ["isolation", "compound", "split"]},
+     {"category": "powerlifter", "display_name": "Powerlifter", "tagline": "Maximal strength. Heavy, low reps, long rests.",
+      "description": "Built around the squat, bench and deadlift and their close variants.",
+      "rep_range_low": 1, "rep_range_high": 6, "relative_load": "heavy", "relative_volume": "low",
+      "rest_seconds_guidance": 240, "emphasis_tags": ["compound_heavy", "big3", "minimal_accessory"]}]
+    """
+
     static let presets = """
-    [{"slug": "powerlifting-heavy-day", "category": "powerlifting", "name": "Heavy Day",
+    [{"slug": "powerlifting-heavy-day", "category": "powerlifter", "category_label": "Powerlifter", "matches_your_path": false, "name": "Heavy Day",
       "summary": "The three competition lifts, low reps and long rests. Leave a rep in the tank on every set.",
       "exercises": [
         {"exercise": \(exercise(squatID, "Barbell Back Squat", ["quads", "glutes", "core"], media: demoURL)), "target_sets": 3, "target_reps": 5, "rest_seconds": 180},
         {"exercise": \(bench), "target_sets": 3, "target_reps": 5, "rest_seconds": 180},
         {"exercise": \(exercise(deadliftID, "Conventional Deadlift", ["hamstrings", "glutes", "back"])), "target_sets": 1, "target_reps": 5, "rest_seconds": 240}]},
-     {"slug": "bodybuilding-push-day", "category": "bodybuilding", "name": "Push Day",
+     {"slug": "bodybuilding-push-day", "category": "bodybuilder", "category_label": "Bodybuilder", "matches_your_path": false, "name": "Push Day",
       "summary": "Chest, shoulders and triceps in the eight-to-twelve range, short rests, the last two reps hard.",
       "exercises": [
         {"exercise": \(bench), "target_sets": 4, "target_reps": 10, "rest_seconds": 90},
         {"exercise": \(exercise(pressID, "Overhead Press", ["shoulders", "triceps"])), "target_sets": 3, "target_reps": 12, "rest_seconds": 75}]},
-     {"slug": "athletic-power-day", "category": "athletic", "name": "Power Day",
+     {"slug": "athletic-power-day", "category": "athlete", "category_label": "Athletic", "matches_your_path": false, "name": "Power Day",
       "summary": "Move fast, stay fresh: explosive work first, then single-leg strength and a carry to finish.",
       "exercises": [
         {"exercise": \(exercise(deadliftID, "Trap Bar Deadlift", ["hamstrings", "glutes", "back"])), "target_sets": 4, "target_reps": 3, "rest_seconds": 150},

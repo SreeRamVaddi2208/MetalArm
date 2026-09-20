@@ -448,6 +448,38 @@ def import_summary(data: dict[str, Any]) -> str:
 
 
 @dataclasses.dataclass
+class TrainingPathRow:
+    """A training path (backend app/core/training_categories.py): what it is
+    called, what it means, and how it trains."""
+
+    category: str = ""
+    display_name: str = ""
+    tagline: str = ""
+    summary: str = ""
+
+    @classmethod
+    def from_api(cls, data: dict[str, Any]) -> "TrainingPathRow":
+        rest = int(data.get("rest_seconds_guidance") or 0)
+        rest_label = "long rests" if rest >= 120 else ("moderate rests" if rest >= 75 else "short rests")
+        loads = {
+            "low": "light",
+            "moderate": "moderate",
+            "moderate_high": "moderate-heavy",
+            "heavy": "heavy",
+        }
+        load = data.get("relative_load") or ""
+        return cls(
+            category=data.get("category") or "",
+            display_name=data.get("display_name") or "",
+            tagline=data.get("tagline") or "",
+            summary=(
+                f"{data.get('rep_range_low')}-{data.get('rep_range_high')} reps · "
+                f"{loads.get(load, load)} · {rest_label}"
+            ),
+        )
+
+
+@dataclasses.dataclass
 class StatRow:
     """One character stat (backend app/core/character.py): 0-100 with the
     number behind it."""

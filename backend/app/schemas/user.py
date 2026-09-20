@@ -63,8 +63,13 @@ class UserOut(BaseModel):
     created_at: dt.datetime
     # Workout display unit. Weights are always stored in kg.
     weight_unit: str = "kg"
-    # Cosmetic character class, "" until one is picked.
+    # The training path: "" until one is picked. Drives what the app suggests
+    # (app/core/training_categories.py) and which character stats are
+    # highlighted; never scoring.
     character_class: str = ""
+    # When it was chosen or cleared. Null means never asked, which is how
+    # onboarding knows whether to ask.
+    character_class_set_at: dt.datetime | None = None
 
 
 class MeOut(UserOut):

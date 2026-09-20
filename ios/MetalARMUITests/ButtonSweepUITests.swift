@@ -63,9 +63,21 @@ final class ButtonSweepUITests: MetalARMUITestCase {
         let appeared = sheet.waitForExistence(timeout: 10) || copy.waitForExistence(timeout: 2)
         XCTAssertTrue(appeared, "\(name) did not open the share sheet")
         attachScreenshot(app, named: "Share sheet - \(name)")
+
+        // Closing it is the flaky half, and it failed on CI: the sheet is still
+        // animating in when the Close button is first looked for, so the old
+        // code fell through to a swipe that landed on nothing. Wait for Close,
+        // and keep trying rather than assuming one attempt worked.
         let close = app.buttons["Close"].firstMatch
-        if close.exists { close.tap() } else { app.swipeDown(velocity: .fast) }
-        XCTAssertTrue(sheet.waitForNonExistence(timeout: 5), "\(name)'s share sheet would not close")
+        for attempt in 1...3 {
+            if close.waitForExistence(timeout: attempt == 1 ? 5 : 2), close.isHittable {
+                close.tap()
+            } else {
+                app.swipeDown(velocity: .fast)
+            }
+            if sheet.waitForNonExistence(timeout: 5) { return }
+        }
+        XCTFail("\(name)'s share sheet would not close")
     }
 
     /// Taps the switch inside a full-width SwiftUI Toggle row, then waits for
@@ -301,13 +313,15 @@ final class ButtonSweepUITests: MetalARMUITestCase {
         openTab(app, "Profile")
         XCTAssertTrue(element(app, "characterCard").waitForExistence(timeout: 5), "Profile did not load")
 
-        // A class is picked, shown, and picked again to clear it.
-        let athlete = app.buttons["class-athlete"]
-        scrollUntilHittable(athlete, in: app)
+        // The training path opens the same cards onboarding uses.
+        let openPath = app.buttons["trainingPathButton"]
+        scrollUntilHittable(openPath, in: app)
+        openPath.tap()
+        let athlete = app.buttons["path-athlete"]
+        XCTAssertTrue(athlete.waitForExistence(timeout: 5), "The training path cards did not open")
         athlete.tap()
-        XCTAssertTrue(app.staticTexts["Athlete"].waitForExistence(timeout: 5), "Picking a class did not show it")
-        athlete.tap()
-        XCTAssertTrue(app.staticTexts["Athlete"].waitForNonExistence(timeout: 5), "Tapping the class again did not clear it")
+        app.buttons["confirmPathButton"].tap()
+        XCTAssertTrue(app.staticTexts["Athletic"].waitForExistence(timeout: 10), "The chosen path is not shown on Profile")
 
         // kg -> lb shows up elsewhere in the app, then back.
         let picker = app.segmentedControls["weightUnitPicker"]

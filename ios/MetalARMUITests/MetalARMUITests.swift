@@ -66,6 +66,60 @@ final class MetalARMUITests: MetalARMUITestCase {
     }
 
     @MainActor
+    func testChoosingATrainingPathDuringOnboarding() throws {
+        // A brand-new account: signed in, never asked how it trains.
+        let app = launch(["-UITestSignedIn", "-UITestSkipOnboarding", "-UITestNoTrainingPath"])
+
+        let athletic = app.buttons["path-athlete"]
+        XCTAssertTrue(athletic.waitForExistence(timeout: 10), "The training path question never appeared")
+        XCTAssertTrue(app.staticTexts["Pick how you train"].exists)
+        // Each card carries its own 3D figure.
+        XCTAssertTrue(element(app, "pathCharacter-athlete").exists, "No character on the Athletic card")
+        XCTAssertTrue(element(app, "pathCharacter-powerlifter").exists, "No character on the Powerlifter card")
+
+        let confirm = app.buttons["confirmPathButton"]
+        XCTAssertFalse(confirm.isEnabled, "Nothing is chosen yet")
+
+        athletic.tap()
+        XCTAssertTrue(confirm.isEnabled, "Choosing a path did not enable the button")
+        attachScreenshot(app, named: "14 Training path")
+        confirm.tap()
+
+        // Straight into the app, and the question does not come back.
+        XCTAssertTrue(app.staticTexts["Level 14 · Intermediate"].waitForExistence(timeout: 10), "Home never loaded")
+        XCTAssertFalse(app.buttons["path-athlete"].exists)
+    }
+
+    @MainActor
+    func testTheTrainingPathQuestionCanBeDeclined() throws {
+        let app = launch(["-UITestSignedIn", "-UITestSkipOnboarding", "-UITestNoTrainingPath"])
+        let skip = app.buttons["skipPathButton"]
+        XCTAssertTrue(skip.waitForExistence(timeout: 10), "The question never appeared")
+        skip.tap()
+        XCTAssertTrue(app.staticTexts["Level 14 · Intermediate"].waitForExistence(timeout: 10), "Declining did not reach Home")
+    }
+
+    @MainActor
+    func testChangingTheTrainingPathFromProfile() throws {
+        let app = launchSignedIn()
+        openTab(app, "Profile")
+
+        let openPath = app.buttons["trainingPathButton"]
+        XCTAssertTrue(openPath.waitForExistence(timeout: 10), "Profile has no training path setting")
+        scrollUntilHittable(openPath, in: app)
+        openPath.tap()
+
+        let powerlifter = app.buttons["path-powerlifter"]
+        XCTAssertTrue(powerlifter.waitForExistence(timeout: 5), "The cards did not open from Profile")
+        XCTAssertFalse(app.buttons["skipPathButton"].exists, "Only onboarding offers to skip")
+        powerlifter.tap()
+        app.buttons["confirmPathButton"].tap()
+
+        // Back on Profile, showing the chosen path.
+        XCTAssertTrue(app.staticTexts["Powerlifter"].waitForExistence(timeout: 10), "The new path is not shown")
+    }
+
+    @MainActor
     func testStartingAReadyMadeWorkout() throws {
         let app = launchSignedIn()
         openTab(app, "Workout")

@@ -90,6 +90,7 @@ def _serialize_me(user: User) -> MeOut:
         created_at=user.created_at,
         weight_unit=user.weight_unit,
         character_class=user.character_class,
+        character_class_set_at=user.character_class_set_at,
         progress=ProgressOut(
             total_xp=progress.total_xp,
             current_level=progress.current_level,
@@ -332,6 +333,9 @@ def update_me(payload: MeUpdate, current_user: CurrentUser, db: DbSession) -> Me
     if payload.weight_unit is not None:
         current_user.weight_unit = payload.weight_unit.value
     if payload.character_class is not None:
+        # The path drives what gets suggested, so record WHEN it was chosen:
+        # onboarding uses it to tell "never asked" from "asked and cleared".
+        current_user.character_class_set_at = dt.datetime.now(dt.timezone.utc)
         # "" clears it; the enum's own value otherwise.
         current_user.character_class = getattr(
             payload.character_class, "value", payload.character_class

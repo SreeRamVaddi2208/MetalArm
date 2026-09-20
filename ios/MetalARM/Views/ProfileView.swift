@@ -15,6 +15,7 @@ struct ProfileView: View {
     @State private var showingDelete = false
     @State private var confirmingSignOutEverywhere = false
     @State private var showingImporter = false
+    @State private var showingPath = false
 
     private let badgeColumns = Array(repeating: GridItem(.flexible(), spacing: 12), count: 4)
 
@@ -42,6 +43,19 @@ struct ProfileView: View {
         .task { await model.loadProfile() }
         .refreshable { await model.loadProfile() }
         .sheet(isPresented: $showingDelete) { DeleteAccountSheet() }
+        .sheet(isPresented: $showingPath) {
+            NavigationStack {
+                TrainingPathView(isOnboarding: false) { showingPath = false }
+                    .navigationTitle("Training path")
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbar {
+                        ToolbarItem(placement: .cancellationAction) {
+                            Button("Cancel") { showingPath = false }
+                        }
+                    }
+            }
+            .preferredColorScheme(.dark)
+        }
         .fileImporter(isPresented: $showingImporter, allowedContentTypes: [.commaSeparatedText, .plainText]) { result in
             guard case .success(let url) = result else { return }
             let scoped = url.startAccessingSecurityScopedResource()
@@ -130,25 +144,27 @@ struct ProfileView: View {
                 }
                 .accessibilityElement(children: .combine)
             }
-            Text("A class highlights the stats you care about. It never changes a score.")
+            Text("Your training path highlights the stats you care about and decides what MetalArm suggests. It never changes a score.")
                 .font(Theme.body(10.5))
                 .foregroundStyle(Theme.dim)
-            HStack(spacing: 8) {
-                ForEach(["powerlifter", "bodybuilder", "athlete"], id: \.self) { value in
-                    Button {
-                        Task { await model.chooseClass(value) }
-                    } label: {
-                        Text(value.capitalized)
-                            .font(Theme.body(11, .bold))
-                            .foregroundStyle(sheet.characterClass == value ? Theme.bg : Theme.text)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 7)
-                            .background(sheet.characterClass == value ? Theme.accent : Theme.bg, in: RoundedRectangle(cornerRadius: 9))
-                            .overlay(RoundedRectangle(cornerRadius: 9).stroke(Theme.cardBorder))
-                    }
-                    .accessibilityIdentifier("class-\(value)")
+            // One way to choose a path, here and at onboarding: the same cards.
+            Button {
+                showingPath = true
+            } label: {
+                HStack(spacing: 8) {
+                    Text(sheet.classLabel.isEmpty ? "Choose a training path" : sheet.classLabel)
+                        .font(Theme.body(12, .bold))
+                        .foregroundStyle(sheet.classLabel.isEmpty ? Theme.text : Theme.bg)
+                    Image(systemName: "chevron.right")
+                        .font(Theme.body(10, .semibold))
+                        .foregroundStyle(sheet.classLabel.isEmpty ? Theme.dim : Theme.bg)
                 }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(sheet.classLabel.isEmpty ? Theme.bg : Theme.accent, in: RoundedRectangle(cornerRadius: 9))
+                .overlay(RoundedRectangle(cornerRadius: 9).stroke(Theme.cardBorder))
             }
+            .accessibilityIdentifier("trainingPathButton")
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
