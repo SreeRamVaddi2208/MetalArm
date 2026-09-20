@@ -23,6 +23,10 @@ from app.models.mixins import Timestamps, UUIDPrimaryKey
 # Reused by personal and party quests.
 _RECURRENCE_CHECK = ", ".join(f"'{v}'" for v in RECURRENCE_VALUES)
 MAX_XP_REWARD = 10_000
+# Points are spent in the user's own shop, so they are self-authored too - and
+# unbounded they overflowed the INTEGER column, which reached the client as a
+# 500 rather than a 422.
+MAX_POINTS_REWARD = 10_000
 
 
 class Quest(UUIDPrimaryKey, Timestamps, Base):
@@ -75,7 +79,10 @@ class Quest(UUIDPrimaryKey, Timestamps, Base):
             f"xp_reward >= 0 AND xp_reward <= {MAX_XP_REWARD}",
             name="ck_quests_xp_reward_range",
         ),
-        CheckConstraint("points_reward >= 0", name="ck_quests_points_non_negative"),
+        CheckConstraint(
+            f"points_reward >= 0 AND points_reward <= {MAX_POINTS_REWARD}",
+            name="ck_quests_points_reward_range",
+        ),
         # Drives the quest board: a user's active quests, newest first.
         Index("ix_quests_owner_status", "owner_id", "status"),
     )

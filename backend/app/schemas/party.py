@@ -7,7 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from app.models.enums import Recurrence
 from app.models.party import DEFAULT_MAX_MEMBERS
-from app.models.quest import MAX_XP_REWARD
+from app.models.quest import MAX_POINTS_REWARD, MAX_XP_REWARD
 
 
 class PartyCreate(BaseModel):
@@ -95,7 +95,7 @@ class PartyQuestCreate(BaseModel):
     title: str = Field(min_length=1, max_length=140)
     description: str | None = None
     xp_reward: int = Field(default=25, ge=0, le=MAX_XP_REWARD)
-    points_reward: int = Field(default=0, ge=0)
+    points_reward: int = Field(default=0, ge=0, le=MAX_POINTS_REWARD)
     recurrence: Recurrence = Recurrence.NONE
     due_at: dt.datetime | None = None
 
@@ -104,7 +104,7 @@ class PartyQuestUpdate(BaseModel):
     title: str | None = Field(default=None, min_length=1, max_length=140)
     description: str | None = None
     xp_reward: int | None = Field(default=None, ge=0, le=MAX_XP_REWARD)
-    points_reward: int | None = Field(default=None, ge=0)
+    points_reward: int | None = Field(default=None, ge=0, le=MAX_POINTS_REWARD)
     recurrence: Recurrence | None = None
     is_active: bool | None = None
     due_at: dt.datetime | None = None
