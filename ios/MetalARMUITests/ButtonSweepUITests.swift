@@ -63,9 +63,21 @@ final class ButtonSweepUITests: MetalARMUITestCase {
         let appeared = sheet.waitForExistence(timeout: 10) || copy.waitForExistence(timeout: 2)
         XCTAssertTrue(appeared, "\(name) did not open the share sheet")
         attachScreenshot(app, named: "Share sheet - \(name)")
+
+        // Closing it is the flaky half, and it failed on CI: the sheet is still
+        // animating in when the Close button is first looked for, so the old
+        // code fell through to a swipe that landed on nothing. Wait for Close,
+        // and keep trying rather than assuming one attempt worked.
         let close = app.buttons["Close"].firstMatch
-        if close.exists { close.tap() } else { app.swipeDown(velocity: .fast) }
-        XCTAssertTrue(sheet.waitForNonExistence(timeout: 5), "\(name)'s share sheet would not close")
+        for attempt in 1...3 {
+            if close.waitForExistence(timeout: attempt == 1 ? 5 : 2), close.isHittable {
+                close.tap()
+            } else {
+                app.swipeDown(velocity: .fast)
+            }
+            if sheet.waitForNonExistence(timeout: 5) { return }
+        }
+        XCTFail("\(name)'s share sheet would not close")
     }
 
     /// Taps the switch inside a full-width SwiftUI Toggle row, then waits for
