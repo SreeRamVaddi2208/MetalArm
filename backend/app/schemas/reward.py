@@ -5,20 +5,22 @@ import uuid
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.models.reward import MAX_POINT_COST
+
 
 class RewardCreate(BaseModel):
     title: str = Field(min_length=1, max_length=140)
-    # ge=1 mirrors ck_reward_items_cost_positive. A zero-cost reward would be a
+    # ge=1/le mirror ck_reward_items_cost_range. A zero-cost reward would be a
     # free infinite loop, so the floor is enforced here too and returns a 422
     # rather than letting the database raise.
-    point_cost: int = Field(ge=1)
+    point_cost: int = Field(ge=1, le=MAX_POINT_COST)
 
 
 class RewardUpdate(BaseModel):
     """PATCH - unset fields are left alone (see QuestUpdate for the reasoning)."""
 
     title: str | None = Field(default=None, min_length=1, max_length=140)
-    point_cost: int | None = Field(default=None, ge=1)
+    point_cost: int | None = Field(default=None, ge=1, le=MAX_POINT_COST)
     is_active: bool | None = None
 
 

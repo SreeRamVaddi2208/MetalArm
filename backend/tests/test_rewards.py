@@ -319,3 +319,16 @@ def test_wallet_totals_do_not_reconcile_after_a_quest_is_deleted(
     assert wallet["points_balance"] == 20      # authoritative, unchanged
     assert wallet["total_points_earned"] == 0  # history cascaded away
     assert wallet["total_points_spent"] == 80  # RESTRICT keeps redemptions
+
+
+def test_a_reward_price_is_bounded(client, auth) -> None:
+    """point_cost is INTEGER; unbounded, 3 billion reached the client as a 500."""
+    r = client.post(REWARDS, json={"title": "Moon", "point_cost": 3_000_000_000}, headers=auth)
+    assert r.status_code == 422, r.text
+
+    created = client.post(REWARDS, json={"title": "Massage", "point_cost": 1_000_000}, headers=auth)
+    assert created.status_code == 201, created.text
+    edited = client.patch(
+        f"{REWARDS}/{created.json()['id']}", json={"point_cost": 2_000_000_000}, headers=auth
+    )
+    assert edited.status_code == 422, edited.text

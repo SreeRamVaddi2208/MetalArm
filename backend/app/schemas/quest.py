@@ -6,7 +6,7 @@ import uuid
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.models.enums import QuestStatus, Recurrence
-from app.models.quest import MAX_XP_REWARD
+from app.models.quest import MAX_POINTS_REWARD, MAX_XP_REWARD
 
 
 class QuestCreate(BaseModel):
@@ -16,7 +16,7 @@ class QuestCreate(BaseModel):
     # over-large reward is a 422 with a useful message rather than a 500 from
     # the database rejecting it.
     xp_reward: int = Field(default=10, ge=0, le=MAX_XP_REWARD)
-    points_reward: int = Field(default=0, ge=0)
+    points_reward: int = Field(default=0, ge=0, le=MAX_POINTS_REWARD)
     recurrence: Recurrence = Recurrence.NONE
     due_at: dt.datetime | None = None
 
@@ -32,7 +32,7 @@ class QuestUpdate(BaseModel):
     title: str | None = Field(default=None, min_length=1, max_length=140)
     description: str | None = None
     xp_reward: int | None = Field(default=None, ge=0, le=MAX_XP_REWARD)
-    points_reward: int | None = Field(default=None, ge=0)
+    points_reward: int | None = Field(default=None, ge=0, le=MAX_POINTS_REWARD)
     recurrence: Recurrence | None = None
     status: QuestStatus | None = None
     due_at: dt.datetime | None = None
