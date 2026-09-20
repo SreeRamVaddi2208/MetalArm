@@ -46,6 +46,11 @@ _KEYFRAMES = f"""
   0%   {{ opacity: 1; transform: rotate(var(--a)) translateY(0); }}
   100% {{ opacity: 0; transform: rotate(var(--a)) translateY(calc(-1 * var(--d))); }}
 }}
+/* A rank-up throws plates, not shards: they travel further and spin. */
+@keyframes lf-plate {{
+  0%   {{ opacity: 1; transform: rotate(var(--a)) translateY(0) rotate(0deg); }}
+  100% {{ opacity: 0; transform: rotate(var(--a)) translateY(calc(-1.35 * var(--d))) rotate(220deg); }}
+}}
 /* The shine is a narrow soft-edged window sliding right over a white copy of
    the text, while the copy slides left by the same distance so its letters stay
    exactly over the originals. Both are transforms: animating the gradient's
@@ -64,6 +69,26 @@ _KEYFRAMES = f"""
 .lf-veil  {{ animation: lf-veil 220ms ease-out both; }}
 .lf-card  {{ animation: lf-rise 420ms cubic-bezier(0.22, 1, 0.36, 1) both; }}
 .lf-badge {{ animation: lf-burst 620ms cubic-bezier(0.22, 1, 0.36, 1) 80ms both; }}
+/* A rank is a word, not a digit: it starts wide and slightly large and settles
+   as the rings go out - a heavier landing than the level number's pop. */
+@keyframes lf-land {{
+  0%   {{ opacity: 0; transform: scale(1.22); }}
+  60%  {{ opacity: 1; transform: scale(0.99); }}
+  100% {{ opacity: 1; transform: scale(1); }}
+}}
+.lf-badge.lf-rank {{
+  animation: lf-land 820ms cubic-bezier(0.16, 1, 0.3, 1) 80ms both;
+  font-size: 1.9rem;
+  letter-spacing: 0.18em;
+  line-height: 1.1;
+  text-align: center;
+  padding: 0 0.4rem;
+}}
+/* The promotion, read at a glance: the tier left behind, then the new one. */
+.lf-ladder {{
+  animation: lf-rise 520ms cubic-bezier(0.22, 1, 0.36, 1) 380ms both;
+  letter-spacing: 0.12em;
+}}
 .lf-line  {{ animation: lf-rise 460ms cubic-bezier(0.22, 1, 0.36, 1) 220ms both; }}
 .lf-ring  {{
   /* A few beats around the badge, then still - bounded and clipped by the
@@ -72,6 +97,7 @@ _KEYFRAMES = f"""
   border: 2px solid {theme.ACCENT};
 }}
 .lf-ring.lf-late {{ animation-delay: 420ms; border-color: {theme.ACCENT_DIM}; }}
+.lf-ring.lf-latest {{ animation-delay: 700ms; border-color: {theme.FAINT}; }}
 .lf-spark {{
   position: absolute;
   top: 50%;
@@ -83,6 +109,13 @@ _KEYFRAMES = f"""
   background: linear-gradient({theme.ACCENT}, {theme.ACCENT_DIM});
   animation: lf-spark 900ms cubic-bezier(0.2, 0.8, 0.2, 1) 140ms both;
   pointer-events: none;
+}}
+.lf-spark.lf-plate {{
+  width: 9px;
+  height: 4px;
+  margin: -2px 0 0 -4.5px;
+  border-radius: 2px;
+  animation: lf-plate 1150ms cubic-bezier(0.2, 0.8, 0.2, 1) 140ms both;
 }}
 /* Brushed-metal numbers and a light sweep across the heading. */
 .lf-metal {{
@@ -123,6 +156,8 @@ _KEYFRAMES = f"""
     animation: lf-veil 160ms ease-out both;
   }}
   .lf-ring, .lf-spark {{ display: none; }}
+  .lf-badge.lf-rank {{ animation: lf-veil 160ms ease-out both; }}
+  .lf-ladder {{ animation: lf-veil 160ms ease-out both; }}
   .lf-shine-window {{ display: none; }}
 }}
 """
@@ -133,9 +168,10 @@ def keyframes() -> rx.Component:
     return rx.el.style(_KEYFRAMES)
 
 
-def _sparks() -> list[rx.Component]:
+def _sparks(plates: bool = False) -> list[rx.Component]:
+    kind = "lf-spark lf-plate" if plates else "lf-spark"
     return [
-        rx.box(class_name="lf-spark", style={"--a": f"{angle}deg", "--d": f"{distance}px"})
+        rx.box(class_name=kind, style={"--a": f"{angle}deg", "--d": f"{distance}px"})
         for angle, distance in _SPARKS
     ]
 
@@ -161,7 +197,13 @@ def level_up_overlay() -> rx.Component:
                         _ring(),
                         # Rank-up is the rarer, larger beat: a second, later ring.
                         rx.cond(QuestState.level_up_is_rank, _ring("lf-late")),
-                        *_sparks(),
+                        rx.cond(QuestState.level_up_is_rank, _ring("lf-latest")),
+                        # Plates for a rank-up, shards for a level-up.
+                        rx.cond(
+                            QuestState.level_up_is_rank,
+                            rx.fragment(*_sparks(plates=True)),
+                            rx.fragment(*_sparks()),
+                        ),
                         # The new level number, or the new rank letter. Showing
                         # the value reached is the payoff; "you levelled up"
                         # without saying to what is a weaker beat.
@@ -170,7 +212,11 @@ def level_up_overlay() -> rx.Component:
                             size="9",
                             font_weight="900",
                             line_height="1",
-                            class_name="lf-metal lf-badge",
+                            class_name=rx.cond(
+                                QuestState.level_up_is_rank,
+                                "lf-metal lf-badge lf-rank",
+                                "lf-metal lf-badge",
+                            ),
                         ),
                         position="relative",
                         display="flex",
@@ -194,6 +240,17 @@ def level_up_overlay() -> rx.Component:
                         letter_spacing="0.2em",
                         text_align="center",
                         class_name="lf-line",
+                    ),
+                    rx.cond(
+                        QuestState.level_up_ladder != "",
+                        rx.text(
+                            QuestState.level_up_ladder,
+                            color=theme.MUTED,
+                            font_size="0.8rem",
+                            font_weight="700",
+                            text_align="center",
+                            class_name="lf-ladder",
+                        ),
                     ),
                     rx.text(
                         rx.cond(

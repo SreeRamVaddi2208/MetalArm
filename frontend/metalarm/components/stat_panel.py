@@ -2,37 +2,31 @@
 
 import reflex as rx
 
-from metalarm import theme
+from metalarm import ranks, theme
 from metalarm.state.auth import AuthState
 
 
 def rank_badge() -> rx.Component:
-    """The rank letter, coloured per rank.
+    """The rank, as its lifting tier, coloured per rank.
 
-    rx.match rather than a dict lookup: the colour has to be resolved in the
-    compiled component, where a Python dict indexed by a Var is not available.
+    A pill rather than the old 76px square: "World Class" is a word, not a
+    letter. The colour is still keyed by the letter the server sends.
     """
-    color = rx.match(
-        AuthState.progress.rank,
-        ("E", theme.RANK_COLORS["E"]),
-        ("D", theme.RANK_COLORS["D"]),
-        ("C", theme.RANK_COLORS["C"]),
-        ("B", theme.RANK_COLORS["B"]),
-        ("A", theme.RANK_COLORS["A"]),
-        ("S", theme.RANK_COLORS["S"]),
-        theme.MUTED,
-    )
+    color = ranks.rank_color_var(AuthState.progress.rank)
     return rx.vstack(
         rx.text("RANK", **theme.LABEL_STYLE),
         rx.center(
             rx.heading(
-                AuthState.progress.rank,
-                size="8",
+                ranks.rank_title_var(AuthState.progress.rank),
+                size="5",
                 color=color,
                 font_weight="900",
+                text_align="center",
+                line_height="1.1",
             ),
-            width="76px",
+            min_width="76px",
             height="76px",
+            padding="0 0.9rem",
             border=f"2px solid {color}",
             border_radius="16px",
             box_shadow=f"0 0 30px -8px {color}",
@@ -161,7 +155,7 @@ def stat_panel() -> rx.Component:
         rx.cond(
             AuthState.progress.next_rank != "",
             rx.text(
-                f"Next rank {AuthState.progress.next_rank} at level "
+                f"{ranks.rank_title_var(AuthState.progress.next_rank)} at level "
                 f"{AuthState.progress.next_rank_level}",
                 color=theme.FAINT,
                 font_size="0.75rem",

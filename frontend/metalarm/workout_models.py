@@ -17,6 +17,8 @@ import datetime as dt
 from typing import Any
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
+from metalarm import motivation, ranks
+
 LB_PER_KG = 1 / 0.45359237
 
 _RECORD_LABELS = {
@@ -220,6 +222,8 @@ class PrView:
     delta: str = ""
     bonus_awarded: bool = False
     is_baseline: bool = False
+    # The line that follows the record, from the set that set it.
+    motivation: str = ""
 
     @classmethod
     def from_api(cls, data: dict[str, Any], unit: str) -> "PrView":
@@ -246,6 +250,9 @@ class PrView:
             delta="FIRST LOG" if baseline else delta,
             bonus_awarded=bool(data.get("bonus_awarded")),
             is_baseline=baseline,
+            motivation=motivation.line_for(
+                str(data.get("set_id") or data.get("exercise_id") or "")
+            ),
         )
 
 
@@ -437,14 +444,14 @@ class FinishSummary:
         record, then the points - the same order as the iOS card."""
         progression = data.get("progression") or {}
         if progression.get("ranked_up"):
-            rank = str(progression.get("rank_after") or "")
-            return "rank", "RANK UP", rank, f"Rank {rank} at level {progression.get('level_after')}"
+            title = ranks.rank_title(str(progression.get("rank_after") or ""))
+            return "rank", "RANK UP", title.upper(), f"{title} at level {progression.get('level_after')}"
         if progression.get("leveled_up"):
             level = str(progression.get("level_after") or "")
             return "level", "LEVEL UP", level, f"Level {level} reached"
         if prs:
             lead = next((p for p in prs if p.bonus_awarded), prs[0])
-            return "record", "NEW PERSONAL RECORD", lead.headline, lead.exercise_name
+            return "record", "NEW PERSONAL RECORD", lead.headline, lead.motivation or lead.exercise_name
         return "workout", "WORKOUT COMPLETE", f"+{data.get('points_credited') or 0}", "points earned"
 
     @classmethod

@@ -23,6 +23,8 @@ struct ShareCardContent: Equatable {
     let eyebrow: String
     let headline: String
     let caption: String
+    /// The line that follows a personal record; empty for the other kinds.
+    var note: String = ""
     let stats: [Stat]
     let inviteCode: String?
 
@@ -38,8 +40,8 @@ struct ShareCardContent: Equatable {
         let code = inviteCode.flatMap { $0.isEmpty ? nil : $0 }
         if progression.rankedUp {
             return ShareCardContent(
-                kind: .rankUp, eyebrow: "RANK UP", headline: progression.rankAfter,
-                caption: "Rank \(progression.rankAfter) at level \(progression.levelAfter)", stats: stats, inviteCode: code)
+                kind: .rankUp, eyebrow: "RANK UP", headline: RankTitle.shout(progression.rankAfter),
+                caption: "\(RankTitle.of(progression.rankAfter)) at level \(progression.levelAfter)", stats: stats, inviteCode: code)
         }
         if progression.leveledUp {
             return ShareCardContent(
@@ -49,7 +51,8 @@ struct ShareCardContent: Equatable {
         if let record = result.prEvents.celebrated {
             return ShareCardContent(
                 kind: .record, eyebrow: "NEW PERSONAL RECORD", headline: "PR",
-                caption: record.headline(in: unit), stats: stats, inviteCode: code)
+                caption: record.headline(in: unit), note: record.motivation, stats: stats,
+                inviteCode: code)
         }
         return ShareCardContent(
             kind: .workout, eyebrow: "WORKOUT COMPLETE", headline: "+\(result.breakdown.total)",
@@ -96,6 +99,14 @@ struct ShareCardView: View {
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 32)
                     .padding(.top, 6)
+                if !content.note.isEmpty {
+                    Text(content.note)
+                        .font(Theme.body(13, .semibold))
+                        .foregroundStyle(Theme.silver)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 32)
+                        .padding(.top, 8)
+                }
 
                 Spacer()
 

@@ -7,6 +7,7 @@ import reflex as rx
 from metalarm import api
 from metalarm.models import Quest
 from metalarm.state.auth import AuthState
+from metalarm import ranks
 
 
 class QuestState(rx.State):
@@ -31,6 +32,8 @@ class QuestState(rx.State):
     # so the component needs to tell them apart.
     level_up_is_rank: bool = False
     level_up_badge: str = ""
+    # "Intermediate → Advanced" on a rank-up; empty on a level-up.
+    level_up_ladder: str = ""
 
     @rx.var
     def has_quests(self) -> bool:
@@ -121,12 +124,17 @@ class QuestState(rx.State):
         # a promotion, so a demotion from a lapsed streak never fires this.
         if progression.get("ranked_up"):
             self.level_up_is_rank = True
-            self.level_up_badge = str(progression.get("rank_after") or "")
+            after = str(progression.get("rank_after") or "")
+            self.level_up_badge = ranks.rank_title(after).upper()
+            self.level_up_ladder = ranks.promotion(
+                str(progression.get("rank_before") or ""), after
+            )
             self.level_up_message = "RANK UP"
             self.show_level_up = True
         elif progression.get("leveled_up"):
             self.level_up_is_rank = False
             self.level_up_badge = str(progression.get("level_after") or "")
+            self.level_up_ladder = ""
             self.level_up_message = "LEVEL UP"
             self.show_level_up = True
 

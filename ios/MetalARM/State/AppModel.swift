@@ -334,7 +334,8 @@ final class AppModel {
         defer { isBusy = false }
         do {
             let result = try await send(set)
-            prHint = result.prEvents.celebrated?.headline(in: weightUnit) ?? ""
+            // Two lines: what was broken, then the line that goes with it.
+            prHint = result.prEvents.celebrated.map { "\($0.headline(in: weightUnit))\n\($0.motivation)" } ?? ""
             progressionHint = result.progression.hint
             session = try await api.session(id: current.id)
             pendingExercises.removeAll { $0.id == exercise.id }
@@ -379,7 +380,9 @@ final class AppModel {
             do {
                 let result = try await send(next)
                 sentAny = true
-                if let headline = result.prEvents.celebrated?.headline(in: weightUnit) { prHint = headline }
+                if let record = result.prEvents.celebrated {
+                    prHint = "\(record.headline(in: weightUnit))\n\(record.motivation)"
+                }
                 progressionHint = result.progression.hint
             } catch let error where error.isConnectivityFailure {
                 break

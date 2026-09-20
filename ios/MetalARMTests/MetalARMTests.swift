@@ -147,6 +147,62 @@ struct FormattingTests {
     }
 }
 
+// MARK: - Rank tiers and the line after a record
+
+@MainActor
+struct RankTitleTests {
+    @Test func everyLetterHasATier() {
+        #expect(RankTitle.of("E") == "Untrained")
+        #expect(RankTitle.of("C") == "Intermediate")
+        #expect(RankTitle.of("S") == "World Class")
+        // Lower case from any older payload still resolves.
+        #expect(RankTitle.of("b") == "Advanced")
+    }
+
+    @Test func anUnknownLetterIsShownAsItCame() {
+        // A rank added server-side must never render as an empty label.
+        #expect(RankTitle.of("Z") == "Z")
+    }
+
+    @Test func theTrialsSentenceReadsAsASentence() {
+        #expect(RankTitle.list(["B", "A", "S"]) == "Advanced, Elite and World Class")
+        #expect(RankTitle.list(["S"]) == "World Class")
+    }
+}
+
+@MainActor
+struct MotivationTests {
+    @Test func theSameRecordAlwaysGetsTheSameLine() {
+        // The banner, the summary and the share card all read it: it must not
+        // change between them, or between re-renders.
+        let first = Motivation.line(for: "set-42")
+        #expect(first == Motivation.line(for: "set-42"))
+        #expect(Motivation.lines.contains(first))
+    }
+
+    @Test func differentRecordsGetDifferentLines() {
+        let lines = Set((1...14).map { Motivation.line(for: "set-\($0)") })
+        #expect(lines.count > 1)
+    }
+
+    /// The web app picks from the same list with
+    /// `LINES[sum(ord(c) for c in key) % len(LINES)]`; these are that formula's
+    /// answers, so a drift on either side fails here.
+    @Test func matchesTheWebApp() {
+        #expect(Motivation.line(for: "abc") == "That lift was as solid as a lion.")
+        #expect(Motivation.line(for: "s1") == "You drove through the floor like it owed you a push.")
+        #expect(Motivation.line(for: "10d70062-d596-460b-9af8-495681866a99") == "That lift was as solid as a lion.")
+    }
+
+    @Test func aRecordCarriesItsOwnLine() {
+        let record = PREvent(
+            exerciseId: "e1", exerciseName: "Barbell Bench Press", recordType: "max_weight",
+            value: 102.5, weightKg: 102.5, previousValue: 100, isBaseline: false,
+            bonusAwarded: true, setId: "set-42")
+        #expect(record.motivation == Motivation.line(for: "set-42"))
+    }
+}
+
 // MARK: - LiveAPIClient against a stubbed network
 
 nonisolated final class StubURLProtocol: URLProtocol {
@@ -337,8 +393,8 @@ struct ShareCardTests {
         result.progression.levelAfter = 20
         let card = ShareCardContent.make(result: result, unit: .kg, inviteCode: "IRON2345")
         #expect(card.kind == .rankUp)
-        #expect(card.headline == "B")
-        #expect(card.caption == "Rank B at level 20")
+        #expect(card.headline == "ADVANCED")
+        #expect(card.caption == "Advanced at level 20")
         #expect(card.inviteCode == "IRON2345")
     }
 
@@ -505,7 +561,9 @@ struct AppModelTests {
         await model.logSet()
         #expect(model.setsLoggedCount == 1)
         #expect(model.pendingExercises.isEmpty)
-        #expect(model.prHint == "New heaviest Barbell Bench Press: 80 kg")
+        // The record, then the line that follows it.
+        #expect(model.prHint.hasPrefix("New heaviest Barbell Bench Press: 80 kg\n"))
+        #expect(Motivation.lines.contains(model.prHint.components(separatedBy: "\n")[1]))
         #expect(model.resting)
         #expect(model.restDisplay == "1:30")
 

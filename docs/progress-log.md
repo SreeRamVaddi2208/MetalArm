@@ -14,6 +14,54 @@ Entry format:
 
 ---
 
+## 2026-09-20 (34) - Opus - lifting tiers, a line after every PR, a bigger rank-up
+
+**Changed**
+- **Ranks read as lifting tiers, not letters**: Untrained, Novice, Intermediate,
+  Advanced, Elite, World Class. One mapping per client
+  (`ios/MetalARM/API/Rank.swift`, `frontend/metalarm/ranks.py`), used on Home,
+  Profile, the leaderboards, the workout HUD, the celebration and the share
+  card. The server still stores and returns E-S, and `trials_passed` is still
+  "BA", so **no backend change, no migration, and api-contract.md is
+  untouched** - this is a display layer over the same data. The two letter
+  badges became pills: "World Class" is a word, not a character.
+- **Every personal record now carries a line** ("That lift was as solid as a
+  lion."). Fourteen of them in `Motivation.swift` / `motivation.py`, picked
+  from the record's own set id rather than at random, so the workout banner,
+  the summary, the share card and the web overlay all say the same thing about
+  the same record - and both apps agree, because the rule is the same sum of
+  unicode scalars modulo the list. A test in each app pins that.
+- **Rank-up is now clearly the bigger beat.** The tier name lands slowly from
+  wide tracking and a slight overshoot instead of a letter popping in; a ladder
+  line reads "Intermediate -> Advanced"; the 24 shards become plates that fly
+  further and spin; there is a fifth ring; and iOS adds a third haptic as the
+  rings reach their widest. Level-up keeps exactly what it had. Reduce Motion
+  still collapses all of it to a fade, and VoiceOver announces the tier by name.
+  Every web animation stays transform/opacity only (Section 7).
+
+**Verified (real output)**
+- iOS on a freshly erased iPhone 17e (CI's device): `MetalARMTests` 74 passed,
+  1 skipped (Health probe); `MetalARMUITests` 17 passed, 1 skipped (live tour).
+  Two old assertions failed first and were updated on purpose - the share card
+  now reads "ADVANCED", and `prHint` carries the record plus its line.
+- Web e2e: **85 passed**; smoke: **128/128**, the animation rule included.
+- Screenshots: the celebration reads ADVANCED over "Intermediate -> Advanced";
+  Home reads "Level 14 · Intermediate"; leaderboard rows read
+  "4 workouts · Intermediate"; the web PR overlay shows its line; the stat
+  panel badge reads "Untrained" and its next-rank line "Novice at level 8".
+
+**Blocked:** nothing.
+
+**Other agent needs to know**
+- Never render `progress.rank` directly: it is a letter. Use `RankTitle.of` /
+  `ranks.rank_title` (or `rank_title_var` inside a compiled component, where a
+  dict indexed by a Var is unavailable - the same reason the colours use
+  `rx.match`). `theme.RANK_COLORS` is still keyed by the letter.
+- `Motivation.lines` and `motivation.LINES` must stay in step, in order: the
+  index is computed from the id, so reordering one side changes what the other
+  app shows for the same record.
+- Numbered 34: entry 33 is PR #24, opened first and not yet merged.
+
 ## 2026-09-20 (32) - Opus - every button pressed, every suite run
 
 **Changed**

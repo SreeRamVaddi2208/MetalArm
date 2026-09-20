@@ -28,7 +28,7 @@ class MetalARMUITestCase: XCTestCase {
     @MainActor
     func launchSignedIn(_ extra: [String] = []) -> XCUIApplication {
         let app = launch(["-UITestSignedIn", "-UITestSkipOnboarding"] + extra)
-        XCTAssertTrue(app.staticTexts["Level 14 · Rank C"].waitForExistence(timeout: 10), "Home never loaded")
+        XCTAssertTrue(app.staticTexts["Level 14 · Intermediate"].waitForExistence(timeout: 10), "Home never loaded")
         return app
     }
 

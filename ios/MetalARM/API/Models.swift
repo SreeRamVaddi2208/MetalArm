@@ -522,6 +522,12 @@ extension PREvent {
         default: "New record on \(exerciseName)"
         }
     }
+
+    /// The line that follows the record. Keyed on the set that set it, so the
+    /// banner, the summary and the share card all say the same thing.
+    var motivation: String {
+        Motivation.line(for: setId ?? exerciseId)
+    }
 }
 
 extension Array where Element == PREvent {
@@ -534,7 +540,7 @@ extension Array where Element == PREvent {
 
 extension ProgressionDelta {
     var hint: String {
-        if rankedUp { return "Rank up! You're now rank \(rankAfter)." }
+        if rankedUp { return "Rank up! You're now \(RankTitle.of(rankAfter))." }
         if leveledUp { return "Level up! You reached level \(levelAfter)." }
         return ""
     }

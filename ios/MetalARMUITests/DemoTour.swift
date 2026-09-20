@@ -12,7 +12,7 @@
 //      xcodebuild test -only-testing:MetalARMUITests/DemoTour \
 //        -destination "id=<udid>" METALARM_DEMO=1
 //
-//  Runs against MockAPIClient, so the account is populated (Level 14, Rank C,
+//  Runs against MockAPIClient, so the account is populated (Level 14, Intermediate,
 //  records, a party, a raid boss, a league place) and the tour is repeatable.
 //
 
@@ -87,7 +87,7 @@ final class DemoTour: XCTestCase {
         app.launch()
 
         // --- Home: level, rank, XP, streak, the next rank trial -----------
-        XCTAssertTrue(app.staticTexts["Level 14 · Rank C"].waitForExistence(timeout: 15), "Home never loaded")
+        XCTAssertTrue(app.staticTexts["Level 14 · Intermediate"].waitForExistence(timeout: 15), "Home never loaded")
         mark("home")
         pause(2)
         app.swipeUp()
