@@ -8,7 +8,7 @@ that routine instead of stacking up copies. NULL for every hand-made routine,
 and Postgres treats NULLs as distinct, so the constraint does not restrict them.
 
 Revision ID: 4b81c0d5e7a2
-Revises: e6ab950c84ea
+Revises: 9f2c1b7ad403
 Create Date: 2026-09-20 17:20:00.000000
 """
 
@@ -19,7 +19,7 @@ import sqlalchemy as sa
 
 
 revision: str = '4b81c0d5e7a2'
-down_revision: str | None = 'e6ab950c84ea'
+down_revision: str | None = '9f2c1b7ad403'
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

@@ -309,6 +309,22 @@ from before device sessions), `token VARCHAR(200) UNIQUE` (lowercase hex),
   `DELETE /devices/push-token/{token}`. Nothing is sent yet: delivery waits on
   an APNs key (`docs/launch-checklist.md`).
 
+## Self-authored point values (Alembic `9f2c1b7ad403`)
+
+`quests.xp_reward` was capped from the start (`ck_quests_xp_reward_range`), but
+`points_reward` and `reward_items.point_cost` only had a floor. The columns are
+`INTEGER`, so `points_reward = 3_000_000_000` overflowed and the client got a
+**500** ("integer out of range") instead of a 422.
+
+- `ck_quests_points_reward_range` and `ck_party_quests_points_reward_range`:
+  `0 .. 10_000` (`MAX_POINTS_REWARD`, matching the XP cap).
+- `ck_reward_items_cost_range`: `1 .. 1_000_000` (`MAX_POINT_COST`).
+- The Pydantic schemas carry the same bounds, so the answer is a 422 at the
+  edge and the constraint is the backstop - the pairing `xp_reward` already had.
+
+Points remain self-authored by design: a personal quest is the user's own goal,
+and points are spent in their own shop. The bound is about integrity, not trust.
+
 
 ## `routines.preset_slug` (Alembic `4b81c0d5e7a2`)
 

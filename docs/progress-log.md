@@ -112,6 +112,51 @@ placeholder until links are added - deliberately, not a gap in the code.
   index is computed from the id, so reordering one side changes what the other
   app shows for the same record.
 - Numbered 34: entry 33 is PR #24, opened first and not yet merged.
+## 2026-09-20 (33) - Opus - checkpoint audit: four fixes
+
+Fourteen checkpoints, each verified with real commands (see the PR). Eleven
+passed; these are the three that did not, plus one minor.
+
+**Changed**
+- **Production refuses a placeholder JWT secret.** `deploy/.env.production.example`
+  ships `JWT_SECRET_KEY=CHANGE_ME_...`; deployed unchanged, every token would be
+  signed with a string published in this repository and anyone could mint one for
+  any account. `Settings` now rejects a placeholder or a secret under 32 bytes
+  when `ENVIRONMENT=production`, with the command to generate one. Development is
+  untouched, so a local stack still starts on the example file.
+- **A self-authored quest can no longer 500 the server.** `points_reward` and
+  `point_cost` had a floor and no ceiling over `INTEGER` columns:
+  `points_reward = 3_000_000_000` reached the client as a 500. Schemas bound
+  them (`MAX_POINTS_REWARD` 10_000, `MAX_POINT_COST` 1_000_000) and migration
+  `9f2c1b7ad403` adds the matching CHECK constraints, clamping any existing row
+  first. XP was already bounded this way.
+- **App Store listing brought up to date.** The description predates Apple
+  Health, leagues, raids, rank trials, import, reminders and the character
+  sheet. HealthKit matters beyond marketing: guideline 2.5.1 wants the use named
+  in the listing. The reviewer notes said "needs no special permissions", which
+  is no longer true - they now explain the write-only Health ask and the local
+  notifications, and where both switches live.
+- **The runtime image no longer ships the test suite** (29 files, `pytest.ini`).
+  They reach the test image through the compose bind mount, so
+  `docker compose run tests` is unaffected.
+
+**Verified (real output)**
+- Placeholder secret in the real image with `ENVIRONMENT=production`:
+  refused, naming the file it came from. Short secret: refused. Real secret:
+  starts. Four new tests cover it.
+- Live: `points_reward=3_000_000_000` -> **422** (was 500), `point_cost`
+  likewise, `points_reward=10_000` still 201. Two new tests cover create+patch.
+- `alembic upgrade head`, `downgrade -1`, `upgrade head`, `alembic check`: clean.
+  pytest: **409 passed**.
+- `/app/tests` is gone from the rebuilt image; the suite still runs.
+- Description 2_518 chars (limit 4_000) and names every feature.
+
+**Blocked:** nothing.
+
+**Other agent needs to know:** points are still self-authored by design (a
+personal quest is the user's own goal, spent in their own shop). The README
+line "No request accepts a point value" is true of workouts, not quests -
+left as the owner's call.
 
 ## 2026-09-20 (32) - Opus - every button pressed, every suite run
 

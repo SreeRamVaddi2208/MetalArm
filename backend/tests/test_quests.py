@@ -210,3 +210,25 @@ def test_deleting_a_quest_does_not_claw_back_earned_xp(
 
     # total_xp is cumulative and the XP was legitimately earned.
     assert client.get(ME, headers=auth).json()["progress"]["total_xp"] == 100
+
+
+def test_a_quest_cannot_mint_unbounded_points(client, auth) -> None:
+    """points_reward had a floor but no ceiling, and the column is INTEGER:
+    3 billion overflowed and the client got a 500 instead of a 422."""
+    for value in (3_000_000_000, 10_001):
+        r = client.post(
+            QUESTS, json={"title": "Cheat", "points_reward": value}, headers=auth
+        )
+        assert r.status_code == 422, (value, r.text)
+
+    created = client.post(
+        QUESTS, json={"title": "Fair", "points_reward": 10_000}, headers=auth
+    )
+    assert created.status_code == 201, created.text
+
+    edited = client.patch(
+        f"{QUESTS}/{created.json()['id']}",
+        json={"points_reward": 3_000_000_000},
+        headers=auth,
+    )
+    assert edited.status_code == 422, edited.text
