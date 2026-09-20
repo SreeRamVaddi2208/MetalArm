@@ -20,7 +20,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.session import Base
 from app.models.enums import RECURRENCE_VALUES, PartyRole, pg_enum
 from app.models.mixins import Timestamps, UUIDPrimaryKey
-from app.models.quest import MAX_XP_REWARD
+from app.models.quest import MAX_POINTS_REWARD, MAX_XP_REWARD
 
 _RECURRENCE_CHECK = ", ".join(f"'{v}'" for v in RECURRENCE_VALUES)
 
@@ -154,7 +154,8 @@ class PartyQuest(UUIDPrimaryKey, Timestamps, Base):
             name="ck_party_quests_xp_reward_range",
         ),
         CheckConstraint(
-            "points_reward >= 0", name="ck_party_quests_points_non_negative"
+            f"points_reward >= 0 AND points_reward <= {MAX_POINTS_REWARD}",
+            name="ck_party_quests_points_reward_range",
         ),
     )
 
