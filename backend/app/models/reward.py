@@ -19,6 +19,11 @@ from app.db.session import Base
 from app.models.mixins import Timestamps, UUIDPrimaryKey
 
 
+# A price no one can reach is a bug, not a feature: unbounded it overflowed the
+# INTEGER column and the request failed with a 500.
+MAX_POINT_COST = 1_000_000
+
+
 class RewardItem(UUIDPrimaryKey, Timestamps, Base):
     """A reward the user defines for themselves, e.g. "order takeout"."""
 
@@ -42,7 +47,10 @@ class RewardItem(UUIDPrimaryKey, Timestamps, Base):
 
     __table_args__ = (
         # A zero-cost reward would be a free infinite loop.
-        CheckConstraint("point_cost > 0", name="ck_reward_items_cost_positive"),
+        CheckConstraint(
+            f"point_cost > 0 AND point_cost <= {MAX_POINT_COST}",
+            name="ck_reward_items_cost_range",
+        ),
         Index("ix_reward_items_owner_active", "owner_id", "is_active"),
     )
 

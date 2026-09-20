@@ -16,3 +16,10 @@ node_modules
 .DS_Store
 docs
 README.md
+
+# Tests reach the test image through the compose bind mount (./backend:/app),
+# so keeping them out of the build context leaves `docker compose run tests`
+# working while the shipped runtime image carries no test files.
+tests
+pytest.ini
+Dockerfile

@@ -37,14 +37,32 @@ BREAK RECORDS
 • Heaviest set, estimated one-rep max, session volume and most reps at a weight are detected as you log.
 • A new personal record gets its own celebration, and so does every level-up.
 
+• What to try next on every exercise card, from your own last sessions.
+
 PROGRESS
 • Charts of your top sets over time, and every personal record per exercise.
 • Log body measurements and see the trend.
 • Weekly workout streaks keep you consistent.
+• Ranks B, A and S also take a strength trial: bench at 1x, squat at 1.5x and deadlift at 2x your bodyweight.
+• A character sheet scores Strength, Endurance and Discipline from real training. Pick Powerlifter, Bodybuilder or Athlete to highlight what you care about.
 
 TRAIN TOGETHER
 • Create a party and share the invite code with friends.
 • Climb the weekly workout leaderboard together.
+• Take on a weekly raid boss that your whole party's workouts bring down.
+• Weekly leagues of twenty lifters: the top five move up a division, the bottom five move down.
+• Share a story card of a workout's best moment - a rank-up, level-up or record.
+
+APPLE HEALTH
+• Finished workouts are saved to Apple Health, so they appear in Fitness with everything else.
+• Write only. MetalArm never reads your health data, and nothing is written until you turn it on in Profile.
+
+REMINDERS
+• A local alert when your rest timer ends, and "your streak ends tonight" on a day you haven't trained.
+• Asked for after your first finished workout, never at launch, and both have switches in Profile.
+
+BRINGING YOUR HISTORY
+• Already training? Import your history from Strong or Hevy, and your records and charts count it from day one.
 
 YOUR DATA
 • No ads, no tracking, no third-party analytics.
@@ -91,8 +109,14 @@ two stay in step).
   > MetalArm is a workout tracker with RPG-style progression. Sign in with the
   > demo account (or create a new one on the first screen), tap Start Workout,
   > add an exercise and log a few sets, then Finish to see points, records and
-  > level progress. Account deletion is in Profile → Delete Account. The app
-  > needs no special permissions.
+  > level progress. Account deletion is in Profile → Delete Account.
+  >
+  > HealthKit: MetalArm asks to WRITE workouts to Apple Health only - it never
+  > requests read access. The permission sheet appears the first time you turn
+  > on "Save to Apple Health" in Profile, never at launch, and the app works
+  > fully without it. Notifications (rest-timer done, and a streak reminder)
+  > are local only, asked for after your first finished workout, and both have
+  > switches in Profile.
 - Keep the production server running while the app is in review.
 
 ## Screenshots

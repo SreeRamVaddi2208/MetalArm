@@ -7,9 +7,10 @@ in an insecure state.
 """
 
 from functools import lru_cache
+from typing import ClassVar
 from urllib.parse import quote
 
-from pydantic import computed_field
+from pydantic import computed_field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -53,6 +54,32 @@ class Settings(BaseSettings):
     environment: str = "development"
     log_level: str = "info"
     cors_origins: str = "http://localhost:3000"
+
+    # The example file ships JWT_SECRET_KEY=CHANGE_ME_GENERATE_A_RANDOM_48_BYTE_SECRET.
+    # Deployed unchanged, every token would be signed with a string published in
+    # this repository - anyone could mint one for any account. A short secret is
+    # refused for the same reason: HS256 is only as strong as its key. Refused at
+    # startup, where it is one clear error, rather than silently at the first login.
+    MIN_JWT_SECRET_BYTES: ClassVar[int] = 32
+
+    @model_validator(mode="after")
+    def _production_needs_a_real_secret(self) -> "Settings":
+        if self.environment != "production":
+            return self
+        secret = self.jwt_secret_key
+        if "CHANGE_ME" in secret.upper():
+            raise ValueError(
+                "JWT_SECRET_KEY is still the placeholder from "
+                "deploy/.env.production.example - generate one with: "
+                "python3 -c 'import secrets; print(secrets.token_urlsafe(48))'"
+            )
+        if len(secret.encode()) < self.MIN_JWT_SECRET_BYTES:
+            raise ValueError(
+                f"JWT_SECRET_KEY must be at least {self.MIN_JWT_SECRET_BYTES} bytes "
+                f"({len(secret.encode())} given) - generate one with: "
+                "python3 -c 'import secrets; print(secrets.token_urlsafe(48))'"
+            )
+        return self
 
     @computed_field  # type: ignore[prop-decorator]
     @property
