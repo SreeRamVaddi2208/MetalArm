@@ -98,6 +98,17 @@ def pr_overlay() -> rx.Component:
                         text_align="center",
                         class_name="lf-line",
                     ),
+                    # The line that follows the record - the same words the
+                    # iPhone app shows for this set.
+                    rx.text(
+                        pr.motivation,
+                        color=theme.MUTED,
+                        font_size="0.85rem",
+                        font_weight="600",
+                        text_align="center",
+                        padding="0 1.2rem",
+                        class_name="lf-line",
+                    ),
                     rx.cond(
                         pr.delta != "",
                         rx.box(

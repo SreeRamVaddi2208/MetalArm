@@ -2,28 +2,28 @@
 
 import reflex as rx
 
-from metalarm import theme
+from metalarm import ranks, theme
 from metalarm.models import LeaderboardRow, Party, PartyQuest
 from metalarm.state.parties import PartyState
 
 
 def rank_letter(rank: rx.Var) -> rx.Component:
-    """Per-rank colour, resolved with rx.match because a Python dict indexed by
-    a Var is not available in the compiled component."""
-    color = rx.match(
-        rank,
-        ("E", theme.RANK_COLORS["E"]),
-        ("D", theme.RANK_COLORS["D"]),
-        ("C", theme.RANK_COLORS["C"]),
-        ("B", theme.RANK_COLORS["B"]),
-        ("A", theme.RANK_COLORS["A"]),
-        ("S", theme.RANK_COLORS["S"]),
-        theme.MUTED,
-    )
+    """The rank's lifting tier, coloured per rank. Named for the letter the
+    server sends, which is still what the colour is keyed by."""
+    color = ranks.rank_color_var(rank)
     return rx.center(
-        rx.text(rank, color=color, font_weight="900", font_size="0.8rem"),
-        width="26px",
+        rx.text(
+            ranks.rank_title_var(rank),
+            color=color,
+            font_weight="900",
+            font_size="0.62rem",
+            text_align="center",
+            line_height="1.05",
+            white_space="nowrap",
+        ),
+        min_width="26px",
         height="26px",
+        padding="0 0.4rem",
         border=f"1px solid {color}66",
         border_radius="7px",
         flex_shrink="0",

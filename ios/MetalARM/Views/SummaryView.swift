@@ -54,6 +54,13 @@ struct SummaryView: View {
                             .foregroundStyle(Theme.dim)
                             .multilineTextAlignment(.center)
                             .padding(.top, 6)
+                        Text(lead.motivation)
+                            .font(Theme.body(13.5, .semibold))
+                            .foregroundStyle(Theme.silver)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 12)
+                            .padding(.top, 6)
+                            .accessibilityIdentifier("prMotivation")
                     }
 
                     HStack(spacing: 12) {

@@ -123,7 +123,7 @@ final class ButtonSweepUITests: MetalARMUITestCase {
         type(password, into: app.secureTextFields["passwordField"])
         XCTAssertTrue(submit.isEnabled, "Sign In stayed disabled with a filled form")
         submit.tap()
-        XCTAssertTrue(app.staticTexts["Level 14 · Rank C"].waitForExistence(timeout: 10), "Sign In did not reach Home")
+        XCTAssertTrue(app.staticTexts["Level 14 · Intermediate"].waitForExistence(timeout: 10), "Sign In did not reach Home")
     }
 
     // MARK: - Workout
@@ -259,7 +259,7 @@ final class ButtonSweepUITests: MetalARMUITestCase {
             .waitForNonExistence(timeout: 5), "Joining with a valid code still shows an error")
         // Joining selects the party joined. Meera also appears in the league and
         // raid cards, so look for a row that only Iron Crew's own board has.
-        let ironCrewRow = app.staticTexts["3 workouts · Rank D"]
+        let ironCrewRow = app.staticTexts["3 workouts · Novice"]
         XCTAssertTrue(ironCrewRow.waitForExistence(timeout: 5), "Joining Iron Crew did not switch to its board")
 
         // The switcher moves between parties. It is labelled with the selected
@@ -395,7 +395,7 @@ final class ButtonSweepUITests: MetalARMUITestCase {
     func testPullToRefreshKeepsEveryTabLoaded() throws {
         let app = launchSignedIn()
         let checks: [(tab: String, content: XCUIElement)] = [
-            ("Home", app.staticTexts["Level 14 · Rank C"]),
+            ("Home", app.staticTexts["Level 14 · Intermediate"]),
             ("Progress", app.staticTexts["Heaviest — Barbell Bench Press"]),
             ("Ranks", app.staticTexts["Meera"]),
             ("Profile", app.staticTexts["Badges"]),

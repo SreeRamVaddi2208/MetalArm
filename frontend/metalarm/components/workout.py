@@ -12,7 +12,7 @@ Every number shown is from the API. Nothing here computes points or PRs.
 
 import reflex as rx
 
-from metalarm import theme
+from metalarm import ranks, theme
 from metalarm.components.layout import section_heading
 from metalarm.components.rest_timer import elapsed_clock
 from metalarm.components.stat_panel import xp_bar
@@ -86,11 +86,7 @@ def empty(message: str) -> rx.Component:
 
 
 def _rank_color():
-    return rx.match(
-        AuthState.progress.rank,
-        *[(rank, color) for rank, color in theme.RANK_COLORS.items()],
-        theme.MUTED,
-    )
+    return ranks.rank_color_var(AuthState.progress.rank)
 
 
 # ---------------------------------------------------------------------------
@@ -103,9 +99,17 @@ def hud() -> rx.Component:
     return rx.vstack(
         rx.hstack(
             rx.center(
-                rx.text(AuthState.progress.rank, color=color, font_weight="900", font_size="1.1rem"),
-                width="40px",
+                rx.text(
+                    ranks.rank_title_var(AuthState.progress.rank),
+                    color=color,
+                    font_weight="900",
+                    font_size="0.72rem",
+                    text_align="center",
+                    line_height="1.05",
+                ),
+                min_width="40px",
                 height="40px",
+                padding="0 0.5rem",
                 border=f"2px solid {color}",
                 border_radius="10px",
                 box_shadow=f"0 0 22px -8px {color}",

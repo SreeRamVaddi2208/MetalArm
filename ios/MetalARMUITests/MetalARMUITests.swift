@@ -24,7 +24,7 @@ final class MetalARMUITests: MetalARMUITestCase {
         attachScreenshot(app, named: "02 Create account")
 
         app.buttons["authSubmitButton"].tap()
-        XCTAssertTrue(app.staticTexts["Level 14 · Rank C"].waitForExistence(timeout: 10), "Sign-up did not reach Home")
+        XCTAssertTrue(app.staticTexts["Level 14 · Intermediate"].waitForExistence(timeout: 10), "Sign-up did not reach Home")
         dismissSavePasswordPrompt(app)
         attachScreenshot(app, named: "Home after sign-up")
     }
@@ -101,7 +101,7 @@ final class MetalARMUITests: MetalARMUITestCase {
     @MainActor
     private func finishOneSetWorkout(flag: String) -> XCUIApplication {
         let app = launch(["-UITestSignedIn", "-UITestSkipOnboarding", flag])
-        XCTAssertTrue(app.staticTexts["Level 14 · Rank C"].waitForExistence(timeout: 10), "Home never loaded")
+        XCTAssertTrue(app.staticTexts["Level 14 · Intermediate"].waitForExistence(timeout: 10), "Home never loaded")
 
         app.buttons["homeStartWorkoutButton"].tap()
         let addFirst = app.buttons["addFirstExerciseButton"]
@@ -124,7 +124,7 @@ final class MetalARMUITests: MetalARMUITestCase {
         let overlay = element(app, "levelUpOverlay")
         XCTAssertTrue(overlay.waitForExistence(timeout: 5), "Rank-up celebration never appeared")
         XCTAssertTrue(app.staticTexts["RANK UP"].exists)
-        XCTAssertTrue(app.staticTexts["You're now rank B at level 20."].exists)
+        XCTAssertTrue(app.staticTexts["You're now Advanced at level 20."].exists)
         Thread.sleep(forTimeInterval: 1.2)
         attachScreenshot(app, named: "Rank up")
 
@@ -138,7 +138,7 @@ final class MetalARMUITests: MetalARMUITestCase {
     func testLoggingOfflineQueuesTheSet() throws {
         // The mock backend is out of reach, like a gym with no signal.
         let app = launch(["-UITestSignedIn", "-UITestSkipOnboarding", "-UITestOffline"])
-        XCTAssertTrue(app.staticTexts["Level 14 · Rank C"].waitForExistence(timeout: 10), "Home never loaded")
+        XCTAssertTrue(app.staticTexts["Level 14 · Intermediate"].waitForExistence(timeout: 10), "Home never loaded")
 
         app.buttons["homeStartWorkoutButton"].tap()
         let addFirst = app.buttons["addFirstExerciseButton"]

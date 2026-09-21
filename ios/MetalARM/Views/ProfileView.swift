@@ -76,7 +76,7 @@ struct ProfileView: View {
                 .font(Theme.display(22))
                 .foregroundStyle(Theme.text)
                 .padding(.top, 12)
-            Text("Level \(profile.progress.currentLevel) · Rank \(profile.progress.rank)")
+            Text("Level \(profile.progress.currentLevel) · \(RankTitle.of(profile.progress.rank))")
                 .font(Theme.body(12.5, .bold))
                 .foregroundStyle(Theme.accent)
                 .padding(.top, 5)
@@ -164,7 +164,7 @@ struct ProfileView: View {
             Text("Rank trials")
                 .font(Theme.display(16))
                 .foregroundStyle(Theme.text)
-            Text("Ranks B, A and S also need a lift at a multiple of your bodyweight.")
+            Text("\(RankTitle.list(["B", "A", "S"])) also need a lift at a multiple of your bodyweight.")
                 .font(Theme.body(11))
                 .foregroundStyle(Theme.dim)
             ForEach(trials) { trial in

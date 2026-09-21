@@ -32,7 +32,7 @@ MetalArm has three parts that share one API:
 
 - **Workouts** - live sessions that survive a refresh or a device switch, an exercise library of 91 starters plus your own, routines, ghost values from your last session, a rest timer, and editing or deleting sets.
 - **Records** - heaviest set, estimated 1RM, session volume and most reps at a weight, detected on the server as you log.
-- **Progression** - points become XP, levels and ranks from E to S. Ranks B, A and S also need a strength trial: a bench at 1x, squat at 1.5x and deadlift at 2x bodyweight. Weekly workout streaks, badges and a rewards shop.
+- **Progression** - points become XP, levels and ranks: Untrained, Novice, Intermediate, Advanced, Elite and World Class (stored as E-S). Advanced, Elite and World Class also need a strength trial: a bench at 1x, squat at 1.5x and deadlift at 2x bodyweight. Weekly workout streaks, badges and a rewards shop.
 - **Quests** - daily, weekly and one-off goals in your own time zone.
 - **Parties** - invite codes, a shared quest board, weekly workout leaderboards, and a weekly raid boss the whole party brings down with its workouts (it heals on days nobody trains).
 - **Apple Health** - finished workouts are added to Health, so they show up in Fitness with everything else. Write only: MetalArm never reads your health data, and nothing is written until you turn it on in Profile.
@@ -226,7 +226,7 @@ Both apps share one grey, machined-steel palette, with identical values in
 | Text, muted, faint | `#F2F2F4`, `#A8A8B0`, `#7C7C84` |
 | Accent (buttons, highlights, XP bar) | white `#FFFFFF` to silver `#9A9AA2` |
 | Danger (errors and destructive actions only) | `#E5484D` |
-| Ranks E to S | darker to brighter grey, ending in white |
+| Untrained to World Class | darker to brighter grey, ending in white |
 
 Red is the only colour; everything else is a shade of grey. Use the theme
 tokens rather than raw colour values.

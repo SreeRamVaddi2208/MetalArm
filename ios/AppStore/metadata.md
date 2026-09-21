@@ -24,8 +24,8 @@ Log a set and watch your XP bar climb. Break a record and MetalArm celebrates it
 MetalArm turns your gym workouts into RPG-style progression.
 
 Every set you log earns points. Points become XP, XP becomes levels, and levels
-unlock ranks from E all the way to S. Keep a weekly streak going, earn badges,
-and watch your character grow as you do.
+unlock tiers from Untrained all the way to World Class. Keep a weekly streak
+going, earn badges, and watch your character grow as you do.
 
 TRAIN
 • Start a workout in one tap and pick from a library of 91 exercises, or add your own.

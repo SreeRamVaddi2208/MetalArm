@@ -18,7 +18,7 @@ import time
 
 import reflex as rx
 
-from metalarm import api
+from metalarm import api, ranks
 from metalarm.models import Progress
 
 # Refresh when the access token has less than this left. The shell's timer
@@ -141,8 +141,8 @@ class AuthState(rx.State):
         if not self.rank_is_gated:
             return ""
         return (
-            f"Level {self.progress.current_level} has earned rank "
-            f"{self.progress.rank_by_level} - hold a "
+            f"Level {self.progress.current_level} has earned "
+            f"{ranks.rank_title(self.progress.rank_by_level)} - hold a "
             f"{self.progress.next_rank_streak}-day streak to claim it."
         )
 

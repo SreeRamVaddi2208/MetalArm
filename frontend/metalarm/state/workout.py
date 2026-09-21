@@ -24,6 +24,7 @@ from typing import Any
 import reflex as rx
 
 from metalarm import api as core_api
+from metalarm import ranks
 from metalarm import workout_api as wapi
 from metalarm.api import ApiError
 from metalarm.share_card import share_card_script
@@ -187,14 +188,20 @@ def set_payload(card: ExerciseCard, unit: str) -> tuple[dict[str, Any] | None, s
     return payload, ""
 
 
-def level_beat(progression: dict[str, Any]) -> tuple[str, str]:
-    """('rank'|'level'|'', badge) from the API's explicit flags. `ranked_up`
-    is true only on promotion, so a demotion never fires a celebration."""
+def level_beat(progression: dict[str, Any]) -> tuple[str, str, str]:
+    """('rank'|'level'|'', badge, ladder) from the API's explicit flags.
+    `ranked_up` is true only on promotion, so a demotion never fires a
+    celebration. A rank-up's badge is the tier, not the letter."""
     if progression.get("ranked_up"):
-        return "rank", str(progression.get("rank_after") or "")
+        after = str(progression.get("rank_after") or "")
+        return (
+            "rank",
+            ranks.rank_title(after).upper(),
+            ranks.promotion(str(progression.get("rank_before") or ""), after),
+        )
     if progression.get("leveled_up"):
-        return "level", str(progression.get("level_after") or "")
-    return "", ""
+        return "level", str(progression.get("level_after") or ""), ""
+    return "", "", ""
 
 
 class WorkoutState(rx.State):
@@ -228,6 +235,7 @@ class WorkoutState(rx.State):
     # dismissed, so the two celebrations never stack on top of each other.
     _pending_kind: str = ""
     _pending_badge: str = ""
+    _pending_ladder: str = ""
     _tz: str = "UTC"
 
     # Editing a logged set.
@@ -364,12 +372,13 @@ class WorkoutState(rx.State):
     def _index_of(self, exercise_id: str) -> int:
         return next((i for i, c in enumerate(self.cards) if c.exercise_id == exercise_id), -1)
 
-    async def _raise_level_up(self, kind: str, badge: str) -> None:
+    async def _raise_level_up(self, kind: str, badge: str, ladder: str = "") -> None:
         """Reuse the app's one level-up overlay rather than a second copy, so
         the workout feeds the same game moment quests do."""
         quests = await self.get_state(QuestState)
         quests.level_up_is_rank = kind == "rank"
         quests.level_up_badge = badge
+        quests.level_up_ladder = ladder
         quests.level_up_message = "RANK UP" if kind == "rank" else "LEVEL UP"
         quests.show_level_up = True
 
@@ -564,19 +573,20 @@ class WorkoutState(rx.State):
         if index >= 0:
             self._update(index, flash_kind=kind, flash_label=label)
 
-        beat, badge = level_beat(result.get("progression") or {})
+        beat, badge, ladder = level_beat(result.get("progression") or {})
         if beat:
             if self.show_pr:
                 self._pending_kind, self._pending_badge = beat, badge
+                self._pending_ladder = ladder
             else:
-                await self._raise_level_up(beat, badge)
+                await self._raise_level_up(beat, badge, ladder)
 
     async def dismiss_pr(self):
         self.show_pr = False
         if self._pending_kind:
-            kind, badge = self._pending_kind, self._pending_badge
-            self._pending_kind = self._pending_badge = ""
-            await self._raise_level_up(kind, badge)
+            kind, badge, ladder = self._pending_kind, self._pending_badge, self._pending_ladder
+            self._pending_kind = self._pending_badge = self._pending_ladder = ""
+            await self._raise_level_up(kind, badge, ladder)
 
     async def delete_set(self, set_id: str):
         auth = await self._auth()
@@ -732,9 +742,9 @@ class WorkoutState(rx.State):
         self._clear_session()
         yield rx.call_script(_STOP_REST)
 
-        beat, badge = level_beat(result.get("progression") or {})
+        beat, badge, ladder = level_beat(result.get("progression") or {})
         if beat:
-            await self._raise_level_up(beat, badge)
+            await self._raise_level_up(beat, badge, ladder)
         yield AuthState.refresh_me
 
     def ask_abandon(self) -> None:

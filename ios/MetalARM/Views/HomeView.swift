@@ -55,7 +55,7 @@ struct HomeView: View {
                         .background(Theme.bg, in: RoundedRectangle(cornerRadius: 14))
                         .overlay(RoundedRectangle(cornerRadius: 14).stroke(Theme.accent, lineWidth: 2))
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("Level \(progress.currentLevel) · Rank \(progress.rank)")
+                        Text("Level \(progress.currentLevel) · \(RankTitle.of(progress.rank))")
                             .font(Theme.display(15))
                             .foregroundStyle(Theme.text)
                         Text("\(progress.xpIntoLevel) / \(progress.xpForNextLevel) XP")
@@ -81,7 +81,7 @@ struct HomeView: View {
             }
             XPBar(progress: progress.xpProgress)
             if let next = progress.nextRank, let level = progress.nextRankLevel {
-                Text("Rank \(next) unlocks at level \(level)\(progress.nextRankStreak.map { " with a \($0)-day streak" } ?? "")")
+                Text("\(RankTitle.of(next)) unlocks at level \(level)\(progress.nextRankStreak.map { " with a \($0)-day streak" } ?? "")")
                     .font(Theme.body(11))
                     .foregroundStyle(Theme.dim)
             }

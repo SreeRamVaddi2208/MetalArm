@@ -205,7 +205,7 @@ struct LeaderboardView: View {
                             .foregroundStyle(Theme.dim)
                     }
                 }
-                Text("\(entry.workouts) workout\(entry.workouts == 1 ? "" : "s") · Rank \(entry.rank)")
+                Text("\(entry.workouts) workout\(entry.workouts == 1 ? "" : "s") · \(RankTitle.of(entry.rank))")
                     .font(Theme.body(11))
                     .foregroundStyle(Theme.dim)
             }
