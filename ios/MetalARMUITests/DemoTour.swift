@@ -29,10 +29,9 @@ final class DemoTour: XCTestCase {
         // tour skipped in half a second and the recorder captured an idle
         // simulator - while still reporting TEST SUCCEEDED.
         //
-        // This file is deliberately NOT committed, so CI never sees it. If it
-        // is ever kept, keep it out of CI with an explicit
-        // `-skip-testing:MetalARMUITests/DemoTour` in the workflow, which
-        // cannot silently stop working.
+        // The file IS committed, so CI keeps it out with an explicit
+        // `-skip-testing:MetalARMUITests/DemoTour` in .github/workflows/ios.yml,
+        // which cannot silently stop working the way an env gate did.
     }
 
     @MainActor
@@ -60,6 +59,31 @@ final class DemoTour: XCTestCase {
         pause()
     }
 
+    /// Types at a readable speed, and clears iOS's "Use Strong Password?"
+    /// sheet, which otherwise covers the form the recording is showing.
+    @MainActor
+    private func type(_ text: String, into field: XCUIElement, in app: XCUIApplication) {
+        field.tap()
+        if app.staticTexts["Use Strong Password?"].waitForExistence(timeout: 2) {
+            app.buttons["Close"].firstMatch.tap()
+            _ = app.staticTexts["Use Strong Password?"].waitForNonExistence(timeout: 3)
+            field.tap()
+        }
+        field.typeText(text)
+        Thread.sleep(forTimeInterval: 0.4)
+    }
+
+    /// After signing up iOS offers to save the password, over the app.
+    @MainActor
+    private func dismissSavePassword(_ app: XCUIApplication) {
+        let notNow = app.buttons["Not Now"]
+        guard notNow.waitForExistence(timeout: 4) else { return }
+        for _ in 1...3 {
+            if notNow.isHittable { notNow.tap() }
+            if notNow.waitForNonExistence(timeout: 2) { return }
+        }
+    }
+
     /// Scrolls until the element is on screen, then holds so it can be read.
     @MainActor
     private func reveal(_ element: XCUIElement, in app: XCUIApplication, maxSwipes: Int = 8) {
@@ -80,11 +104,51 @@ final class DemoTour: XCTestCase {
         // shown. Without it iOS puts its own alert over the summary a few
         // seconds after the first finished workout - real behaviour, but it
         // sits on top of the screen the recording is trying to show.
+        // Starts where a new user does: onboarding, not mid-app. The account
+        // has never been asked for a training path, so that question appears.
         app.launchArguments = [
-            "-UITestMockAPI", "-UITestSignedIn", "-UITestSkipOnboarding",
+            "-UITestMockAPI", "-UITestResetOnboarding", "-UITestNoTrainingPath",
             "-notifications.asked", "YES",
         ]
         app.launch()
+
+        // --- Onboarding ---------------------------------------------------
+        XCTAssertTrue(app.staticTexts["onboardingTitle"].waitForExistence(timeout: 15), "Onboarding never appeared")
+        mark("onboarding")
+        pause(2)
+        app.buttons["getStartedButton"].tap()
+
+        // --- Creating an account ------------------------------------------
+        mark("signup")
+        pause()
+        type("Sree Ram", into: app.textFields["displayNameField"], in: app)
+        type("sree@metalarm.dev", into: app.textFields["emailField"], in: app)
+        type("correct-horse-1", into: app.secureTextFields["passwordField"], in: app)
+        pause()
+        app.buttons["authSubmitButton"].tap()
+        dismissSavePassword(app)
+
+        // --- Training path: three builds, one choice ----------------------
+        let athletic = app.buttons["path-athlete"]
+        XCTAssertTrue(athletic.waitForExistence(timeout: 15), "The training path question never appeared")
+        mark("trainingpath")
+        pause(2)
+        // Turn one of the figures, so it reads as something you can rotate
+        // rather than a still. It spins on its own too, but a drag shows why.
+        let figure = element(app, "pathCharacter-athlete")
+        if figure.exists {
+            figure.coordinate(withNormalizedOffset: CGVector(dx: 0.3, dy: 0.5))
+                .press(
+                    forDuration: 0.1,
+                    thenDragTo: figure.coordinate(withNormalizedOffset: CGVector(dx: 0.85, dy: 0.5)))
+        }
+        pause()
+        app.swipeUp()
+        pause(1.5)
+        app.swipeDown()
+        athletic.tap()
+        pause(1.5)
+        app.buttons["confirmPathButton"].tap()
 
         // --- Home: level, rank, XP, streak, the next rank trial -----------
         XCTAssertTrue(app.staticTexts["Level 14 · Intermediate"].waitForExistence(timeout: 15), "Home never loaded")
@@ -94,6 +158,35 @@ final class DemoTour: XCTestCase {
         pause()
         app.swipeDown()
         pause()
+
+        // --- Ready-made workouts, and a demo of each movement -------------
+        mark("presets")
+        openTab(app, "Workout")
+        let heavyDay = app.buttons["preset-powerlifting-heavy-day"]
+        XCTAssertTrue(heavyDay.waitForExistence(timeout: 10), "The ready-made workouts never appeared")
+        pause(2)
+        heavyDay.tap()
+        pause(2.5)
+
+        // The demo sits beside the plan; tapping a movement moves it.
+        mark("demo")
+        app.buttons["presetSlot-Barbell Bench Press"].tap()
+        pause(2)
+        // The mock library's name for it; the live library says "Deadlift".
+        app.buttons["presetSlot-Conventional Deadlift"].tap()
+        pause(2)
+        app.buttons["startPresetButton"].tap()
+        XCTAssertTrue(app.buttons["logSetButton"].waitForExistence(timeout: 15), "The ready-made workout never started")
+        pause(2.5)
+
+        // Put it back, so the hand-built workout below starts from nothing.
+        app.buttons["Workout options"].tap()
+        pause(0.5)
+        app.buttons["Discard Workout"].tap()
+        pause(0.5)
+        app.buttons["Discard Workout"].firstMatch.tap()
+        _ = app.buttons["workoutStartButton"].waitForExistence(timeout: 10)
+        openTab(app, "Home")
 
         // --- Start a workout and add an exercise --------------------------
         mark("workout")
@@ -183,11 +276,18 @@ final class DemoTour: XCTestCase {
         let character = element(app, "characterCard")
         if character.waitForExistence(timeout: 10) {
             reveal(character, in: app)
-            // Pick a class and let the highlight land.
-            let powerlifter = app.buttons["class-powerlifter"]
-            if powerlifter.isHittable {
-                powerlifter.tap()
+            // The path is changeable here, with the same cards onboarding used.
+            let openPath = app.buttons["trainingPathButton"]
+            if openPath.isHittable {
+                openPath.tap()
                 pause(2)
+                let powerlifter = app.buttons["path-powerlifter"]
+                if powerlifter.waitForExistence(timeout: 5) {
+                    powerlifter.tap()
+                    pause(1.5)
+                    app.buttons["confirmPathButton"].tap()
+                    pause(2)
+                }
             }
         }
         mark("trials")
@@ -202,5 +302,37 @@ final class DemoTour: XCTestCase {
         pause(2)
         app.swipeUp()
         pause(2)
+
+        // --- The rank-up: the rarest moment in the app --------------------
+        // A fresh launch, because it takes a finished workout to earn one.
+        app.terminate()
+        app.launchArguments = [
+            "-UITestMockAPI", "-UITestSignedIn", "-UITestSkipOnboarding", "-UITestRankUp",
+            "-notifications.asked", "YES",
+        ]
+        app.launch()
+        mark("rankup")
+        XCTAssertTrue(app.buttons["homeStartWorkoutButton"].waitForExistence(timeout: 15), "Home never loaded")
+        app.buttons["homeStartWorkoutButton"].tap()
+        let addAgain = app.buttons["addFirstExerciseButton"]
+        XCTAssertTrue(addAgain.waitForExistence(timeout: 10), "Workout never started")
+        addAgain.tap()
+        let benchAgain = app.buttons["pickExercise-Barbell Bench Press"]
+        XCTAssertTrue(benchAgain.waitForExistence(timeout: 10), "Picker did not load")
+        benchAgain.tap()
+        XCTAssertTrue(app.buttons["logSetButton"].waitForExistence(timeout: 10), "Exercise card missing")
+        app.buttons["logSetButton"].tap()
+        pause()
+        app.buttons["finishButton"].tap()
+
+        // The tier lands, the ladder reads Intermediate -> Advanced, plates fly.
+        let overlay = element(app, "levelUpOverlay")
+        if overlay.waitForExistence(timeout: 15) {
+            pause(3)
+            app.buttons["levelUpContinueButton"].tap()
+            pause(1.5)
+        }
+        mark("end")
+        pause()
     }
 }

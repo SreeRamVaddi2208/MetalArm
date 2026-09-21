@@ -359,7 +359,8 @@ final class MockAPIClient: MetalArmAPI {
             "bodybuilder": ["strength", "endurance"],
             "athlete": ["endurance", "discipline"],
         ]
-        let labels = ["powerlifter": "Powerlifter", "bodybuilder": "Bodybuilder", "athlete": "Athlete"]
+        // The same names the training paths use, as the server sends.
+        let labels = ["powerlifter": "Powerlifter", "bodybuilder": "Bodybuilder", "athlete": "Athletic"]
         let chosen = highlights[characterClass] ?? []
         sheet.characterClass = characterClass
         sheet.classLabel = labels[characterClass] ?? ""

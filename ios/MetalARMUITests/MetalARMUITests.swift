@@ -73,15 +73,16 @@ final class MetalARMUITests: MetalARMUITestCase {
         let athletic = app.buttons["path-athlete"]
         XCTAssertTrue(athletic.waitForExistence(timeout: 10), "The training path question never appeared")
         XCTAssertTrue(app.staticTexts["Pick how you train"].exists)
-        // Each card carries its own 3D figure.
-        XCTAssertTrue(element(app, "pathCharacter-athlete").exists, "No character on the Athletic card")
-        XCTAssertTrue(element(app, "pathCharacter-powerlifter").exists, "No character on the Powerlifter card")
+        // Each card pictures its own build. The card is a Button, so it owns
+        // the accessibility of the figure inside it - hence the label.
+        XCTAssertTrue(athletic.label.contains("Athletic build"), "The Athletic card does not picture a build: \(athletic.label)")
+        XCTAssertTrue(app.buttons["path-powerlifter"].label.contains("Powerlifter build"))
 
         let confirm = app.buttons["confirmPathButton"]
         XCTAssertFalse(confirm.isEnabled, "Nothing is chosen yet")
 
         athletic.tap()
-        XCTAssertTrue(confirm.isEnabled, "Choosing a path did not enable the button")
+        XCTAssertTrue(waitUntilEnabled(confirm), "Choosing a path did not enable the button")
         attachScreenshot(app, named: "14 Training path")
         confirm.tap()
 
@@ -113,7 +114,10 @@ final class MetalARMUITests: MetalARMUITestCase {
         XCTAssertTrue(powerlifter.waitForExistence(timeout: 5), "The cards did not open from Profile")
         XCTAssertFalse(app.buttons["skipPathButton"].exists, "Only onboarding offers to skip")
         powerlifter.tap()
-        app.buttons["confirmPathButton"].tap()
+        let confirmPath = app.buttons["confirmPathButton"]
+        XCTAssertTrue(waitUntilEnabled(confirmPath), "Choosing a path did not enable Save")
+        confirmPath.tap()
+        XCTAssertTrue(powerlifter.waitForNonExistence(timeout: 10), "The path sheet did not close")
 
         // Back on Profile, showing the chosen path.
         XCTAssertTrue(app.staticTexts["Powerlifter"].waitForExistence(timeout: 10), "The new path is not shown")

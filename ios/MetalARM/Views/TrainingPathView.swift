@@ -132,6 +132,9 @@ struct TrainingPathView: View {
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier("path-\(path.category)")
+        // A Button owns its subtree's accessibility, so the character inside it
+        // has no identifier of its own to find: say what is pictured here.
+        .accessibilityLabel("\(path.displayName) build. \(path.tagline) \(path.summary)")
         .accessibilityAddTraits(selected ? [.isSelected] : [])
     }
 }

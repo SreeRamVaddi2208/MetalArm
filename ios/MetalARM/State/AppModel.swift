@@ -800,6 +800,9 @@ final class AppModel {
         var saved = false
         await run("Couldn't save your training path") {
             me = try await api.updateCharacterClass(category)
+            // The character sheet carries the path's label and which stats it
+            // highlights, so Profile would otherwise keep showing the old one.
+            characterSheet = try? await api.character()
             saved = true
         }
         return saved

@@ -99,6 +99,16 @@ class MetalARMUITestCase: XCTestCase {
         XCTFail("The Save Password sheet would not close")
     }
 
+    /// Waits for a control to become enabled. A button disabled at the moment
+    /// it is tapped swallows the tap silently, and the failure then shows up
+    /// somewhere else entirely - a sheet still open two steps later.
+    @MainActor
+    @discardableResult
+    func waitUntilEnabled(_ element: XCUIElement, timeout: TimeInterval = 5) -> Bool {
+        let enabled = expectation(for: NSPredicate(format: "isEnabled == true"), evaluatedWith: element)
+        return XCTWaiter.wait(for: [enabled], timeout: timeout) == .completed
+    }
+
     @MainActor
     func attachScreenshot(_ app: XCUIApplication, named name: String) {
         let attachment = XCTAttachment(screenshot: app.screenshot())
@@ -114,7 +124,7 @@ class MetalARMUITestCase: XCTestCase {
     /// the top, instead of the Streak reminders switch. So nudge the content up
     /// until the element is clear of the bar.
     @MainActor
-    func scrollUntilHittable(_ element: XCUIElement, in app: XCUIApplication, maxSwipes: Int = 8) {
+    func scrollUntilHittable(_ element: XCUIElement, in app: XCUIApplication, maxSwipes: Int = 12) {
         var swipes = 0
         while !element.isHittable && swipes < maxSwipes {
             app.swipeUp()

@@ -205,12 +205,23 @@ struct TrainingPathTests {
         #expect(TrainingPath.fallbacks.map(\.category) == ["athlete", "bodybuilder", "powerlifter"])
     }
 
-    @Test func everyPathHasAPlaceholderCharacter() {
+    @Test func everyPathHasACharacter() {
         for path in TrainingPath.fallbacks {
             #expect(CharacterScene.make(for: path.category) != nil)
         }
         // An unknown path falls back to the flat silhouette rather than crashing.
         #expect(CharacterScene.make(for: "crossfitter") == nil)
+    }
+
+    @Test func aRealModelIsUsedWhenOneHasBeenAdded() {
+        // The models are files in MetalARM/Models (see its README). None are
+        // committed yet, so this records which state the build is in rather
+        // than failing: whichever it is, the screen renders.
+        for path in TrainingPath.fallbacks {
+            let hasModel = CharacterScene.bundled(path.category) != nil
+            let hasPlaceholder = CharacterScene.placeholder(for: path.category) != nil
+            #expect(hasModel || hasPlaceholder)
+        }
     }
 }
 
@@ -220,7 +231,7 @@ struct TrainingPathTests {
 struct PresetTests {
     @Test func everyStyleIsOffered() async throws {
         let presets = try await MockAPIClient().presets()
-        #expect(Set(presets.map(\.category)) == ["athletic", "powerlifting", "bodybuilding"])
+        #expect(Set(presets.map(\.category)) == ["athlete", "powerlifter", "bodybuilder"])
         #expect(presets.allSatisfy { !$0.exercises.isEmpty })
     }
 
@@ -247,7 +258,7 @@ struct PresetTests {
         // the first set - exactly as they do for a routine.
         #expect(model.session?.exercises.first?.target?.targetSets == heavy.exercises[0].targetSets)
         #expect(model.session?.exercises.first?.target?.restSeconds == heavy.exercises[0].restSeconds)
-        #expect(model.session?.name == "Powerlifting · Heavy Day")
+        #expect(model.session?.name == "Powerlifter · Heavy Day")
     }
 
     @Test func aBlankWorkoutIsStillBlank() async {

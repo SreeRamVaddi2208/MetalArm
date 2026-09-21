@@ -191,10 +191,17 @@ final class ButtonSweepUITests: MetalARMUITestCase {
         let discard = app.buttons["Discard Workout"]
         XCTAssertTrue(discard.waitForExistence(timeout: 5), "Options menu did not open")
         discard.tap()
+        // Wait for the CONFIRMATION, not just for a button of that name: the
+        // menu item and the dialog's button share it, and a tap during the
+        // dialog's animation lands on nothing (which is what failed here).
+        XCTAssertTrue(
+            app.staticTexts["Discard this workout?"].waitForExistence(timeout: 5),
+            "The confirmation never appeared")
         let confirm = app.buttons["Discard Workout"].firstMatch
         XCTAssertTrue(confirm.waitForExistence(timeout: 5), "Discard was not confirmed")
+        for _ in 1...3 where !confirm.isHittable { Thread.sleep(forTimeInterval: 0.4) }
         confirm.tap()
-        XCTAssertTrue(app.buttons["workoutStartButton"].waitForExistence(timeout: 5), "Discard did not end the workout")
+        XCTAssertTrue(app.buttons["workoutStartButton"].waitForExistence(timeout: 10), "Discard did not end the workout")
 
         // The Workout tab's own Start button.
         app.buttons["workoutStartButton"].tap()
@@ -320,7 +327,11 @@ final class ButtonSweepUITests: MetalARMUITestCase {
         let athlete = app.buttons["path-athlete"]
         XCTAssertTrue(athlete.waitForExistence(timeout: 5), "The training path cards did not open")
         athlete.tap()
-        app.buttons["confirmPathButton"].tap()
+        let confirmPath = app.buttons["confirmPathButton"]
+        XCTAssertTrue(waitUntilEnabled(confirmPath), "Choosing a path did not enable Save")
+        confirmPath.tap()
+        // The sheet must close, or everything below is looking at the wrong screen.
+        XCTAssertTrue(athlete.waitForNonExistence(timeout: 10), "The path sheet did not close")
         XCTAssertTrue(app.staticTexts["Athletic"].waitForExistence(timeout: 10), "The chosen path is not shown on Profile")
 
         // kg -> lb shows up elsewhere in the app, then back.
