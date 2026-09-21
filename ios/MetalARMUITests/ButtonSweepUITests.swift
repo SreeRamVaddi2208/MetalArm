@@ -35,7 +35,16 @@ final class ButtonSweepUITests: MetalARMUITestCase {
     @MainActor
     private func assertOpensSafari(_ link: XCUIElement, in app: XCUIApplication, _ name: String) {
         link.tap()
-        XCTAssertTrue(safari.wait(for: .runningForeground, timeout: 15), "\(name) did not open Safari")
+        // Safari's FIRST launch on a cold CI runner takes longer than 15 s,
+        // which failed this test there while it passed locally every time.
+        // Wait properly, and tap once more before giving up: a tap that lands
+        // while the page is still opening is indistinguishable from a slow one.
+        if !safari.wait(for: .runningForeground, timeout: 30) {
+            if link.isHittable { link.tap() }
+            XCTAssertTrue(
+                safari.wait(for: .runningForeground, timeout: 30),
+                "\(name) did not open Safari")
+        }
         app.activate()
         XCTAssertTrue(app.wait(for: .runningForeground, timeout: 10), "Could not return to the app after \(name)")
         // "Running foreground" arrives before the scene is taking touches: a
