@@ -95,9 +95,21 @@ final class ButtonSweepUITests: MetalARMUITestCase {
     @MainActor
     private func flip(_ toggle: XCUIElement, _ name: String) {
         let before = isOn(toggle)
-        toggle.coordinate(withNormalizedOffset: CGVector(dx: 0.93, dy: 0.5)).tap()
-        let changed = expectation(for: NSPredicate(format: "value == %@", before ? "0" : "1"), evaluatedWith: toggle)
-        XCTAssertEqual(XCTWaiter.wait(for: [changed], timeout: 5), .completed, "\(name) did not flip")
+        let want = before ? "0" : "1"
+        // The switch itself when it is addressable, else the right-hand end of
+        // the row. A coordinate tap alone missed on CI: the row is full width,
+        // and 93% across is beside the switch on a narrower device.
+        let target = toggle.switches.firstMatch.exists ? toggle.switches.firstMatch : toggle
+        for attempt in 1...3 {
+            if attempt == 1, target.isHittable {
+                target.tap()
+            } else {
+                toggle.coordinate(withNormalizedOffset: CGVector(dx: 0.93, dy: 0.5)).tap()
+            }
+            let changed = expectation(for: NSPredicate(format: "value == %@", want), evaluatedWith: toggle)
+            if XCTWaiter.wait(for: [changed], timeout: 3) == .completed { return }
+        }
+        XCTFail("\(name) did not flip")
     }
 
     @MainActor
