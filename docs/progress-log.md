@@ -14,6 +14,68 @@ Entry format:
 
 ---
 
+## 2026-09-21 (36) - Opus - the training path: asked once, and it means something
+
+**Changed**
+- **`users.character_class` is now the training path.** It already held exactly
+  `powerlifter` / `bodybuilder` / `athlete` and was documented as cosmetic - it
+  chose which character stats were highlighted. Rather than add a second field
+  for the same three words (the brief asked for `training_category`), it is
+  reused and made load-bearing. No value changed, so no data migration.
+- **What a path MEANS is data**: `training_category_profiles` (migration
+  `7c93ad2f1b64`), one row per path with rep range, load, volume, rest and
+  emphasis tags, seeded from `app/data/training_categories.json` by the
+  migration and again by `scripts/seed_training_paths.py` on every deploy.
+  `GET /training-categories` serves it, so neither client hardcodes the copy
+  and tuning the numbers needs no release. Athletic 12-20 at low load,
+  Bodybuilder 8-15 moderate-high, Powerlifter 1-6 heavy with 4-minute rests -
+  the brief's Section 2, verbatim.
+- **`users.character_class_set_at`** tells "never asked" from "asked and
+  declined", which is how onboarding knows whether to put the question up.
+- **iOS**: the question appears once between signing in and the app
+  (`Views/TrainingPathView.swift`), three cards with rotatable 3D figures, and
+  the same cards open from Profile - the old class chips are gone, so there is
+  one way to choose, not two.
+- **The figures are files, not code.** `TrainingPathCharacter` loads
+  `<category>.usdz` from the bundle when present and falls back to built-in
+  primitives when not; whatever is shown is centred on its own bounding box and
+  scaled to fill the card, so an export at any size or origin lands right.
+  `MetalARM/Models/README.md` says what to buy and where to put it. The
+  placeholders are honestly mannequins - the real sculpts are being licensed.
+- **It changes what is suggested**: `GET /workouts/presets` returns the
+  workout matching the user's path FIRST, flagged `matches_your_path`. Scoring
+  is untouched, with a test that says so.
+- Web: the same three cards in Profile (no onboarding flow exists there to
+  insert a step into).
+- Fixed on the way: the character sheet called the path "Athlete" while
+  onboarding called it "Athletic". The sheet now reads its label from the path
+  profiles, so they cannot drift.
+
+**Verified (real output)**
+- Migrations on an empty database: **15 applied**, single head `7c93ad2f1b64`,
+  `alembic check` clean. Backend **428 passed** (10 new).
+- iOS on an erased iPhone 17e: `MetalARMTests` **89 passed**, 1 skipped;
+  `MetalARMUITests` **21 passed**, 1 skipped, including the onboarding
+  question, declining it, and changing the path from Profile.
+- Web e2e **97 passed**, smoke **128/128**.
+- Recorded on an iPhone 17 Pro Max: `~/Desktop/MetalArm Recordings/` - 4:22,
+  19 chapters from the tour's own marks.
+
+**Blocked:** the real character models, which are being licensed. Everything
+around them is built, so they are a file drop.
+
+**Other agent needs to know**
+- Three traps, all now commented where they bite. A SwiftUI **Button owns its
+  subtree's accessibility**, so the figure inside a card has no identifier of
+  its own - the card names the build in its label instead. **SceneKit paints
+  white when told `.clear`**, which put bright rectangles behind every figure.
+  And a **tap during an animation lands on nothing**: Confirm was tapped before
+  it was enabled, which left a sheet open and failed a test two steps later -
+  hence `waitUntilEnabled` in `MetalARMUITestCase`.
+- The path orders presets and highlights stats. Filtering the exercise library
+  by `emphasis_tags` needs the 91 exercises tagged first - deliberately left as
+  its own content pass (the brief's Section 8 scopes it the same way).
+
 ## 2026-09-20 (35) - Opus - ready-made workouts, with a demo of every movement
 
 **Changed**
