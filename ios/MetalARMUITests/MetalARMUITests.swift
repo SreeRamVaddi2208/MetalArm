@@ -81,6 +81,7 @@ final class MetalARMUITests: MetalARMUITestCase {
         let confirm = app.buttons["confirmPathButton"]
         XCTAssertFalse(confirm.isEnabled, "Nothing is chosen yet")
 
+        scrollUntilHittable(athletic, in: app, clearOf: confirm)
         athletic.tap()
         XCTAssertTrue(waitUntilEnabled(confirm), "Choosing a path did not enable the button")
         attachScreenshot(app, named: "14 Training path")
@@ -113,8 +114,11 @@ final class MetalARMUITests: MetalARMUITestCase {
         let powerlifter = app.buttons["path-powerlifter"]
         XCTAssertTrue(powerlifter.waitForExistence(timeout: 5), "The cards did not open from Profile")
         XCTAssertFalse(app.buttons["skipPathButton"].exists, "Only onboarding offers to skip")
-        powerlifter.tap()
         let confirmPath = app.buttons["confirmPathButton"]
+        // The third card can sit half under the sheet's footer, where a tap on
+        // its centre lands on Save instead and is swallowed.
+        scrollUntilHittable(powerlifter, in: app, clearOf: confirmPath)
+        powerlifter.tap()
         XCTAssertTrue(waitUntilEnabled(confirmPath), "Choosing a path did not enable Save")
         confirmPath.tap()
         XCTAssertTrue(powerlifter.waitForNonExistence(timeout: 10), "The path sheet did not close")

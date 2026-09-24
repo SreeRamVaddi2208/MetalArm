@@ -347,8 +347,9 @@ final class ButtonSweepUITests: MetalARMUITestCase {
         openPath.tap()
         let athlete = app.buttons["path-athlete"]
         XCTAssertTrue(athlete.waitForExistence(timeout: 5), "The training path cards did not open")
-        athlete.tap()
         let confirmPath = app.buttons["confirmPathButton"]
+        scrollUntilHittable(athlete, in: app, clearOf: confirmPath)
+        athlete.tap()
         XCTAssertTrue(waitUntilEnabled(confirmPath), "Choosing a path did not enable Save")
         confirmPath.tap()
         // The sheet must close, or everything below is looking at the wrong screen.
