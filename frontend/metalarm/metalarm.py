@@ -48,7 +48,7 @@ class RouteState(rx.State):
         auth = await self.get_state(AuthState)
         if not auth.token:
             return rx.redirect("/login")
-        return [AuthState.refresh_me, QuestState.load]
+        return [AuthState.refresh_me, QuestState.load, QuestState.preview_celebration]
 
     async def enter_rewards(self):
         auth = await self.get_state(AuthState)

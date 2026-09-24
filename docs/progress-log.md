@@ -14,6 +14,72 @@ Entry format:
 
 ---
 
+## 2026-09-24 (37) - Opus - the rank-up escalates: one timeline, five tiers
+
+**Changed**
+- **`frontend/metalarm/rank_tiers.py` is the whole feature.** One `Tier` row
+  per promotion - colour, ornament, particle layers, ring count, shake, zoom,
+  duration, sound layers, haptic pattern, and the line underneath - for the
+  five promotions the ladder actually has (into Novice, Intermediate, Advanced,
+  Elite and World Class). Not Bronze/Silver/Gold/Platinum/Diamond: MetalArm's
+  ladder is E-D-C-B-A-S shown as lifting tiers (entry 34), so a sixth tier is a
+  row here, and there is no promotion into Untrained.
+- **The overlay plays ONE sequence at five intensities** - flash, shockwave,
+  camera shake, zoom, badge with its ornament, level counter, settle. Each
+  tier's numbers arrive as CSS custom properties (`--lf-dur`, `--lf-shake`,
+  `--lf-zoom`, `--lf-base/glow/jewel`, `--lf-pop`), so the keyframes are
+  written once. Ornaments escalate plain -> laurel -> laurel and gems -> crown
+  -> full regalia, drawn with borders and one clip-path behind `_ornament()`,
+  which is the seam if the art is ever illustrated.
+- **No animation library.** The brief suggested GSAP + tsParticles + Lottie;
+  `frontend/requirements.txt` says in so many words not to hand-add JS tooling
+  (the predecessor died on a host-generated lockfile), and the smoke test
+  enforces transform/opacity-only keyframes, which is what keeps this smooth
+  on a phone. The escalation comes from the tier table instead.
+- **Sound and haptics**, per tier: chime / +shimmer / +bass / fanfare, played
+  as Web Audio envelopes rather than four downloaded files, and
+  `navigator.vibrate` patterns behind a capability check. There was no global
+  sound preference to hook into, so the overlay carries its own, remembered in
+  the browser.
+- **The reward cannot be swiped away mid-sequence** (`.lf-celebrate` ignores
+  pointer events until the script marks it ready) and always becomes
+  dismissible - after the tier's duration, and after 5s whatever happens, so a
+  throttled background tab cannot trap anyone. Longest tier is 4.4s.
+- **The level counter ticks up** during the sequence. It is painted from
+  `attr(data-ma-count)`, an attribute React never sets, for the hydration
+  reason spelled out in `rest_timer.py`.
+- `QuestState.celebrate()` is now the single entry point - quests and workouts
+  both come through it, and `level_beat()` returns a `Beat` carrying the rank
+  entered and both levels.
+- **`?celebrate=S` on the dashboard plays that promotion** without grinding to
+  it. It writes nothing; it is the same overlay the real event raises.
+- New CI job `frontend`: `pytest frontend/tests -q`. The tier table is
+  deliberately dependency-free so this needs no Reflex install.
+
+**Verified (real output)**
+- `pytest frontend/tests -q`: **13 passed** - budgets (<= 72 particles,
+  <= 4500ms), monotonic escalation across all five promotions, the ladder
+  matching `ranks.RANK_TITLES`, and an unknown rank still celebrating.
+- The tier table's own numbers: D 16 particles/1700ms, C 36/2300, B 60/2900,
+  A 66/3600, S 72/4400.
+- `docker compose build frontend`: the Reflex production compile succeeds
+  (33/32 pages) with the new component in it.
+- Keyframes checked against the smoke test's own regex: 18 `lf-*` blocks,
+  **no offenders** - transform and opacity only, no layout transitions.
+
+**Blocked**
+- Not profiled on real mid-range hardware: the budget is enforced as an element
+  count (72) and transform/opacity-only motion, not measured frame rate.
+
+**Other agent needs to know**
+- The PR overlay reuses `.lf-veil`, `.lf-card` and `.lf-line`. Everything the
+  celebration adds is scoped to `.lf-celebrate`, `.lf-stage` and
+  `.lf-zoom-wrap` for that reason - putting `pointer-events: none` on `.lf-veil`
+  makes the PR overlay undismissable, and two animations on one element that
+  both drive `transform` do not compose, the later one just wins.
+- iOS has its own rank-up celebration and is untouched by this. If the two
+  should match, that is a separate pass over `RankUpOverlay.swift`.
+
 ## 2026-09-21 (36) - Opus - the training path: asked once, and it means something
 
 **Changed**

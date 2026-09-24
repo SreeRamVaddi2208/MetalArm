@@ -217,6 +217,23 @@ class ExerciseCard:
 
 
 @dataclasses.dataclass
+class Beat:
+    """A celebration the backend has just earned us.
+
+    `rank` is the tier ENTERED - the rank-up overlay dresses itself from it -
+    and the two levels are the ends of the counter that ticks during the
+    sequence. Empty `kind` means nothing was crossed, so nothing is shown.
+    """
+
+    kind: str = ""          # "rank", "level", or ""
+    badge: str = ""
+    ladder: str = ""
+    rank: str = ""
+    level_from: int = 0
+    level_to: int = 0
+
+
+@dataclasses.dataclass
 class PrView:
     exercise_name: str = ""
     record_label: str = ""

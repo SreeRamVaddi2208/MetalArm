@@ -426,6 +426,29 @@ def main() -> int:
 
         check("XP bar uses transform, not width", "scaleX" in page)
 
+        # The rank-up sequence is one timeline read from rank_tiers.py, so the
+        # tier's numbers must arrive as custom properties rather than as five
+        # hand-written animations.
+        for prop in ("--lf-dur", "--lf-shake", "--lf-zoom", "--lf-base", "--lf-glow", "--lf-jewel"):
+            check(f"rank-up reads {prop} from the tier", prop in css, "missing")
+        check("rank-up scales one timeline, not five",
+              css.count("@keyframes lf-shake") == 1 and "calc(var(--lf-dur)" in css)
+        check("the top tier's dust outlasts the burst", ".lf-p.lf-ambient {" in css)
+        # A reward moment cannot be swiped away before it has played, and must
+        # always become dismissible afterwards.
+        # Scoped to the celebration: the PR overlay shares .lf-veil and must
+        # stay dismissible.
+        check("the overlay ignores taps until it has played",
+              ".lf-celebrate {" in css and "pointer-events: none" in css
+              and ".lf-celebrate[data-ma-ready] {" in css)
+        # The counter is painted from an attribute the script owns; writing
+        # into a React-owned node breaks hydration (see rest_timer.py).
+        check("the level counter is painted from an attribute",
+              ".lf-count::after" in css and "attr(data-ma-count)" in css
+              and ".lf-count-line {" in css)
+        check("reduced motion drops the particles and the crown",
+              ".lf-p, .lf-flash, .lf-crown" in css)
+
         # The quest-complete beat must stay lightweight: Section 7 reserves the
         # heavy motion for level-up and rank-up, "not every quest checkbox".
         check("quest completion animates transform only",
