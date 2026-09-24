@@ -98,6 +98,8 @@ final class LiveAPIClient: MetalArmAPI {
     func rankTrials() async throws -> [RankTrial] { try await send(.get("profile/trials")) }
     func character() async throws -> CharacterSheet { try await send(.get("profile/character")) }
 
+    func trainingPaths() async throws -> [TrainingPath] { try await send(.get("training-categories")) }
+
     func updateCharacterClass(_ value: String) async throws -> Me {
         try await send(.patch("auth/me", CharacterClassBody(characterClass: value), encoder))
     }

@@ -1,0 +1,38 @@
+[
+  {
+    "category": "athlete",
+    "display_name": "Athletic",
+    "tagline": "Conditioning first. Lean and capable, not bulked.",
+    "description": "Weight stays deliberately low; volume and variety do the work. Flexibility, mobility, strength-endurance and agility over size or a one-rep max.",
+    "rep_range_low": 12,
+    "rep_range_high": 20,
+    "relative_load": "low",
+    "relative_volume": "high",
+    "rest_seconds_guidance": 60,
+    "emphasis_tags": ["mobility", "plyometric", "circuit", "compound_light"]
+  },
+  {
+    "category": "bodybuilder",
+    "display_name": "Bodybuilder",
+    "tagline": "Size and symmetry. Working sets close to failure.",
+    "description": "Moderate-to-heavy weight at moderate-to-high volume, taken near failure. Isolation work counts as much as the compounds, and each muscle group gets several exercises a session.",
+    "rep_range_low": 8,
+    "rep_range_high": 15,
+    "relative_load": "moderate_high",
+    "relative_volume": "moderate_high",
+    "rest_seconds_guidance": 90,
+    "emphasis_tags": ["isolation", "compound", "split"]
+  },
+  {
+    "category": "powerlifter",
+    "display_name": "Powerlifter",
+    "tagline": "Maximal strength. Heavy, low reps, long rests.",
+    "description": "Built around the squat, bench and deadlift and their close variants. Size is a side effect, not the target; accessories exist only to support the main lifts.",
+    "rep_range_low": 1,
+    "rep_range_high": 6,
+    "relative_load": "heavy",
+    "relative_volume": "low",
+    "rest_seconds_guidance": 240,
+    "emphasis_tags": ["compound_heavy", "big3", "minimal_accessory"]
+  }
+]

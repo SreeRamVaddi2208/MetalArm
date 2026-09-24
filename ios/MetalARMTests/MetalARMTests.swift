@@ -147,13 +147,134 @@ struct FormattingTests {
     }
 }
 
+// MARK: - Things that only break later
+
+@MainActor
+struct ResilienceTests {
+    /// Swift's decoder treats a MISSING key as a failure, default value or not,
+    /// so every field added after a client ships has to be optional - otherwise
+    /// a server rollback takes the screen down with it.
+    @Test func aPresetDecodesWithoutTheFieldsAddedLater() throws {
+        let older = """
+        {"slug": "powerlifting-heavy-day", "category": "powerlifter", "name": "Heavy Day",
+         "summary": "The three lifts.", "exercises": []}
+        """
+        let preset = try LiveAPIClient.makeDecoder().decode(WorkoutPreset.self, from: Data(older.utf8))
+        #expect(preset.name == "Heavy Day")
+        // And it still reads properly without them.
+        #expect(preset.label == "Powerlifter")
+        #expect(preset.isYourPath == false)
+    }
+
+    @Test func meDecodesWithoutTheTrainingPathTimestamp() throws {
+        let older = """
+        {"id": "u1", "email": "a@b.dev", "display_name": "A", "timezone": "UTC",
+         "created_at": "2026-09-01T10:00:00Z", "weight_unit": "kg", "character_class": "",
+         "progress": \(ContractFixtures.progress)}
+        """
+        let me = try LiveAPIClient.makeDecoder().decode(Me.self, from: Data(older.utf8))
+        #expect(me.characterClassSetAt == nil)
+    }
+
+    @Test func anEmptyInviteCodeSaysSo() async {
+        // It used to return silently, which reads as a broken button.
+        let model = AppModel.forTesting()
+        await model.joinParty(inviteCode: "   ")
+        #expect(model.errorMessage == "Enter an invite code.")
+    }
+
+    @Test func anUnnamedPartySaysSo() async {
+        let model = AppModel.forTesting()
+        await model.createParty(name: "")
+        #expect(model.errorMessage == "Give the party a name.")
+    }
+}
+
+// MARK: - Training path
+
+@MainActor
+struct TrainingPathTests {
+    @Test func theQuestionIsAskedOnlyUntilItIsAnswered() async {
+        let model = AppModel.forTesting(api: MockAPIClient(pathUnanswered: true))
+        await model.loadHome()
+        #expect(model.needsTrainingPath)
+
+        await model.chooseTrainingPath("athlete")
+        #expect(!model.needsTrainingPath)
+        #expect(model.me?.characterClass == "athlete")
+    }
+
+    @Test func decliningCountsAsAnswering() async {
+        // Otherwise "not sure yet" would ask again on every launch.
+        let model = AppModel.forTesting(api: MockAPIClient(pathUnanswered: true))
+        await model.loadHome()
+        await model.chooseTrainingPath("")
+        #expect(!model.needsTrainingPath)
+        #expect(model.me?.characterClass == "")
+    }
+
+    @Test func anEstablishedAccountIsNotAsked() async {
+        let model = AppModel.forTesting()
+        await model.loadHome()
+        #expect(!model.needsTrainingPath)
+    }
+
+    @Test func signedOutIsNeverAsked() async {
+        let model = AppModel.forTesting(api: MockAPIClient(signedIn: false))
+        #expect(!model.needsTrainingPath)
+    }
+
+    @Test func everyPathIsDescribedByTheServer() async {
+        let model = AppModel.forTesting()
+        await model.loadTrainingPaths()
+        #expect(model.trainingPaths.map(\.category) == ["athlete", "bodybuilder", "powerlifter"])
+        #expect(model.trainingPaths.map(\.displayName) == ["Athletic", "Bodybuilder", "Powerlifter"])
+    }
+
+    @Test func aPathReadsAsHowItTrains() {
+        let paths = Dictionary(uniqueKeysWithValues: TrainingPath.fallbacks.map { ($0.category, $0) })
+        #expect(paths["athlete"]?.summary == "12-20 reps · light · short rests")
+        #expect(paths["powerlifter"]?.summary == "1-6 reps · heavy · long rests")
+    }
+
+    @Test func theCardsStillRenderWithoutTheServer() async {
+        // The question must be answerable even if /training-categories fails:
+        // the view falls back to the three paths the app knows by name.
+        let api = MockAPIClient()
+        api.failure = APIError.http(status: 500, detail: "nope")
+        let model = AppModel.forTesting(api: api)
+        await model.loadTrainingPaths()
+        #expect(model.trainingPaths.isEmpty)
+        #expect(TrainingPath.fallbacks.map(\.category) == ["athlete", "bodybuilder", "powerlifter"])
+    }
+
+    @Test func everyPathHasACharacter() {
+        for path in TrainingPath.fallbacks {
+            #expect(CharacterScene.make(for: path.category) != nil)
+        }
+        // An unknown path falls back to the flat silhouette rather than crashing.
+        #expect(CharacterScene.make(for: "crossfitter") == nil)
+    }
+
+    @Test func aRealModelIsUsedWhenOneHasBeenAdded() {
+        // The models are files in MetalARM/Models (see its README). None are
+        // committed yet, so this records which state the build is in rather
+        // than failing: whichever it is, the screen renders.
+        for path in TrainingPath.fallbacks {
+            let hasModel = CharacterScene.bundled(path.category) != nil
+            let hasPlaceholder = CharacterScene.placeholder(for: path.category) != nil
+            #expect(hasModel || hasPlaceholder)
+        }
+    }
+}
+
 // MARK: - Ready-made workouts
 
 @MainActor
 struct PresetTests {
     @Test func everyStyleIsOffered() async throws {
         let presets = try await MockAPIClient().presets()
-        #expect(Set(presets.map(\.category)) == ["athletic", "powerlifting", "bodybuilding"])
+        #expect(Set(presets.map(\.category)) == ["athlete", "powerlifter", "bodybuilder"])
         #expect(presets.allSatisfy { !$0.exercises.isEmpty })
     }
 
@@ -180,7 +301,7 @@ struct PresetTests {
         // the first set - exactly as they do for a routine.
         #expect(model.session?.exercises.first?.target?.targetSets == heavy.exercises[0].targetSets)
         #expect(model.session?.exercises.first?.target?.restSeconds == heavy.exercises[0].restSeconds)
-        #expect(model.session?.name == "Powerlifting · Heavy Day")
+        #expect(model.session?.name == "Powerlifter · Heavy Day")
     }
 
     @Test func aBlankWorkoutIsStillBlank() async {

@@ -1,7 +1,7 @@
 [
   {
     "slug": "powerlifting-heavy-day",
-    "category": "powerlifting",
+    "category": "powerlifter",
     "name": "Heavy Day",
     "summary": "The three competition lifts, low reps and long rests. Leave a rep in the tank on every set.",
     "exercises": [
@@ -13,7 +13,7 @@
   },
   {
     "slug": "bodybuilding-push-day",
-    "category": "bodybuilding",
+    "category": "bodybuilder",
     "name": "Push Day",
     "summary": "Chest, shoulders and triceps in the eight-to-twelve range, short rests, the last two reps hard.",
     "exercises": [
@@ -27,7 +27,7 @@
   },
   {
     "slug": "athletic-power-day",
-    "category": "athletic",
+    "category": "athlete",
     "name": "Power Day",
     "summary": "Move fast, stay fresh: explosive work first, then single-leg strength and a carry to finish.",
     "exercises": [

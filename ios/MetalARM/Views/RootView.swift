@@ -15,6 +15,9 @@ struct RootView: View {
     @AppStorage("hasOnboarded") private var hasOnboarded = false
     @State private var selectedTab: AppTab = .home
     @State private var authMode: AuthView.Mode = .signUp
+    /// Answered (or skipped) in this launch. `me` refreshes a beat later, so
+    /// without this the question can flash back before the server replies.
+    @State private var pathAsked = false
 
     var body: some View {
         if !hasOnboarded {
@@ -24,6 +27,10 @@ struct RootView: View {
             }
         } else if !model.isSignedIn {
             AuthView(mode: $authMode)
+        } else if model.needsTrainingPath && !pathAsked {
+            // Asked once, between signing in and the app proper: the answer
+            // decides what gets suggested from the first workout on.
+            TrainingPathView(isOnboarding: true) { pathAsked = true }
         } else {
             tabs
         }

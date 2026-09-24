@@ -15,6 +15,7 @@ from app.models.party import (
 from app.models.league import LeagueMembership
 from app.models.push_device import PushDevice
 from app.models.quest import Quest, QuestCompletion
+from app.models.training_category import TrainingCategoryProfile
 from app.models.raid import RaidBoss, RaidHit
 from app.models.reward import RewardItem, RewardRedemption
 from app.models.user import LevelProgress, User
@@ -37,6 +38,7 @@ __all__ = [
     "User",
     "LevelProgress",
     "Quest",
+    "TrainingCategoryProfile",
     "QuestCompletion",
     "RewardItem",
     "RewardRedemption",

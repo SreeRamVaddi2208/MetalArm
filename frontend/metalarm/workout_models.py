@@ -328,7 +328,9 @@ class WorkoutPreset:
         return cls(
             slug=data.get("slug") or "",
             category=data.get("category") or "",
-            category_label=(data.get("category") or "").upper(),
+            # The label is what the training path is CALLED ("Athletic"), not
+            # the stored value ("athlete"); the server decides it.
+            category_label=(data.get("category_label") or data.get("category") or "").upper(),
             name=data.get("name") or "",
             summary=data.get("summary") or "",
             length_label=f"{len(slots)} exercise" + ("" if len(slots) == 1 else "s"),

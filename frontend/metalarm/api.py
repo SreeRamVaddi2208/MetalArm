@@ -270,6 +270,11 @@ async def character(token: str) -> dict:
     return await request("GET", "/profile/character", token=token)
 
 
+async def training_categories(token: str) -> list[dict]:
+    """What each training path means - the cards are rendered from this."""
+    return await request("GET", "/training-categories", token=token)
+
+
 async def set_character_class(token: str, value: str) -> dict:
     return await request("PATCH", "/auth/me", token=token, json={"character_class": value})
 

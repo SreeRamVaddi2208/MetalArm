@@ -10,7 +10,7 @@
 
 - **API title:** MetalArm API
 - **API version:** 0.1.0
-- **Generated:** 2026-09-20 17:48 UTC
+- **Generated:** 2026-09-20 21:26 UTC
 - **Source:** `http://localhost:8000/openapi.json`
 
 ---
@@ -1257,6 +1257,20 @@ Full replace. The ordered exercise list is swapped as a whole.
 
 ---
 
+### `GET /api/v1/training-categories`
+
+**List Training Categories**
+
+The three paths, in the order they are offered.
+
+*Tags:* `training`
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+
+---
+
 ### `POST /api/v1/workouts/import`
 
 **Import Workouts**
@@ -1880,6 +1894,7 @@ otherwise 503 with per-dependency detail.
 | `created_at` | `string` | yes |
 | `weight_unit` | `string` | no |
 | `character_class` | `string` | no |
+| `character_class_set_at` | `string | null` | no |
 | `progress` | `ProgressOut` | yes |
 
 #### `MeUpdate`
@@ -2055,9 +2070,11 @@ otherwise 503 with per-dependency detail.
 |---|---|---|
 | `slug` | `string` | yes |
 | `category` | `string` | yes |
+| `category_label` | `string` | yes |
 | `name` | `string` | yes |
 | `summary` | `string` | yes |
 | `exercises` | `PresetExerciseOut[]` | yes |
+| `matches_your_path` | `boolean` | no |
 
 #### `ProfileOut`
 
@@ -2483,6 +2500,21 @@ otherwise 503 with per-dependency detail.
 | `refresh_token` | `string` | yes |
 | `refresh_expires_in` | `integer` | yes |
 
+#### `TrainingCategoryOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `category` | `string` | yes |
+| `display_name` | `string` | yes |
+| `tagline` | `string` | yes |
+| `description` | `string` | yes |
+| `rep_range_low` | `integer` | yes |
+| `rep_range_high` | `integer` | yes |
+| `relative_load` | `string` | yes |
+| `relative_volume` | `string` | yes |
+| `rest_seconds_guidance` | `integer` | yes |
+| `emphasis_tags` | `string[]` | yes |
+
 #### `TrialOut`
 
 | Field | Type | Required |
@@ -2506,6 +2538,7 @@ otherwise 503 with per-dependency detail.
 | `created_at` | `string` | yes |
 | `weight_unit` | `string` | no |
 | `character_class` | `string` | no |
+| `character_class_set_at` | `string | null` | no |
 
 #### `ValidationError`
 

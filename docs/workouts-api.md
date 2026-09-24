@@ -69,11 +69,27 @@ Shop points arrive at finish because sets can still be edited until then.
 An unknown, archived, or other user's exercise id in a routine → **422**.
 Use `rest_seconds` to seed the client-side rest timer.
 
+## Training paths
+
+| Method | Path | Notes |
+|---|---|---|
+| GET | `/training-categories` | The three paths - athletic, bodybuilder, powerlifter - with tagline, rep range, load, volume, rest and emphasis tags. Render the cards from this; do not hardcode the copy. |
+
+The path itself is `users.character_class`, set with
+`PATCH /auth/me {"character_class": "athlete"}` and cleared with `""`. `/auth/me`
+returns `character_class_set_at`: **null means never asked**, which is how the
+app knows whether to put the question up; declining writes the timestamp with an
+empty path.
+
+A path decides what is SUGGESTED - the ready-made workout below is ordered by it
+(`matches_your_path`) - and which character stats are highlighted. It never
+affects points, XP, records, streaks or a leaderboard.
+
 ## Ready-made workouts
 
 | Method | Path | Notes |
 |---|---|---|
-| GET | `/workouts/presets` | The three styles - athletic, powerlifting, bodybuilding. Each slot carries its whole exercise, `media_url` included, so the UI can show a demo of the movement. |
+| GET | `/workouts/presets` | The three styles. Each slot carries its whole exercise, `media_url` included, so the UI can show a demo of the movement. The workout matching the caller's training path comes **first**, flagged `matches_your_path`; `category_label` is what to print ("Athletic"), `category` is what is stored ("athlete"). |
 
 `POST /workouts/sessions {"preset_slug": "..."}` starts one. Send `preset_slug`
 or `routine_id`, never both (**422**); an unknown slug is a **404**.

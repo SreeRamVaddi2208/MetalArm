@@ -6,7 +6,7 @@ from metalarm import theme
 from metalarm.components.layout import error_banner, section_heading, shell
 from metalarm.components.scroll_reveal import pinned, reveal, reveal_assets
 from metalarm.components.stat_panel import stat_panel
-from metalarm.models import Badge, StatRow, TrialRow
+from metalarm.models import Badge, StatRow, TrainingPathRow, TrialRow
 from metalarm.state.profile import ProfileState
 
 
@@ -157,20 +157,31 @@ def stat_bar(stat: StatRow) -> rx.Component:
     )
 
 
-def class_button(value: str, label: str) -> rx.Component:
-    chosen = ProfileState.character_class == value
-    return rx.button(
-        label,
-        on_click=ProfileState.choose_class(value),
-        background=rx.cond(chosen, theme.ACCENT, "transparent"),
-        color=rx.cond(chosen, theme.ON_ACCENT, theme.TEXT),
-        border=f"1px solid {theme.BORDER}",
-        border_radius="10px",
-        font_size="0.72rem",
-        font_weight="700",
-        letter_spacing="0.06em",
-        padding="0.45rem 0.7rem",
+def path_card(path: TrainingPathRow) -> rx.Component:
+    """One training path. The same three the iPhone asks about at onboarding;
+    picking one here changes what the app suggests."""
+    chosen = ProfileState.character_class == path.category
+    return rx.vstack(
+        rx.text(
+            path.display_name,
+            color=rx.cond(chosen, theme.ACCENT, theme.TEXT),
+            font_weight="800",
+            font_size="0.86rem",
+        ),
+        rx.text(path.tagline, color=theme.MUTED, font_size="0.72rem"),
+        rx.text(path.summary, color=theme.FAINT, font_size="0.68rem", font_weight="700"),
+        on_click=ProfileState.choose_class(path.category),
         cursor="pointer",
+        spacing="1",
+        align="start",
+        flex="1",
+        min_width="150px",
+        padding="0.7rem 0.8rem",
+        background=rx.cond(chosen, theme.SUCCESS_BG, theme.FIELD),
+        border=f"1px solid {rx.cond(chosen, theme.ACCENT, theme.BORDER)}",
+        border_radius="12px",
+        class_name="ma-path-card",
+        custom_attrs={"data-path": path.category},
     )
 
 
@@ -189,16 +200,16 @@ def character_panel() -> rx.Component:
         rx.divider(border_color=theme.BORDER),
         rx.foreach(ProfileState.stats_sheet, stat_bar),
         rx.text(
-            "A class highlights the stats you care about. It never changes a score.",
+            "Your training path highlights the stats you care about and decides "
+            "what MetalArm suggests. It never changes a score.",
             color=theme.MUTED,
             font_size="0.72rem",
         ),
-        rx.hstack(
-            class_button("powerlifter", "POWERLIFTER"),
-            class_button("bodybuilder", "BODYBUILDER"),
-            class_button("athlete", "ATHLETE"),
+        rx.flex(
+            rx.foreach(ProfileState.paths, path_card),
             spacing="2",
             wrap="wrap",
+            width="100%",
         ),
         spacing="3",
         **theme.panel(),

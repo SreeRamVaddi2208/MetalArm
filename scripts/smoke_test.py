@@ -70,6 +70,15 @@ def new_user(tz: str = "UTC") -> tuple[str, dict]:
             "timezone": tz,
         },
     )
+    if status == 429:
+        raise SystemExit(
+            "signup rate limited (429).\n"
+            "This test creates 5 accounts and the limit is 5 per IP per hour, so\n"
+            "anything else that signed up from here in the last hour uses it up.\n"
+            "Wait, or clear the counter on a LOCAL stack:\n"
+            '  docker compose exec redis redis-cli -a "$REDIS_PASSWORD" '
+            "--scan --pattern 'ratelimit:signup-ip:*' | xargs -r redis-cli del"
+        )
     if status != 201:
         raise SystemExit(f"signup failed: {status} {created}")
     status, tok = call(

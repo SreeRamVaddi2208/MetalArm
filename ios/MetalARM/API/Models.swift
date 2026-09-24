@@ -65,6 +65,35 @@ struct Me: Codable, Equatable {
     var weightUnit: String
     var progress: ProgressInfo
     var characterClass: String?
+    /// When the path was chosen or cleared. Null means never asked, which is
+    /// what onboarding checks before showing the question.
+    var characterClassSetAt: String?
+}
+
+/// A training path, as the server describes it (GET /training-categories).
+/// The cards are rendered from this, so the copy lives in one place.
+struct TrainingPath: Codable, Equatable, Identifiable {
+    var category: String
+    var displayName: String
+    var tagline: String
+    var description: String
+    var repRangeLow: Int
+    var repRangeHigh: Int
+    var relativeLoad: String
+    var relativeVolume: String
+    var restSecondsGuidance: Int
+    var emphasisTags: [String]
+
+    var id: String { category }
+
+    /// "12-20 reps · light · short rests"
+    var summary: String {
+        let rest = restSecondsGuidance >= 120
+            ? "long rests"
+            : (restSecondsGuidance >= 75 ? "moderate rests" : "short rests")
+        let load = ["low": "light", "moderate": "moderate", "moderate_high": "moderate-heavy", "heavy": "heavy"]
+        return "\(repRangeLow)-\(repRangeHigh) reps · \(load[relativeLoad] ?? relativeLoad) · \(rest)"
+    }
 }
 
 struct Badge: Codable, Equatable, Identifiable {
@@ -197,12 +226,23 @@ struct PresetSlot: Codable, Equatable, Identifiable {
 struct WorkoutPreset: Codable, Equatable, Identifiable {
     var slug: String
     var category: String
+    /// What the path is CALLED ("Athletic"), not the stored value ("athlete").
+    /// Optional for the same reason as `matchesYourPath` below: a missing key
+    /// is a decode failure in Swift, so a server that predates this field must
+    /// not take the whole screen down with it.
+    var categoryLabel: String?
     var name: String
     var summary: String
     var exercises: [PresetSlot]
+    /// True for the workout matching the user's own training path. Optional
+    /// because a missing key is a decode FAILURE in Swift, default or not: an
+    /// app talking to a server without the field must not crash.
+    var matchesYourPath: Bool?
 
     var id: String { slug }
-    var categoryLabel: String { category.capitalized }
+    var isYourPath: Bool { matchesYourPath == true }
+    /// The label, or a readable stand-in if the server did not send one.
+    var label: String { categoryLabel ?? category.capitalized }
     var lengthLabel: String {
         "\(exercises.count) exercise\(exercises.count == 1 ? "" : "s")"
     }

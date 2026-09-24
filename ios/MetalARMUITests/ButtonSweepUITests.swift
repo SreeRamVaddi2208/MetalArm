@@ -212,10 +212,17 @@ final class ButtonSweepUITests: MetalARMUITestCase {
         let discard = app.buttons["Discard Workout"]
         XCTAssertTrue(discard.waitForExistence(timeout: 5), "Options menu did not open")
         discard.tap()
+        // Wait for the CONFIRMATION, not just for a button of that name: the
+        // menu item and the dialog's button share it, and a tap during the
+        // dialog's animation lands on nothing (which is what failed here).
+        XCTAssertTrue(
+            app.staticTexts["Discard this workout?"].waitForExistence(timeout: 5),
+            "The confirmation never appeared")
         let confirm = app.buttons["Discard Workout"].firstMatch
         XCTAssertTrue(confirm.waitForExistence(timeout: 5), "Discard was not confirmed")
+        for _ in 1...3 where !confirm.isHittable { Thread.sleep(forTimeInterval: 0.4) }
         confirm.tap()
-        XCTAssertTrue(app.buttons["workoutStartButton"].waitForExistence(timeout: 5), "Discard did not end the workout")
+        XCTAssertTrue(app.buttons["workoutStartButton"].waitForExistence(timeout: 10), "Discard did not end the workout")
 
         // The Workout tab's own Start button.
         app.buttons["workoutStartButton"].tap()
@@ -334,13 +341,20 @@ final class ButtonSweepUITests: MetalARMUITestCase {
         openTab(app, "Profile")
         XCTAssertTrue(element(app, "characterCard").waitForExistence(timeout: 5), "Profile did not load")
 
-        // A class is picked, shown, and picked again to clear it.
-        let athlete = app.buttons["class-athlete"]
-        scrollUntilHittable(athlete, in: app)
+        // The training path opens the same cards onboarding uses.
+        let openPath = app.buttons["trainingPathButton"]
+        scrollUntilHittable(openPath, in: app)
+        openPath.tap()
+        let athlete = app.buttons["path-athlete"]
+        XCTAssertTrue(athlete.waitForExistence(timeout: 5), "The training path cards did not open")
+        let confirmPath = app.buttons["confirmPathButton"]
+        scrollUntilHittable(athlete, in: app, clearOf: confirmPath)
         athlete.tap()
-        XCTAssertTrue(app.staticTexts["Athlete"].waitForExistence(timeout: 5), "Picking a class did not show it")
-        athlete.tap()
-        XCTAssertTrue(app.staticTexts["Athlete"].waitForNonExistence(timeout: 5), "Tapping the class again did not clear it")
+        XCTAssertTrue(waitUntilEnabled(confirmPath), "Choosing a path did not enable Save")
+        confirmPath.tap()
+        // The sheet must close, or everything below is looking at the wrong screen.
+        XCTAssertTrue(athlete.waitForNonExistence(timeout: 10), "The path sheet did not close")
+        XCTAssertTrue(app.staticTexts["Athletic"].waitForExistence(timeout: 10), "The chosen path is not shown on Profile")
 
         // kg -> lb shows up elsewhere in the app, then back.
         let picker = app.segmentedControls["weightUnitPicker"]
@@ -374,12 +388,20 @@ final class ButtonSweepUITests: MetalARMUITestCase {
             flip(again, "\(id) (back)") // put it back for the next run
         }
 
-        // Import opens the file picker; Cancel closes it.
+        // Import opens the file picker; Cancel closes it. The picker is a
+        // separate process (DocumentManager), and its first launch on a cold
+        // runner is slow the same way Safari's is - 10 s failed on CI while
+        // passing locally. Wait properly, then tap once more before giving up:
+        // a tap that landed while the picker was still coming up looks exactly
+        // like one that never registered.
         let importButton = app.buttons["importWorkoutsButton"]
         scrollUntilHittable(importButton, in: app)
         importButton.tap()
         let cancel = app.buttons["Cancel"].firstMatch
-        XCTAssertTrue(cancel.waitForExistence(timeout: 10), "Import did not open the file picker")
+        if !cancel.waitForExistence(timeout: 30) {
+            if importButton.isHittable { importButton.tap() }
+            XCTAssertTrue(cancel.waitForExistence(timeout: 30), "Import did not open the file picker")
+        }
         attachScreenshot(app, named: "Import file picker")
         cancel.tap()
         XCTAssertTrue(importButton.waitForExistence(timeout: 5), "Could not get back from the file picker")

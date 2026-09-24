@@ -28,7 +28,7 @@ struct PresetCards: View {
                     HStack(spacing: 12) {
                         ExerciseDemo(exercise: preset.exercises[0].exercise, size: 56, cornerRadius: 10, context: "cardDemo")
                         VStack(alignment: .leading, spacing: 3) {
-                            Text(preset.categoryLabel.uppercased())
+                            Text(preset.label.uppercased())
                                 .font(Theme.body(10, .semibold))
                                 .kerning(0.6)
                                 .foregroundStyle(Theme.accent)
@@ -162,7 +162,7 @@ struct PresetSheet: View {
                 .padding(20)
             }
             .background(Theme.bg)
-            .navigationTitle("\(preset.categoryLabel) · \(preset.name)")
+            .navigationTitle("\(preset.label) · \(preset.name)")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {

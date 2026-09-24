@@ -99,6 +99,16 @@ class MetalARMUITestCase: XCTestCase {
         XCTFail("The Save Password sheet would not close")
     }
 
+    /// Waits for a control to become enabled. A button disabled at the moment
+    /// it is tapped swallows the tap silently, and the failure then shows up
+    /// somewhere else entirely - a sheet still open two steps later.
+    @MainActor
+    @discardableResult
+    func waitUntilEnabled(_ element: XCUIElement, timeout: TimeInterval = 5) -> Bool {
+        let enabled = expectation(for: NSPredicate(format: "isEnabled == true"), evaluatedWith: element)
+        return XCTWaiter.wait(for: [enabled], timeout: timeout) == .completed
+    }
+
     @MainActor
     func attachScreenshot(_ app: XCUIApplication, named name: String) {
         let attachment = XCTAttachment(screenshot: app.screenshot())
@@ -113,8 +123,20 @@ class MetalARMUITestCase: XCTestCase {
     /// phone (CI's iPhone 17e) that tapped the current tab, which scrolls it to
     /// the top, instead of the Streak reminders switch. So nudge the content up
     /// until the element is clear of the bar.
+    ///
+    /// `clearOf` names whatever is in the way when it is not the tab bar. A
+    /// sheet has its own footer, and a card only half-scrolled into the sheet
+    /// reports a frame whose CENTRE is behind that footer - XCUITest taps the
+    /// centre, so the tap lands on the footer's disabled button and is
+    /// swallowed silently. The workflow picks whichever simulator the runner
+    /// happens to have (ios.yml), so which cards this hits changes run to run.
     @MainActor
-    func scrollUntilHittable(_ element: XCUIElement, in app: XCUIApplication, maxSwipes: Int = 8) {
+    func scrollUntilHittable(
+        _ element: XCUIElement,
+        in app: XCUIApplication,
+        maxSwipes: Int = 12,
+        clearOf obstruction: XCUIElement? = nil
+    ) {
         var swipes = 0
         while !element.isHittable && swipes < maxSwipes {
             app.swipeUp()
@@ -122,7 +144,7 @@ class MetalARMUITestCase: XCTestCase {
         }
         XCTAssertTrue(element.isHittable, "\(element) never scrolled into view")
 
-        let bar = app.tabBars.firstMatch
+        let bar = obstruction ?? app.tabBars.firstMatch
         guard bar.exists else { return }
         var nudges = 0
         while element.frame.maxY > bar.frame.minY - 8 && nudges < 6 {

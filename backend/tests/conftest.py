@@ -23,6 +23,7 @@ from sqlalchemy.orm import Session
 # name `app` in this module from the FastAPI instance to the package, and
 # app.dependency_overrides then resolves against the module.
 from app import models as _models  # noqa: F401
+from app.core import training_categories
 from app.core.config import get_settings
 from app.db.session import Base, get_db
 from app.main import app
@@ -60,11 +61,13 @@ def engine() -> Generator[Engine, None, None]:
     test_engine = create_engine(_test_db_url(), pool_pre_ping=True)
     Base.metadata.create_all(test_engine)
 
-    # The exercise library, loaded once through the REAL importer - so every
-    # test run also proves the shipped seed file imports cleanly. Committed,
-    # so it survives each test's rollback.
+    # The exercise library and the training paths, loaded once through the REAL
+    # seeding code - so every test run also proves the shipped files load
+    # cleanly. Committed, so they survive each test's rollback. Production gets
+    # both the same way, on deploy.
     with Session(test_engine) as seed:
         import_exercises(seed, read_file(DEFAULT_FILE))
+        training_categories.seed(seed)
         seed.commit()
 
     yield test_engine

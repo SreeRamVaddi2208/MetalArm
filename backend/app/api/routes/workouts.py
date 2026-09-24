@@ -42,6 +42,7 @@ from app.core import points_engine as pe
 from app.core import workout_rules as rules
 from app.core import workout_store as store
 from app.core import importer, presets, raids, rank_trials, rate_limit
+from app.core import training_categories
 from app.core import workout_streaks as streaks
 from app.core.periods import local_now, resolve_timezone
 from app.core.progression import (
@@ -454,6 +455,10 @@ def list_presets(current_user: CurrentUser, db: DbSession) -> list[PresetOut]:
             ))
         )
     }
+    labels = {
+        profile.category: profile.display_name
+        for profile in training_categories.all_profiles(db)
+    }
     out: list[PresetOut] = []
     for preset in presets.all_presets():
         slots = [
@@ -473,11 +478,16 @@ def list_presets(current_user: CurrentUser, db: DbSession) -> list[PresetOut]:
                 PresetOut(
                     slug=preset.slug,
                     category=preset.category,
+                    category_label=labels.get(preset.category, preset.category.title()),
                     name=preset.name,
                     summary=preset.summary,
                     exercises=slots,
+                    matches_your_path=preset.category == current_user.character_class,
                 )
             )
+    # The workout for the user's own training path comes first: it is the one
+    # they chose at onboarding, so it should not be something to scroll past.
+    out.sort(key=lambda preset: not preset.matches_your_path)
     return out
 
 
@@ -511,9 +521,13 @@ def _routine_from_preset(db: Session, user: User, slug: str) -> Routine:
             detail=f"This workout needs exercises that are not in the library: {', '.join(missing)}",
         )
 
+    label = next(
+        (p.display_name for p in training_categories.all_profiles(db) if p.category == preset.category),
+        preset.category.title(),
+    )
     routine = Routine(
         user_id=user.id,
-        name=f"{preset.category.title()} · {preset.name}",
+        name=f"{label} · {preset.name}",
         notes=preset.summary,
         preset_slug=preset.slug,
     )

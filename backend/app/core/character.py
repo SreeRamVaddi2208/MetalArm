@@ -24,6 +24,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core import rank_trials
+from app.core import training_categories
 from app.core import workout_rules as rules
 from app.core import workout_store as store
 from app.core import workout_streaks as streaks
@@ -40,10 +41,13 @@ ENDURANCE_VOLUME_FOR_MAX = Decimal(40_000)
 DISCIPLINE_WEEKS = 8
 _LB = Decimal(str(rules.LB_TO_KG))
 
+# Fallback names only. The real ones come from training_category_profiles, so
+# the sheet and the onboarding cards cannot drift apart - "Athlete" here and
+# "Athletic" there is exactly the kind of split that confuses a user.
 CLASS_LABELS: dict[str, str] = {
     CharacterClass.POWERLIFTER.value: "Powerlifter",
     CharacterClass.BODYBUILDER.value: "Bodybuilder",
-    CharacterClass.ATHLETE.value: "Athlete",
+    CharacterClass.ATHLETE.value: "Athletic",
 }
 # Which stats a class highlights. Presentation only.
 CLASS_HIGHLIGHTS: dict[str, tuple[str, ...]] = {
@@ -168,8 +172,12 @@ def sheet(db: Session, user: User, *, now: dt.datetime | None = None) -> Sheet:
         dataclasses.replace(stat, highlighted=stat.key in highlighted)
         for stat in (strength, endurance, discipline)
     ]
+    label = next(
+        (p.display_name for p in training_categories.all_profiles(db) if p.category == chosen),
+        CLASS_LABELS.get(chosen, ""),
+    )
     return Sheet(
         character_class=chosen,
-        class_label=CLASS_LABELS.get(chosen, ""),
+        class_label=label if chosen else "",
         stats=stats,
     )

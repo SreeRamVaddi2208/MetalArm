@@ -309,9 +309,15 @@ class PresetExerciseOut(BaseModel):
 class PresetOut(BaseModel):
     slug: str
     category: str
+    # "Athletic", not "Athlete": the stored value is the path, the label is
+    # what the training path profile calls it.
+    category_label: str
     name: str
     summary: str
     exercises: list[PresetExerciseOut]
+    # True for the workout matching the user's training path
+    # (users.character_class). The clients lead with it.
+    matches_your_path: bool = False
 
 
 class SessionTargetOut(BaseModel):

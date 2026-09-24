@@ -52,6 +52,8 @@ final class AppModel {
     var prHint = ""
     /// Ready-made workouts, one per training style.
     var presets: [WorkoutPreset] = []
+    /// The training paths, for the onboarding question and the Profile setting.
+    var trainingPaths: [TrainingPath] = []
     var progressionHint = ""
     var restSecondsLeft = 0
     var pickerResults: [Exercise] = []
@@ -712,7 +714,10 @@ final class AppModel {
     }
 
     func createParty(name: String) async {
-        guard !name.trimmed.isEmpty else { return }
+        guard !name.trimmed.isEmpty else {
+            errorMessage = "Give the party a name."
+            return
+        }
         var created: Party?
         await run("Couldn't create the party") {
             created = try await api.createParty(name: name.trimmed)
@@ -724,7 +729,12 @@ final class AppModel {
     }
 
     func joinParty(inviteCode: String) async {
-        guard !inviteCode.trimmed.isEmpty else { return }
+        // Say so rather than doing nothing: an enabled button that ignores you
+        // reads as broken. The web app has always answered this way.
+        guard !inviteCode.trimmed.isEmpty else {
+            errorMessage = "Enter an invite code."
+            return
+        }
         var joined: Party?
         await run("Couldn't join the party") {
             joined = try await api.joinParty(inviteCode: inviteCode.trimmed.uppercased())
@@ -773,6 +783,37 @@ final class AppModel {
             me = try await api.updateCharacterClass(next)
             characterSheet = try await api.character()
         }
+    }
+
+    // MARK: - Training path
+
+    /// Asked once, right after signing up. Null `characterClassSetAt` means
+    /// never asked; a user who skipped has a timestamp and an empty path, so
+    /// they are not asked again.
+    var needsTrainingPath: Bool {
+        isSignedIn && me != nil && me?.characterClassSetAt == nil
+    }
+
+    func loadTrainingPaths() async {
+        guard trainingPaths.isEmpty else { return }
+        // Never block the question on a failure here: the cards fall back to
+        // their built-in copy rather than showing nothing.
+        trainingPaths = (try? await api.trainingPaths()) ?? []
+    }
+
+    /// Commits the choice. An empty value means "skip": it records that the
+    /// question was asked without choosing a path.
+    @discardableResult
+    func chooseTrainingPath(_ category: String) async -> Bool {
+        var saved = false
+        await run("Couldn't save your training path") {
+            me = try await api.updateCharacterClass(category)
+            // The character sheet carries the path's label and which stats it
+            // highlights, so Profile would otherwise keep showing the old one.
+            characterSheet = try? await api.character()
+            saved = true
+        }
+        return saved
     }
 
     func setWeightUnit(_ unit: WeightUnit) async {

@@ -336,3 +336,30 @@ Set when a routine was materialised from a ready-made workout
 values from a routine, so a preset has to become one; the constraint is what
 makes starting the same preset again reuse that routine instead of stacking up
 copies. Postgres treats NULLs as distinct, so hand-made routines are unaffected.
+
+
+## `training_category_profiles` and `users.character_class_set_at` (Alembic `7c93ad2f1b64`)
+
+`users.character_class` - `powerlifter` / `bodybuilder` / `athlete` - used to be
+cosmetic: it chose which character-sheet stats were highlighted. It is now the
+user's **training path**, asked once during onboarding, and it decides what the
+app suggests as well. The stored values did not change.
+
+- `users.character_class_set_at TIMESTAMPTZ NULL` - when the path was chosen or
+  cleared. NULL means never asked, which is how onboarding knows whether to ask;
+  declining writes the timestamp with an empty path, so the question does not
+  come back every launch.
+- `training_category_profiles` - one row per path, primary key `category`:
+  `display_name`, `tagline`, `description`, `rep_range_low/high`,
+  `relative_load`, `relative_volume`, `rest_seconds_guidance`, `emphasis_tags[]`,
+  with CHECK constraints on the category, the rep range and the two scales.
+
+The meanings live in a table, not in Python, for the same reason the points
+engine keeps its values in one place: they are tuning, and both clients read
+them through `GET /training-categories` rather than hardcoding copy. Seeded from
+`app/data/training_categories.json` by the migration and again by
+`scripts/seed_training_paths.py` on every deploy, so editing that file and
+deploying is how the numbers change.
+
+**A path never touches scoring.** Points, XP, records, streaks and leaderboards
+ignore it entirely - which is what makes it safe to change whenever goals shift.
