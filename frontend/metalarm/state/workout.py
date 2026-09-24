@@ -31,6 +31,7 @@ from metalarm.share_card import share_card_script
 from metalarm.state.auth import AuthState
 from metalarm.state.quests import QuestState
 from metalarm.workout_models import (
+    Beat,
     ExerciseCard,
     FinishSummary,
     HistoryRow,
@@ -191,20 +192,34 @@ def set_payload(card: ExerciseCard, unit: str) -> tuple[dict[str, Any] | None, s
     return payload, ""
 
 
-def level_beat(progression: dict[str, Any]) -> tuple[str, str, str]:
-    """('rank'|'level'|'', badge, ladder) from the API's explicit flags.
+def level_beat(progression: dict[str, Any]) -> Beat:
+    """What to celebrate, from the API's explicit flags.
+
     `ranked_up` is true only on promotion, so a demotion never fires a
-    celebration. A rank-up's badge is the tier, not the letter."""
+    celebration. A rank-up's badge is the tier, not the letter - and it carries
+    the letter too, because that is what the overlay dresses itself from."""
+    levels = (
+        int(progression.get("level_before") or 0),
+        int(progression.get("level_after") or 0),
+    )
     if progression.get("ranked_up"):
         after = str(progression.get("rank_after") or "")
-        return (
-            "rank",
-            ranks.rank_title(after).upper(),
-            ranks.promotion(str(progression.get("rank_before") or ""), after),
+        return Beat(
+            kind="rank",
+            badge=ranks.rank_title(after).upper(),
+            ladder=ranks.promotion(str(progression.get("rank_before") or ""), after),
+            rank=after,
+            level_from=levels[0],
+            level_to=levels[1],
         )
     if progression.get("leveled_up"):
-        return "level", str(progression.get("level_after") or ""), ""
-    return "", "", ""
+        return Beat(
+            kind="level",
+            badge=str(progression.get("level_after") or ""),
+            level_from=levels[0],
+            level_to=levels[1],
+        )
+    return Beat()
 
 
 class WorkoutState(rx.State):
@@ -241,9 +256,7 @@ class WorkoutState(rx.State):
     pr_points: int = 0
     # A level-up earned by the same set waits until the PR moment is
     # dismissed, so the two celebrations never stack on top of each other.
-    _pending_kind: str = ""
-    _pending_badge: str = ""
-    _pending_ladder: str = ""
+    _pending_beat: Beat = Beat()
     _tz: str = "UTC"
 
     # Editing a logged set.
@@ -380,15 +393,19 @@ class WorkoutState(rx.State):
     def _index_of(self, exercise_id: str) -> int:
         return next((i for i, c in enumerate(self.cards) if c.exercise_id == exercise_id), -1)
 
-    async def _raise_level_up(self, kind: str, badge: str, ladder: str = "") -> None:
+    async def _raise_level_up(self, beat: Beat) -> None:
         """Reuse the app's one level-up overlay rather than a second copy, so
-        the workout feeds the same game moment quests do."""
+        the workout feeds the same game moment quests do - including the tier
+        dressing, which QuestState.celebrate resolves."""
         quests = await self.get_state(QuestState)
-        quests.level_up_is_rank = kind == "rank"
-        quests.level_up_badge = badge
-        quests.level_up_ladder = ladder
-        quests.level_up_message = "RANK UP" if kind == "rank" else "LEVEL UP"
-        quests.show_level_up = True
+        quests.celebrate(
+            beat.kind,
+            beat.badge,
+            beat.ladder,
+            rank=beat.rank,
+            level_from=beat.level_from,
+            level_to=beat.level_to,
+        )
 
     # --- loading ----------------------------------------------------------
 
@@ -635,20 +652,18 @@ class WorkoutState(rx.State):
         if index >= 0:
             self._update(index, flash_kind=kind, flash_label=label)
 
-        beat, badge, ladder = level_beat(result.get("progression") or {})
-        if beat:
+        beat = level_beat(result.get("progression") or {})
+        if beat.kind:
             if self.show_pr:
-                self._pending_kind, self._pending_badge = beat, badge
-                self._pending_ladder = ladder
+                self._pending_beat = beat
             else:
-                await self._raise_level_up(beat, badge, ladder)
+                await self._raise_level_up(beat)
 
     async def dismiss_pr(self):
         self.show_pr = False
-        if self._pending_kind:
-            kind, badge, ladder = self._pending_kind, self._pending_badge, self._pending_ladder
-            self._pending_kind = self._pending_badge = self._pending_ladder = ""
-            await self._raise_level_up(kind, badge, ladder)
+        if self._pending_beat.kind:
+            beat, self._pending_beat = self._pending_beat, Beat()
+            await self._raise_level_up(beat)
 
     async def delete_set(self, set_id: str):
         auth = await self._auth()
@@ -804,9 +819,9 @@ class WorkoutState(rx.State):
         self._clear_session()
         yield rx.call_script(_STOP_REST)
 
-        beat, badge, ladder = level_beat(result.get("progression") or {})
-        if beat:
-            await self._raise_level_up(beat, badge, ladder)
+        beat = level_beat(result.get("progression") or {})
+        if beat.kind:
+            await self._raise_level_up(beat)
         yield AuthState.refresh_me
 
     def ask_abandon(self) -> None:
