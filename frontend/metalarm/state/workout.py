@@ -34,8 +34,10 @@ from metalarm.workout_models import (
     ExerciseCard,
     FinishSummary,
     HistoryRow,
+    PresetSlot,
     PrView,
     RoutineItem,
+    WorkoutPreset,
     SetRow,
     StreakView,
     fmt,
@@ -92,6 +94,7 @@ def build_card(
         exercise_id=exercise.get("id") or "",
         name=exercise.get("name") or "",
         muscles_label=muscles_label(exercise.get("primary_muscle_groups")),
+        media_url=exercise.get("media_url") or "",
         is_cardio=exercise.get("category") == "cardio",
         target_label=" ".join(bits),
         rest_seconds=int(t.get("rest_seconds") or DEFAULT_REST_SECONDS),
@@ -223,6 +226,11 @@ class WorkoutState(rx.State):
     cards: list[ExerciseCard] = []
 
     routines: list[RoutineItem] = []
+    # Ready-made workouts, one per training style, with a demo per movement.
+    presets: list[WorkoutPreset] = []
+    # The one whose plan is open, and the movement its demo is showing.
+    open_preset: str = ""
+    demo_slot: str = ""
     recent: list[HistoryRow] = []
     streak: StreakView = StreakView()
 
@@ -409,6 +417,14 @@ class WorkoutState(rx.State):
                     HistoryRow.from_api(h, self.unit, auth.timezone)
                     for h in await wapi.list_sessions(auth.token, limit=5)
                 ]
+                # A failure here must not block starting a workout, so the
+                # cards simply do not appear.
+                try:
+                    self.presets = [
+                        WorkoutPreset.from_api(p) for p in await wapi.presets(auth.token)
+                    ]
+                except ApiError:
+                    self.presets = []
         except ApiError as exc:
             self.error = exc.detail
         finally:
@@ -430,13 +446,59 @@ class WorkoutState(rx.State):
 
     # --- starting ---------------------------------------------------------
 
+    def choose_preset(self, slug: str) -> None:
+        """Open a ready-made workout's plan, its demo on the first movement."""
+        self.open_preset = slug
+        chosen = next((p for p in self.presets if p.slug == slug), None)
+        self.demo_slot = chosen.exercises[0].exercise_id if chosen and chosen.exercises else ""
+
+    def close_preset(self) -> None:
+        self.open_preset = ""
+        self.demo_slot = ""
+
+    def show_demo(self, exercise_id: str) -> None:
+        self.demo_slot = exercise_id
+
+    @rx.var
+    def chosen_preset(self) -> WorkoutPreset:
+        return next(
+            (p for p in self.presets if p.slug == self.open_preset), WorkoutPreset()
+        )
+
+    @rx.var
+    def demo_exercise(self) -> PresetSlot:
+        """The movement the demo is showing: the tapped one, else the first."""
+        chosen = self.chosen_preset
+        if not chosen.exercises:
+            return PresetSlot()
+        return next(
+            (slot for slot in chosen.exercises if slot.exercise_id == self.demo_slot),
+            chosen.exercises[0],
+        )
+
+    @rx.var
+    def has_presets(self) -> bool:
+        return len(self.presets) > 0
+
+    async def start_preset(self, slug: str):
+        """Start a ready-made workout. A separate handler from start_session
+        because an event handler's extra argument is where Reflex puts the
+        click event itself - one handler cannot take both."""
+        self.close_preset()
+        return await self._start(preset_slug=slug)
+
     async def start_session(self, routine_id: str = ""):
+        return await self._start(routine_id=routine_id)
+
+    async def _start(self, routine_id: str = "", preset_slug: str = ""):
         auth = await self._auth()
         self._tz = auth.timezone or "UTC"
         self.error = ""
         self.show_summary = False
         try:
-            data = await wapi.start_session(auth.token, routine_id or None)
+            data = await wapi.start_session(
+                auth.token, routine_id or None, preset_slug or None
+            )
         except ApiError as exc:
             self.error = exc.detail
             # 409: a workout is already live. Show it rather than a dead end.

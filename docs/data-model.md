@@ -324,3 +324,15 @@ from before device sessions), `token VARCHAR(200) UNIQUE` (lowercase hex),
 
 Points remain self-authored by design: a personal quest is the user's own goal,
 and points are spent in their own shop. The bound is about integrity, not trust.
+
+
+## `routines.preset_slug` (Alembic `4b81c0d5e7a2`)
+
+`VARCHAR(60)`, NULL for a hand-made routine, with
+`UNIQUE(user_id, preset_slug)`.
+
+Set when a routine was materialised from a ready-made workout
+(`app/core/presets.py`). A session takes its targets, planned order and ghost
+values from a routine, so a preset has to become one; the constraint is what
+makes starting the same preset again reuse that routine instead of stacking up
+copies. Postgres treats NULLs as distinct, so hand-made routines are unaffected.

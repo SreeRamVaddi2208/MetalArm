@@ -10,6 +10,7 @@ from metalarm.components.exercise_picker import picker_dialog
 from metalarm.components.layout import error_banner, shell
 from metalarm.components.level_up import keyframes, level_up_overlay
 from metalarm.components.pr_overlay import pr_overlay
+from metalarm.components.presets import preset_dialog
 from metalarm.components.rest_timer import rest_bar, timer_assets
 from metalarm.components.workout import hud, live_view, start_view, summary_view
 from metalarm.state.workout import WorkoutState
@@ -22,6 +23,7 @@ def workout_page() -> rx.Component:
         level_up_overlay(),
         pr_overlay(),
         picker_dialog(),
+        preset_dialog(),
         rest_bar(),
         rx.vstack(
             hud(),

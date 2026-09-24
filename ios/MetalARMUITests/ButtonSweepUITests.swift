@@ -35,7 +35,16 @@ final class ButtonSweepUITests: MetalARMUITestCase {
     @MainActor
     private func assertOpensSafari(_ link: XCUIElement, in app: XCUIApplication, _ name: String) {
         link.tap()
-        XCTAssertTrue(safari.wait(for: .runningForeground, timeout: 15), "\(name) did not open Safari")
+        // Safari's FIRST launch on a cold CI runner takes longer than 15 s,
+        // which failed this test there while it passed locally every time.
+        // Wait properly, and tap once more before giving up: a tap that lands
+        // while the page is still opening is indistinguishable from a slow one.
+        if !safari.wait(for: .runningForeground, timeout: 30) {
+            if link.isHittable { link.tap() }
+            XCTAssertTrue(
+                safari.wait(for: .runningForeground, timeout: 30),
+                "\(name) did not open Safari")
+        }
         app.activate()
         XCTAssertTrue(app.wait(for: .runningForeground, timeout: 10), "Could not return to the app after \(name)")
         // "Running foreground" arrives before the scene is taking touches: a
@@ -63,9 +72,21 @@ final class ButtonSweepUITests: MetalARMUITestCase {
         let appeared = sheet.waitForExistence(timeout: 10) || copy.waitForExistence(timeout: 2)
         XCTAssertTrue(appeared, "\(name) did not open the share sheet")
         attachScreenshot(app, named: "Share sheet - \(name)")
+
+        // Closing it is the flaky half, and it failed on CI: the sheet is still
+        // animating in when the Close button is first looked for, so the old
+        // code fell through to a swipe that landed on nothing. Wait for Close,
+        // and keep trying rather than assuming one attempt worked.
         let close = app.buttons["Close"].firstMatch
-        if close.exists { close.tap() } else { app.swipeDown(velocity: .fast) }
-        XCTAssertTrue(sheet.waitForNonExistence(timeout: 5), "\(name)'s share sheet would not close")
+        for attempt in 1...3 {
+            if close.waitForExistence(timeout: attempt == 1 ? 5 : 2), close.isHittable {
+                close.tap()
+            } else {
+                app.swipeDown(velocity: .fast)
+            }
+            if sheet.waitForNonExistence(timeout: 5) { return }
+        }
+        XCTFail("\(name)'s share sheet would not close")
     }
 
     /// Taps the switch inside a full-width SwiftUI Toggle row, then waits for
@@ -74,9 +95,21 @@ final class ButtonSweepUITests: MetalARMUITestCase {
     @MainActor
     private func flip(_ toggle: XCUIElement, _ name: String) {
         let before = isOn(toggle)
-        toggle.coordinate(withNormalizedOffset: CGVector(dx: 0.93, dy: 0.5)).tap()
-        let changed = expectation(for: NSPredicate(format: "value == %@", before ? "0" : "1"), evaluatedWith: toggle)
-        XCTAssertEqual(XCTWaiter.wait(for: [changed], timeout: 5), .completed, "\(name) did not flip")
+        let want = before ? "0" : "1"
+        // The switch itself when it is addressable, else the right-hand end of
+        // the row. A coordinate tap alone missed on CI: the row is full width,
+        // and 93% across is beside the switch on a narrower device.
+        let target = toggle.switches.firstMatch.exists ? toggle.switches.firstMatch : toggle
+        for attempt in 1...3 {
+            if attempt == 1, target.isHittable {
+                target.tap()
+            } else {
+                toggle.coordinate(withNormalizedOffset: CGVector(dx: 0.93, dy: 0.5)).tap()
+            }
+            let changed = expectation(for: NSPredicate(format: "value == %@", want), evaluatedWith: toggle)
+            if XCTWaiter.wait(for: [changed], timeout: 3) == .completed { return }
+        }
+        XCTFail("\(name) did not flip")
     }
 
     @MainActor

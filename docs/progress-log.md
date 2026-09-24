@@ -14,6 +14,57 @@ Entry format:
 
 ---
 
+## 2026-09-20 (35) - Opus - ready-made workouts, with a demo of every movement
+
+**Changed**
+- **Three ready-made workouts**, one per training style: `Athletic · Power Day`,
+  `Powerlifting · Heavy Day`, `Bodybuilding · Push Day`. Definitions live in
+  `backend/app/data/workout_presets.json` and are validated at load
+  (`app/core/presets.py`), so a typo in a slug fails on import rather than
+  serving a workout nobody can start.
+- `GET /workouts/presets` returns each slot with its WHOLE exercise,
+  `media_url` included - the clients need the name, muscles and demo link
+  before the user commits to anything.
+- `POST /workouts/sessions {preset_slug}` starts one. A preset materialises as
+  the user's OWN routine (`routines.preset_slug`, migration `4b81c0d5e7a2`),
+  made once and reused: a session takes its targets, planned order and ghost
+  values from a routine, so a preset has to become one. It is an ordinary
+  routine afterwards - listed, and editable.
+- **A demo beside the movement**, in three places on each client: next to the
+  chosen workout (tap a movement to switch the demo), on the exercise card
+  while logging, and in the exercise picker. `ios/MetalARM/Views/ExerciseDemo.swift`
+  and `frontend/metalarm/components/exercise_demo.py`: muted, looping, no
+  controls. **Demos are links, not files** - whatever `media_url` the library
+  carries - so adding clips is editing `exercises.json`, which the importer
+  upserts on every deploy. No link yet means a placeholder of the same size, so
+  nothing jumps as links are filled in.
+
+**Verified (real output)**
+- Backend: **412 passed** (9 new in `tests/test_presets.py`);
+  `alembic upgrade head`, `downgrade -1`, `upgrade head`, `alembic check` clean.
+- iOS on an erased iPhone 17e: `MetalARMTests` **80 passed**, 1 skipped;
+  `MetalARMUITests` **18 passed**, 1 skipped, including a new test that drives
+  card -> demo -> switch movement -> start and checks the plan loaded in order.
+- Web: e2e **94 passed** (9 new), smoke **128/128**.
+- Live: `GET /workouts/presets` returns 3 presets (4, 6 and 6 movements).
+
+**Blocked:** nothing. No exercise has a `media_url` yet, so every demo is a
+placeholder until links are added - deliberately, not a gap in the code.
+
+**Other agent needs to know**
+- Two traps cost an hour between them. A SwiftUI `.accessibilityIdentifier` on
+  a CONTAINER overrides its children's, so the demo's own identifier vanished;
+  each demo now takes a `context` ("presetDemo", "cardDemo", "pickerDemo")
+  because the same exercise is on screen in several places at once. And a
+  Reflex event handler's EXTRA argument is where the click event goes, so
+  `start_preset` is a separate handler from `start_session` rather than one
+  handler with two parameters.
+- A dialog that looks see-through in a screenshot is probably mid-fade: the e2e
+  waits 500 ms before shooting. I reverted a theme change I had made chasing it.
+- Migration `4b81c0d5e7a2` sits on `e6ab950c84ea`, the same parent as PR #24's
+  `9f2c1b7ad403`. Whichever merges second needs its `down_revision` repointed,
+  or alembic sees two heads.
+
 ## 2026-09-20 (34) - Opus - lifting tiers, a line after every PR, a bigger rank-up
 
 **Changed**

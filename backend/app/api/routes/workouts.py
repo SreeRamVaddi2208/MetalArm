@@ -41,7 +41,7 @@ from app.core import progression_hints as hints
 from app.core import points_engine as pe
 from app.core import workout_rules as rules
 from app.core import workout_store as store
-from app.core import importer, raids, rank_trials, rate_limit
+from app.core import importer, presets, raids, rank_trials, rate_limit
 from app.core import workout_streaks as streaks
 from app.core.periods import local_now, resolve_timezone
 from app.core.progression import (
@@ -56,6 +56,7 @@ from app.models.workout import (
     PersonalRecord,
     PointsLedgerEntry,
     Routine,
+    RoutineExercise,
     SetEntry,
     WorkoutSession,
 )
@@ -71,6 +72,8 @@ from app.schemas.workout import (
     LedgerEntryOut,
     PointsBreakdownOut,
     PointsSummaryOut,
+    PresetExerciseOut,
+    PresetOut,
     PrEventOut,
     RecordOut,
     SessionExerciseOut,
@@ -436,12 +439,110 @@ def _set_response(
 # ---------------------------------------------------------------------------
 
 
+@router.get("/presets", response_model=list[PresetOut])
+def list_presets(current_user: CurrentUser, db: DbSession) -> list[PresetOut]:
+    """The ready-made workouts, one per training style.
+
+    Each slot carries its whole exercise, `media_url` included, so a client can
+    show what the movement looks like before the user commits to the session.
+    """
+    library = {
+        exercise.slug: exercise
+        for exercise in db.scalars(
+            select(Exercise).where(Exercise.slug.in_(
+                {slot.slug for preset in presets.all_presets() for slot in preset.exercises}
+            ))
+        )
+    }
+    out: list[PresetOut] = []
+    for preset in presets.all_presets():
+        slots = [
+            PresetExerciseOut(
+                exercise=ExerciseOut.model_validate(library[slot.slug]),
+                target_sets=slot.target_sets,
+                target_reps=slot.target_reps,
+                rest_seconds=slot.rest_seconds,
+            )
+            for slot in preset.exercises
+            if slot.slug in library
+        ]
+        # A preset whose exercises are missing from this database would start a
+        # workout with nothing in it, so it is not offered at all.
+        if len(slots) == len(preset.exercises):
+            out.append(
+                PresetOut(
+                    slug=preset.slug,
+                    category=preset.category,
+                    name=preset.name,
+                    summary=preset.summary,
+                    exercises=slots,
+                )
+            )
+    return out
+
+
+def _routine_from_preset(db: Session, user: User, slug: str) -> Routine:
+    """The user's copy of a preset, made once and reused.
+
+    A session takes its targets, its planned order and its ghost values from a
+    routine, so a preset has to become one. It is a real routine afterwards:
+    editable, and listed with the rest.
+    """
+    preset = presets.by_slug(slug)
+    if preset is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No such workout")
+
+    existing = db.execute(
+        select(Routine).where(Routine.user_id == user.id, Routine.preset_slug == slug)
+    ).scalar_one_or_none()
+    if existing is not None:
+        return existing
+
+    library = {
+        exercise.slug: exercise
+        for exercise in db.scalars(
+            select(Exercise).where(Exercise.slug.in_([s.slug for s in preset.exercises]))
+        )
+    }
+    missing = [s.slug for s in preset.exercises if s.slug not in library]
+    if missing:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"This workout needs exercises that are not in the library: {', '.join(missing)}",
+        )
+
+    routine = Routine(
+        user_id=user.id,
+        name=f"{preset.category.title()} · {preset.name}",
+        notes=preset.summary,
+        preset_slug=preset.slug,
+    )
+    db.add(routine)
+    db.flush()
+    for position, slot in enumerate(preset.exercises):
+        db.add(
+            RoutineExercise(
+                routine_id=routine.id,
+                exercise_id=library[slot.slug].id,
+                position=position,
+                target_sets=slot.target_sets,
+                target_reps=slot.target_reps,
+                rest_seconds=slot.rest_seconds,
+            )
+        )
+    db.flush()
+    return routine
+
+
 @router.post("/sessions", response_model=SessionOut, status_code=status.HTTP_201_CREATED)
 def start_session(payload: SessionStart, current_user: CurrentUser, db: DbSession) -> SessionOut:
-    """Start a workout, blank or from a routine. 409 if one is already live -
+    """Start a workout: blank, from a routine, or from a ready-made workout
+    (`preset_slug`, see GET /workouts/presets). 409 if one is already live -
     finish or abandon it first (GET /workouts/sessions/active returns it)."""
     routine = None
-    if payload.routine_id is not None:
+    if payload.preset_slug is not None:
+        routine = _routine_from_preset(db, current_user, payload.preset_slug)
+    elif payload.routine_id is not None:
         routine = db.execute(
             select(Routine).where(
                 Routine.id == payload.routine_id, Routine.user_id == current_user.id

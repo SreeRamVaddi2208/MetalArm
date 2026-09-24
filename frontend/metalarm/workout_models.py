@@ -189,6 +189,8 @@ class ExerciseCard:
     exercise_id: str = ""
     name: str = ""
     muscles_label: str = ""
+    # "" when the library has no demo clip for this movement yet.
+    media_url: str = ""
     is_cardio: bool = False
     target_label: str = ""
     rest_seconds: int = 90
@@ -268,6 +270,8 @@ class ExercisePick:
     muscles_label: str = ""
     meta_label: str = ""
     is_custom: bool = False
+    # "" when the library has no clip for this movement yet.
+    media_url: str = ""
 
     @classmethod
     def from_api(cls, data: dict[str, Any]) -> "ExercisePick":
@@ -278,6 +282,57 @@ class ExercisePick:
             muscles_label=muscles_label(data.get("primary_muscle_groups")),
             meta_label=("CUSTOM · " if data.get("is_custom") else "") + equipment.upper(),
             is_custom=bool(data.get("is_custom")),
+            media_url=data.get("media_url") or "",
+        )
+
+
+@dataclasses.dataclass
+class PresetSlot:
+    """One movement of a ready-made workout, with what it asks for."""
+
+    exercise_id: str = ""
+    name: str = ""
+    muscles_label: str = ""
+    media_url: str = ""
+    plan: str = ""
+
+    @classmethod
+    def from_api(cls, data: dict[str, Any]) -> "PresetSlot":
+        exercise = data.get("exercise") or {}
+        rest = int(data.get("rest_seconds") or 0)
+        rest_label = f"{rest // 60}:{rest % 60:02d}" if rest >= 60 else f"{rest}s"
+        return cls(
+            exercise_id=exercise.get("id") or "",
+            name=exercise.get("name") or "",
+            muscles_label=muscles_label(exercise.get("primary_muscle_groups")),
+            media_url=exercise.get("media_url") or "",
+            plan=f"{data.get('target_sets')} × {data.get('target_reps')} · rest {rest_label}",
+        )
+
+
+@dataclasses.dataclass
+class WorkoutPreset:
+    """A ready-made workout for one training style (GET /workouts/presets)."""
+
+    slug: str = ""
+    category: str = ""
+    category_label: str = ""
+    name: str = ""
+    summary: str = ""
+    length_label: str = ""
+    exercises: list[PresetSlot] = dataclasses.field(default_factory=list)
+
+    @classmethod
+    def from_api(cls, data: dict[str, Any]) -> "WorkoutPreset":
+        slots = [PresetSlot.from_api(slot) for slot in data.get("exercises") or []]
+        return cls(
+            slug=data.get("slug") or "",
+            category=data.get("category") or "",
+            category_label=(data.get("category") or "").upper(),
+            name=data.get("name") or "",
+            summary=data.get("summary") or "",
+            length_label=f"{len(slots)} exercise" + ("" if len(slots) == 1 else "s"),
+            exercises=slots,
         )
 
 

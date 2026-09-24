@@ -13,6 +13,8 @@ Every number shown is from the API. Nothing here computes points or PRs.
 import reflex as rx
 
 from metalarm import ranks, theme
+from metalarm.components.exercise_demo import exercise_demo
+from metalarm.components.presets import preset_cards
 from metalarm.components.layout import section_heading
 from metalarm.components.rest_timer import elapsed_clock
 from metalarm.components.stat_panel import xp_bar
@@ -281,6 +283,7 @@ def start_view() -> rx.Component:
             spacing="3",
             **theme.panel(),
         ),
+        preset_cards(),
         section_heading(
             "FROM A ROUTINE",
             rx.link("MANAGE ROUTINES", href="/routines", color=theme.ACCENT, font_size="0.68rem",
@@ -676,6 +679,7 @@ def _log_row(card: ExerciseCard, index) -> rx.Component:
 def exercise_card(card: ExerciseCard, index) -> rx.Component:
     return rx.vstack(
         rx.hstack(
+            exercise_demo(card.media_url, card.name, size="52px", radius="10px"),
             rx.vstack(
                 rx.text(card.name, color=theme.TEXT, font_weight="800", font_size="1.02rem"),
                 rx.text(card.muscles_label, color=theme.FAINT, font_size="0.62rem", letter_spacing="0.1em"),

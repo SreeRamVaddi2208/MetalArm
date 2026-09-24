@@ -69,6 +69,27 @@ Shop points arrive at finish because sets can still be edited until then.
 An unknown, archived, or other user's exercise id in a routine → **422**.
 Use `rest_seconds` to seed the client-side rest timer.
 
+## Ready-made workouts
+
+| Method | Path | Notes |
+|---|---|---|
+| GET | `/workouts/presets` | The three styles - athletic, powerlifting, bodybuilding. Each slot carries its whole exercise, `media_url` included, so the UI can show a demo of the movement. |
+
+`POST /workouts/sessions {"preset_slug": "..."}` starts one. Send `preset_slug`
+or `routine_id`, never both (**422**); an unknown slug is a **404**.
+
+Presets are definitions in `backend/app/data/workout_presets.json`, not rows.
+Starting one materialises the user's own routine from it - once, reused after
+that - because a session takes its targets, its planned order and its ghost
+values from a routine. The copy is a normal routine afterwards: listed, and
+editable.
+
+**Demos are links, not files.** A demo is whatever `media_url` the exercise
+carries (`backend/app/data/exercises.json`, loaded by
+`scripts/import_exercises.py`, which runs on every deploy). Adding clips is
+editing that file - no client release. An exercise with no link shows a
+placeholder of the same size, so nothing jumps as links are filled in.
+
 ## Workout sessions
 
 | Method | Path | Notes |

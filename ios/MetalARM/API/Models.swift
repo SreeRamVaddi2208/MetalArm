@@ -175,6 +175,39 @@ struct SessionTarget: Codable, Equatable {
     var restSeconds: Int?
 }
 
+/// One slot of a ready-made workout: the movement, and what it asks for.
+struct PresetSlot: Codable, Equatable, Identifiable {
+    var exercise: Exercise
+    var targetSets: Int
+    var targetReps: Int
+    var restSeconds: Int
+
+    var id: String { exercise.id }
+
+    /// "3 × 5 · rest 3:00"
+    var plan: String {
+        let minutes = restSeconds / 60
+        let seconds = restSeconds % 60
+        let rest = minutes > 0 ? String(format: "%d:%02d", minutes, seconds) : "\(seconds)s"
+        return "\(targetSets) × \(targetReps) · rest \(rest)"
+    }
+}
+
+/// A ready-made workout for one training style (GET /workouts/presets).
+struct WorkoutPreset: Codable, Equatable, Identifiable {
+    var slug: String
+    var category: String
+    var name: String
+    var summary: String
+    var exercises: [PresetSlot]
+
+    var id: String { slug }
+    var categoryLabel: String { category.capitalized }
+    var lengthLabel: String {
+        "\(exercises.count) exercise\(exercises.count == 1 ? "" : "s")"
+    }
+}
+
 struct SessionExercise: Codable, Equatable, Identifiable {
     var exercise: Exercise
     var target: SessionTarget?

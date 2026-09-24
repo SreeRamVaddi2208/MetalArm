@@ -21,13 +21,16 @@ struct ExercisePickerView: View {
                         dismiss()
                     }
                 } label: {
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text(exercise.name)
-                            .font(Theme.body(15, .semibold))
-                            .foregroundStyle(Theme.text)
-                        Text("\(exercise.muscleLabel) · \(exercise.equipment.capitalized)")
-                            .font(Theme.body(12))
-                            .foregroundStyle(Theme.dim)
+                    HStack(spacing: 12) {
+                        ExerciseDemo(exercise: exercise, size: 44, cornerRadius: 9, context: "pickerDemo")
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(exercise.name)
+                                .font(Theme.body(15, .semibold))
+                                .foregroundStyle(Theme.text)
+                            Text("\(exercise.muscleLabel) · \(exercise.equipment.capitalized)")
+                                .font(Theme.body(12))
+                                .foregroundStyle(Theme.dim)
+                        }
                     }
                 }
                 .accessibilityIdentifier("pickExercise-\(exercise.name)")

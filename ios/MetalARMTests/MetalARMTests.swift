@@ -147,6 +147,66 @@ struct FormattingTests {
     }
 }
 
+// MARK: - Ready-made workouts
+
+@MainActor
+struct PresetTests {
+    @Test func everyStyleIsOffered() async throws {
+        let presets = try await MockAPIClient().presets()
+        #expect(Set(presets.map(\.category)) == ["athletic", "powerlifting", "bodybuilding"])
+        #expect(presets.allSatisfy { !$0.exercises.isEmpty })
+    }
+
+    @Test func aSlotReadsAsAPlan() {
+        let slot = PresetSlot(
+            exercise: try! LiveAPIClient.makeDecoder().decode(Exercise.self, from: Data(ContractFixtures.bench.utf8)),
+            targetSets: 3, targetReps: 5, restSeconds: 180)
+        #expect(slot.plan == "3 × 5 · rest 3:00")
+
+        var short = slot
+        short.restSeconds = 45
+        #expect(short.plan == "3 × 5 · rest 45s")
+    }
+
+    @Test func startingAPresetLoadsItsPlan() async {
+        let model = AppModel.forTesting()
+        await model.loadPresets()
+        let heavy = try! #require(model.presets.first { $0.slug == "powerlifting-heavy-day" })
+
+        await model.startWorkout(presetSlug: heavy.slug)
+        #expect(model.sessionActive)
+        #expect(model.workoutExercises.map(\.name) == heavy.exercises.map(\.exercise.name))
+        // The targets come with it, so the rest timer and the hints work from
+        // the first set - exactly as they do for a routine.
+        #expect(model.session?.exercises.first?.target?.targetSets == heavy.exercises[0].targetSets)
+        #expect(model.session?.exercises.first?.target?.restSeconds == heavy.exercises[0].restSeconds)
+        #expect(model.session?.name == "Powerlifting · Heavy Day")
+    }
+
+    @Test func aBlankWorkoutIsStillBlank() async {
+        let model = AppModel.forTesting()
+        await model.startWorkout()
+        #expect(model.sessionActive)
+        #expect(model.workoutExercises.isEmpty)
+    }
+
+    @Test func anUnknownPresetIsReported() async {
+        let model = AppModel.forTesting()
+        await model.startWorkout(presetSlug: "crossfit-hero-wod")
+        #expect(!model.sessionActive)
+        #expect(model.errorMessage.contains("No such workout"))
+    }
+
+    @Test func aDemoIsOnlyClaimedWhenThereIsOne() async throws {
+        let presets = try await MockAPIClient().presets()
+        let withDemo = presets.flatMap(\.exercises).filter { $0.exercise.mediaUrl != nil }
+        let without = presets.flatMap(\.exercises).filter { $0.exercise.mediaUrl == nil }
+        // Both states exist in the fixtures, so the UI is exercised either way.
+        #expect(!withDemo.isEmpty)
+        #expect(!without.isEmpty)
+    }
+}
+
 // MARK: - Rank tiers and the line after a record
 
 @MainActor

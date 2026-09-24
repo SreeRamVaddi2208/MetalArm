@@ -35,11 +35,19 @@ enum ContractFixtures {
      "created_at": "2026-09-01T10:00:00.123456Z", "weight_unit": "kg", "progress": \(progress)}
     """
 
-    static func exercise(_ id: String, _ name: String, _ muscles: [String], equipment: String = "barbell") -> String {
+    /// A demo clip on one exercise and none on the others, so both states -
+    /// player and "demo coming" placeholder - are exercised by the UI tests.
+    static let demoURL = "https://cdn.metalarm.example.com/demos/back-squat.mp4"
+
+    static func exercise(
+        _ id: String, _ name: String, _ muscles: [String],
+        equipment: String = "barbell", media: String? = nil
+    ) -> String {
         let groups = muscles.map { "\"\($0)\"" }.joined(separator: ", ")
+        let mediaField = media.map { "\"\($0)\"" } ?? "null"
         return """
         {"id": "\(id)", "name": "\(name)", "slug": null, "category": "strength", "primary_muscle_groups": [\(groups)],
-         "equipment": "\(equipment)", "instructions": null, "media_url": null, "is_custom": false, "is_archived": false}
+         "equipment": "\(equipment)", "instructions": null, "media_url": \(mediaField), "is_custom": false, "is_archived": false}
         """
     }
 
@@ -47,7 +55,7 @@ enum ContractFixtures {
 
     static let exercises = "[" + [
         bench,
-        exercise(squatID, "Barbell Back Squat", ["quads", "glutes", "core"]),
+        exercise(squatID, "Barbell Back Squat", ["quads", "glutes", "core"], media: demoURL),
         exercise(deadliftID, "Conventional Deadlift", ["hamstrings", "glutes", "back"]),
         exercise(pressID, "Overhead Press", ["shoulders", "triceps"]),
         exercise(rowID, "Barbell Row", ["back", "biceps"]),
@@ -133,6 +141,25 @@ enum ContractFixtures {
      {"exercise_id": "\(benchID)", "exercise_name": "Barbell Bench Press", "record_type": "est_1rm", "value": 104.83, "weight_kg": 85.0, "achieved_at": "2026-09-10T18:20:00Z", "session_id": "a4", "set_id": null},
      {"exercise_id": "\(benchID)", "exercise_name": "Barbell Bench Press", "record_type": "max_reps_at_weight", "value": 8.0, "weight_kg": 80.0, "achieved_at": "2026-08-05T18:20:00Z", "session_id": "a3", "set_id": null},
      {"exercise_id": "\(squatID)", "exercise_name": "Barbell Back Squat", "record_type": "max_weight", "value": 122.5, "weight_kg": 122.5, "achieved_at": "2026-08-26T18:20:00Z", "session_id": "b1", "set_id": null}]
+    """
+
+    static let presets = """
+    [{"slug": "powerlifting-heavy-day", "category": "powerlifting", "name": "Heavy Day",
+      "summary": "The three competition lifts, low reps and long rests. Leave a rep in the tank on every set.",
+      "exercises": [
+        {"exercise": \(exercise(squatID, "Barbell Back Squat", ["quads", "glutes", "core"], media: demoURL)), "target_sets": 3, "target_reps": 5, "rest_seconds": 180},
+        {"exercise": \(bench), "target_sets": 3, "target_reps": 5, "rest_seconds": 180},
+        {"exercise": \(exercise(deadliftID, "Conventional Deadlift", ["hamstrings", "glutes", "back"])), "target_sets": 1, "target_reps": 5, "rest_seconds": 240}]},
+     {"slug": "bodybuilding-push-day", "category": "bodybuilding", "name": "Push Day",
+      "summary": "Chest, shoulders and triceps in the eight-to-twelve range, short rests, the last two reps hard.",
+      "exercises": [
+        {"exercise": \(bench), "target_sets": 4, "target_reps": 10, "rest_seconds": 90},
+        {"exercise": \(exercise(pressID, "Overhead Press", ["shoulders", "triceps"])), "target_sets": 3, "target_reps": 12, "rest_seconds": 75}]},
+     {"slug": "athletic-power-day", "category": "athletic", "name": "Power Day",
+      "summary": "Move fast, stay fresh: explosive work first, then single-leg strength and a carry to finish.",
+      "exercises": [
+        {"exercise": \(exercise(deadliftID, "Trap Bar Deadlift", ["hamstrings", "glutes", "back"])), "target_sets": 4, "target_reps": 3, "rest_seconds": 150},
+        {"exercise": \(exercise(pullUpID, "Pull-Up", ["back", "biceps"], equipment: "bodyweight")), "target_sets": 3, "target_reps": 8, "rest_seconds": 90}]}]
     """
 
     static let parties = """

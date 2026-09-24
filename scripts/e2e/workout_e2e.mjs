@@ -242,6 +242,46 @@ try {
   check('discarding a workout returns to the start screen', true);
 
   // ---------------------------------------------------------------------
+  section('Ready-made workouts');
+  await page.goto(UI + '/workout');
+  await page.getByText('START EMPTY WORKOUT').waitFor({ timeout: 15000 });
+  const cards = page.locator('.ma-preset-card');
+  await cards.first().waitFor({ timeout: 15000 });
+  check('three ready-made workouts are offered', (await cards.count()) === 3);
+  check('a card names its style', await visible(page.getByText('POWERLIFTING').first()));
+  // Every card shows a demo box, whether or not a clip is linked yet.
+  check(
+    'every card carries a demo box',
+    (await page.locator('.ma-preset-card .ma-demo, .ma-preset-card .ma-demo-placeholder').count()) === 3,
+  );
+
+  await page.locator('.ma-preset-card[data-preset="powerlifting-heavy-day"]').click();
+  await page.locator('.ma-preset-demo').waitFor({ timeout: 15000 });
+  check('the plan opens with a demo beside it', await visible(page.locator('.ma-preset-demo')));
+  const slots = page.locator('.ma-preset-slot');
+  check('the plan lists its movements', (await slots.count()) >= 3);
+  check('a movement shows its sets and rest', await visible(page.getByText(/× 5 · rest/).first()));
+  await page.waitForTimeout(500); // the dialog fades in; a shot during it looks see-through
+  await page.screenshot({ path: `${OUT}/06-ready-made-workout.png` });
+
+  // Picking another movement moves the demo to it.
+  await page.locator('.ma-preset-slot[data-slot="Deadlift"]').click();
+  await page.waitForTimeout(600);
+  check(
+    'the demo follows the picked movement',
+    await visible(page.locator('.ma-preset-demo').getByText("Deadlift", { exact: true })),
+  );
+
+  await page.locator('.ma-preset-start').click();
+  await page.getByText('FINISH WORKOUT').waitFor({ timeout: 20000 });
+  check('starting a ready-made workout loads its plan', await visible(page.getByText('Back Squat', { exact: true })));
+  check('its targets come with it', await visible(page.getByText('TARGET', { exact: false }).first()));
+  await page.getByText('DISCARD', { exact: true }).click();
+  await page.getByText('Discard this workout?').waitFor({ timeout: 15000 });
+  await page.getByText('DISCARD', { exact: true }).last().click();
+  await page.getByText('START EMPTY WORKOUT').waitFor({ timeout: 15000 });
+
+  // ---------------------------------------------------------------------
   section('Progress');
   await page.goto(UI + '/progress');
   await page.getByText('EXERCISE PROGRESS').waitFor({ timeout: 15000 });

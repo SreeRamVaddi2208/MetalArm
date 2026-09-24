@@ -40,7 +40,10 @@ protocol MetalArmAPI: AnyObject {
     // Workouts
     func activeSession() async throws -> WorkoutSession?
     func session(id: String) async throws -> WorkoutSession
-    func startSession() async throws -> WorkoutSession
+    /// The ready-made workouts, one per training style.
+    func presets() async throws -> [WorkoutPreset]
+    /// Blank, or loaded with a preset's exercises and targets.
+    func startSession(presetSlug: String?) async throws -> WorkoutSession
     func logSet(sessionID: String, exerciseID: String, weight: Double, unit: WeightUnit, reps: Int, clientSetID: UUID) async throws -> SetLogResult
     func finishSession(sessionID: String) async throws -> FinishResult
     func abandonSession(sessionID: String) async throws
