@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import os
 import Security
 
 protocol TokenStore: AnyObject {
@@ -23,6 +24,7 @@ final class InMemoryTokenStore: TokenStore {
 /// The Keychain: encrypted at rest, readable after the first unlock (so a
 /// refresh works in the background), and never restored to another device.
 final class KeychainTokenStore: TokenStore {
+    private static let log = Logger(subsystem: "com.SreeRam.MetalARM", category: "auth")
     private let service = "com.SreeRam.MetalARM.auth"
     private let account = "tokens"
 
@@ -50,7 +52,14 @@ final class KeychainTokenStore: TokenStore {
             var item = baseQuery
             item[kSecValueData as String] = data
             item[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
-            SecItemAdd(item as CFDictionary, nil)
+            let status = SecItemAdd(item as CFDictionary, nil)
+            // A refused write used to pass silently, and the next request then
+            // found no token and reported "your session has ended" with nothing
+            // in the log to explain it. That is exactly what an unsigned build
+            // does (errSecMissingEntitlement, -34018), and it cost an hour.
+            if status != errSecSuccess {
+                Self.log.error("Keychain refused the tokens (OSStatus \(status)); the session will not survive a relaunch")
+            }
         }
     }
 }

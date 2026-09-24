@@ -91,8 +91,14 @@ struct TrainingPathView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Theme.bg)
         .task {
+            // Seed from the saved path FIRST, and never over a tap: the cards
+            // render from the fallbacks straight away, so a path can be chosen
+            // while /training-categories is still in flight - assigning after
+            // the await would throw that choice away and re-disable Save.
+            if chosen == nil {
+                chosen = model.me?.characterClass.flatMap { $0.isEmpty ? nil : $0 }
+            }
             await model.loadTrainingPaths()
-            chosen = model.me?.characterClass.flatMap { $0.isEmpty ? nil : $0 }
         }
     }
 

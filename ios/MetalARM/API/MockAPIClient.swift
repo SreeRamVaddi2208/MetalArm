@@ -193,7 +193,7 @@ final class MockAPIClient: MetalArmAPI {
         }
         let session = WorkoutSession(
             id: ContractFixtures.sessionID,
-            name: preset.map { "\($0.categoryLabel) · \($0.name)" },
+            name: preset.map { "\($0.label) · \($0.name)" },
             status: "in_progress", routineId: nil,
             startedAt: "2026-09-13T18:00:00Z", endedAt: nil, durationSeconds: 0, workingSets: 0,
             totalVolumeKg: 0, pointsTotal: 0, pointsCredited: 0, qualified: nil, exercises: planned)

@@ -227,7 +227,10 @@ struct WorkoutPreset: Codable, Equatable, Identifiable {
     var slug: String
     var category: String
     /// What the path is CALLED ("Athletic"), not the stored value ("athlete").
-    var categoryLabel: String
+    /// Optional for the same reason as `matchesYourPath` below: a missing key
+    /// is a decode failure in Swift, so a server that predates this field must
+    /// not take the whole screen down with it.
+    var categoryLabel: String?
     var name: String
     var summary: String
     var exercises: [PresetSlot]
@@ -238,6 +241,8 @@ struct WorkoutPreset: Codable, Equatable, Identifiable {
 
     var id: String { slug }
     var isYourPath: Bool { matchesYourPath == true }
+    /// The label, or a readable stand-in if the server did not send one.
+    var label: String { categoryLabel ?? category.capitalized }
     var lengthLabel: String {
         "\(exercises.count) exercise\(exercises.count == 1 ? "" : "s")"
     }

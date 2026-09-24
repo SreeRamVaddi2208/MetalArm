@@ -714,7 +714,10 @@ final class AppModel {
     }
 
     func createParty(name: String) async {
-        guard !name.trimmed.isEmpty else { return }
+        guard !name.trimmed.isEmpty else {
+            errorMessage = "Give the party a name."
+            return
+        }
         var created: Party?
         await run("Couldn't create the party") {
             created = try await api.createParty(name: name.trimmed)
@@ -726,7 +729,12 @@ final class AppModel {
     }
 
     func joinParty(inviteCode: String) async {
-        guard !inviteCode.trimmed.isEmpty else { return }
+        // Say so rather than doing nothing: an enabled button that ignores you
+        // reads as broken. The web app has always answered this way.
+        guard !inviteCode.trimmed.isEmpty else {
+            errorMessage = "Enter an invite code."
+            return
+        }
         var joined: Party?
         await run("Couldn't join the party") {
             joined = try await api.joinParty(inviteCode: inviteCode.trimmed.uppercased())

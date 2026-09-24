@@ -147,6 +147,49 @@ struct FormattingTests {
     }
 }
 
+// MARK: - Things that only break later
+
+@MainActor
+struct ResilienceTests {
+    /// Swift's decoder treats a MISSING key as a failure, default value or not,
+    /// so every field added after a client ships has to be optional - otherwise
+    /// a server rollback takes the screen down with it.
+    @Test func aPresetDecodesWithoutTheFieldsAddedLater() throws {
+        let older = """
+        {"slug": "powerlifting-heavy-day", "category": "powerlifter", "name": "Heavy Day",
+         "summary": "The three lifts.", "exercises": []}
+        """
+        let preset = try LiveAPIClient.makeDecoder().decode(WorkoutPreset.self, from: Data(older.utf8))
+        #expect(preset.name == "Heavy Day")
+        // And it still reads properly without them.
+        #expect(preset.label == "Powerlifter")
+        #expect(preset.isYourPath == false)
+    }
+
+    @Test func meDecodesWithoutTheTrainingPathTimestamp() throws {
+        let older = """
+        {"id": "u1", "email": "a@b.dev", "display_name": "A", "timezone": "UTC",
+         "created_at": "2026-09-01T10:00:00Z", "weight_unit": "kg", "character_class": "",
+         "progress": \(ContractFixtures.progress)}
+        """
+        let me = try LiveAPIClient.makeDecoder().decode(Me.self, from: Data(older.utf8))
+        #expect(me.characterClassSetAt == nil)
+    }
+
+    @Test func anEmptyInviteCodeSaysSo() async {
+        // It used to return silently, which reads as a broken button.
+        let model = AppModel.forTesting()
+        await model.joinParty(inviteCode: "   ")
+        #expect(model.errorMessage == "Enter an invite code.")
+    }
+
+    @Test func anUnnamedPartySaysSo() async {
+        let model = AppModel.forTesting()
+        await model.createParty(name: "")
+        #expect(model.errorMessage == "Give the party a name.")
+    }
+}
+
 // MARK: - Training path
 
 @MainActor
