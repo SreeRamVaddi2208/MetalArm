@@ -388,12 +388,20 @@ final class ButtonSweepUITests: MetalARMUITestCase {
             flip(again, "\(id) (back)") // put it back for the next run
         }
 
-        // Import opens the file picker; Cancel closes it.
+        // Import opens the file picker; Cancel closes it. The picker is a
+        // separate process (DocumentManager), and its first launch on a cold
+        // runner is slow the same way Safari's is - 10 s failed on CI while
+        // passing locally. Wait properly, then tap once more before giving up:
+        // a tap that landed while the picker was still coming up looks exactly
+        // like one that never registered.
         let importButton = app.buttons["importWorkoutsButton"]
         scrollUntilHittable(importButton, in: app)
         importButton.tap()
         let cancel = app.buttons["Cancel"].firstMatch
-        XCTAssertTrue(cancel.waitForExistence(timeout: 10), "Import did not open the file picker")
+        if !cancel.waitForExistence(timeout: 30) {
+            if importButton.isHittable { importButton.tap() }
+            XCTAssertTrue(cancel.waitForExistence(timeout: 30), "Import did not open the file picker")
+        }
         attachScreenshot(app, named: "Import file picker")
         cancel.tap()
         XCTAssertTrue(importButton.waitForExistence(timeout: 5), "Could not get back from the file picker")
