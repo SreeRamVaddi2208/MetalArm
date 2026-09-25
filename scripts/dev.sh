@@ -10,6 +10,7 @@
 #   scripts/dev.sh e2e          browser end-to-end, both suites
 #   scripts/dev.sh smoke        HTTP smoke test against the running stack
 #   scripts/dev.sh unlimit      clear the signup rate limit (5 per IP per hour)
+#   scripts/dev.sh record [what] record the demo: ios, web, or both
 #
 # The point of this file is that none of it has to be worked out twice: the
 # environment variables the tests need, the simulator flags that stop xcodebuild
@@ -18,6 +19,8 @@ set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$root"
+
+UI_URL="${METALARM_UI:-http://localhost:3000}"
 
 # The compose stack publishes postgres on a non-default host port, and the
 # in-container hostnames ("postgres", "redis") mean nothing from the host.
@@ -100,6 +103,28 @@ e2e)
   ;;
 smoke)
   python3 scripts/smoke_test.py "${@:2}"
+  ;;
+record)
+  # Videos land in ~/Desktop/MetalArm Recordings/<today>/, never over an
+  # older take.
+  what="${2:-both}"
+  if [ "$what" = "web" ] || [ "$what" = "both" ]; then
+    echo "==> web: the rank-up escalation"
+    # The stack serves a compiled export, so record the CURRENT frontend.
+    docker compose build frontend >/dev/null && docker compose up -d frontend >/dev/null
+    # A just-restarted container answers the port before it can serve a page;
+    # the recorder's first goto times out against it.
+    for _ in $(seq 1 60); do
+      curl -sfo /dev/null "$UI_URL/login" && break
+      sleep 2
+    done
+    "$0" unlimit >/dev/null
+    (cd scripts/e2e && node rank_up_reel.mjs)
+  fi
+  if [ "$what" = "ios" ] || [ "$what" = "both" ]; then
+    echo "==> iOS: the full tour"
+    scripts/record_tour.sh
+  fi
   ;;
 unlimit)
   set -a; . "$root/.env"; set +a
