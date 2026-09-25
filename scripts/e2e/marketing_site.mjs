@@ -43,13 +43,18 @@ try {
   const text = (await page.locator('body').innerText()).replace(/\u00a0/g, ' ');
   for (const claim of ['The gym is the game.', 'Pick how you train. Once.',
                        'Six tiers. The last one takes years.', 'Nobody trains harder alone.',
-                       'Your rival never skips a session.', 'Start at Untrained.']) {
+                       'Your rival never skips a session.', 'Start at Untrained.',
+                       'Ninety seconds, counting.', 'Proof, not vibes.']) {
     check(`section present: "${claim.slice(0, 28)}"`, text.includes(claim), text.slice(0, 120));
   }
   // Every claim on the page has to be something that ships.
   for (const unshipped of ['prestige', 'trophy case', 'Bronze', 'Diamond']) {
     check(`no unshipped claim: ${unshipped}`, !new RegExp(unshipped, 'i').test(text));
   }
+  // The captures come from a demo account, and the page has to say so - the
+  // numbers are the app's own, but the lifter is not real.
+  check('the page says where its screens come from',
+        /capture of MetalArm itself/i.test(text) && /demo account/i.test(text));
 
   await page.waitForTimeout(1200);
   check('the motion layer armed itself',
@@ -71,6 +76,30 @@ try {
   await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
   await page.waitForTimeout(1500);
   await page.screenshot({ path: `${OUT}/desktop-cta.png` });
+  // The numbers on the page are real captured ones, so they are worth pinning:
+  // a count-up that lands on the wrong figure is a lie told smoothly.
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.waitForTimeout(2200);
+  const counted = await page.evaluate(() =>
+    [...document.querySelectorAll('[data-count-to]')].map(
+      (el) => [el.dataset.countTo, el.textContent]));
+  check('every count-up lands on its real value',
+        counted.every(([target, shown]) => target === shown),
+        JSON.stringify(counted));
+
+  // The chart has to finish drawing, or it reads as a broken graphic.
+  await page.evaluate(() => {
+    const figure = document.querySelector('[data-chart-line]')?.closest('figure');
+    figure?.scrollIntoView({ block: 'center' });
+  });
+  await page.waitForTimeout(2600);
+  const drawn = await page.evaluate(() => {
+    const line = document.querySelector('[data-chart-line]');
+    return line ? Math.abs(Number(getComputedStyle(line).strokeDashoffset.replace('px', ''))) : -1;
+  });
+  check('the chart finishes drawing', drawn >= 0 && drawn < 1, String(drawn));
+  await page.screenshot({ path: `${OUT}/desktop-chart.png` });
+
   check('no uncaught errors', errors.length === 0, errors.slice(0, 2).join(' | '));
   await desktop.close();
 
@@ -110,6 +139,21 @@ try {
     return word ? getComputedStyle(word).opacity : '0';
   });
   check('copy is fully visible under reduced motion', Number(headingVisible) === 1, headingVisible);
+  // Every v2 technique needs a still form, not just the original set.
+  const calmState = await calmPage.evaluate(() => {
+    const line = document.querySelector('[data-chart-line]');
+    const screens = [...document.querySelectorAll('[data-screen]')];
+    const counts = [...document.querySelectorAll('[data-count-to]')];
+    return {
+      chartDrawn: line ? getComputedStyle(line).strokeDasharray : 'missing',
+      screensVisible: screens.every((el) => Number(getComputedStyle(el).opacity) === 1),
+      countsShown: counts.every((el) => el.textContent === el.dataset.countTo),
+    };
+  });
+  check('the chart is simply drawn under reduced motion',
+        calmState.chartDrawn === 'none', calmState.chartDrawn);
+  check('every morph screen is visible under reduced motion', calmState.screensVisible);
+  check('numbers are shown, not counted, under reduced motion', calmState.countsShown);
   await calmPage.screenshot({ path: `${OUT}/reduced-motion.png` });
   await calm.close();
 

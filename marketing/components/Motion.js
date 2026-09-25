@@ -127,6 +127,89 @@ export default function Motion() {
           });
         });
 
+        // --- Screen-to-screen morph ---------------------------------------
+        // One pinned frame, three captures cross-fading in the app's real
+        // navigation order. Separate videos rather than one long clip so each
+        // can be a short loop that carries its own beat, and so a slow
+        // connection shows the poster of the screen it is on rather than a
+        // black rectangle mid-seek.
+        document.querySelectorAll('[data-morph]').forEach((wrap) => {
+          const screens = [...wrap.querySelectorAll('[data-screen]')];
+          if (screens.length < 2) return;
+          const timeline = gsap.timeline({
+            scrollTrigger: {
+              trigger: wrap,
+              start: 'top top',
+              end: () => `+=${wrap.offsetHeight - window.innerHeight}`,
+              pin: wrap.querySelector('.ma-pin'),
+              scrub: 0.6,
+            },
+          });
+          screens.forEach((screen, i) => {
+            if (i === 0) return;
+            timeline.to(screens[i - 1], { opacity: 0, scale: 0.97, duration: 1 }, i);
+            timeline.fromTo(screen, { opacity: 0, scale: 1.03 },
+                            { opacity: 1, scale: 1, duration: 1 }, i);
+          });
+        });
+
+        // --- Numbers counting up ------------------------------------------
+        // The values are real, captured ones (see Sections.js). Counting to a
+        // number somebody actually lifted is the whole reason this technique
+        // is not tacky here.
+        document.querySelectorAll('[data-count-to]').forEach((el) => {
+          const target = Number(el.dataset.countTo);
+          const decimals = (el.dataset.countTo.split('.')[1] || '').length;
+          const state = { value: 0 };
+          gsap.to(state, {
+            value: target,
+            duration: 1.4,
+            ease: 'power2.out',
+            // Zeroed here rather than in the markup: the number has to be
+            // correct for anyone this animation never runs for.
+            onStart: () => { el.textContent = (0).toFixed(decimals); },
+            onUpdate: () => { el.textContent = state.value.toFixed(decimals); },
+            onComplete: () => { el.textContent = target.toFixed(decimals); },
+            scrollTrigger: { trigger: el, start: 'top 88%', once: true },
+          });
+        });
+
+        // --- The chart drawing itself -------------------------------------
+        document.querySelectorAll('[data-chart-line]').forEach((line) => {
+          const length = line.getTotalLength();
+          const figure = line.closest('figure');
+          gsap.set(line, { strokeDasharray: length, strokeDashoffset: length });
+          gsap.set(figure.querySelectorAll('[data-chart-dot]'), { opacity: 0 });
+          gsap.set(figure.querySelector('[data-chart-area]'), { opacity: 0 });
+          gsap.timeline({ scrollTrigger: { trigger: figure, start: 'top 78%', once: true } })
+            .to(line, { strokeDashoffset: 0, duration: 1.6, ease: 'power2.inOut' })
+            .to(figure.querySelector('[data-chart-area]'), { opacity: 1, duration: 0.6 }, 0.6)
+            .to(figure.querySelectorAll('[data-chart-dot]'),
+                { opacity: 1, duration: 0.3, stagger: 0.18 }, 0.5);
+        });
+
+        // --- Device tilt ---------------------------------------------------
+        // A few degrees, driven by how far up the viewport the frame has come.
+        // Enough to read as an object with depth; not enough to be noticed.
+        document.querySelectorAll('[data-tilt]').forEach((el) => {
+          gsap.fromTo(el, { rotateX: 9, rotateY: -7 }, {
+            rotateX: -4,
+            rotateY: 4,
+            ease: 'none',
+            scrollTrigger: { trigger: el, start: 'top bottom', end: 'bottom top', scrub: 0.8 },
+          });
+        });
+
+        // --- Headline masked over the footage beneath it -------------------
+        document.querySelectorAll('[data-mask-reveal]').forEach((el) => {
+          gsap.fromTo(el, { clipPath: 'inset(0 100% 0 0)' }, {
+            clipPath: 'inset(0 0% 0 0)',
+            duration: 1.1,
+            ease: 'power3.out',
+            scrollTrigger: { trigger: el, start: 'top 82%', once: true },
+          });
+        });
+
         // --- Parallax, used on two elements in the whole page --------------
         document.querySelectorAll('[data-parallax]').forEach((el) => {
           gsap.to(el, {

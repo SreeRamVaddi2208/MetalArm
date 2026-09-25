@@ -43,6 +43,27 @@ fonts match `ios/MetalARM`'s Theme. If you change one, change the other.
   page never says "Bronze" or "Diamond" either: MetalArm's tiers are Untrained
   through World Class.
 
+## What the page shows, and where it came from
+
+Ten sections. Every claim maps to something merged; the browser check asserts
+the page never says "Bronze" or "Diamond" (the tiers are Untrained through
+World Class) and never mentions prestige or a trophy case, which are scoped
+rather than built.
+
+| Section | Media | Source |
+|---|---|---|
+| Hero | The PR banner firing, tilted | iOS tour, demo account |
+| Not just a log | Dashboard -> live session -> summary, cross-fading | iOS tour |
+| The moment it clicks | Rest timer, scrubbed by scroll | iOS tour |
+| Training path | The three builds | iOS tour |
+| Rank-up | All five promotions, scrubbed by scroll | Web app, live backend |
+| Proof, not vibes | An SVG chart that draws itself, beside the real screen | iOS tour |
+| Compete | League and raid | iOS tour |
+
+The numbers counted up in the hero and the chart - 85 kg, 104.83 kg, 52 points -
+are read off those captures, not invented. If the footage is replaced, check
+them.
+
 ## Media
 
 `public/media/` holds clips cut from the recordings in

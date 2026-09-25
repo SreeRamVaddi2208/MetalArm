@@ -14,6 +14,50 @@ Entry format:
 
 ---
 
+## 2026-09-26 (42) - Opus - the marketing site, from the real app
+
+**Changed**
+- The site now leads with **the record firing**, not a generic loop, and every
+  section is a capture of the product: dashboard -> live session -> summary
+  cross-fading in the app's real navigation order, the rest timer scrubbed by
+  scroll, the five-tier rank-up, the training path, league and raid.
+- **Numbers on the page are read off those captures** - 85 kg top set, 104.83 kg
+  estimated 1RM, 52 points from that session - and count up to exactly those
+  values. A check asserts each one lands on its stated figure.
+- **The chart draws itself** (`components/Chart.js`): an SVG of the bench
+  progression, stroked on as it scrolls in, plotting only the three points the
+  app actually shows (72.5 kg in June, 80 kg in August, 85 kg in September).
+  Inventing smooth intermediate points would be inventing training.
+- New techniques on the existing GSAP/Lenis stack, no second library: device
+  tilt, screen-to-screen morph, count-up, chart draw-on-scroll, mask reveal.
+- **The footer says where the screens come from**: the iPhone app on its demo
+  account, the web app on a live one. The iOS tour runs against MockAPIClient,
+  so calling its data "one real account's" would have been a small lie told
+  smoothly.
+
+**Verified (real output)**
+- `scripts/e2e/marketing_site.mjs`: **28 passed**, including every count-up
+  landing on its real value, the chart finishing its draw, and - under reduced
+  motion - the chart simply drawn, the morph screens all visible and the
+  numbers shown rather than counted.
+- `npm run build`: static export, 105 kB first load. Ten sections of video
+  total about 1.5 MB, all lazy with poster frames.
+
+**Blocked**
+- Nothing.
+
+**Other agent needs to know**
+- The brief for this pass was written against an `implementation-status.md`
+  that no longer matches the repo: it listed no real auth, a single demo user,
+  seeded social data, and no routines or body measurements as "known gaps", and
+  described the rank-up animation and duels as unbuilt. All of those are built
+  and merged. It also called the 3D avatars "already real, built asset" - there
+  are no .glb/.gltf/.usdz files in the repo at all.
+- The count-up bug is the one worth remembering: the animated value was the
+  element's text, so with no JavaScript, or under reduced motion, every number
+  read 0. The real value belongs in the markup; the animation zeroes it only
+  when it actually starts.
+
 ## 2026-09-26 (41) - Opus - the marketing site
 
 **Changed**

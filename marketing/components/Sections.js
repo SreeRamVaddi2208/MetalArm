@@ -11,29 +11,23 @@
  * a trophy case or natural-language logging - those are scoped, not shipped.
  */
 
+import Chart from './Chart';
+import Device, { Loop, Scrubbed } from './Device';
 import Words from './Words';
 import Waitlist from './Waitlist';
 
-function Clip({ src, poster, className = '', ...rest }) {
+/** A number the app actually produced, counted up as it scrolls in. */
+function Stat({ value, unit, label }) {
   return (
-    <video
-      src={src}
-      poster={poster}
-      muted
-      playsInline
-      loop
-      autoPlay
-      preload="none"
-      className={className}
-      {...rest}
-    />
-  );
-}
-
-function Phone({ children, className = '' }) {
-  return (
-    <div className={`overflow-hidden rounded-[2rem] border border-border bg-panel p-1.5 shadow-2xl ${className}`}>
-      <div className="overflow-hidden rounded-[1.6rem]">{children}</div>
+    <div>
+      <p className="font-display text-4xl leading-none">
+        {/* The real value is the TEXT, not the animation's endpoint: with no
+            JavaScript, or under reduced motion, this has to read correctly.
+            Motion.js zeroes it at the moment it starts counting. */}
+        <span data-count-to={String(value)}>{value}</span>
+        <span className="ml-1 text-lg text-muted">{unit}</span>
+      </p>
+      <p className="mt-2 text-sm text-faint">{label}</p>
     </div>
   );
 }
@@ -61,14 +55,19 @@ export function Hero() {
         <Waitlist source="hero" />
       </div>
       <div className="relative mt-16 w-full max-w-[17rem] ma-rise">
-        <Phone>
-          {/* The hero loops the World Class moment itself, not the whole reel:
-              the full recording opens on a dashboard, which is a poor first
-              frame for the first thing anyone sees. The five-tier version is
-              in the rank-up section, where scrolling walks through it. */}
-          <Clip src="/media/rank-up-hero.mp4" poster="/media/rank-up-hero-poster.jpg" className="w-full" />
-        </Phone>
-        <p className="mt-4 text-sm text-faint">Reaching World Class. Recorded in the app.</p>
+        {/* The record, as it fires. The most concrete "this is real software"
+            second the app has, so it is the first thing anyone sees - the
+            five-tier rank-up gets its own section further down. */}
+        <Device tilt>
+          <Loop src="/media/pr-burst.mp4" poster="/media/pr-burst-poster.jpg" />
+        </Device>
+        <p className="mt-4 text-sm text-faint">A record, the moment it lands.</p>
+      </div>
+      {/* Real numbers from that session's summary screen, counted up. */}
+      <div className="relative mt-14 grid w-full max-w-lg grid-cols-3 gap-6 text-center ma-rise">
+        <Stat value={85} unit="kg" label="Top set, bench" />
+        <Stat value={104.83} unit="kg" label="Estimated 1RM" />
+        <Stat value={52} unit="pts" label="From that session" />
       </div>
     </section>
   );
@@ -94,7 +93,7 @@ export function NotJustALog() {
     },
   ];
   return (
-    <section data-pin="" className="ma-pin-wrap relative h-[320vh] px-6">
+    <section data-pin="" data-morph="" className="ma-pin-wrap relative h-[320vh] px-6">
       <div className="ma-pin flex h-screen items-center justify-center">
         <div className="mx-auto grid w-full max-w-5xl items-center gap-12 md:grid-cols-2">
           <div className="order-2 md:order-1">
@@ -118,10 +117,24 @@ export function NotJustALog() {
               ))}
             </div>
           </div>
+          {/* The app's real navigation order - dashboard, the live session,
+              the summary - cross-fading as the section advances, so the
+              sequence reads as the product rather than a highlight reel. */}
           <div className="order-1 mx-auto w-full max-w-[15rem] md:order-2">
-            <Phone>
-              <Clip src="/media/logging-a-set.mp4" poster="/media/logging-a-set-poster.jpg" className="w-full" />
-            </Phone>
+            <div className="relative space-y-6 md:space-y-0">
+              {[
+                ['continuity', 'The dashboard'],
+                ['logging-a-set', 'A live session'],
+                ['summary', 'The summary'],
+              ].map(([name, caption], i) => (
+                <div key={name} data-screen="" className={i === 0 ? 'md:relative' : 'md:absolute md:inset-0'}>
+                  <Device>
+                    <Loop src={`/media/${name}.mp4`} poster={`/media/${name}-poster.jpg`} />
+                  </Device>
+                  <p className="mt-3 text-center text-xs text-faint md:hidden">{caption}</p>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>
@@ -148,9 +161,9 @@ export function TrainingIdentity() {
         </p>
         <div className="mt-14 grid items-center gap-10 md:grid-cols-2">
           <div className="mx-auto w-full max-w-[15rem] ma-rise">
-            <Phone>
-              <Clip src="/media/training-path.mp4" poster="/media/training-path-poster.jpg" className="w-full" />
-            </Phone>
+            <Device>
+              <Loop src="/media/training-path.mp4" poster="/media/training-path-poster.jpg" className="w-full" />
+            </Device>
           </div>
           <ul className="space-y-4">
             {paths.map((path) => (
@@ -161,6 +174,66 @@ export function TrainingIdentity() {
             ))}
           </ul>
         </div>
+      </div>
+    </section>
+  );
+}
+
+export function TheMoment() {
+  return (
+    <section data-scrub-video="" className="ma-pin-wrap relative h-[260vh]">
+      <div className="ma-pin flex h-screen items-center px-6">
+        <div className="mx-auto grid w-full max-w-5xl items-center gap-12 md:grid-cols-2">
+          <div>
+            <p className="font-display text-xs tracking-[0.3em] text-gold">THE MOMENT IT CLICKS</p>
+            <h2 className="mt-5 font-display text-4xl leading-tight sm:text-5xl" data-mask-reveal="">
+              Ninety seconds, counting.
+            </h2>
+            <p className="mt-5 max-w-md text-lg text-muted">
+              The rest timer runs while you sit there, because the rest is part of
+              the set. It knows how long this movement wants - four minutes under a
+              heavy bar, sixty seconds on a carry - from the workout you picked.
+            </p>
+            <p className="mt-4 max-w-md text-muted">
+              Scroll to watch it run.
+            </p>
+          </div>
+          <div className="mx-auto w-full max-w-[15rem]">
+            <Device>
+              <Scrubbed src="/media/rest-timer.mp4" poster="/media/rest-timer-poster.jpg" />
+            </Device>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+export function ProgressDraws() {
+  return (
+    <section className="px-6 py-32">
+      <div className="mx-auto max-w-5xl">
+        <h2 className="max-w-2xl font-display text-4xl leading-tight sm:text-5xl">
+          <Words text="Proof, not vibes." />
+        </h2>
+        <p className="mt-5 max-w-xl text-lg text-muted ma-rise">
+          Every set you log goes into the record. Heaviest, best estimated one-rep
+          max, most reps - per movement, with the date you did it.
+        </p>
+        <div className="mt-12 grid items-center gap-10 md:grid-cols-2">
+          <div className="ma-rise">
+            <Chart />
+          </div>
+          <div className="mx-auto w-full max-w-[15rem] ma-rise">
+            <Device tilt>
+              <Loop src="/media/progress-chart.mp4" poster="/media/progress-chart-poster.jpg" />
+            </Device>
+          </div>
+        </div>
+        <p className="mt-6 text-xs text-faint">
+          Chart and records as the app draws them, from its demo account's bench
+          press. Real software, real numbers, a made-up lifter.
+        </p>
       </div>
     </section>
   );
@@ -179,7 +252,7 @@ export function RankUp() {
           be lost as well as won.
         </p>
         <div className="mt-10 w-full max-w-[15rem]">
-          <Phone>
+          <Device>
             <video
               src="/media/rank-up.mp4"
               poster="/media/rank-up-poster.jpg"
@@ -188,7 +261,7 @@ export function RankUp() {
               preload="auto"
               className="w-full"
             />
-          </Phone>
+          </Device>
         </div>
         <p className="mt-5 text-sm text-faint">Scroll to play.</p>
       </div>
@@ -220,9 +293,9 @@ export function Compete() {
             ))}
           </ul>
           <div className="mx-auto w-full max-w-[15rem] ma-rise">
-            <Phone>
-              <Clip src="/media/social.mp4" poster="/media/social-poster.jpg" className="w-full" />
-            </Phone>
+            <Device>
+              <Loop src="/media/social.mp4" poster="/media/social-poster.jpg" className="w-full" />
+            </Device>
           </div>
         </div>
       </div>
@@ -315,7 +388,12 @@ export function Cta() {
         </div>
       </div>
       <footer className="mx-auto mt-24 max-w-5xl border-t border-border pt-8 text-center text-xs text-faint">
-        MetalArm - built by Sree Ram.
+        <p className="mx-auto max-w-xl">
+          Every screen on this page is a capture of MetalArm itself - the iPhone
+          app on its demo account, and the web app on a live one. Nothing here is
+          a mock-up, and nothing is a feature that has not been built.
+        </p>
+        <p className="mt-4">MetalArm - built by Sree Ram.</p>
       </footer>
     </section>
   );
