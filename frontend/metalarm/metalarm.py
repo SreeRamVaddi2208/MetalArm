@@ -10,6 +10,7 @@ import reflex as rx
 from metalarm import theme
 from metalarm.pages.dashboard import dashboard_page
 from metalarm.pages.login import login_page, signup_page
+from metalarm.pages.duels import duels_page
 from metalarm.pages.parties import parties_page
 from metalarm.pages.profile import profile_page
 from metalarm.pages.progress import progress_page
@@ -20,6 +21,7 @@ from metalarm.state.auth import AuthState
 from metalarm.state.parties import PartyState
 from metalarm.state.profile import ProfileState
 from metalarm.state.progress import ProgressState
+from metalarm.state.duels import DuelState
 from metalarm.state.quests import QuestState
 from metalarm.state.rewards import RewardState
 from metalarm.state.routines import RoutineState
@@ -55,6 +57,12 @@ class RouteState(rx.State):
         if not auth.token:
             return rx.redirect("/login")
         return [AuthState.refresh_me, RewardState.load]
+
+    async def enter_duels(self):
+        auth = await self.get_state(AuthState)
+        if not auth.token:
+            return rx.redirect("/login")
+        return [AuthState.refresh_me, DuelState.load]
 
     async def enter_parties(self):
         auth = await self.get_state(AuthState)
@@ -137,6 +145,12 @@ app.add_page(
     route="/rewards",
     title="Rewards - MetalArm",
     on_load=RouteState.enter_rewards,
+)
+app.add_page(
+    duels_page,
+    route="/duels",
+    title="Duels - MetalArm",
+    on_load=RouteState.enter_duels,
 )
 app.add_page(
     parties_page,

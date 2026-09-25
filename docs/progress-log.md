@@ -14,6 +14,61 @@ Entry format:
 
 ---
 
+## 2026-09-26 (40) - Opus - duels, and the feed they feed into
+
+**Changed**
+- **Duels** (`app/models/duel.py`, `app/core/duels.py`, `app/api/routes/duels.py`,
+  migration `8d1f4c60ba57`): a window and a metric (volume / sets / sessions).
+  Who is ahead is never stored - both totals are summed from the sets and
+  sessions inside the window on every read, the rule leagues and raids already
+  follow. Delete a set and its volume leaves the running duel with it.
+- **The rival is a pace, not a person.** With nobody to challenge, the opponent
+  is synthetic: a target generated once from the CHALLENGER'S OWN last four
+  windows of the same length, stretched 8%, floored so a brand-new account is
+  not handed an unlosable duel. Never another user's data - that is the whole
+  safety argument - and its "progress" is that target paced evenly rather than
+  a simulation pretending to train.
+- **Judged lazily**, like a league week: a closed duel is judged by the first
+  read of it, which also pays the winner (`duel_won`, 40 points) and writes the
+  feed entry, in one transaction holding the level_progress lock.
+- **The activity feed** (`app/core/activity.py`): a read model fanned out from
+  PRs, finished sessions, rank-ups, quest completions and duel wins. Every row
+  points back at the record that caused it and could be rebuilt from it, which
+  is why a duplicate is safe to swallow. Stamped with the party at write time,
+  so leaving a party neither erases your history in it nor keeps showing your
+  new PRs to people you have left.
+- **Web**: `/duels` - challenge panel (metric, window, rival or a party
+  member), waiting / running / settled cards, and the feed. The win moment
+  borrows the rank-up's veil, card and line classes and nothing else: a duel is
+  a flourish, a promotion is the event.
+- `AuthState` now keeps `user_id`. /auth/me always returned it; nothing needed
+  it until a duel had to know which side was yours.
+
+**Verified (real output)**
+- Backend: **456 passed** (28 new). `alembic check` clean; the downgrade
+  round-trips on a scratch database.
+- Browser: `scripts/e2e/duels_e2e.mjs` **12 passed** - two accounts in a party,
+  challenge, accept, a rival duel, and a member's PR reaching the other's feed.
+  `workout_e2e.mjs` **101 passed** with /duels added to the page sweep.
+
+**Blocked**
+- Nothing.
+
+**Other agent needs to know**
+- Two bugs here were found by tests rather than by reasoning, and both would
+  have been invisible in review:
+  - the feed's UNIQUE needs `party_id` in the key AND `NULLS NOT DISTINCT`.
+    Without party_id the party copy collided with the personal one and was
+    silently swallowed; with distinct NULLs the personal copy never dedupes.
+  - a pending duel reads completely differently from its two sides, and
+    "the challenger exists" is not the test for which side you are on. The
+    challenger was being told they had been challenged.
+- The rest of that brief is untouched: prestige, avatar evolution,
+  natural-language logging, the trophy case and season snapshots. Crews,
+  raids, quests, leagues and progression hints ALREADY EXISTED as parties,
+  raids, quests, weekly leagues and progression_hints.py - check before
+  building any of them.
+
 ## 2026-09-25 (38) - Opus - one script for the whole local loop
 
 **Changed**

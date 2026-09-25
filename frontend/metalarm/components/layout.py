@@ -49,6 +49,7 @@ def navbar() -> rx.Component:
             nav_link("WORKOUT", "/workout"),
             nav_link("PROGRESS", "/progress"),
             nav_link("PARTIES", "/parties"),
+            nav_link("DUELS", "/duels"),
             nav_link("REWARDS", "/rewards"),
             nav_link("PROFILE", "/profile"),
             spacing="5",
@@ -92,7 +93,7 @@ def navbar() -> rx.Component:
 def mobile_nav() -> rx.Component:
     """Shown only where the top-bar links are hidden, so navigation never
     disappears on a narrow screen."""
-    # Six links on one line that scrolls sideways at phone width, rather than
+    # Seven links on one line that scrolls sideways at phone width, rather than
     # wrapping into two ragged rows. The right edge fades out so the row reads
     # as scrollable - otherwise the links past the edge look like they do not
     # exist. The end padding lets the last link scroll clear of the fade.
@@ -101,6 +102,7 @@ def mobile_nav() -> rx.Component:
         nav_link("WORKOUT", "/workout"),
         nav_link("PROGRESS", "/progress"),
         nav_link("PARTIES", "/parties"),
+        nav_link("DUELS", "/duels"),
         nav_link("REWARDS", "/rewards"),
         nav_link("PROFILE", "/profile"),
         spacing="5",

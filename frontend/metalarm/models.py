@@ -561,3 +561,165 @@ class LeagueView:
             ),
             rows=entries,
         )
+
+
+def parse_dt(raw: Any) -> dt.datetime | None:
+    """An API timestamp, or None. The API speaks UTC and suffixes Z, which
+    fromisoformat only learned to accept in 3.11 - replaced for clarity either
+    way."""
+    if not raw:
+        return None
+    try:
+        return dt.datetime.fromisoformat(str(raw).replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+
+def ago(when: dt.datetime | None) -> str:
+    """"4h ago". Short, because the feed shows one per line."""
+    if when is None:
+        return ""
+    seconds = (dt.datetime.now(dt.timezone.utc) - when).total_seconds()
+    if seconds < 90:
+        return "just now"
+    for size, suffix in ((3600, "m"), (86400, "h"), (604800, "d")):
+        if seconds < size:
+            step = size // 60 if suffix == "m" else (3600 if suffix == "h" else 86400)
+            return f"{int(seconds // step)}{suffix} ago"
+    return f"{int(seconds // 604800)}w ago"
+
+
+def _thousands(value: float) -> str:
+    return f"{round(value):,}"
+
+
+@dataclasses.dataclass
+class DuelSide:
+    """One half of a duel, already formatted for the card."""
+
+    user_id: str = ""
+    display_name: str = ""
+    score: float = 0.0
+    is_rival: bool = False
+    score_label: str = "0"
+
+    @classmethod
+    def from_api(cls, data: dict[str, Any], metric: str) -> "DuelSide":
+        score = float(data.get("score") or 0)
+        return cls(
+            user_id=str(data.get("user_id") or ""),
+            display_name=data.get("display_name") or "Someone",
+            score=score,
+            is_rival=bool(data.get("is_rival")),
+            score_label=_metric_label(score, metric),
+        )
+
+
+def _metric_label(score: float, metric: str) -> str:
+    """Volume is kilograms; the other two are counts, and "3.0 sets" reads
+    like a bug."""
+    if metric == "volume":
+        return f"{_thousands(score)} kg"
+    return f"{int(round(score))}"
+
+
+@dataclasses.dataclass
+class Duel:
+    id: str = ""
+    metric: str = "volume"
+    metric_label: str = "VOLUME"
+    status: str = "pending"
+    challenger: DuelSide = dataclasses.field(default_factory=DuelSide)
+    opponent: DuelSide = dataclasses.field(default_factory=DuelSide)
+    winner_id: str = ""
+    is_draw: bool = False
+    points_awarded: int = 0
+    ends_label: str = ""
+    # Who is ahead, from the reader's point of view - the card leads with it.
+    i_am_ahead: bool = False
+    i_won: bool = False
+    # Whether the reader SENT this challenge. A pending duel reads completely
+    # differently from the two sides, and "challenger exists" is not the test.
+    i_challenged: bool = False
+    my_score_label: str = "0"
+    their_score_label: str = "0"
+    their_name: str = ""
+
+    @classmethod
+    def from_api(cls, data: dict[str, Any], me: str) -> "Duel":
+        metric = data.get("metric") or "volume"
+        challenger = DuelSide.from_api(data.get("challenger") or {}, metric)
+        opponent = DuelSide.from_api(data.get("opponent") or {}, metric)
+        mine, theirs = (challenger, opponent) if challenger.user_id == me else (opponent, challenger)
+        winner = str(data.get("winner_id") or "")
+        return cls(
+            id=str(data.get("id") or ""),
+            metric=metric,
+            metric_label=metric.upper(),
+            status=data.get("status") or "pending",
+            challenger=challenger,
+            opponent=opponent,
+            winner_id=winner,
+            is_draw=bool(data.get("is_draw")),
+            points_awarded=int(data.get("points_awarded") or 0),
+            ends_label=_ends_label(data.get("window_end")),
+            i_am_ahead=mine.score > theirs.score,
+            i_won=bool(winner) and winner == me,
+            i_challenged=challenger.user_id == me,
+            my_score_label=mine.score_label,
+            their_score_label=theirs.score_label,
+            their_name=theirs.display_name,
+        )
+
+
+def _ends_label(raw: Any) -> str:
+    """"2 days left", or "ended" once the window has closed."""
+    when = parse_dt(raw)
+    if when is None:
+        return ""
+    left = when - dt.datetime.now(dt.timezone.utc)
+    if left.total_seconds() <= 0:
+        return "ended"
+    # Rounded, not floored: with 47 hours to go, "1 day left" is wrong enough
+    # to change how someone trains today.
+    days = round(left.total_seconds() / 86400)
+    if days >= 1:
+        return f"{days} day{'s' if days != 1 else ''} left"
+    hours = int(left.total_seconds() // 3600)
+    if hours >= 1:
+        return f"{hours} hour{'s' if hours != 1 else ''} left"
+    return "ends within the hour"
+
+
+@dataclasses.dataclass
+class ActivityEntry:
+    id: str = ""
+    user_id: str = ""
+    display_name: str = ""
+    event_type: str = ""
+    headline: str = ""
+    when_label: str = ""
+    # One glyph per kind, so the feed is scannable without reading every line.
+    icon: str = "•"
+
+    @classmethod
+    def from_api(cls, data: dict[str, Any]) -> "ActivityEntry":
+        kind = data.get("event_type") or ""
+        return cls(
+            id=str(data.get("id") or ""),
+            user_id=str(data.get("user_id") or ""),
+            display_name=data.get("display_name") or "Someone",
+            event_type=kind,
+            headline=data.get("headline") or "",
+            when_label=ago(parse_dt(data.get("created_at"))),
+            icon=ACTIVITY_ICONS.get(kind, "•"),
+        )
+
+
+ACTIVITY_ICONS = {
+    "pr_achieved": "◆",       # a filled diamond: the rarest of the five
+    "rank_up": "▲",
+    "session_completed": "●",
+    "duel_won": "⚔",
+    "quest_completed": "✓",
+}

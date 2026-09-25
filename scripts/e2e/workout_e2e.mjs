@@ -368,7 +368,7 @@ try {
 
   // ---------------------------------------------------------------------
   section('Every page, phone and desktop');
-  const routes = ['/dashboard', '/workout', '/routines', '/progress', '/parties', '/rewards', '/profile'];
+  const routes = ['/dashboard', '/workout', '/routines', '/progress', '/parties', '/duels', '/rewards', '/profile'];
   for (const [label, viewport] of [['phone', { width: 400, height: 860 }], ['desktop', { width: 1280, height: 900 }]]) {
     const sweep = await browser.newContext({ viewport });
     const p = await sweep.newPage();
