@@ -68,6 +68,52 @@ Entry format:
   raids, quests, leagues and progression hints ALREADY EXISTED as parties,
   raids, quests, weekly leagues and progression_hints.py - check before
   building any of them.
+## 2026-09-25 (39) - Opus - the demo, re-recorded, and the harness kept
+
+**Changed**
+- **`scripts/record_tour.sh`**: the iOS recording harness, which until now
+  lived only in a session scratchpad under /private/tmp with that path
+  hardcoded inside it - half of that directory had already been cleaned up.
+  Same recipe, because every line of it was learned the hard way: a throwaway
+  iPhone 17 Pro Max so no leftover state is on camera, the status bar pinned to
+  9:41, `build-for-testing` before the camera rolls, `kill -INT` so the
+  recorder finalises the container, `-parallel-testing-enabled NO` so it does
+  not record a cloned simulator, and the lead-in trimmed to the first
+  DEMO_MARK. It writes to a dated folder now instead of overwriting the last
+  take.
+- **`scripts/e2e/rank_up_reel.mjs`**: a camera for the rank-up escalation,
+  sibling to `rank_up_e2e.mjs` (which stays the test). Drives the five
+  promotions through `?celebrate=<rank>`, records with Playwright and converts
+  to mp4.
+- **`scripts/dev.sh record [ios|web|both]`**, which rebuilds the web image
+  first - the stack serves a compiled export, so otherwise the reel records
+  yesterday's build - and waits for `/login` to actually answer. A
+  just-restarted container accepts connections a few seconds before it can
+  serve a page, and the recorder's first `goto` timed out against it.
+
+**Verified (real output)**
+- iOS tour: **19 marks** (every chapter fired), 269s, 85 MB. Frames pulled at
+  0:38, 2:21 and 4:05 match their chapters - the training path with all three
+  builds, the PR banner reading "New heaviest Barbell Bench Press: 80 kg /
+  That rep looked easy. It wasn't.", and the rank-up finale's workout.
+- Web reel: 29.7s, 400x860, 894 KB. Frames at 0:04, 0:14 and 0:26 show Novice
+  plain in steel, Advanced picking up laurel and gold, World Class crowned with
+  the filigree ring.
+- Both in `~/Desktop/MetalArm Recordings/2026-09-25/`; the 21 Sep tour is
+  untouched beside it.
+
+**Blocked**
+- The tour still shows **placeholder figures** on the training path and "Demo
+  coming" where the movement clips go: `ios/MetalARM/Models/` holds only its
+  README, and no exercise in `exercises.json` has a `media_url`. Both are
+  waiting on assets, and the loader already handles them
+  (`TrainingPathCharacter.make`).
+- The tour's finale is iOS's **older** rank-up. The escalation from entry 37 is
+  web-only, which is why there are two videos rather than one.
+
+**Other agent needs to know**
+- Videos are deliberately not in git (85 MB). They live on the Desktop; the
+  scripts that make them are what is committed.
 
 ## 2026-09-25 (38) - Opus - one script for the whole local loop
 
