@@ -83,6 +83,10 @@ class LedgerSource(str, enum.Enum):
     SESSION_COMPLETED = "session_completed"
     PR_ACHIEVED = "pr_achieved"
     STREAK_BONUS = "streak_bonus"
+    # Won a head-to-head over its window (app/core/duels.py). Awarded once,
+    # when the duel is judged; the ledger's UNIQUE on (source_type, source_id)
+    # is what makes "once" true rather than a flag that can be checked stale.
+    DUEL_WON = "duel_won"
     # Negates an earlier entry (a deleted or edited set, an abandoned session).
     # The ledger is append-only, so undoing an award is a new row, never an
     # UPDATE or DELETE of the original.

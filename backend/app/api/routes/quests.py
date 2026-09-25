@@ -10,8 +10,10 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.api.deps import CurrentUser, DbSession
+from app.core import activity
 from app.core.periods import period_key
 from app.core.progression import apply_completion, lock_progress
+from app.models.duel import ActivityType
 from app.models.enums import QuestStatus
 from app.models.quest import Quest, QuestCompletion
 from app.models.user import User
@@ -248,6 +250,15 @@ def complete_quest(
         points=quest.points_reward,
         completed_at=now,
         tz_name=current_user.timezone,
+    )
+
+    activity.record(
+        db,
+        user_id=current_user.id,
+        event_type=ActivityType.QUEST_COMPLETED,
+        headline=f"Completed \"{quest.title}\"",
+        source_id=completion.id,
+        at=now,
     )
 
     db.commit()

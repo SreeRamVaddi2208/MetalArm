@@ -45,6 +45,9 @@ class AuthState(rx.State):
     token: str = rx.LocalStorage("", name="lf_token")
     refresh_token: str = rx.LocalStorage("", name="lf_refresh")
 
+    # Needed to tell which side of a duel is yours; /auth/me has always
+    # returned it, it simply was not kept until duels needed it.
+    user_id: str = ""
     display_name: str = ""
     email: str = ""
     timezone: str = "UTC"
@@ -266,6 +269,7 @@ class AuthState(rx.State):
                 pass
         self.token = ""
         self.refresh_token = ""
+        self.user_id = ""
         self.display_name = ""
         self.email = ""
         self.weight_unit = "kg"
@@ -275,6 +279,7 @@ class AuthState(rx.State):
 
     async def _load_me(self) -> None:
         data = await api.me(self.token)
+        self.user_id = str(data.get("id") or "")
         self.display_name = data.get("display_name") or ""
         self.email = data.get("email") or ""
         self.timezone = data.get("timezone") or "UTC"

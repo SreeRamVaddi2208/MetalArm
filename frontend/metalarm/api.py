@@ -285,3 +285,34 @@ async def rank_trials(token: str) -> list[dict]:
 
 async def import_workouts(token: str, csv: str, unit: str) -> dict:
     return await request("POST", "/workouts/import", token=token, json={"csv": csv, "unit": unit})
+
+
+# --- Duels and the activity feed ------------------------------------------
+async def list_duels(token: str) -> dict:
+    """Every duel you are in, grouped (GET /duels). Reading is what judges a
+    duel whose window has closed, so the response can carry a win."""
+    return await request("GET", "/duels", token=token)
+
+
+async def create_duel(
+    token: str, *, metric: str, days: int, opponent_id: str = "", against_rival: bool = False
+) -> dict:
+    payload: dict[str, Any] = {"metric": metric, "days": days}
+    if against_rival:
+        payload["against_rival"] = True
+    else:
+        payload["opponent_id"] = opponent_id
+    return await request("POST", "/duels", token=token, json=payload)
+
+
+async def accept_duel(token: str, duel_id: str) -> dict:
+    return await request("POST", f"/duels/{duel_id}/accept", token=token)
+
+
+async def decline_duel(token: str, duel_id: str) -> dict:
+    return await request("POST", f"/duels/{duel_id}/decline", token=token)
+
+
+async def activity_feed(token: str, *, party_id: str = "", limit: int = 30) -> dict:
+    params = f"?limit={limit}" + (f"&party_id={party_id}" if party_id else "")
+    return await request("GET", f"/feed{params}", token=token)
