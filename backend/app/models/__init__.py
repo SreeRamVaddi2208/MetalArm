@@ -6,6 +6,7 @@ autogenerate and silently omitted from migrations.
 """
 
 from app.models.auth_session import AuthSession
+from app.models.duel import ActivityEvent, Duel
 from app.models.party import (
     Party,
     PartyMembership,
@@ -32,7 +33,9 @@ from app.models.workout import (
 )
 
 __all__ = [
+    "ActivityEvent",
     "AuthSession",
+    "Duel",
     "LeagueMembership",
     "PushDevice",
     "User",

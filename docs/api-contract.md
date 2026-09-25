@@ -10,7 +10,7 @@
 
 - **API title:** MetalArm API
 - **API version:** 0.1.0
-- **Generated:** 2026-09-20 21:26 UTC
+- **Generated:** 2026-09-25 19:02 UTC
 - **Source:** `http://localhost:8000/openapi.json`
 
 ---
@@ -296,6 +296,99 @@ and only ever removes the caller's own token.
 
 ---
 
+### `GET /api/v1/duels`
+
+**List Duels**
+
+Every duel the caller is in, judging any whose window has closed.
+
+*Tags:* `duels`
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+
+---
+
+### `POST /api/v1/duels`
+
+**Create Duel**
+
+Challenge a party member, or the rival.
+
+Only people you share a party with: an open challenge to any account would
+be a way to find out whether an account exists, and a stranger's challenge
+is noise rather than a game.
+
+*Tags:* `duels`
+
+*Request body* (`application/json`): `DuelCreate`
+
+| Status | Description |
+|---|---|
+| `201` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `GET /api/v1/duels/{duel_id}`
+
+**Get Duel**
+
+*Tags:* `duels`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `duel_id` | path | `string` | yes |
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `POST /api/v1/duels/{duel_id}/accept`
+
+**Accept Duel**
+
+Take up a challenge. The window starts NOW, not when it was sent.
+
+Otherwise a challenge left sitting for six days would hand the challenger
+almost the whole window to themselves.
+
+*Tags:* `duels`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `duel_id` | path | `string` | yes |
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `POST /api/v1/duels/{duel_id}/decline`
+
+**Decline Duel**
+
+Turn one down - or withdraw one you sent, before it is accepted.
+
+*Tags:* `duels`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `duel_id` | path | `string` | yes |
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
 ### `GET /api/v1/exercises`
 
 **List Exercises**
@@ -440,6 +533,27 @@ added mid-workout. Empty `sets` when it has never been done.
 | Param | In | Type | Required |
 |---|---|---|---|
 | `exercise_id` | path | `string` | yes |
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `GET /api/v1/feed`
+
+**Get Feed**
+
+What the caller and their parties have been up to, newest first.
+
+*Tags:* `duels`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `party_id` | query | `string | null` | no |
+| `limit` | query | `integer` | no |
+| `before` | query | `string | null` | no |
 
 | Status | Description |
 |---|---|
@@ -1580,6 +1694,19 @@ otherwise 503 with per-dependency detail.
 |---|---|---|
 | `session` | `SessionOut | null` | yes |
 
+#### `ActivityOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `id` | `string` | yes |
+| `user_id` | `string` | yes |
+| `display_name` | `string` | yes |
+| `event_type` | `string` | yes |
+| `headline` | `string` | yes |
+| `party_id` | `string | null` | yes |
+| `source_id` | `string | null` | yes |
+| `created_at` | `string` | yes |
+
 #### `AwardOut`
 
 | Field | Type | Required |
@@ -1671,6 +1798,54 @@ otherwise 503 with per-dependency detail.
 |---|---|---|
 | `password` | `string` | yes |
 
+#### `DuelCreate`
+
+| Field | Type | Required |
+|---|---|---|
+| `metric` | `DuelMetric` | no |
+| `days` | `integer` | no |
+| `opponent_id` | `string | null` | no |
+| `against_rival` | `boolean` | no |
+
+#### `DuelListOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `active` | `DuelOut[]` | yes |
+| `pending` | `DuelOut[]` | yes |
+| `completed` | `DuelOut[]` | yes |
+
+#### `DuelMetric`
+
+| Field | Type | Required |
+|---|---|---|
+| _(no properties)_ | | |
+
+#### `DuelOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `id` | `string` | yes |
+| `metric` | `string` | yes |
+| `status` | `string` | yes |
+| `window_start` | `string` | yes |
+| `window_end` | `string` | yes |
+| `challenger` | `DuelSide` | yes |
+| `opponent` | `DuelSide` | yes |
+| `winner_id` | `string | null` | no |
+| `is_draw` | `boolean` | no |
+| `resolved_at` | `string | null` | no |
+| `points_awarded` | `integer | null` | no |
+
+#### `DuelSide`
+
+| Field | Type | Required |
+|---|---|---|
+| `user_id` | `string | null` | yes |
+| `display_name` | `string` | yes |
+| `score` | `number` | yes |
+| `is_rival` | `boolean` | no |
+
 #### `Equipment`
 
 | Field | Type | Required |
@@ -1749,6 +1924,13 @@ otherwise 503 with per-dependency detail.
 | `equipment` | `Equipment | null` | no |
 | `instructions` | `string | null` | no |
 | `media_url` | `string | null` | no |
+
+#### `FeedOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `entries` | `ActivityOut[]` | yes |
+| `next_before` | `string | null` | no |
 
 #### `FinishResponse`
 

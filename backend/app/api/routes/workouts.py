@@ -36,6 +36,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.api.deps import CurrentUser, DbSession
+from app.core import activity
 from app.core import personal_records as prs
 from app.core import progression_hints as hints
 from app.core import points_engine as pe
@@ -61,6 +62,7 @@ from app.models.workout import (
     SetEntry,
     WorkoutSession,
 )
+from app.models.duel import ActivityType
 from app.models.workout_enums import LedgerSource, RecordType, SessionStatus, WeightUnit
 from app.schemas.quest import ProgressionDeltaOut
 from app.schemas.workout import (
@@ -1016,6 +1018,39 @@ def finish_session(
         reversals=ledger.gross(LedgerSource.REVERSAL),
         total=ledger.total,
     )
+    # The feed, fanned out from what just happened. Last, so a feed write can
+    # never be the reason a finished workout fails: activity.record() keeps
+    # each row in its own SAVEPOINT for the same reason.
+    if qualified:
+        activity.record(
+            db,
+            user_id=current_user.id,
+            event_type=ActivityType.SESSION_COMPLETED,
+            headline=f"Finished {summary.name}",
+            source_id=session.id,
+            at=now,
+        )
+    for record in records:
+        activity.record(
+            db,
+            user_id=current_user.id,
+            event_type=ActivityType.PR_ACHIEVED,
+            headline=f"New record: {names.get(record.exercise_id, 'a lift')}",
+            source_id=record.id,
+            at=now,
+        )
+    if delta.ranked_up:
+        activity.record(
+            db,
+            user_id=current_user.id,
+            event_type=ActivityType.RANK_UP,
+            headline=f"Reached {delta.rank_after}",
+            # A rank-up is not a row anywhere, so the session that caused it
+            # stands in as the thing it happened to.
+            source_id=session.id,
+            at=now,
+        )
+
     response = FinishResponse(
         session=summary,
         qualified=qualified,
