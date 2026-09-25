@@ -15,6 +15,7 @@ from app.api.routes import (
     rewards,
     routines,
     training_paths,
+    waitlist,
     workouts,
 )
 
@@ -34,5 +35,6 @@ api_router.include_router(workouts.router)
 api_router.include_router(body.router)
 api_router.include_router(leagues.router)
 api_router.include_router(duels.router)
+api_router.include_router(waitlist.router)
 api_router.include_router(devices.router)
 api_router.include_router(training_paths.router)

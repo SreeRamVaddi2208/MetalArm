@@ -14,6 +14,56 @@ Entry format:
 
 ---
 
+## 2026-09-26 (41) - Opus - the marketing site
+
+**Changed**
+- **`marketing/`**: the public page, Next.js static export + Tailwind + GSAP/
+  ScrollTrigger + Lenis, as the brief specified. Kept OUT of `frontend/` on
+  purpose - that app owns its own Node toolchain and has no hand-written
+  package.json for a reason (see the note in frontend/requirements.txt). The
+  cost is duplicated brand tokens, written down in marketing/README.md.
+- Eight sections: hero, a pinned "not just a log" walk-through, the training
+  path, a scroll-scrubbed rank-up, the social layer, the rival, a comparison
+  strip and the waitlist. **Every claim maps to something merged** - points per
+  set, losable ranks, the training path, parties, duels, the feed, weekly
+  leagues, raids, next-set hints. Nothing promises prestige, a trophy case or
+  natural-language logging, and the check asserts the page never says "Bronze"
+  or "Diamond": the tiers are Untrained through World Class.
+- **`POST /waitlist`** (`app/models/waitlist.py`, migration `a3f61d92c485`):
+  the only public write besides signup. It answers the same way whether the
+  address is new or already there, because a different answer would make it a
+  way to test whether somebody had signed up. Not a user row - a waitlist
+  entry has no account and must not look like a half-made one.
+- CORS now lists `http://localhost:4000` as well. Missing it made the form fail
+  in a way that looks exactly like the API being down.
+- The clips in `marketing/public/media/` are cut from the real recordings
+  (entry 39), 540px wide at CRF 30 - the whole page carries under a megabyte
+  of video.
+
+**Verified (real output)**
+- `scripts/e2e/marketing_site.mjs`: **20 passed** - every section present, no
+  unshipped claim, pinning on desktop, pinning DROPPED on a phone with all
+  steps still readable, reduced motion building no timelines at all, the page
+  readable with JavaScript disabled, and the waitlist form posting for real.
+- Backend **463 passed** (7 new). `alembic check` clean.
+- `npm run build`: static export, 105 kB first load JS - GSAP and Lenis are
+  dynamically imported, so they are not on the critical path.
+
+**Blocked**
+- Nothing here. The 3D avatar section from the brief was built from recorded
+  footage instead: there are no .glb/.gltf/.usdz assets anywhere in the repo,
+  and the figures in the iOS app are placeholder SceneKit shapes.
+
+**Other agent needs to know**
+- Two bugs worth remembering, both caught by the browser check:
+  - the pinned section's steps were hidden with inline `opacity: 0`, so on a
+    phone - where the pin is dropped and no timeline runs - three of four were
+    invisible. The hidden state belongs in CSS scoped to the width where the
+    animation actually runs.
+  - the waitlist silently failed from :4000 until CORS listed it.
+- `NEXT_PUBLIC_API_URL` is baked in at BUILD time. Deploying the site at a new
+  API host means rebuilding it, not restarting it.
+
 ## 2026-09-26 (40) - Opus - duels, and the feed they feed into
 
 **Changed**
