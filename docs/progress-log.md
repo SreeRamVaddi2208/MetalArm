@@ -14,6 +14,49 @@ Entry format:
 
 ---
 
+## 2026-09-25 (38) - Opus - one script for the whole local loop
+
+**Changed**
+- **`scripts/dev.sh`**: setup, the stack, and every test suite behind one
+  command each. It exists because three things had to be worked out from
+  scratch this week and would have had to be worked out again:
+  - the backend suite needs `POSTGRES_HOST=localhost` and the compose stack's
+    *host* port (5434), because "postgres" and 5432 only mean something inside
+    the network;
+  - `xcodebuild` must be pointed at an already-booted simulator with
+    `-parallel-testing-enabled NO`, or it clones simulators, fails with "Error
+    resuming pid ... signal 19", and then spends ten minutes in `simctl
+    diagnose` before saying so (the same reason ios.yml boots one);
+  - a frontend edit is invisible until `docker compose build frontend`, since
+    the stack serves a compiled Reflex export rather than the working tree.
+  - `dev.sh unlimit` clears the signup rate limit, which stopped the browser
+    e2e twice in one afternoon (5 signups per IP per hour).
+- **`frontend/requirements-dev.txt`** (pytest), mirroring the backend's
+  convention, and the CI job installs from it instead of naming pytest inline.
+- The backend suite now runs **locally**: `backend/.venv` had the runtime
+  dependencies but no test runner, so until now it only ever ran in CI or in
+  the Docker dev stage.
+
+**Verified (real output)**
+- `scripts/dev.sh backend`: **428 passed in 126.25s**, against the running
+  compose stack. First local run of that suite.
+- `scripts/dev.sh frontend`: **13 passed in 0.02s**.
+- `scripts/dev.sh setup` from a warm machine: venvs, `npm install`, simulator
+  booted, no errors. `dev.sh unlimit`: "Signup rate limit cleared."
+- Simulators: iOS 26.3.1, 26.5 and 27.0 runtimes with 18 iPhone devices are
+  already installed - nothing to download, and more runtimes would be several
+  GB for no benefit.
+
+**Blocked**
+- `brew install xcbeautify` cannot reach `formulae.brew.sh` from here (curl
+  stalls under 100 B/s). It is only cosmetic - `dev.sh ios` filters xcodebuild's
+  output to the lines that matter and keeps the full log at
+  /tmp/metalarm-ios.log - so it is not worth chasing.
+
+**Other agent needs to know**
+- Use `scripts/dev.sh` rather than remembering the flags. If a new suite is
+  added, add a subcommand for it in the same file.
+
 ## 2026-09-24 (37) - Opus - the rank-up escalates: one timeline, five tiers
 
 **Changed**

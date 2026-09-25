@@ -10,6 +10,17 @@
 
 import XCTest
 
+/// How long to wait for the UI to react to something a test just did.
+///
+/// Generous on purpose. CI runners vary enormously: one run launched the app
+/// in 4s, another took 53s and needed 9s to answer a single existence query -
+/// on that machine a 5s wait after a tap fails before the screen has had a
+/// chance to draw, and which assertion draws the short straw changes run to
+/// run. Waiting longer costs nothing when things are healthy, because these
+/// waits return the moment the element appears; a test that is genuinely
+/// broken still fails, it just takes longer to say so.
+let reacts: TimeInterval = 20
+
 class MetalARMUITestCase: XCTestCase {
     let password = "correct-horse-1"
 
@@ -104,7 +115,7 @@ class MetalARMUITestCase: XCTestCase {
     /// somewhere else entirely - a sheet still open two steps later.
     @MainActor
     @discardableResult
-    func waitUntilEnabled(_ element: XCUIElement, timeout: TimeInterval = 5) -> Bool {
+    func waitUntilEnabled(_ element: XCUIElement, timeout: TimeInterval = reacts) -> Bool {
         let enabled = expectation(for: NSPredicate(format: "isEnabled == true"), evaluatedWith: element)
         return XCTWaiter.wait(for: [enabled], timeout: timeout) == .completed
     }

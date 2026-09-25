@@ -1,0 +1,6 @@
+# Test-only dependencies for the frontend's pure-Python parts (rank_tiers and
+# friends). Deliberately NOT in requirements.txt: the image that ships never
+# needs a test runner. Mirrors backend/requirements-dev.txt.
+-r requirements.txt
+
+pytest==8.4.2

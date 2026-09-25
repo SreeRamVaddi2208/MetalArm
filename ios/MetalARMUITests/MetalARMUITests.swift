@@ -35,7 +35,7 @@ final class MetalARMUITests: MetalARMUITestCase {
 
         app.buttons["homeStartWorkoutButton"].tap()
         let addFirst = app.buttons["addFirstExerciseButton"]
-        XCTAssertTrue(addFirst.waitForExistence(timeout: 5), "Workout never started")
+        XCTAssertTrue(addFirst.waitForExistence(timeout: reacts), "Workout never started")
         addFirst.tap()
 
         let bench = app.buttons["pickExercise-Barbell Bench Press"]
@@ -44,25 +44,25 @@ final class MetalARMUITests: MetalARMUITestCase {
         bench.tap()
 
         let logSet = app.buttons["logSetButton"]
-        XCTAssertTrue(logSet.waitForExistence(timeout: 5), "Exercise card missing")
+        XCTAssertTrue(logSet.waitForExistence(timeout: reacts), "Exercise card missing")
         XCTAssertTrue(element(app, "ghostValues").exists, "Last session's numbers missing")
         XCTAssertTrue(element(app, "progressionHint").exists, "What to try next is missing")
         attachScreenshot(app, named: "05 Workout")
 
         logSet.tap()
-        XCTAssertTrue(app.staticTexts["1 set logged"].waitForExistence(timeout: 5), "Set was not logged")
+        XCTAssertTrue(app.staticTexts["1 set logged"].waitForExistence(timeout: reacts), "Set was not logged")
         XCTAssertTrue(element(app, "prBanner").exists, "PR banner missing")
         XCTAssertTrue(element(app, "restBanner").exists, "Rest timer missing")
         attachScreenshot(app, named: "06 Set logged")
 
         app.buttons["finishButton"].tap()
-        XCTAssertTrue(app.buttons["doneButton"].waitForExistence(timeout: 5), "Summary never appeared")
+        XCTAssertTrue(app.buttons["doneButton"].waitForExistence(timeout: reacts), "Summary never appeared")
         XCTAssertTrue(app.staticTexts["New Personal Record!"].exists)
         XCTAssertTrue(element(app, "unqualifiedNote").exists, "Short workout was not explained")
         attachScreenshot(app, named: "07 Summary")
 
         app.buttons["doneButton"].tap()
-        XCTAssertTrue(app.buttons["workoutStartButton"].waitForExistence(timeout: 5), "Summary did not close")
+        XCTAssertTrue(app.buttons["workoutStartButton"].waitForExistence(timeout: reacts), "Summary did not close")
     }
 
     @MainActor
@@ -112,7 +112,7 @@ final class MetalARMUITests: MetalARMUITestCase {
         openPath.tap()
 
         let powerlifter = app.buttons["path-powerlifter"]
-        XCTAssertTrue(powerlifter.waitForExistence(timeout: 5), "The cards did not open from Profile")
+        XCTAssertTrue(powerlifter.waitForExistence(timeout: reacts), "The cards did not open from Profile")
         XCTAssertFalse(app.buttons["skipPathButton"].exists, "Only onboarding offers to skip")
         let confirmPath = app.buttons["confirmPathButton"]
         // The third card can sit half under the sheet's footer, where a tap on
@@ -138,7 +138,7 @@ final class MetalARMUITests: MetalARMUITestCase {
 
         // The demo sits beside the plan, on the first movement.
         XCTAssertTrue(
-            element(app, "presetDemoVideo-Barbell Back Squat").waitForExistence(timeout: 5),
+            element(app, "presetDemoVideo-Barbell Back Squat").waitForExistence(timeout: reacts),
             "No demo beside the workout for its first movement")
         attachScreenshot(app, named: "13 Ready-made workout")
 
@@ -146,7 +146,7 @@ final class MetalARMUITests: MetalARMUITestCase {
         // yet, so the placeholder stands in - the layout must not jump.
         app.buttons["presetSlot-Conventional Deadlift"].tap()
         XCTAssertTrue(
-            element(app, "presetDemoPlaceholder-Conventional Deadlift").waitForExistence(timeout: 5),
+            element(app, "presetDemoPlaceholder-Conventional Deadlift").waitForExistence(timeout: reacts),
             "The demo did not follow the tapped movement")
 
         app.buttons["startPresetButton"].tap()
@@ -164,20 +164,20 @@ final class MetalARMUITests: MetalARMUITestCase {
         attachScreenshot(app, named: "03 Home")
 
         openTab(app, "Progress")
-        XCTAssertTrue(app.staticTexts["Personal records"].waitForExistence(timeout: 5), "Progress did not load")
-        XCTAssertTrue(app.staticTexts["Heaviest — Barbell Bench Press"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Personal records"].waitForExistence(timeout: reacts), "Progress did not load")
+        XCTAssertTrue(app.staticTexts["Heaviest — Barbell Bench Press"].waitForExistence(timeout: reacts))
         attachScreenshot(app, named: "08 Progress")
 
         openTab(app, "Ranks")
-        XCTAssertTrue(app.staticTexts["Meera"].waitForExistence(timeout: 5), "Party board did not load")
+        XCTAssertTrue(app.staticTexts["Meera"].waitForExistence(timeout: reacts), "Party board did not load")
         XCTAssertTrue(app.staticTexts["(you)"].exists)
-        XCTAssertTrue(element(app, "leagueCard").waitForExistence(timeout: 5), "League card missing")
+        XCTAssertTrue(element(app, "leagueCard").waitForExistence(timeout: reacts), "League card missing")
         XCTAssertTrue(element(app, "raidCard").exists, "Party raid missing")
         attachScreenshot(app, named: "09 Ranks")
 
         openTab(app, "Profile")
-        XCTAssertTrue(app.staticTexts["Badges"].waitForExistence(timeout: 5), "Profile did not load")
-        XCTAssertTrue(element(app, "characterCard").waitForExistence(timeout: 5), "Character sheet missing")
+        XCTAssertTrue(app.staticTexts["Badges"].waitForExistence(timeout: reacts), "Profile did not load")
+        XCTAssertTrue(element(app, "characterCard").waitForExistence(timeout: reacts), "Character sheet missing")
         XCTAssertTrue(app.switches["restAlertsToggle"].exists || app.descendants(matching: .any)["restAlertsToggle"].exists, "Rest alert toggle missing")
         XCTAssertTrue(element(app, "rankTrialsCard").exists, "Rank trials missing")
         XCTAssertTrue(app.buttons["importWorkoutsButton"].exists, "Import from Strong or Hevy missing")
@@ -198,13 +198,13 @@ final class MetalARMUITests: MetalARMUITestCase {
 
         app.buttons["homeStartWorkoutButton"].tap()
         let addFirst = app.buttons["addFirstExerciseButton"]
-        XCTAssertTrue(addFirst.waitForExistence(timeout: 5), "Workout never started")
+        XCTAssertTrue(addFirst.waitForExistence(timeout: reacts), "Workout never started")
         addFirst.tap()
         let bench = app.buttons["pickExercise-Barbell Bench Press"]
         XCTAssertTrue(bench.waitForExistence(timeout: 10), "Exercise picker did not load")
         bench.tap()
         let logSet = app.buttons["logSetButton"]
-        XCTAssertTrue(logSet.waitForExistence(timeout: 5), "Exercise card missing")
+        XCTAssertTrue(logSet.waitForExistence(timeout: reacts), "Exercise card missing")
         logSet.tap()
         app.buttons["finishButton"].tap()
         return app
@@ -215,7 +215,7 @@ final class MetalARMUITests: MetalARMUITestCase {
         // The mock backend reports a new rank (level 20, C -> B) when the workout finishes.
         let app = finishOneSetWorkout(flag: "-UITestRankUp")
         let overlay = element(app, "levelUpOverlay")
-        XCTAssertTrue(overlay.waitForExistence(timeout: 5), "Rank-up celebration never appeared")
+        XCTAssertTrue(overlay.waitForExistence(timeout: reacts), "Rank-up celebration never appeared")
         XCTAssertTrue(app.staticTexts["RANK UP"].exists)
         XCTAssertTrue(app.staticTexts["You're now Advanced at level 20."].exists)
         Thread.sleep(forTimeInterval: 1.2)
@@ -235,17 +235,17 @@ final class MetalARMUITests: MetalARMUITestCase {
 
         app.buttons["homeStartWorkoutButton"].tap()
         let addFirst = app.buttons["addFirstExerciseButton"]
-        XCTAssertTrue(addFirst.waitForExistence(timeout: 5), "Workout never started")
+        XCTAssertTrue(addFirst.waitForExistence(timeout: reacts), "Workout never started")
         addFirst.tap()
         let bench = app.buttons["pickExercise-Barbell Bench Press"]
-        XCTAssertTrue(bench.waitForExistence(timeout: 5), "Exercise picker did not load")
+        XCTAssertTrue(bench.waitForExistence(timeout: reacts), "Exercise picker did not load")
         bench.tap()
         let logSet = app.buttons["logSetButton"]
-        XCTAssertTrue(logSet.waitForExistence(timeout: 5), "Exercise card missing")
+        XCTAssertTrue(logSet.waitForExistence(timeout: reacts), "Exercise card missing")
         logSet.tap()
 
         // Kept on the phone instead of an error.
-        XCTAssertTrue(element(app, "offlineBanner").waitForExistence(timeout: 5), "Offline banner missing")
+        XCTAssertTrue(element(app, "offlineBanner").waitForExistence(timeout: reacts), "Offline banner missing")
         XCTAssertTrue(element(app, "queuedSet").exists, "Queued set not shown")
         attachScreenshot(app, named: "Offline set")
     }
@@ -256,7 +256,7 @@ final class MetalARMUITests: MetalARMUITestCase {
         let app = finishOneSetWorkout(flag: "-UITestLevelUp")
 
         let overlay = element(app, "levelUpOverlay")
-        XCTAssertTrue(overlay.waitForExistence(timeout: 5), "Level-up celebration never appeared")
+        XCTAssertTrue(overlay.waitForExistence(timeout: reacts), "Level-up celebration never appeared")
         XCTAssertTrue(app.staticTexts["LEVEL UP"].exists)
         XCTAssertTrue(app.staticTexts["You reached level 15. Keep going."].exists)
         // Let the rings and sparks settle before the screenshot.
