@@ -64,6 +64,25 @@ The numbers counted up in the hero and the chart - 85 kg, 104.83 kg, 52 points -
 are read off those captures, not invented. If the footage is replaced, check
 them.
 
+## Scrolling
+
+Two things were tuned after "a bit of a scrolling issue", and both are now
+checked rather than remembered:
+
+- **Pinned sections are bounded.** A pin holds the page still while you scroll,
+  so a long one feels like the site has stopped responding. They ran to 3.2
+  viewports; they are now under 2.1, and the page went from 15.4 viewports to
+  12.4.
+- **Scrubbed video is encoded for seeking, not for playback.** Constant frame
+  rate with a keyframe every 6 frames (`-r 24 -g 6 -keyint_min 6
+  -sc_threshold 0`). With the default ~60-frame spacing, every seek decoded up
+  to sixty frames and the first one into a section blocked the main thread for
+  most of half a second. If you re-cut `rest-timer.mp4` or `rank-up.mp4`, keep
+  those flags - they are the difference between scrubbing and stuttering.
+
+Lenis runs at `duration: 0.9` and leaves touch alone: a phone's own scrolling
+is already better than anything layered over it.
+
 ## Media
 
 `public/media/` holds clips cut from the recordings in

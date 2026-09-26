@@ -93,7 +93,7 @@ export function NotJustALog() {
     },
   ];
   return (
-    <section data-pin="" data-morph="" className="ma-pin-wrap relative h-[320vh] px-6">
+    <section data-pin="" data-morph="" className="ma-pin-wrap relative h-[210vh] px-6">
       <div className="ma-pin flex h-screen items-center justify-center">
         <div className="mx-auto grid w-full max-w-5xl items-center gap-12 md:grid-cols-2">
           <div className="order-2 md:order-1">
@@ -181,7 +181,7 @@ export function TrainingIdentity() {
 
 export function TheMoment() {
   return (
-    <section data-scrub-video="" className="ma-pin-wrap relative h-[260vh]">
+    <section data-scrub-video="" className="ma-pin-wrap relative h-[170vh]">
       <div className="ma-pin flex h-screen items-center px-6">
         <div className="mx-auto grid w-full max-w-5xl items-center gap-12 md:grid-cols-2">
           <div>
@@ -241,7 +241,7 @@ export function ProgressDraws() {
 
 export function RankUp() {
   return (
-    <section data-scrub-video="" className="ma-pin-wrap relative h-[300vh]">
+    <section data-scrub-video="" className="ma-pin-wrap relative h-[200vh]">
       <div className="ma-pin flex h-screen flex-col items-center justify-center px-6">
         <h2 className="max-w-3xl text-center font-display text-4xl leading-tight sm:text-5xl">
           <Words text="Six tiers. The last one takes years." />

@@ -42,7 +42,10 @@ export default function Motion() {
       gsap.registerPlugin(ScrollTrigger);
       document.documentElement.classList.add('ma-js');
 
-      lenis = new Lenis({ duration: 1.05, smoothWheel: true, syncTouch: false });
+      // 0.9 rather than the default 1.2: long enough to feel inertial, short
+      // enough that the page stops when the wheel does. Touch is left alone -
+      // a phone's own scrolling is already better than anything layered on it.
+      lenis = new Lenis({ duration: 0.9, smoothWheel: true, syncTouch: false });
       // Lenis owns the scroll position, so ScrollTrigger has to be told when it
       // moves - otherwise every trigger fires against a stale scrollTop.
       lenis.on('scroll', ScrollTrigger.update);

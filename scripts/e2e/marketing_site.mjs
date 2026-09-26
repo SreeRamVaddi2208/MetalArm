@@ -100,6 +100,42 @@ try {
   check('the chart finishes drawing', drawn >= 0 && drawn < 1, String(drawn));
   await page.screenshot({ path: `${OUT}/desktop-chart.png` });
 
+  // --- How the page actually scrolls ---------------------------------------
+  // Both of these are regressions that were reported as "a scrolling issue"
+  // rather than as a bug in anything specific, which is how this kind of
+  // problem always arrives.
+  const shape = await page.evaluate(() => {
+    const vh = window.innerHeight;
+    return {
+      pageViewports: document.body.scrollHeight / vh,
+      longestPin: Math.max(...[...document.querySelectorAll('.ma-pin-wrap')]
+        .map((el) => el.getBoundingClientRect().height / vh)),
+    };
+  });
+  // A pinned section holds the page still while you scroll. Hold it for too
+  // long and the site feels stuck: these ran to 3.2 viewports before anyone
+  // said anything, which is more than half a screen of wheeling per line.
+  check('no section pins for more than ~2 viewports', shape.longestPin < 2.3,
+        `${shape.longestPin.toFixed(2)}vh`);
+  check('the page is not endless', shape.pageViewports < 13.5,
+        `${shape.pageViewports.toFixed(1)} viewports`);
+
+  // Scrubbed video is the usual cause of a stall: seeking a clip with sparse
+  // keyframes decodes everything since the last one. Both scrubbed captures
+  // are encoded at constant frame rate with a keyframe every 6 frames.
+  await page.evaluate(() => {
+    window.__gaps = [];
+    let last = performance.now();
+    const tick = (now) => { window.__gaps.push(now - last); last = now; requestAnimationFrame(tick); };
+    requestAnimationFrame(tick);
+    window.scrollTo(0, 0);
+  });
+  await page.mouse.move(720, 450);
+  for (let i = 0; i < 80; i++) { await page.mouse.wheel(0, 120); await page.waitForTimeout(45); }
+  await page.waitForTimeout(800);
+  const worstFrame = await page.evaluate(() => Math.round(Math.max(...window.__gaps.slice(2))));
+  check('scrolling never blocks for more than 100ms', worstFrame < 100, `${worstFrame}ms`);
+
   check('no uncaught errors', errors.length === 0, errors.slice(0, 2).join(' | '));
   await desktop.close();
 
