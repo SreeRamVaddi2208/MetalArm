@@ -80,6 +80,12 @@ checked rather than remembered:
   most of half a second. If you re-cut `rest-timer.mp4` or `rank-up.mp4`, keep
   those flags - they are the difference between scrubbing and stuttering.
 
+**One element, one pin.** The morph screens ride the same timeline as the text
+steps in that section. They used to have their own ScrollTrigger, which pinned
+the same node a second time - two pins fighting over one element put the whole
+card off-screen, and a viewport and a half scrolled past completely blank. The
+check now walks the page and asserts something is on screen at every stop.
+
 Lenis runs at `duration: 0.9` and leaves touch alone: a phone's own scrolling
 is already better than anything layered over it.
 

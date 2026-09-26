@@ -100,6 +100,26 @@ export default function Motion() {
               timeline.to(step, { opacity: 0, y: -24, duration: 1 }, index * 1.2 + 1);
             }
           });
+
+          // The screens ride the SAME timeline. They used to have their own
+          // ScrollTrigger, which pinned this very element a second time: two
+          // pins fighting over one node put the whole card somewhere off
+          // screen, so a viewport and a half of this section scrolled past
+          // completely blank. One element, one pin.
+          const screens = [...wrap.querySelectorAll('[data-screen]')];
+          if (screens.length > 1) {
+            // A screen per beat of the copy: the dashboard while it is a set,
+            // the live session while it is being scored, the summary when the
+            // app finally says something.
+            const at = [0, 1, 3].slice(0, screens.length);
+            screens.forEach((screen, i) => {
+              if (i === 0) return;
+              const moment = (at[i] ?? i) * 1.2;
+              timeline.to(screens[i - 1], { opacity: 0, scale: 0.97, duration: 0.8 }, moment);
+              timeline.fromTo(screen, { opacity: 0, scale: 1.03 },
+                              { opacity: 1, scale: 1, duration: 0.8 }, moment);
+            });
+          }
         });
 
         // --- Scroll-scrubbed video ----------------------------------------
@@ -127,32 +147,6 @@ export default function Motion() {
               pin: wrap.querySelector('.ma-pin'),
               scrub: 0.4,
             },
-          });
-        });
-
-        // --- Screen-to-screen morph ---------------------------------------
-        // One pinned frame, three captures cross-fading in the app's real
-        // navigation order. Separate videos rather than one long clip so each
-        // can be a short loop that carries its own beat, and so a slow
-        // connection shows the poster of the screen it is on rather than a
-        // black rectangle mid-seek.
-        document.querySelectorAll('[data-morph]').forEach((wrap) => {
-          const screens = [...wrap.querySelectorAll('[data-screen]')];
-          if (screens.length < 2) return;
-          const timeline = gsap.timeline({
-            scrollTrigger: {
-              trigger: wrap,
-              start: 'top top',
-              end: () => `+=${wrap.offsetHeight - window.innerHeight}`,
-              pin: wrap.querySelector('.ma-pin'),
-              scrub: 0.6,
-            },
-          });
-          screens.forEach((screen, i) => {
-            if (i === 0) return;
-            timeline.to(screens[i - 1], { opacity: 0, scale: 0.97, duration: 1 }, i);
-            timeline.fromTo(screen, { opacity: 0, scale: 1.03 },
-                            { opacity: 1, scale: 1, duration: 1 }, i);
           });
         });
 

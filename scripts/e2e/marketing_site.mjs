@@ -136,6 +136,54 @@ try {
   const worstFrame = await page.evaluate(() => Math.round(Math.max(...window.__gaps.slice(2))));
   check('scrolling never blocks for more than 100ms', worstFrame < 100, `${worstFrame}ms`);
 
+  // --- Walk the page the way a person does ---------------------------------
+  // This is the check that was missing when a viewport and a half of the page
+  // scrolled past completely blank: nothing asserted that there was anything
+  // ON the screen. Two pins on one element had put the pinned card somewhere
+  // off-screen, and thirty-one passing checks never noticed.
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.waitForTimeout(600);
+  await page.mouse.move(720, 450);
+  const blanks = [];
+  const overlaps = [];
+  for (let stop = 0; stop < 40; stop++) {
+    for (let i = 0; i < 4; i++) { await page.mouse.wheel(0, 120); await page.waitForTimeout(35); }
+    await page.waitForTimeout(200);
+    const state = await page.evaluate(() => {
+      const vh = window.innerHeight, mid = vh / 2;
+      const legible = [...document.querySelectorAll('h1, h2, h3, p, video, table')].filter((el) => {
+        const r = el.getBoundingClientRect();
+        return r.top < vh && r.bottom > 0 && r.width > 0
+               && Number(getComputedStyle(el).opacity) > 0.05;
+      }).length;
+      const midSections = [...document.querySelectorAll('main > section')].filter((s) => {
+        const r = s.getBoundingClientRect();
+        return r.top < mid && r.bottom > mid;
+      }).length;
+      return { y: +(window.scrollY / vh).toFixed(2), legible, midSections };
+    });
+    if (state.legible === 0) blanks.push(state.y);
+    if (state.midSections > 1) overlaps.push(state.y);
+  }
+  check('no part of the page scrolls past blank', blanks.length === 0,
+        `blank at ${blanks.join(', ')} viewports`);
+  check('two sections never share the screen', overlaps.length === 0,
+        `overlapping at ${overlaps.join(', ')} viewports`);
+
+  // One pin per pinned section. Pinning one element twice is what put the card
+  // off-screen, and it is invisible in the markup - both handlers looked fine
+  // on their own.
+  const pins = await page.evaluate(() => {
+    const spacers = [...document.querySelectorAll('.pin-spacer')];
+    return {
+      wraps: document.querySelectorAll('.ma-pin-wrap').length,
+      spacers: spacers.length,
+      nested: spacers.filter((el) => el.querySelector('.pin-spacer')).length,
+    };
+  });
+  check('each pinned section is pinned exactly once',
+        pins.spacers === pins.wraps && pins.nested === 0, JSON.stringify(pins));
+
   check('no uncaught errors', errors.length === 0, errors.slice(0, 2).join(' | '));
   await desktop.close();
 
