@@ -73,6 +73,24 @@ jobs:
       - name: Tests
         run: python -m pytest frontend/tests -q
 
+  marketing:
+    # The marketing site is a static export; if it does not build, it does not
+    # deploy. Cheap to check and it never runs against the app.
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: marketing
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: marketing/package-lock.json
+      - run: npm ci
+      - name: Static export builds
+        run: npm run build
+
   images:
     runs-on: ubuntu-latest
     steps:

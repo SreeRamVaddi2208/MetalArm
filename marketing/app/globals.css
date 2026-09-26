@@ -1,0 +1,92 @@
+@import "tailwindcss";
+
+/* The app's palette, verbatim from frontend/metalarm/theme.py, so the site and
+   the product are one brand rather than two that look similar. Gold and the
+   jewel tone come from rank_tiers.py, where they mean "the top two tiers" -
+   they are used the same way here and nowhere else. */
+@theme {
+  --color-bg: #0b0b0c;
+  --color-panel: #1a1a1d;
+  --color-field: #121214;
+  --color-border: #2a2a2e;
+  --color-accent: #ffffff;
+  --color-silver: #9a9aa2;
+  --color-text: #f2f2f4;
+  --color-muted: #a8a8b0;
+  --color-faint: #7c7c84;
+  --color-gold: #d9b06a;
+  --color-ruby: #c05a6a;
+
+  --font-display: var(--font-space-grotesk), ui-sans-serif, system-ui, sans-serif;
+  --font-body: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
+}
+
+html {
+  background: var(--color-bg);
+  color: var(--color-text);
+  /* Lenis drives scrolling; the native smooth behaviour would fight it. */
+  scroll-behavior: auto;
+}
+
+body {
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+/* --- Staged text reveal ---------------------------------------------------
+   The hidden state is scoped to html.ma-js, a class the script adds to the
+   document. If the script never runs - blocked, errored, unsupported - the
+   class is absent and every word renders visible. Copy must never depend on
+   JavaScript to be readable; this is the same rule the app's scroll_reveal.py
+   follows, and the reason its base rule is empty. */
+.ma-word { display: inline-block; }
+html.ma-js .ma-word { opacity: 0; transform: translateY(0.4em); }
+html.ma-js .ma-rise { opacity: 0; transform: translateY(18px); }
+
+/* --- Motion sensitivity: mandatory, not optional --------------------------
+   Reduced motion gets the content, immediately, with no travel and no pinning.
+   The script checks the same query and skips building timelines at all, so
+   this is a backstop rather than the whole answer. */
+@media (prefers-reduced-motion: reduce) {
+  html.ma-js .ma-word,
+  html.ma-js .ma-rise,
+  html.ma-js [data-screen],
+  html.ma-js [data-step] {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+  /* Every technique added in v2 has a still form: the chart is simply drawn,
+     the frames do not tilt, and the headline is not masked in. */
+  [data-chart-line] { stroke-dasharray: none !important; stroke-dashoffset: 0 !important; }
+  [data-chart-dot], [data-chart-area] { opacity: 1 !important; }
+  [data-tilt] { transform: none !important; }
+  [data-mask-reveal] { clip-path: none !important; }
+  .ma-pin-wrap { height: auto !important; }
+  .ma-pin { position: static !important; height: auto !important; }
+}
+
+/* Morph screens: the second and third captures start hidden, but only where
+   the timeline that reveals them runs. On a phone, and with no JavaScript,
+   they stack down the page as three ordinary screenshots. */
+@media (min-width: 768px) {
+  html.ma-js [data-screen]:not(:first-child) { opacity: 0; }
+}
+
+/* The pinned section's steps: hidden only where the timeline that reveals them
+   actually runs. Everywhere else - no JavaScript, reduced motion, any phone -
+   they are ordinary paragraphs that follow one another down the page. */
+@media (min-width: 768px) {
+  html.ma-js [data-step]:not(:first-child) {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+}
+
+/* A pinned section is a desktop affordance. On a phone the viewport is most of
+   the screen, so holding it still while content changes underneath reads as a
+   page that has stopped responding - Apple's own mobile pages drop these too. */
+@media (max-width: 767px) {
+  .ma-pin-wrap { height: auto !important; }
+  .ma-pin { position: static !important; height: auto !important; }
+}
