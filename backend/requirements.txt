@@ -29,3 +29,7 @@ email-validator==2.3.0
 bcrypt==5.0.0
 PyJWT==2.11.0
 python-multipart==0.0.32
+# Web Push (Android and any browser that supports it). pywebpush brings
+# cryptography, which app/scripts/vapid.py also uses to generate the key pair.
+pywebpush==2.0.3
+cryptography==46.0.3

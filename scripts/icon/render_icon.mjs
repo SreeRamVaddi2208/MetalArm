@@ -27,6 +27,11 @@ const outputs = [
   { file: 'AppIcon-tinted-1024.png', dir: appIconDir, size: 1024, tinted: true },
   { file: 'apple-touch-icon.png', dir: webAssets, size: 180 },
   { file: 'favicon.png', dir: webAssets, size: 64 },
+  // Android's install prompt wants 192 and 512. Rendered from the SVG like
+  // everything else here rather than upscaled from the 180, which would be
+  // visibly soft on a launcher at 512.
+  { file: 'icon-192.png', dir: webAssets, size: 192 },
+  { file: 'icon-512.png', dir: webAssets, size: 512 },
 ];
 
 // The page is rendered from a string (no file origin), so Chrome would refuse the

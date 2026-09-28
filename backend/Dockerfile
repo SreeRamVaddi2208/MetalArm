@@ -26,7 +26,13 @@ ENV PATH="/opt/venv/bin:$PATH"
 COPY requirements.txt .
 # --only-binary=:all: makes a missing wheel fail loudly here rather than
 # silently falling back to a source build that breaks on another platform.
-RUN pip install --only-binary=:all: -r requirements.txt
+#
+# http-ece is the one exception, and it is exempted BY NAME rather than by
+# relaxing the rule: pywebpush needs it, it publishes no wheel at all, and it
+# is pure Python - so there is nothing to compile and nothing to break on
+# another platform. Anything that actually builds C would still fail here,
+# which is the point of the flag.
+RUN pip install --only-binary=:all: --no-binary=http-ece -r requirements.txt
 
 
 FROM python:3.14-slim AS runtime

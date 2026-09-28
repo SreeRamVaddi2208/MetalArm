@@ -74,7 +74,7 @@ class RouteState(rx.State):
         auth = await self.get_state(AuthState)
         if not auth.token:
             return rx.redirect("/login")
-        return [AuthState.refresh_me, ProfileState.load]
+        return [AuthState.refresh_me, ProfileState.load, ProfileState.load_push]
 
     async def enter_workout(self):
         """Also the rehydration point: WorkoutState.load asks the API for the
@@ -108,6 +108,12 @@ app = rx.App(
     head_components=[
         rx.el.link(rel="icon", type="image/png", href="/favicon.png"),
         rx.el.link(rel="apple-touch-icon", href="/apple-touch-icon.png"),
+        # What makes Android offer "install": a manifest with 192 and 512 icons
+        # and a standalone display mode. iOS reads apple-touch-icon instead,
+        # which is why both are here.
+        rx.el.link(rel="manifest", href="/manifest.webmanifest"),
+        rx.el.meta(name="theme-color", content=theme.BG),
+        rx.el.meta(name="mobile-web-app-capable", content="yes"),
     ],
     # Applied to <body>; without it the page shows the browser default behind
     # the layout on overscroll.

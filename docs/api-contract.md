@@ -10,7 +10,7 @@
 
 - **API title:** MetalArm API
 - **API version:** 0.1.0
-- **Generated:** 2026-09-25 19:02 UTC
+- **Generated:** 2026-09-28 21:23 UTC
 - **Source:** `http://localhost:8000/openapi.json`
 
 ---
@@ -293,6 +293,65 @@ and only ever removes the caller's own token.
 |---|---|
 | `204` | Successful Response |
 | `422` | Validation Error |
+
+---
+
+### `DELETE /api/v1/devices/web-push`
+
+**Unsubscribe Web Push**
+
+Stop notifying this browser. Succeeds whether or not it was subscribed,
+so a retry is harmless, and only ever removes the caller's own row.
+
+*Tags:* `devices`
+
+*Request body* (`application/json`): `WebPushSubscribe`
+
+| Status | Description |
+|---|---|
+| `204` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `POST /api/v1/devices/web-push`
+
+**Subscribe Web Push**
+
+Subscribe this browser, or refresh an existing subscription.
+
+Idempotent for the same reason the APNs route is: a browser may hand back
+the same endpoint on every load, and a subscription already registered -
+to this account or to another one signed in earlier on the same browser -
+moves to this account and this session rather than notifying both.
+
+*Tags:* `devices`
+
+*Request body* (`application/json`): `WebPushSubscribe`
+
+| Status | Description |
+|---|---|
+| `204` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `GET /api/v1/devices/web-push/config`
+
+**Web Push Config**
+
+The public half of the VAPID pair, or nothing.
+
+Unauthenticated on purpose: it is a public key, and the client needs it
+before it can decide whether to offer notifications at all. An empty answer
+means this deployment has no keys configured, and the client should not
+offer a button that cannot work.
+
+*Tags:* `devices`
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
 
 ---
 
@@ -2739,6 +2798,26 @@ otherwise 503 with per-dependency detail.
 | `points_balance` | `integer` | yes |
 | `total_points_earned` | `integer` | yes |
 | `total_points_spent` | `integer` | yes |
+
+#### `WebPushConfigOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `public_key` | `string` | no |
+
+#### `WebPushKeys`
+
+| Field | Type | Required |
+|---|---|---|
+| `p256dh` | `string` | yes |
+| `auth` | `string` | yes |
+
+#### `WebPushSubscribe`
+
+| Field | Type | Required |
+|---|---|---|
+| `endpoint` | `string` | yes |
+| `keys` | `WebPushKeys` | yes |
 
 #### `WeightUnit`
 

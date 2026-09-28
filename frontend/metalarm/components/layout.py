@@ -3,6 +3,7 @@
 import reflex as rx
 
 from metalarm import theme
+from metalarm.components.install import install_assets, install_button
 from metalarm.state.auth import AuthState
 
 
@@ -63,6 +64,7 @@ def navbar() -> rx.Component:
                 font_size="0.8rem",
                 display=["none", "flex", "flex", "flex"],
             ),
+            install_button(),
             rx.button(
                 "SIGN OUT",
                 on_click=AuthState.do_logout,
@@ -142,6 +144,7 @@ def shell(*children: rx.Component) -> rx.Component:
     """Standard signed-in page frame."""
     return rx.box(
         session_keeper(),
+        install_assets(),
         navbar(),
         mobile_nav(),
         rx.box(

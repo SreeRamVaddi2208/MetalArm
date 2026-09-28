@@ -1,0 +1,1 @@
+self.__REACT_LOADABLE_MANIFEST='{"components/Motion.js -> gsap":{"id":7605,"files":["static/chunks/c15bf2b0.ea334255f1a140fc.js","static/chunks/605.596b13dcde22bed6.js"]},"components/Motion.js -> gsap/ScrollTrigger":{"id":5580,"files":["static/chunks/580.823131c95794fd63.js"]},"components/Motion.js -> lenis":{"id":2691,"files":["static/chunks/691.abb2341bef7f799b.js"]}}';
