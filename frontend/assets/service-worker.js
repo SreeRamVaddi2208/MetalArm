@@ -149,3 +149,46 @@ self.addEventListener('fetch', (event) => {
       }),
   );
 });
+
+
+// --- Notifications ---------------------------------------------------------
+// The payload is whatever app/core/web_push.py sent: a title, a body, and the
+// path tapping it should open. Anything unparseable still shows something
+// rather than nothing, because a silent failure here looks like a lost
+// notification.
+self.addEventListener('push', (event) => {
+  let payload = { title: 'MetalArm', body: '', path: '/dashboard' };
+  try {
+    if (event.data) payload = { ...payload, ...event.data.json() };
+  } catch {
+    if (event.data) payload.body = event.data.text();
+  }
+  event.waitUntil(
+    self.registration.showNotification(payload.title, {
+      body: payload.body,
+      icon: '/icon-192.png',
+      badge: '/icon-192.png',
+      // One notification per kind replaces the last rather than stacking:
+      // eight "your party moved" alerts is a reason to uninstall an app.
+      tag: payload.path,
+      data: { path: payload.path },
+    }),
+  );
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const path = event.notification.data?.path || '/dashboard';
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
+      // Focus a tab that is already open rather than opening a second one.
+      for (const client of clients) {
+        if (client.url.includes(path) && 'focus' in client) return client.focus();
+      }
+      if (clients.length && 'navigate' in clients[0]) {
+        return clients[0].focus().then((c) => c.navigate(path));
+      }
+      return self.clients.openWindow(path);
+    }),
+  );
+});

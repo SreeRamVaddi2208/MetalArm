@@ -269,6 +269,46 @@ def trials_panel() -> rx.Component:
     )
 
 
+def notifications_panel() -> rx.Component:
+    """Offered only where the server actually has a VAPID key, so it is never
+    a button that cannot work. The prompt appears on the TAP and never on
+    load: an unprompted permission request is the fastest way to be denied
+    permanently, and some browsers now block it outright."""
+    return rx.vstack(
+        section_heading("NOTIFICATIONS"),
+        rx.text(
+            "Party events only - a duel challenged, a duel settled, a party quest "
+            "completed. Never a nag to train.",
+            color=theme.MUTED,
+            font_size="0.82rem",
+        ),
+        rx.button(
+            rx.cond(ProfileState.push_enabled, "NOTIFICATIONS ON", "TURN ON NOTIFICATIONS"),
+            on_click=ProfileState.enable_notifications,
+            disabled=ProfileState.push_enabled,
+            background="transparent",
+            color=theme.ACCENT,
+            border=f"1px solid {theme.BORDER}",
+            border_radius="9px",
+            font_size="0.7rem",
+            font_weight="700",
+            letter_spacing="0.12em",
+            padding="0.5rem 0.9rem",
+            cursor="pointer",
+            id="ma-notify",
+        ),
+        rx.cond(
+            ProfileState.push_notice != "",
+            rx.text(ProfileState.push_notice, color=theme.FAINT, font_size="0.78rem"),
+        ),
+        spacing="2",
+        align="start",
+        # PANEL_STYLE already carries width; passing it again is a TypeError
+        # at compile time, not at runtime.
+        **theme.PANEL_STYLE,
+    )
+
+
 def import_panel() -> rx.Component:
     return rx.vstack(
         rx.text("IMPORT HISTORY", **theme.LABEL_STYLE),
@@ -326,6 +366,7 @@ def profile_page() -> rx.Component:
                 reveal(lifetime_panel()),
                 rx.cond(ProfileState.stats_sheet.length() > 0, reveal(character_panel())),
                 rx.cond(ProfileState.trials.length() > 0, reveal(trials_panel())),
+                rx.cond(ProfileState.push_key != "", reveal(notifications_panel())),
                 reveal(import_panel()),
                 rx.vstack(
                     section_heading(

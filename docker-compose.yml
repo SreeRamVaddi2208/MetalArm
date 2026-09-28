@@ -136,6 +136,12 @@ services:
       ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-60}
       LOG_LEVEL: ${LOG_LEVEL:-info}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
+      # Web Push. Empty in a deployment that has not generated a pair, which
+      # makes the app hide the notifications button rather than offer one that
+      # cannot work.
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
+      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
+      VAPID_SUBJECT: ${VAPID_SUBJECT:-mailto:support@metalarm.app}
     ports:
       - "${BACKEND_HOST_PORT:-8000}:8000"
     depends_on:

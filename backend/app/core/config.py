@@ -49,6 +49,17 @@ class Settings(BaseSettings):
     # Switched off only by the test suite, which logs in hundreds of times.
     rate_limit_enabled: bool = True
 
+    # --- Web Push (Android, and any browser that supports it) ---
+    # Generated once with `python -m app.scripts.vapid` and set in the
+    # environment. Empty means the server simply does not offer notifications,
+    # which is why the config endpoint returns the public key rather than the
+    # client assuming one exists.
+    vapid_public_key: str = ""
+    vapid_private_key: str = ""
+    # The "who is sending this" contact a push service can complain to, which
+    # the spec requires be a mailto: or https: URL.
+    vapid_subject: str = "mailto:support@metalarm.app"
+
     # --- App ---
     # "production" hides /docs, /redoc and /openapi.json.
     environment: str = "development"
@@ -61,6 +72,20 @@ class Settings(BaseSettings):
     # refused for the same reason: HS256 is only as strong as its key. Refused at
     # startup, where it is one clear error, rather than silently at the first login.
     MIN_JWT_SECRET_BYTES: ClassVar[int] = 32
+
+    @model_validator(mode="after")
+    def _push_keys_come_in_pairs(self) -> "Settings":
+        """One VAPID key without the other is a button that cannot work.
+
+        The client asks whether push is available and gets the public key; if
+        the private half is missing the send fails later, on a background job,
+        where nobody is looking. Fail at startup instead.
+        """
+        if bool(self.vapid_public_key) != bool(self.vapid_private_key):
+            raise ValueError(
+                "VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY must be set together, or not at all"
+            )
+        return self
 
     @model_validator(mode="after")
     def _production_needs_a_real_secret(self) -> "Settings":

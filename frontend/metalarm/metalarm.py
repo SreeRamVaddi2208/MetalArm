@@ -74,7 +74,7 @@ class RouteState(rx.State):
         auth = await self.get_state(AuthState)
         if not auth.token:
             return rx.redirect("/login")
-        return [AuthState.refresh_me, ProfileState.load]
+        return [AuthState.refresh_me, ProfileState.load, ProfileState.load_push]
 
     async def enter_workout(self):
         """Also the rehydration point: WorkoutState.load asks the API for the

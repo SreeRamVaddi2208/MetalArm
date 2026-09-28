@@ -316,3 +316,17 @@ async def decline_duel(token: str, duel_id: str) -> dict:
 async def activity_feed(token: str, *, party_id: str = "", limit: int = 30) -> dict:
     params = f"?limit={limit}" + (f"&party_id={party_id}" if party_id else "")
     return await request("GET", f"/feed{params}", token=token)
+
+
+# --- Web Push --------------------------------------------------------------
+async def web_push_config() -> dict:
+    """The VAPID public key, or an empty one when this deployment cannot send.
+    Unauthenticated: it is a public key, and the client needs it to decide
+    whether to offer notifications at all."""
+    return await request("GET", "/devices/web-push/config")
+
+
+async def subscribe_web_push(token: str, subscription: dict) -> None:
+    """Register this browser. The subscription is posted in the browser's own
+    shape, exactly as PushSubscription.toJSON() produced it."""
+    await request("POST", "/devices/web-push", token=token, json=subscription)

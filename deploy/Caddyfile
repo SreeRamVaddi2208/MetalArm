@@ -44,6 +44,16 @@ api.{$DOMAIN} {
 		import static_page
 	}
 
+	# Digital Asset Links: what lets the Android app (android/) open without a
+	# browser address bar. Stored without the leading dot because Reflex's
+	# asset copy skips dot-directories, and served at the path Android
+	# actually checks. Content-Type matters - Android reads it as JSON.
+	handle /.well-known/assetlinks.json {
+		rewrite * /well-known/assetlinks.json
+		header Content-Type application/json
+		reverse_proxy frontend:3000
+	}
+
 	handle {
 		reverse_proxy frontend:3000
 	}

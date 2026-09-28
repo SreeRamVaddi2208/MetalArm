@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">MetalArm</string>
+    <!--
+      The site this app claims to be. The fingerprint is checked against
+      https://<host>/.well-known/assetlinks.json at install time.
+    -->
+    <string name="asset_statements" translatable="false">
+        [{
+          \"relation\": [\"delegate_permission/common.handle_all_urls\"],
+          \"target\": {
+            \"namespace\": \"web\",
+            \"site\": \"https://metalarm.example.com\"
+          }
+        }]
+    </string>
+</resources>

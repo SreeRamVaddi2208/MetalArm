@@ -14,8 +14,11 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.dialects.postgresql import insert
 
 from app.api.deps import CurrentSessionID, CurrentUser, DbSession
+from app.core.config import get_settings
 from app.models.push_device import PushDevice
+from app.models.web_push import WebPushSubscription
 from app.schemas.push_device import PushDeviceRegister, normalize_push_token
+from app.schemas.web_push import WebPushConfigOut, WebPushSubscribe
 
 logger = logging.getLogger("metalarm.push")
 
@@ -94,6 +97,92 @@ def unregister_push_token(token: str, current_user: CurrentUser, db: DbSession) 
     db.execute(
         delete(PushDevice).where(
             PushDevice.token == normalized, PushDevice.user_id == current_user.id
+        )
+    )
+    db.commit()
+
+
+# --- Web Push -------------------------------------------------------------
+# The same registry, for browsers. Delivery is app/core/web_push.py; this is
+# only who has asked to be told.
+
+
+@router.get("/web-push/config", response_model=WebPushConfigOut)
+def web_push_config() -> WebPushConfigOut:
+    """The public half of the VAPID pair, or nothing.
+
+    Unauthenticated on purpose: it is a public key, and the client needs it
+    before it can decide whether to offer notifications at all. An empty answer
+    means this deployment has no keys configured, and the client should not
+    offer a button that cannot work.
+    """
+    return WebPushConfigOut(public_key=get_settings().vapid_public_key)
+
+
+@router.post("/web-push", status_code=status.HTTP_204_NO_CONTENT)
+def subscribe_web_push(
+    payload: WebPushSubscribe,
+    current_user: CurrentUser,
+    session_id: CurrentSessionID,
+    db: DbSession,
+) -> None:
+    """Subscribe this browser, or refresh an existing subscription.
+
+    Idempotent for the same reason the APNs route is: a browser may hand back
+    the same endpoint on every load, and a subscription already registered -
+    to this account or to another one signed in earlier on the same browser -
+    moves to this account and this session rather than notifying both.
+    """
+    registered_at = func.clock_timestamp()
+    db.execute(
+        insert(WebPushSubscription)
+        .values(
+            user_id=current_user.id,
+            session_id=session_id,
+            endpoint=payload.endpoint,
+            p256dh=payload.keys.p256dh,
+            auth=payload.keys.auth,
+            updated_at=registered_at,
+        )
+        .on_conflict_do_update(
+            index_elements=[WebPushSubscription.endpoint],
+            set_={
+                "user_id": current_user.id,
+                "session_id": session_id,
+                "p256dh": payload.keys.p256dh,
+                "auth": payload.keys.auth,
+                "updated_at": registered_at,
+            },
+        )
+    )
+    _enforce_web_cap(db, current_user.id)
+    db.commit()
+
+
+def _enforce_web_cap(db: DbSession, user_id: uuid.UUID) -> None:
+    """Same cap as the phones, and for the same reason: a new subscription per
+    browser profile would otherwise grow the table without bound."""
+    stale = db.scalars(
+        select(WebPushSubscription.id)
+        .where(WebPushSubscription.user_id == user_id)
+        .order_by(WebPushSubscription.updated_at.desc(), WebPushSubscription.id)
+        .offset(MAX_DEVICES_PER_USER)
+    ).all()
+    if stale:
+        db.execute(delete(WebPushSubscription).where(WebPushSubscription.id.in_(stale)))
+        logger.info("user %s: dropped %d oldest web push subscriptions", user_id, len(stale))
+
+
+@router.delete("/web-push", status_code=status.HTTP_204_NO_CONTENT)
+def unsubscribe_web_push(
+    payload: WebPushSubscribe, current_user: CurrentUser, db: DbSession
+) -> None:
+    """Stop notifying this browser. Succeeds whether or not it was subscribed,
+    so a retry is harmless, and only ever removes the caller's own row."""
+    db.execute(
+        delete(WebPushSubscription).where(
+            WebPushSubscription.endpoint == payload.endpoint,
+            WebPushSubscription.user_id == current_user.id,
         )
     )
     db.commit()

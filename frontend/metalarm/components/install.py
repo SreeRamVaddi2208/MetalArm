@@ -16,6 +16,11 @@ The rules this follows:
 - **A queued set is reported honestly.** The worker answers 202 for a set it
   has kept rather than sent, and the page says so - the same promise the iOS
   app makes with its own pending store.
+- **Notifications are asked for on a TAP, never on load.** A permission prompt
+  that appears unprompted is the fastest way to be denied permanently, and
+  Chrome now blocks some of them outright. The button also only appears where
+  the server actually has a VAPID key, so it is never offered by a deployment
+  that cannot send.
 """
 
 import reflex as rx
@@ -56,6 +61,38 @@ _SCRIPT = """
     var button = document.getElementById('ma-install');
     if (button) button.setAttribute('hidden', '');
   });
+
+  // --- Notifications -----------------------------------------------------
+  // Base64url from the server to the Uint8Array subscribe() wants.
+  function keyBytes(base64) {
+    var padded = (base64 + '='.repeat((4 - base64.length % 4) % 4))
+      .replace(/-/g, '+').replace(/_/g, '/');
+    var raw = atob(padded);
+    var bytes = new Uint8Array(raw.length);
+    for (var i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i);
+    return bytes;
+  }
+
+  // Returns the subscription as a string for the state to POST, or "" if the
+  // browser cannot or the person said no. Deliberately does NOT call the API
+  // itself: Reflex state runs on the server, where the token already is, so
+  // routing it through there avoids putting credentials in the page and CORS
+  // in the way.
+  window.maSubscribe = async function (publicKey) {
+    try {
+      if (!publicKey || !('serviceWorker' in navigator) || !('PushManager' in window)) return '';
+      if ((await Notification.requestPermission()) !== 'granted') return '';
+      var registration = await navigator.serviceWorker.ready;
+      var subscription = await registration.pushManager.getSubscription()
+        || await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: keyBytes(publicKey),
+        });
+      return JSON.stringify(subscription);
+    } catch (e) {
+      return '';
+    }
+  };
 
   window.maInstallApp = function () {
     var deferred = window.maInstall.prompt;

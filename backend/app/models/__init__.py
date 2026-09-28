@@ -20,6 +20,7 @@ from app.models.training_category import TrainingCategoryProfile
 from app.models.raid import RaidBoss, RaidHit
 from app.models.reward import RewardItem, RewardRedemption
 from app.models.user import LevelProgress, User
+from app.models.web_push import WebPushSubscription
 from app.models.workout import (
     BodyMeasurement,
     Exercise,
