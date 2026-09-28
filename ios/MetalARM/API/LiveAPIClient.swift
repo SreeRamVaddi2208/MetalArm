@@ -183,6 +183,27 @@ final class LiveAPIClient: MetalArmAPI {
 
     func league() async throws -> League { try await send(.get("leagues/current")) }
 
+    // MARK: - Duels and the activity feed
+
+    func duels() async throws -> DuelList { try await send(.get("duels")) }
+
+    /// `opponentID` nil means the synthetic rival, which needs no acceptance
+    /// and so comes back already running.
+    func challenge(opponentID: String?, metric: String, days: Int) async throws -> Duel {
+        try await send(.post("duels", DuelBody(opponentId: opponentID, metric: metric, days: days,
+                                               againstRival: opponentID == nil), encoder))
+    }
+
+    func acceptDuel(id: String) async throws -> Duel {
+        try await send(.post("duels/\(id)/accept", EmptyBody(), encoder))
+    }
+
+    func declineDuel(id: String) async throws -> Duel {
+        try await send(.post("duels/\(id)/decline", EmptyBody(), encoder))
+    }
+
+    func activityFeed() async throws -> ActivityFeed { try await send(.get("feed")) }
+
     // MARK: - Transport
 
     private struct RequestSpec {
@@ -225,6 +246,14 @@ final class LiveAPIClient: MetalArmAPI {
     private struct PresetStart: Encodable { let presetSlug: String }
     private struct PartyBody: Encodable { let name: String }
     private struct JoinBody: Encodable { let inviteCode: String }
+    /// The server refuses a body naming both an opponent and the rival, so the
+    /// unused half is omitted rather than sent as null.
+    private struct DuelBody: Encodable {
+        let opponentId: String?
+        let metric: String
+        let days: Int
+        let againstRival: Bool
+    }
 
     private func send<T: Decodable>(_ spec: @autoclosure () throws -> RequestSpec, authenticated: Bool = true) async throws -> T {
         let data = try await perform(try spec(), authenticated: authenticated)

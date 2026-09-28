@@ -1170,3 +1170,198 @@ struct AppModelTests {
         #expect(model.me == nil)
     }
 }
+
+// MARK: - Duels and the activity feed
+
+@Suite
+struct DuelTests {
+    private let me = ContractFixtures.userID
+    private let decoder = LiveAPIClient.makeDecoder()
+
+    private func list() throws -> DuelList {
+        try decoder.decode(DuelList.self, from: Data(ContractFixtures.duels.utf8))
+    }
+
+    @Test func theContractShapeDecodes() throws {
+        let duels = try list()
+        #expect(duels.active.count == 1)
+        #expect(duels.pending.count == 1)
+        #expect(duels.completed.count == 1)
+        #expect(duels.active[0].metric == "volume")
+    }
+
+    @Test func theRivalHasNoAccount() throws {
+        let won = try list().completed[0]
+        #expect(won.opponent.userId == nil)
+        #expect(won.opponent.rival)
+        // ...and is never mistaken for the person on the other side.
+        #expect(won.theirs(me).displayName == "Your rival")
+    }
+
+    @Test func eachSideSeesItselfAsYou() throws {
+        let duel = try list().active[0]
+        // The challenger's own view.
+        #expect(duel.mine(me).displayName == "Sree Ram")
+        #expect(duel.theirs(me).displayName == "Kiran")
+        // And the opponent's, from the same payload.
+        #expect(duel.mine("u9").displayName == "Kiran")
+        #expect(duel.theirs("u9").displayName == "Sree Ram")
+    }
+
+    @Test func whoChallengedWhomIsNotWhetherAChallengerExists() throws {
+        // The web had this exact bug: "the challenger exists" is always true,
+        // so the challenger was told they had been challenged.
+        let pending = try list().pending[0]
+        #expect(pending.iChallenged("u2"))
+        #expect(!pending.iChallenged(me))
+    }
+
+    @Test func onlyTheWinnerHasWon() throws {
+        let won = try list().completed[0]
+        #expect(won.iWon(me))
+        #expect(!won.iWon("u9"))
+        #expect(!won.drawn)
+        #expect(won.pointsAwarded == 40)
+    }
+
+    @Test func volumeIsWeighedAndTheRestAreCounted() throws {
+        let volume = try list().active[0]
+        #expect(volume.label(for: 12_450) == "12450 kg")
+        let sets = try list().pending[0]
+        // "3.0 sets" reads like a bug, so counts lose the decimal.
+        #expect(sets.label(for: 3) == "3")
+    }
+
+    @Test func theCountdownRoundsRatherThanFloors() {
+        func duel(hoursLeft: Double) -> Duel {
+            let end = Date().addingTimeInterval(hoursLeft * 3_600)
+            return Duel(
+                id: "d", metric: "volume", status: "active",
+                windowStart: "2026-09-01T00:00:00Z",
+                windowEnd: ISO8601DateFormatter().string(from: end),
+                challenger: DuelSide(userId: me, displayName: "Me", score: 0, isRival: false),
+                opponent: DuelSide(userId: "u9", displayName: "Them", score: 0, isRival: false))
+        }
+        // With 47 hours to go, "1 day left" is wrong enough to change how
+        // somebody trains today.
+        #expect(duel(hoursLeft: 47).endsLabel == "2 days left")
+        #expect(duel(hoursLeft: 25).endsLabel == "1 day left")
+        #expect(duel(hoursLeft: 10).endsLabel.hasSuffix("hours left"))
+        #expect(duel(hoursLeft: -1).endsLabel == "ended")
+    }
+
+    @Test func aMissingTimestampIsBlankRatherThanWrong() {
+        let duel = Duel(
+            id: "d", metric: "volume", status: "active",
+            windowStart: "", windowEnd: "not a date",
+            challenger: DuelSide(userId: me, displayName: "Me", score: 0, isRival: false),
+            opponent: DuelSide(userId: "u9", displayName: "Them", score: 0, isRival: false))
+        #expect(duel.endsLabel == "")
+    }
+
+    @Test func theFeedDecodesAndReadsBack() throws {
+        let feed = try decoder.decode(ActivityFeed.self, from: Data(ContractFixtures.feed.utf8))
+        #expect(feed.entries.count == 3)
+        #expect(feed.entries[0].eventType == "pr_achieved")
+        #expect(feed.entries[0].symbol == "trophy.fill")
+        #expect(feed.entries[1].symbol == "flag.checkered")
+        // An event type this build has never heard of still renders a row.
+        var unknown = feed.entries[0]
+        unknown.eventType = "something_new"
+        #expect(unknown.symbol == "circle.fill")
+    }
+
+    @MainActor
+    @Test func aWonDuelIsCelebratedOnceAndOnlyOnce() async {
+        // Deliberately WITHOUT loading the account first: the screen has to
+        // stand on its own, or a win is paid by the server and never shown.
+        let model = AppModel.forTesting()
+        await model.signIn(email: "sree@metalarm.dev", password: "correct-horse-1")
+        #expect(model.me == nil)
+        await model.loadDuels()
+        // The load judged it, so the win arrives with the list.
+        #expect(model.justWon?.pointsAwarded == 40)
+
+        model.dismissDuelWin()
+        await model.loadDuels()
+        // The server pays once; a second read carries no points, so nothing
+        // is celebrated twice.
+        #expect(model.justWon == nil)
+    }
+
+    @MainActor
+    @Test func theFeedLandsWithTheDuels() async {
+        let model = AppModel.forTesting()
+        await model.signIn(email: "sree@metalarm.dev", password: "correct-horse-1")
+        await model.loadDuels()
+        #expect(model.duels.active.count == 1)
+        #expect(model.feed.count == 3)
+    }
+}
+
+// MARK: - The rank-up tier table
+
+@Suite
+struct RankTierTests {
+    private let promotions = ["D", "C", "B", "A", "S"]
+
+    @Test func everyPromotionHasATier() {
+        #expect(Set(RankTier.all.keys) == Set(promotions))
+        // Untrained is where everyone starts: nothing is promoted INTO it.
+        #expect(RankTier.all["E"] == nil)
+    }
+
+    @Test func eachPromotionIsLouderThanTheOneBelow() {
+        let tiers = promotions.map { RankTier.of($0) }
+        for (quieter, louder) in zip(tiers, tiers.dropFirst()) {
+            #expect(louder.duration > quieter.duration)
+            #expect(louder.rings >= quieter.rings)
+            #expect(louder.haptics.count >= quieter.haptics.count)
+        }
+    }
+
+    @Test func theOrnamentsAccumulate() {
+        #expect(RankTier.of("D").ornament == .plain)
+        #expect(!RankTier.of("D").ornament.hasLaurel)
+        #expect(RankTier.of("C").ornament.hasLaurel)
+        #expect(RankTier.of("B").ornament.hasGems)
+        #expect(RankTier.of("A").ornament.hasCrown)
+        // The top tier keeps everything below it and adds the filigree.
+        let top = RankTier.of("S").ornament
+        #expect(top.hasLaurel && top.hasGems && top.hasCrown && top.hasFiligree)
+        #expect(!RankTier.of("A").ornament.hasFiligree)
+    }
+
+    @Test func aLevelUpIsQuieterThanAnyPromotion() {
+        let quietest = RankTier.of("D")
+        #expect(RankTier.levelUp.duration <= quietest.duration)
+        #expect(RankTier.levelUp.ornament == .plain)
+        #expect(RankTier.levelUp.rings <= quietest.rings)
+    }
+
+    @Test func anUnknownRankStillCelebrates() {
+        // A rank added server-side must not render nothing at all.
+        #expect(RankTier.of("Z") == RankTier.levelUp)
+        #expect(RankTier.of("") == RankTier.levelUp)
+        // Lower case from an older payload still resolves, as RankTitle does.
+        #expect(RankTier.of("s").ornament == .regalia)
+    }
+
+    @Test func theLadderStepsDownCorrectly() {
+        #expect(RankTier.previous(of: "S") == "A")
+        #expect(RankTier.previous(of: "D") == "E")
+        // The bottom of the ladder has nothing below it.
+        #expect(RankTier.previous(of: "E") == "E")
+        #expect(RankTier.previous(of: "nonsense") == "E")
+    }
+
+    @Test func theTableMatchesTheWebs() {
+        // These numbers are the web's (frontend/metalarm/rank_tiers.py). If
+        // that table changes, this test is the thing that should fail.
+        #expect(RankTier.of("D").sparks == 16 && RankTier.of("D").duration == 1.7)
+        #expect(RankTier.of("C").sparks == 18 && RankTier.of("C").duration == 2.3)
+        #expect(RankTier.of("B").sparks == 20 && RankTier.of("B").duration == 2.9)
+        #expect(RankTier.of("A").sparks == 22 && RankTier.of("A").duration == 3.6)
+        #expect(RankTier.of("S").sparks == 18 && RankTier.of("S").duration == 4.4)
+    }
+}

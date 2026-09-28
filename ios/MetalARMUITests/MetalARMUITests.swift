@@ -349,4 +349,52 @@ final class MetalARMUITests: MetalARMUITestCase {
             app.launch()
         }
     }
+
+    @MainActor
+    func testDuelsAndTheActivityFeed() throws {
+        let app = launchSignedIn()
+        openTab(app, "Ranks")
+
+        let open = app.buttons["openDuelsButton"]
+        XCTAssertTrue(open.waitForExistence(timeout: reacts), "Ranks has no way into Duels")
+        scrollUntilHittable(open, in: app)
+        open.tap()
+
+        // The duel that was judged by this very load pays out, once.
+        let win = element(app, "duelWinOverlay")
+        XCTAssertTrue(win.waitForExistence(timeout: reacts), "A won duel did not celebrate")
+        XCTAssertTrue(app.staticTexts["+40 points"].exists, "The win did not say what it paid")
+        attachScreenshot(app, named: "Duel won")
+        app.buttons["duelWinContinueButton"].tap()
+        XCTAssertTrue(win.waitForNonExistence(timeout: reacts), "The win overlay would not close")
+
+        // A running duel, scored from the reader's side.
+        XCTAssertTrue(app.staticTexts["YOU"].waitForExistence(timeout: reacts), "No running duel")
+        XCTAssertTrue(app.staticTexts["12450 kg"].exists, "The duel is not showing my volume")
+
+        // The challenge waiting on us reads as incoming, not outgoing.
+        XCTAssertTrue(app.staticTexts["Meera challenged you"].exists,
+                      "A challenge TO me should not read as one FROM me")
+
+        // The rival is labelled as what it is, everywhere it appears.
+        XCTAssertTrue(app.staticTexts["YOUR RIVAL"].exists, "The rival is not named as a rival")
+        XCTAssertTrue(
+            app.staticTexts["Your rival's pace comes from your own recent weeks, not another lifter."].exists,
+            "The page does not say where the rival's pace comes from")
+
+        // The feed carries what the party has been doing. Scrolled to by its
+        // CONTENT: a swipe aimed at a container inside a sheet can dismiss the
+        // sheet instead of scrolling it.
+        let record = app.staticTexts["New record: Barbell Back Squat"]
+        var swipes = 0
+        while !record.exists && swipes < 8 {
+            app.swipeUp()
+            swipes += 1
+        }
+        XCTAssertTrue(record.exists, "No PR in the feed")
+        attachScreenshot(app, named: "Duels and feed")
+
+        app.buttons["closeDuelsButton"].tap()
+        XCTAssertTrue(open.waitForExistence(timeout: reacts), "Done did not return to Ranks")
+    }
 }
