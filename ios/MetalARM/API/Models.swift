@@ -662,3 +662,108 @@ func parseServerDate(_ text: String) -> Date? {
 extension String {
     var trimmed: String { trimmingCharacters(in: .whitespacesAndNewlines) }
 }
+
+// MARK: - Duels and the activity feed
+
+/// One half of a duel. `userId` is nil for the synthetic rival, which has no
+/// account - see app/core/duels.py: its pace is generated from the
+/// CHALLENGER's own history and never from another lifter's data.
+struct DuelSide: Codable, Equatable {
+    var userId: String?
+    var displayName: String
+    var score: Double
+    var isRival: Bool?
+
+    var rival: Bool { isRival ?? false }
+}
+
+struct Duel: Codable, Equatable, Identifiable {
+    var id: String
+    var metric: String
+    var status: String
+    // Strings, like every other timestamp in this file: the decoder has no date
+    // strategy, and Pydantic's microseconds defeat ISO8601DateFormatter anyway
+    // (see parseServerDate).
+    var windowStart: String
+    var windowEnd: String
+    var challenger: DuelSide
+    var opponent: DuelSide
+    var winnerId: String?
+    var isDraw: Bool?
+    var resolvedAt: String?
+    /// Set only on the response that JUST judged a duel the caller won, so the
+    /// app knows to celebrate rather than diffing two fetches.
+    var pointsAwarded: Int?
+
+    var drawn: Bool { isDraw ?? false }
+
+    /// Volume is kilograms; sets and sessions are counts, and "3.0 sets" reads
+    /// like a bug.
+    func label(for score: Double) -> String {
+        metric == "volume" ? "\(Int(score.rounded())) kg" : "\(Int(score.rounded()))"
+    }
+
+    func mine(_ userID: String) -> DuelSide { challenger.userId == userID ? challenger : opponent }
+    func theirs(_ userID: String) -> DuelSide { challenger.userId == userID ? opponent : challenger }
+    func iChallenged(_ userID: String) -> Bool { challenger.userId == userID }
+    func iWon(_ userID: String) -> Bool { winnerId != nil && winnerId == userID }
+
+    /// "2 days left", or "ended". Rounded rather than floored: with 47 hours to
+    /// go, "1 day left" is wrong enough to change how someone trains today.
+    var endsLabel: String {
+        guard let end = parseServerDate(windowEnd) else { return "" }
+        let left = end.timeIntervalSinceNow
+        if left <= 0 { return "ended" }
+        let days = Int((left / 86_400).rounded())
+        if days >= 1 { return "\(days) day\(days == 1 ? "" : "s") left" }
+        let hours = Int(left / 3_600)
+        if hours >= 1 { return "\(hours) hour\(hours == 1 ? "" : "s") left" }
+        return "ends within the hour"
+    }
+}
+
+struct DuelList: Codable, Equatable {
+    var active: [Duel]
+    var pending: [Duel]
+    var completed: [Duel]
+
+    var isEmpty: Bool { active.isEmpty && pending.isEmpty && completed.isEmpty }
+}
+
+struct ActivityEntry: Codable, Equatable, Identifiable {
+    var id: String
+    var userId: String
+    var displayName: String
+    var eventType: String
+    var headline: String
+    var partyId: String?
+    var sourceId: String?
+    var createdAt: String
+
+    /// One SF Symbol per kind, so the feed is scannable without reading it.
+    var symbol: String {
+        switch eventType {
+        case "pr_achieved": return "trophy.fill"
+        case "rank_up": return "chevron.up.circle.fill"
+        case "session_completed": return "checkmark.circle.fill"
+        case "duel_won": return "flag.checkered"
+        case "quest_completed": return "checklist"
+        default: return "circle.fill"
+        }
+    }
+
+    var whenLabel: String {
+        guard let at = parseServerDate(createdAt) else { return "" }
+        let seconds = -at.timeIntervalSinceNow
+        if seconds < 90 { return "just now" }
+        if seconds < 3_600 { return "\(Int(seconds / 60))m ago" }
+        if seconds < 86_400 { return "\(Int(seconds / 3_600))h ago" }
+        if seconds < 604_800 { return "\(Int(seconds / 86_400))d ago" }
+        return "\(Int(seconds / 604_800))w ago"
+    }
+}
+
+struct ActivityFeed: Codable, Equatable {
+    var entries: [ActivityEntry]
+    var nextBefore: String?
+}

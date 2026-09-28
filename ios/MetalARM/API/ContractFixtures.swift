@@ -205,6 +205,46 @@ enum ContractFixtures {
      "exercises_created": ["Cable Kickback (Cable)"], "xp_awarded": 420, "duplicate": false, "progression": \(progression)}
     """
 
+    /// Shapes copied from docs/api-contract.md (GET /duels, GET /feed). A
+    /// running duel against a party member, a challenge waiting on us, one
+    /// just won against the rival, and a feed with one of each kind.
+    static let duels = """
+    {"active": [
+      {"id": "d0000000-0000-4000-8000-000000000001", "metric": "volume", "status": "active",
+       "window_start": "2026-09-24T06:00:00Z", "window_end": "2026-10-01T06:00:00Z",
+       "challenger": {"user_id": "\(userID)", "display_name": "Sree Ram", "score": 12450.0, "is_rival": false},
+       "opponent": {"user_id": "u9", "display_name": "Kiran", "score": 11890.0, "is_rival": false},
+       "winner_id": null, "is_draw": false, "resolved_at": null, "points_awarded": null}],
+     "pending": [
+      {"id": "d0000000-0000-4000-8000-000000000002", "metric": "sets", "status": "pending",
+       "window_start": "2026-09-25T06:00:00Z", "window_end": "2026-10-02T06:00:00Z",
+       "challenger": {"user_id": "u2", "display_name": "Meera", "score": 0.0, "is_rival": false},
+       "opponent": {"user_id": "\(userID)", "display_name": "Sree Ram", "score": 0.0, "is_rival": false},
+       "winner_id": null, "is_draw": false, "resolved_at": null, "points_awarded": null}],
+     "completed": [
+      {"id": "d0000000-0000-4000-8000-000000000003", "metric": "volume", "status": "completed",
+       "window_start": "2026-09-16T06:00:00Z", "window_end": "2026-09-23T06:00:00Z",
+       "challenger": {"user_id": "\(userID)", "display_name": "Sree Ram", "score": 9800.0, "is_rival": false},
+       "opponent": {"user_id": null, "display_name": "Your rival", "score": 8640.0, "is_rival": true},
+       "winner_id": "\(userID)", "is_draw": false,
+       "resolved_at": "2026-09-23T06:00:01Z", "points_awarded": 40}]}
+    """
+
+    static let feed = """
+    {"entries": [
+      {"id": "f0000000-0000-4000-8000-000000000001", "user_id": "u9", "display_name": "Kiran",
+       "event_type": "pr_achieved", "headline": "New record: Barbell Back Squat",
+       "party_id": "p1", "source_id": "r1", "created_at": "2026-09-26T05:10:00Z"},
+      {"id": "f0000000-0000-4000-8000-000000000002", "user_id": "\(userID)", "display_name": "Sree Ram",
+       "event_type": "duel_won", "headline": "Won a volume duel",
+       "party_id": null, "source_id": "d0000000-0000-4000-8000-000000000003",
+       "created_at": "2026-09-23T06:00:01Z"},
+      {"id": "f0000000-0000-4000-8000-000000000003", "user_id": "u2", "display_name": "Meera",
+       "event_type": "session_completed", "headline": "Finished Push Day",
+       "party_id": "p1", "source_id": "s3", "created_at": "2026-09-22T17:30:00Z"}],
+     "next_before": null}
+    """
+
     static let league = """
     {"week_key": "2026-W38", "division": 1, "division_label": "Silver", "group_no": 0,
      "ends_at": "2026-09-21T00:00:00Z", "promoted_from": 3, "promote_cutoff": 5, "demote_cutoff": 15,

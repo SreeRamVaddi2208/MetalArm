@@ -75,6 +75,13 @@ final class AppModel {
     var partyRaid: PartyRaid?
     var league: League?
 
+    // Duels and the activity feed. Loading the duels is what JUDGES any whose
+    // window has closed, so `justWon` can only be set by a load - never by the
+    // app deciding on its own that something has been won.
+    var duels = DuelList(active: [], pending: [], completed: [])
+    var feed: [ActivityEntry] = []
+    var justWon: Duel?
+
     // Profile
     var profile: Profile?
     var rankTrials: [RankTrial] = []
@@ -750,6 +757,47 @@ final class AppModel {
     func loadLeague() async {
         league = try? await api.league()
     }
+
+    // MARK: - Duels
+
+    func loadDuels() async {
+        await run("Couldn't load your duels") {
+            // Which side of a duel is yours is the whole reading of this
+            // screen, and a win is only recognised by comparing the winner to
+            // the account. Without `me` the celebration would simply never
+            // fire, while the server had already paid out - so fetch it here
+            // rather than depend on another screen having loaded first.
+            if me == nil { me = try? await api.me() }
+            let list = try await api.duels()
+            duels = list
+            feed = (try? await api.activityFeed())?.entries ?? []
+            // A duel the server judged during THIS fetch carries its points;
+            // that is the moment to celebrate, and it happens at most once
+            // because the award itself is written once.
+            if let me = me?.id {
+                justWon = list.completed.first { $0.iWon(me) && ($0.pointsAwarded ?? 0) > 0 }
+            }
+        }
+    }
+
+    func challenge(opponentID: String?, metric: String, days: Int) async {
+        await run("Couldn't start that duel") {
+            _ = try await api.challenge(opponentID: opponentID, metric: metric, days: days)
+        }
+        await loadDuels()
+    }
+
+    func acceptDuel(_ id: String) async {
+        await run("Couldn't accept that duel") { _ = try await api.acceptDuel(id: id) }
+        await loadDuels()
+    }
+
+    func declineDuel(_ id: String) async {
+        await run("Couldn't decline that duel") { _ = try await api.declineDuel(id: id) }
+        await loadDuels()
+    }
+
+    func dismissDuelWin() { justWon = nil }
 
     // MARK: - Profile
 

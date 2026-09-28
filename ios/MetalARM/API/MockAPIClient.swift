@@ -27,6 +27,9 @@ final class MockAPIClient: MetalArmAPI {
     private var weightUnit = WeightUnit.kg
     /// The cosmetic class the mock remembers, like the server would.
     var characterClass = ""
+    /// The duel win is paid once; a second read of the same list must not
+    /// celebrate it again.
+    private var duelWinSeen = false
     private let decoder = LiveAPIClient.makeDecoder()
 
     // -UITestLevelUp: finishing a workout levels the user up (14 -> 15).
@@ -349,6 +352,47 @@ final class MockAPIClient: MetalArmAPI {
     func league() async throws -> League {
         try check()
         return fixture(ContractFixtures.league)
+    }
+
+    // MARK: - Duels and the feed
+
+    func duels() async throws -> DuelList {
+        try check()
+        var list: DuelList = fixture(ContractFixtures.duels)
+        // The win is carried by the FIRST read only, exactly as the server
+        // does it: judging pays once, so a second fetch has no points on it.
+        if duelWinSeen {
+            list.completed = list.completed.map { duel in
+                var copy = duel
+                copy.pointsAwarded = nil
+                return copy
+            }
+        }
+        duelWinSeen = true
+        return list
+    }
+
+    func challenge(opponentID: String?, metric: String, days: Int) async throws -> Duel {
+        try check()
+        let list: DuelList = fixture(ContractFixtures.duels)
+        return opponentID == nil ? list.completed[0] : list.active[0]
+    }
+
+    func acceptDuel(id: String) async throws -> Duel {
+        try check()
+        let list: DuelList = fixture(ContractFixtures.duels)
+        return list.active[0]
+    }
+
+    func declineDuel(id: String) async throws -> Duel {
+        try check()
+        let list: DuelList = fixture(ContractFixtures.duels)
+        return list.active[0]
+    }
+
+    func activityFeed() async throws -> ActivityFeed {
+        try check()
+        return fixture(ContractFixtures.feed)
     }
 
     func character() async throws -> CharacterSheet {

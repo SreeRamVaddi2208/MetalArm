@@ -10,10 +10,24 @@ import SwiftUI
 
 struct LeaderboardView: View {
     @Environment(AppModel.self) private var model
+    @State private var showingDuels = false
     @State private var showingCreate = false
     @State private var showingJoin = false
     @State private var partyName = ""
     @State private var inviteCode = ""
+
+    /// What the row says before it is opened. Counts only - loading the duels
+    /// themselves is what judges them, and that belongs to the screen that
+    /// shows them, not to a subtitle.
+    private var duelSummary: String {
+        let running = model.duels.active.count
+        let waiting = model.duels.pending.count
+        if running == 0 && waiting == 0 { return "Challenge a party member, or your rival" }
+        var parts: [String] = []
+        if running > 0 { parts.append("\(running) running") }
+        if waiting > 0 { parts.append("\(waiting) waiting") }
+        return parts.joined(separator: " · ")
+    }
 
     var body: some View {
         ScrollView {
@@ -37,6 +51,34 @@ struct LeaderboardView: View {
                 }
                 .padding(.bottom, 6)
 
+                Button {
+                    showingDuels = true
+                } label: {
+                    HStack(spacing: 10) {
+                        Image(systemName: "flag.checkered")
+                            .font(Theme.body(15))
+                            .foregroundStyle(Theme.accent)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Duels")
+                                .font(Theme.body(15, .semibold))
+                                .foregroundStyle(Theme.text)
+                            Text(duelSummary)
+                                .font(Theme.body(11))
+                                .foregroundStyle(Theme.dim)
+                        }
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(Theme.body(12, .semibold))
+                            .foregroundStyle(Theme.faint)
+                    }
+                    .padding(14)
+                    .frame(maxWidth: .infinity)
+                    .cardStyle(cornerRadius: 16)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("openDuelsButton")
+
                 if let league = model.league {
                     leagueCard(league)
                 }
@@ -58,6 +100,7 @@ struct LeaderboardView: View {
             }
             .padding(20)
         }
+        .sheet(isPresented: $showingDuels) { DuelsView() }
         .background(Theme.bg)
         .task { await model.loadParties() }
         .task { await model.loadLeague() }

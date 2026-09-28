@@ -57,4 +57,13 @@ protocol MetalArmAPI: AnyObject {
     func partyLeaderboard(partyID: String) async throws -> PartyBoard
     func partyRaid(partyID: String) async throws -> PartyRaid
     func league() async throws -> League
+
+    // Duels and the activity feed
+    /// Reading is what JUDGES a duel whose window has closed (app/core/duels.py),
+    /// so the response can carry a win that has just been decided.
+    func duels() async throws -> DuelList
+    func challenge(opponentID: String?, metric: String, days: Int) async throws -> Duel
+    func acceptDuel(id: String) async throws -> Duel
+    func declineDuel(id: String) async throws -> Duel
+    func activityFeed() async throws -> ActivityFeed
 }
