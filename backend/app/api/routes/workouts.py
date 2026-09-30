@@ -269,6 +269,7 @@ def _session_out(db: Session, session: WorkoutSession, user: User) -> SessionOut
         name=session.name,
         status=session.status,
         routine_id=session.routine_id,
+        split_type=session.split_type,
         started_at=session.started_at,
         ended_at=session.ended_at,
         duration_seconds=_duration_seconds(session),
@@ -532,6 +533,9 @@ def _routine_from_preset(db: Session, user: User, slug: str) -> Routine:
         name=f"{label} · {preset.name}",
         notes=preset.summary,
         preset_slug=preset.slug,
+        # Carried onto the routine so the inheritance above works the same
+        # whether the session came from a preset or from a hand-made routine.
+        split_type=preset.split_type,
     )
     db.add(routine)
     db.flush()
@@ -570,6 +574,12 @@ def start_session(payload: SessionStart, current_user: CurrentUser, db: DbSessio
     session = WorkoutSession(
         user_id=current_user.id,
         routine_id=routine.id if routine else None,
+        # THE one place the split question is skipped rather than asked. A
+        # routine (or a preset materialised into one) already says what it
+        # trains, so a session started from it inherits that and the client
+        # never puts up the picker. Only a genuinely blank start leaves this
+        # NULL, which is exactly what the picker keys off.
+        split_type=routine.split_type if routine else None,
         name=payload.name or (routine.name if routine else None),
         started_at=_now(),
         status=SessionStatus.IN_PROGRESS.value,

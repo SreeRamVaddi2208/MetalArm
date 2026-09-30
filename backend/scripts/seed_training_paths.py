@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Upsert the training paths from app/data/training_categories.json.
+"""Upsert the training paths and the workout splits from app/data/.
 
 Run on every deploy, beside the exercise library:
 
@@ -14,15 +14,16 @@ import sys
 
 from sqlalchemy.orm import Session
 
-from app.core import training_categories
+from app.core import splits, training_categories
 from app.db.session import engine
 
 
 def main() -> int:
     with Session(engine) as db:
         written = training_categories.seed(db)
+        written += splits.seed(db)
         db.commit()
-    total = len(training_categories.definitions())
+    total = len(training_categories.definitions()) + len(splits.definitions())
     print(f"training paths: {written} written, {total - written} already current")
     return 0
 

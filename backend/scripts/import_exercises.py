@@ -32,12 +32,13 @@ import json
 import pathlib
 import sys
 
-from pydantic import BaseModel, Field, ValidationError
+from pydantic import BaseModel, Field, ValidationError, model_validator
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.exercise_names import clean_name, name_key, slugify
 from app.db.session import engine
+from app.models.split import StretchPhase
 from app.models.workout import Exercise
 from app.models.workout_enums import Equipment, ExerciseCategory, MuscleGroup
 
@@ -48,6 +49,8 @@ _FIELDS = (
     "name",
     "name_key",
     "category",
+    "stretch_phase",
+    "hold_seconds",
     "primary_muscle_groups",
     "equipment",
     "instructions",
@@ -63,6 +66,18 @@ class LibraryExercise(BaseModel):
     equipment: Equipment
     instructions: str | None = None
     media_url: str | None = Field(default=None, max_length=500)
+    # Set only on stretches: which side of the workout it belongs to, and how
+    # long to hold it. A lift leaves both out and they stay NULL.
+    stretch_phase: StretchPhase | None = None
+    hold_seconds: int | None = Field(default=None, ge=5, le=600)
+
+    @model_validator(mode="after")
+    def _a_hold_needs_a_phase(self) -> "LibraryExercise":
+        """A duration with no phase would never be shown by anything, which is
+        a typo rather than an intention."""
+        if self.hold_seconds is not None and self.stretch_phase is None:
+            raise ValueError("hold_seconds needs stretch_phase")
+        return self
 
     def columns(self) -> dict[str, object]:
         return {
@@ -73,6 +88,8 @@ class LibraryExercise(BaseModel):
             "primary_muscle_groups": [m.value for m in self.primary_muscle_groups],
             "equipment": self.equipment.value,
             "instructions": self.instructions or None,
+            "stretch_phase": self.stretch_phase.value if self.stretch_phase else None,
+            "hold_seconds": self.hold_seconds,
             "media_url": self.media_url or None,
         }
 

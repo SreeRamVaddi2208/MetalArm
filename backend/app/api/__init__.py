@@ -14,6 +14,7 @@ from app.api.routes import (
     quests,
     rewards,
     routines,
+    splits,
     training_paths,
     workouts,
 )
@@ -30,6 +31,7 @@ api_router.include_router(parties.router)
 api_router.include_router(profile.router)
 api_router.include_router(exercises.router)
 api_router.include_router(routines.router)
+api_router.include_router(splits.router)
 api_router.include_router(workouts.router)
 api_router.include_router(body.router)
 api_router.include_router(leagues.router)

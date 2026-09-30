@@ -1,0 +1,30 @@
+[
+  {
+    "split_type": "push",
+    "display_name": "Push",
+    "tagline": "Chest, shoulders and triceps - everything that presses.",
+    "target_muscle_groups": ["chest", "shoulders", "triceps"],
+    "position": 0
+  },
+  {
+    "split_type": "pull",
+    "display_name": "Pull",
+    "tagline": "Back, lats and biceps - everything that pulls.",
+    "target_muscle_groups": ["back", "lats", "biceps", "traps", "forearms"],
+    "position": 1
+  },
+  {
+    "split_type": "legs",
+    "display_name": "Legs",
+    "tagline": "Quads, hamstrings, glutes and calves.",
+    "target_muscle_groups": ["quads", "hamstrings", "glutes", "calves", "adductors", "abductors"],
+    "position": 2
+  },
+  {
+    "split_type": "custom",
+    "display_name": "Something else",
+    "tagline": "A general warm-up and cooldown, whatever you are training.",
+    "target_muscle_groups": ["full_body", "back", "lower_back", "shoulders", "glutes", "hamstrings"],
+    "position": 3
+  }
+]

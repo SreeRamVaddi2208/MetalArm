@@ -38,6 +38,10 @@ class Preset(BaseModel):
     category: str = Field(min_length=1, max_length=40)
     name: str = Field(min_length=1, max_length=80)
     summary: str = Field(min_length=1, max_length=280)
+    # What this preset trains, so a session started from it inherits the split
+    # and never asks. Optional: a preset that does not map to one says so by
+    # leaving it out.
+    split_type: str | None = Field(default=None, max_length=16)
     exercises: list[PresetExercise] = Field(min_length=1, max_length=20)
 
 

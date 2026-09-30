@@ -343,6 +343,9 @@ class SessionOut(BaseModel):
     name: str | None
     status: str
     routine_id: uuid.UUID | None
+    # NULL means nobody has said what this session trains, which is what the
+    # client's split picker keys off. Inherited from a routine or preset.
+    split_type: str | None = None
     started_at: dt.datetime
     ended_at: dt.datetime | None
     # Live for a session in progress.

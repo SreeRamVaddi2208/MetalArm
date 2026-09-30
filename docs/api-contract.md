@@ -10,7 +10,7 @@
 
 - **API title:** MetalArm API
 - **API version:** 0.1.0
-- **Generated:** 2026-09-25 19:02 UTC
+- **Generated:** 2026-09-30 04:11 UTC
 - **Source:** `http://localhost:8000/openapi.json`
 
 ---
@@ -1314,6 +1314,21 @@ Same transaction shape as completing a quest, and for the same reason:
 
 ---
 
+### `GET /api/v1/routines/library`
+
+**Routine Library**
+
+Pinned first, then most-used. Usage is counted from finished sessions
+rather than stored, so it cannot drift from them.
+
+*Tags:* `routines`
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+
+---
+
 ### `DELETE /api/v1/routines/{routine_id}`
 
 **Delete Routine**
@@ -1363,6 +1378,64 @@ Full replace. The ordered exercise list is swapped as a whole.
 | `routine_id` | path | `string` | yes |
 
 *Request body* (`application/json`): `RoutineIn`
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `POST /api/v1/routines/{routine_id}/pin`
+
+**Pin Routine**
+
+Pin or unpin. Idempotent: pinning a pinned routine keeps the time it was
+first pinned, so the order does not jump when somebody taps twice.
+
+*Tags:* `routines`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `routine_id` | path | `string` | yes |
+| `pinned` | query | `boolean` | no |
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `GET /api/v1/splits`
+
+**List Splits**
+
+What the picker offers. Signed in, because everything else here is.
+
+*Tags:* `splits`
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+
+---
+
+### `GET /api/v1/stretches`
+
+**List Stretches**
+
+The stretches for a split and phase.
+
+With no split, every stretch - which is what the "add your own" picker
+browses. With one, only those whose muscle groups overlap it.
+
+*Tags:* `splits`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `split_type` | query | `SplitType | null` | no |
+| `phase` | query | `StretchPhase | null` | no |
 
 | Status | Description |
 |---|---|
@@ -1592,6 +1665,50 @@ streak bonuses, and credit the session's points to the wallet.
 
 ---
 
+### `GET /api/v1/workouts/sessions/{session_id}/recommended-stretches`
+
+**Get Recommended**
+
+The panel as it stands, so a reload rebuilds it from the server rather
+than from whatever the client happened to remember.
+
+*Tags:* `splits`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `session_id` | path | `string` | yes |
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `POST /api/v1/workouts/sessions/{session_id}/recommended-stretches`
+
+**Add Recommended**
+
+Put something into the panel by hand.
+
+Flagged `user_added`, which is what keeps it there: re-matching only ever
+writes `auto_matched` rows, so nothing the user chose is taken away.
+
+*Tags:* `splits`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `session_id` | path | `string` | yes |
+
+*Request body* (`application/json`): `AddRecommended`
+
+| Status | Description |
+|---|---|
+| `201` | Successful Response |
+| `422` | Validation Error |
+
+---
+
 ### `POST /api/v1/workouts/sessions/{session_id}/sets`
 
 **Log Set**
@@ -1661,6 +1778,31 @@ set is judged afresh. Other sets' awards are not revisited.
 
 ---
 
+### `POST /api/v1/workouts/sessions/{session_id}/split`
+
+**Set Split**
+
+Answer the picker, and get the panel back in one call.
+
+Recording the auto-matched set here rather than making the client do it
+means the panel is reconstructable from the moment it first appeared - and
+a user's own additions, which arrive later, are distinguishable from it.
+
+*Tags:* `splits`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `session_id` | path | `string` | yes |
+
+*Request body* (`application/json`): `SetSplit`
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
 ### `GET /health`
 
 **Health**
@@ -1706,6 +1848,13 @@ otherwise 503 with per-dependency detail.
 | `party_id` | `string | null` | yes |
 | `source_id` | `string | null` | yes |
 | `created_at` | `string` | yes |
+
+#### `AddRecommended`
+
+| Field | Type | Required |
+|---|---|---|
+| `exercise_id` | `string` | yes |
+| `phase` | `StretchPhase` | yes |
 
 #### `AwardOut`
 
@@ -2034,6 +2183,18 @@ otherwise 503 with per-dependency detail.
 | `reason` | `string` | yes |
 | `session_id` | `string | null` | yes |
 | `created_at` | `string` | yes |
+
+#### `LibraryRoutine`
+
+| Field | Type | Required |
+|---|---|---|
+| `id` | `string` | yes |
+| `name` | `string` | yes |
+| `split_type` | `string | null` | no |
+| `exercise_count` | `integer` | no |
+| `is_pinned` | `boolean` | no |
+| `use_count` | `integer` | no |
+| `last_used_at` | `string | null` | no |
 
 #### `LifetimeStats`
 
@@ -2403,6 +2564,14 @@ otherwise 503 with per-dependency detail.
 | `ends_at` | `string` | yes |
 | `hitters` | `RaidHitterOut[]` | yes |
 
+#### `RecommendedPanel`
+
+| Field | Type | Required |
+|---|---|---|
+| `split_type` | `string | null` | no |
+| `pre` | `StretchOut[]` | no |
+| `post` | `StretchOut[]` | no |
+
 #### `RecordOut`
 
 | Field | Type | Required |
@@ -2530,6 +2699,7 @@ otherwise 503 with per-dependency detail.
 | `name` | `string | null` | yes |
 | `status` | `string` | yes |
 | `routine_id` | `string | null` | yes |
+| `split_type` | `string | null` | no |
 | `started_at` | `string` | yes |
 | `ended_at` | `string | null` | yes |
 | `duration_seconds` | `integer` | yes |
@@ -2631,6 +2801,12 @@ otherwise 503 with per-dependency detail.
 | `distance_m` | `number | null` | yes |
 | `completed_at` | `string` | yes |
 
+#### `SetSplit`
+
+| Field | Type | Required |
+|---|---|---|
+| `split_type` | `SplitType` | yes |
+
 #### `SetUpdate`
 
 | Field | Type | Required |
@@ -2652,6 +2828,21 @@ otherwise 503 with per-dependency detail.
 | `display_name` | `string` | yes |
 | `timezone` | `string` | no |
 
+#### `SplitOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `split_type` | `string` | yes |
+| `display_name` | `string` | yes |
+| `tagline` | `string` | yes |
+| `target_muscle_groups` | `string[]` | yes |
+
+#### `SplitType`
+
+| Field | Type | Required |
+|---|---|---|
+| _(no properties)_ | | |
+
 #### `StatOut`
 
 | Field | Type | Required |
@@ -2671,6 +2862,25 @@ otherwise 503 with per-dependency detail.
 | `target` | `integer` | yes |
 | `this_week_done` | `boolean` | yes |
 | `sessions_to_go` | `integer` | yes |
+
+#### `StretchOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `id` | `string` | yes |
+| `name` | `string` | yes |
+| `primary_muscle_groups` | `string[]` | yes |
+| `instructions` | `string | null` | no |
+| `media_url` | `string | null` | no |
+| `stretch_phase` | `string | null` | no |
+| `hold_seconds` | `integer | null` | no |
+| `source` | `string | null` | no |
+
+#### `StretchPhase`
+
+| Field | Type | Required |
+|---|---|---|
+| _(no properties)_ | | |
 
 #### `TokenResponse`
 

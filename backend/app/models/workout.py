@@ -74,6 +74,12 @@ class Exercise(UUIDPrimaryKey, Timestamps, Base):
     equipment: Mapped[str] = mapped_column(String(32), nullable=False)
     instructions: Mapped[str | None] = mapped_column(Text, nullable=True)
     media_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    # A stretch is an exercise, not a second library: everything a stretch
+    # needs - name, muscle groups, instructions, media, custom ownership - is
+    # already here. These two columns are what a lift does not have, and they
+    # are NULL on every one of them.
+    stretch_phase: Mapped[str | None] = mapped_column(String(8), nullable=True)
+    hold_seconds: Mapped[int | None] = mapped_column(Integer, nullable=True)
     is_custom: Mapped[bool] = mapped_column(
         Boolean, nullable=False, server_default="false"
     )
@@ -148,6 +154,13 @@ class Routine(UUIDPrimaryKey, Timestamps, Base):
     # (app/core/presets.py). Starting the same preset again reuses this row
     # rather than stacking up copies, and the UI can label where it came from.
     preset_slug: Mapped[str | None] = mapped_column(String(60), nullable=True)
+    # What this routine trains. A session started from it inherits this, which
+    # is the one place the split question is skipped rather than asked.
+    split_type: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    # Kept in the library for quick access. Only the pin is stored: how often
+    # and how recently it was used is counted from the sessions that name it,
+    # so the two can never disagree.
+    pinned_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     exercises: Mapped[list["RoutineExercise"]] = relationship(
         back_populates="routine",
@@ -269,6 +282,10 @@ class WorkoutSession(UUIDPrimaryKey, Timestamps, Base):
     # ISO week (user's timezone) the session finished in. Stored so the weekly
     # streak is a GROUP BY, not a timezone conversion per row.
     week_key: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    # Push, pull, legs or custom - asked once on a blank start, inherited from
+    # the routine or preset otherwise. NULL means nobody has said, which is
+    # exactly what the picker keys off.
+    split_type: Mapped[str | None] = mapped_column(String(16), nullable=True)
     # Shop points credited at finish, snapshotted: equal to the session's net
     # ledger total at that moment. See routes/workouts.py.
     points_credited: Mapped[int] = mapped_column(
@@ -587,4 +604,39 @@ class BodyMeasurement(UUIDPrimaryKey, Base):
         Index(
             "ix_body_measurements_user_metric_time", "user_id", "metric", "recorded_at"
         ),
+    )
+
+
+class RecommendedStretch(UUIDPrimaryKey, Base):
+    """What a session's Recommended panel was made of.
+
+    The one table here that cannot be derived. Which stretches the matcher
+    suggested is reproducible from the split, but which ones the USER added is
+    not - and the whole point of recording the difference is that a person's
+    own pick is never taken away by re-matching.
+    """
+
+    __tablename__ = "recommended_stretches"
+
+    session_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("workout_sessions.id", ondelete="CASCADE"), nullable=False
+    )
+    exercise_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("exercises.id", ondelete="CASCADE"), nullable=False
+    )
+    # "auto_matched" or "user_added".
+    source: Mapped[str] = mapped_column(String(16), nullable=False)
+    # "pre" or "post": the same stretch can legitimately appear in both.
+    phase: Mapped[str] = mapped_column(String(8), nullable=False)
+    created_at: Mapped[dt.datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+    __table_args__ = (
+        CheckConstraint("source IN ('auto_matched', 'user_added')", name="ck_recommended_source"),
+        CheckConstraint("phase IN ('pre', 'post')", name="ck_recommended_phase"),
+        # Adding the same stretch to the same phase twice is a no-op, not a
+        # duplicate row - the panel is a set, and the client may retry.
+        UniqueConstraint("session_id", "exercise_id", "phase", name="uq_recommended_once"),
+        Index("ix_recommended_session", "session_id", "phase"),
     )

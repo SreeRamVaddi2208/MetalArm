@@ -1,5 +1,6 @@
 """Routines: reusable workout templates a session can be started from."""
 
+import datetime as dt
 import uuid
 from decimal import Decimal
 
@@ -8,9 +9,11 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
 from app.api.deps import CurrentUser, DbSession
+from app.core import library
 from app.core import workout_store as store
 from app.models.user import User
 from app.models.workout import Exercise, Routine, RoutineExercise
+from app.schemas.split import LibraryRoutine
 from app.schemas.workout import (
     ExerciseOut,
     RoutineExerciseIn,
@@ -117,6 +120,54 @@ def create_routine(payload: RoutineIn, current_user: CurrentUser, db: DbSession)
     db.add(routine)
     db.commit()
     return _out(_get_owned(db, routine.id, current_user))
+
+
+# --- The library ----------------------------------------------------------
+# Quick access to the routines somebody actually runs. A thin view over the
+# routines they already have: nothing here duplicates or forks routine data.
+
+
+@router.get("/library", response_model=list[LibraryRoutine])
+def routine_library(current_user: CurrentUser, db: DbSession) -> list[LibraryRoutine]:
+    """Pinned first, then most-used. Usage is counted from finished sessions
+    rather than stored, so it cannot drift from them."""
+    return [
+        LibraryRoutine(
+            id=row.routine.id,
+            name=row.routine.name,
+            split_type=row.routine.split_type,
+            exercise_count=row.exercise_count,
+            is_pinned=row.is_pinned,
+            use_count=row.use_count,
+            last_used_at=row.last_used_at.isoformat() if row.last_used_at else None,
+        )
+        for row in library.ranked(db, current_user.id)
+    ]
+
+
+@router.post("/{routine_id}/pin", response_model=LibraryRoutine)
+def pin_routine(
+    routine_id: uuid.UUID, current_user: CurrentUser, db: DbSession, pinned: bool = True
+) -> LibraryRoutine:
+    """Pin or unpin. Idempotent: pinning a pinned routine keeps the time it was
+    first pinned, so the order does not jump when somebody taps twice."""
+    routine = _get_owned(db, routine_id, current_user)
+    if pinned and routine.pinned_at is None:
+        routine.pinned_at = dt.datetime.now(dt.timezone.utc)
+    elif not pinned:
+        routine.pinned_at = None
+    db.commit()
+
+    row = next(r for r in library.ranked(db, current_user.id) if r.routine.id == routine.id)
+    return LibraryRoutine(
+        id=row.routine.id,
+        name=row.routine.name,
+        split_type=row.routine.split_type,
+        exercise_count=row.exercise_count,
+        is_pinned=row.is_pinned,
+        use_count=row.use_count,
+        last_used_at=row.last_used_at.isoformat() if row.last_used_at else None,
+    )
 
 
 @router.get("/{routine_id}", response_model=RoutineOut)
