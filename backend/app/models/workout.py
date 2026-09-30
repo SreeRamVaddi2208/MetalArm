@@ -251,6 +251,10 @@ class WorkoutSession(UUIDPrimaryKey, Timestamps, Base):
         Uuid(as_uuid=True),
         ForeignKey("routines.id", ondelete="SET NULL"),
         nullable=True,
+        # Deleting a routine is an ordinary user action, and SET NULL must find
+        # every session that referenced it. Unindexed, that is a sequential scan
+        # of the largest table a user owns.
+        index=True,
     )
     name: Mapped[str | None] = mapped_column(String(80), nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -310,6 +314,12 @@ class WorkoutSession(UUIDPrimaryKey, Timestamps, Base):
         ),
         Index("ix_workout_sessions_user_started", "user_id", "started_at"),
         Index("ix_workout_sessions_user_week", "user_id", "week_key"),
+        # Duel scoring and the party workout board both range over ended_at, not
+        # started_at - a workout belongs to the window it was FINISHED in (see
+        # app/core/duels.py), so they cannot be served by the index above. status
+        # comes second because it is always an equality on 'completed', which
+        # keeps the ended_at range contiguous in the index.
+        Index("ix_workout_sessions_user_status_ended", "user_id", "status", "ended_at"),
     )
 
 
@@ -414,6 +424,10 @@ class PersonalRecord(UUIDPrimaryKey, Base):
         Uuid(as_uuid=True),
         ForeignKey("exercises.id", ondelete="CASCADE"),
         nullable=False,
+        # exercise_id sits in position 2 of both ix_personal_records_user_exercise_type
+        # and uq_personal_records_session_volume, and neither leads with it, so
+        # neither can serve the cascade when a custom exercise is deleted.
+        index=True,
     )
     record_type: Mapped[str] = mapped_column(String(24), nullable=False)
     value: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
@@ -515,17 +529,24 @@ class PointsLedgerEntry(UUIDPrimaryKey, Base):
         ),
         # The database-level guard against double awards, for the awards that
         # happen exactly once: a session cannot be completed or streak-paid
-        # twice, and an entry cannot be reversed twice. Set-level awards are not
-        # covered, because editing a set legitimately reverses and then
-        # re-awards the same set; those are serialised by the level_progress
-        # row lock instead.
+        # twice, a duel cannot be won twice, and an entry cannot be reversed
+        # twice. Set-level awards are not covered, because editing a set
+        # legitimately reverses and then re-awards the same set; those are
+        # serialised by the level_progress row lock instead.
+        #
+        # 'duel_won' belongs here and was missing: migration 8d1f4c60ba57 added
+        # it to the real index but this list was never updated to match. Because
+        # the test suite builds its schema with Base.metadata.create_all rather
+        # than by migrating, the guard existed in production and was absent from
+        # every test - and `alembic check` does not compare partial-index
+        # predicates, so nothing reported the drift.
         Index(
             "uq_points_ledger_once",
             "source_type",
             "source_id",
             unique=True,
             postgresql_where=text(
-                "source_type IN ('session_completed', 'streak_bonus', 'reversal')"
+                "source_type IN ('session_completed', 'streak_bonus', 'duel_won', 'reversal')"
             ),
         ),
         # One streak bonus per ISO week.

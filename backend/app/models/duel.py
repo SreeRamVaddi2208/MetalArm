@@ -85,7 +85,12 @@ class Duel(UUIDPrimaryKey, Timestamps, Base):
     # NULL after resolution means a draw, which is why it cannot be inferred
     # from status alone.
     winner_id: Mapped[uuid.UUID | None] = mapped_column(
-        Uuid(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+        Uuid(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+        # ix_duels_challenger and ix_duels_opponent do not cover this column, so
+        # without its own index every account deletion sequentially scans duels.
+        index=True,
     )
     resolved_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 

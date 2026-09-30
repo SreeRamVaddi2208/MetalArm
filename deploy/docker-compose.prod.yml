@@ -66,7 +66,19 @@ services:
   redis:
     image: redis:8-alpine
     restart: unless-stopped
-    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD}"]
+    # Bounded memory and an eviction policy - see the long note in the dev
+    # compose file. Unbounded with noeviction (the Redis default) means the host
+    # OOMs, and then rate limiting fails open while every leaderboard read falls
+    # through to Postgres. Keep maxmemory well under the container's RAM: an AOF
+    # rewrite needs headroom of its own.
+    command:
+      [
+        "redis-server",
+        "--appendonly", "yes",
+        "--requirepass", "${REDIS_PASSWORD}",
+        "--maxmemory", "${REDIS_MAXMEMORY:-256mb}",
+        "--maxmemory-policy", "volatile-lru",
+      ]
     volumes:
       - redis_data:/data
     healthcheck:

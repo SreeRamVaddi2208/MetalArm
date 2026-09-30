@@ -6,6 +6,7 @@ import uuid
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from decimal import Decimal
@@ -259,6 +260,45 @@ def test_the_winner_is_paid_exactly_once(
     ).all()
     assert len(paid) == 1, paid
     assert paid[0].points == engine.WIN_POINTS
+
+
+def test_the_database_itself_refuses_a_second_duel_award(
+    client: TestClient, user_factory, db: Session
+) -> None:
+    """The guard underneath the lock, tested directly.
+
+    app/core/duels.py awards the winner inside a SAVEPOINT and treats an
+    IntegrityError as "already paid" - so that except branch is only correct if
+    the database really does refuse the second row. Two simultaneous readers both
+    judging a closed duel is the case it exists for, and the row lock alone is
+    not the whole story.
+
+    This could not be tested before: uq_points_ledger_once listed 'duel_won' in
+    the migration but not in the model, and the suite builds its schema from the
+    model, so the second insert used to succeed here while failing in production.
+    """
+    mine, me = user_factory()
+    made = client.post(DUELS, json={"against_rival": True, "days": 1}, headers=mine).json()
+    duel = close_window(db, made["id"])
+    train(db, me["id"], duel.window_start + dt.timedelta(hours=1), weight=100, reps=10, sets=5)
+
+    paid = client.get(f"{DUELS}/{made['id']}", headers=mine).json()
+    assert paid["points_awarded"] == engine.WIN_POINTS
+
+    # Forge the award a second time, exactly as a racing reader would.
+    db.expire_all()
+    with pytest.raises(IntegrityError):
+        db.add(
+            PointsLedgerEntry(
+                user_id=uuid.UUID(me["id"]),
+                source_type=LedgerSource.DUEL_WON.value,
+                source_id=uuid.UUID(made["id"]),
+                points=engine.WIN_POINTS,
+                reason="a racing second reader",
+            )
+        )
+        db.flush()
+    db.rollback()
 
 
 def test_a_draw_has_no_winner_and_pays_nobody(

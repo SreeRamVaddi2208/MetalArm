@@ -124,6 +124,11 @@ class PartyQuest(UUIDPrimaryKey, Timestamps, Base):
         # The quest outlives its author leaving the party.
         ForeignKey("users.id", ondelete="SET NULL"),
         nullable=True,
+        # Postgres does not index the referencing side of a foreign key on its
+        # own, and SET NULL has to find every row pointing at the departing
+        # user. Without this, deleting one account sequentially scans every
+        # party quest ever created.
+        index=True,
     )
     title: Mapped[str] = mapped_column(String(140), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)

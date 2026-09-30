@@ -43,11 +43,26 @@ services:
     image: redis:8-alpine
     container_name: metalarm-redis
     restart: unless-stopped
+    # maxmemory with volatile-lru, NOT the defaults. Out of the box Redis has no
+    # memory limit and a noeviction policy, so it grows until the host runs out
+    # and then starts refusing writes - at which point rate limiting fails open
+    # (app/core/rate_limit.py swallows the error) and every leaderboard read
+    # falls back to a Postgres GROUP BY. The failure lands hardest exactly when
+    # the system is already under pressure.
+    #
+    # volatile-lru rather than allkeys-lru: it only ever evicts a key that has a
+    # TTL. Everything this app writes sets one - the rate-limit buckets and the
+    # party XP cache both EXPIRE - so there is always a victim available, and
+    # anything added later WITHOUT a TTL is protected rather than silently
+    # dropped. A policy cannot differ per key on one instance, so this is the
+    # choice that fails safely for both workloads.
     command:
       [
         "redis-server",
         "--appendonly", "yes",
         "--requirepass", "${REDIS_PASSWORD}",
+        "--maxmemory", "${REDIS_MAXMEMORY:-256mb}",
+        "--maxmemory-policy", "volatile-lru",
       ]
     ports:
       # Loopback only - see the note on the postgres service.
