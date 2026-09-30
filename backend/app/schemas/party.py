@@ -5,18 +5,19 @@ import uuid
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.core.text import HumanName
 from app.models.enums import Recurrence
 from app.models.party import DEFAULT_MAX_MEMBERS
 from app.models.quest import MAX_POINTS_REWARD, MAX_XP_REWARD
 
 
 class PartyCreate(BaseModel):
-    name: str = Field(min_length=1, max_length=60)
+    name: HumanName = Field(min_length=1, max_length=60)
     max_members: int = Field(default=DEFAULT_MAX_MEMBERS, ge=2, le=100)
 
 
 class PartyUpdate(BaseModel):
-    name: str | None = Field(default=None, min_length=1, max_length=60)
+    name: HumanName | None = Field(default=None, min_length=1, max_length=60)
 
 
 class JoinRequest(BaseModel):
@@ -92,7 +93,7 @@ class WorkoutLeaderboardOut(BaseModel):
 
 
 class PartyQuestCreate(BaseModel):
-    title: str = Field(min_length=1, max_length=140)
+    title: HumanName = Field(min_length=1, max_length=140)
     description: str | None = None
     xp_reward: int = Field(default=25, ge=0, le=MAX_XP_REWARD)
     points_reward: int = Field(default=0, ge=0, le=MAX_POINTS_REWARD)
@@ -101,7 +102,7 @@ class PartyQuestCreate(BaseModel):
 
 
 class PartyQuestUpdate(BaseModel):
-    title: str | None = Field(default=None, min_length=1, max_length=140)
+    title: HumanName | None = Field(default=None, min_length=1, max_length=140)
     description: str | None = None
     xp_reward: int | None = Field(default=None, ge=0, le=MAX_XP_REWARD)
     points_reward: int | None = Field(default=None, ge=0, le=MAX_POINTS_REWARD)

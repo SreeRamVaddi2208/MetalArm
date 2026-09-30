@@ -41,6 +41,25 @@ class ApiError(Exception):
         self.detail = detail
 
 
+# Pydantic prefixes any message a validator raises with "Value error, ".
+# That prefix is for someone reading a traceback, not for someone filling in a
+# signup form, so it comes off before the message is shown.
+_VALUE_ERROR_PREFIX = "Value error, "
+
+
+def _field_label(loc: list[Any]) -> str:
+    """The field name to show, or "" when there is no field worth naming.
+
+    FastAPI's `loc` for a body field is ("body", "display_name"); for a
+    whole-model validator - the one that compares the password against the
+    email - it is ("body",) alone. Labelling that "body:" names nothing the
+    person can see on screen, so it gets no label at all.
+    """
+    if len(loc) < 2:
+        return ""
+    return str(loc[-1]).replace("_", " ").capitalize()
+
+
 def _extract_detail(response: httpx.Response) -> str:
     """Pull a human-readable message out of an error body.
 
@@ -61,9 +80,11 @@ def _extract_detail(response: httpx.Response) -> str:
         for item in detail:
             if not isinstance(item, dict):
                 continue
-            loc = item.get("loc") or []
-            field = str(loc[-1]) if loc else "input"
-            parts.append(f"{field}: {item.get('msg', 'invalid')}")
+            message = str(item.get("msg", "invalid"))
+            if message.startswith(_VALUE_ERROR_PREFIX):
+                message = message[len(_VALUE_ERROR_PREFIX) :]
+            label = _field_label(item.get("loc") or [])
+            parts.append(f"{label}: {message}" if label else message)
         if parts:
             return "; ".join(parts)
     return f"HTTP {response.status_code}"

@@ -172,7 +172,8 @@ def signup(payload: SignupRequest, request: Request, db: DbSession) -> MeOut:
         email=payload.email,
         email_normalized=normalize_email(payload.email),
         password_hash=hash_password(payload.password),
-        display_name=payload.display_name.strip(),
+        # Already cleaned and checked by the schema (core/text.HumanName).
+        display_name=payload.display_name,
         timezone=payload.timezone,
     )
     user.progress = LevelProgress(

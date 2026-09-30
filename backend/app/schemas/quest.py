@@ -5,12 +5,13 @@ import uuid
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.core.text import HumanName
 from app.models.enums import QuestStatus, Recurrence
 from app.models.quest import MAX_POINTS_REWARD, MAX_XP_REWARD
 
 
 class QuestCreate(BaseModel):
-    title: str = Field(min_length=1, max_length=140)
+    title: HumanName = Field(min_length=1, max_length=140)
     description: str | None = None
     # Bounded to match ck_quests_xp_reward_range. Enforced here too so an
     # over-large reward is a 422 with a useful message rather than a 500 from
@@ -29,7 +30,7 @@ class QuestUpdate(BaseModel):
     clearing it on every unrelated edit.
     """
 
-    title: str | None = Field(default=None, min_length=1, max_length=140)
+    title: HumanName | None = Field(default=None, min_length=1, max_length=140)
     description: str | None = None
     xp_reward: int | None = Field(default=None, ge=0, le=MAX_XP_REWARD)
     points_reward: int | None = Field(default=None, ge=0, le=MAX_POINTS_REWARD)
