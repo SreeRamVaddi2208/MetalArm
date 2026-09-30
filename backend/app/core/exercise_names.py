@@ -7,13 +7,18 @@ endpoint must derive it identically. Same pattern as security.normalize_email.
 
 import re
 
-_WHITESPACE = re.compile(r"\s+")
+from app.core.text import clean_text
+
 _NON_SLUG = re.compile(r"[^a-z0-9]+")
 
 
 def clean_name(name: str) -> str:
-    """The display name: trimmed, inner whitespace collapsed, case kept."""
-    return _WHITESPACE.sub(" ", name).strip()
+    """The display name: trimmed, inner whitespace collapsed, case kept.
+
+    Delegates to core.text so the whitespace rule lives in one place - the
+    same rule now governs every name a person reads, not only exercises.
+    """
+    return clean_text(name)
 
 
 def name_key(name: str) -> str:

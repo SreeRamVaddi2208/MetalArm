@@ -17,6 +17,7 @@ from decimal import ROUND_HALF_UP, Decimal
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.core import workout_rules as rules
+from app.core.text import HumanName
 from app.models.workout_enums import (
     Equipment,
     ExerciseCategory,
@@ -48,7 +49,7 @@ def to_kg(weight: float, unit: WeightUnit) -> Decimal:
 class ExerciseCreate(BaseModel):
     """A user's own exercise. Library exercises come only from the importer."""
 
-    name: str = Field(min_length=1, max_length=120)
+    name: HumanName = Field(min_length=1, max_length=120)
     category: ExerciseCategory
     primary_muscle_groups: list[MuscleGroup] = Field(min_length=1, max_length=6)
     equipment: Equipment
@@ -57,7 +58,7 @@ class ExerciseCreate(BaseModel):
 
 
 class ExerciseUpdate(BaseModel):
-    name: str | None = Field(default=None, min_length=1, max_length=120)
+    name: HumanName | None = Field(default=None, min_length=1, max_length=120)
     category: ExerciseCategory | None = None
     primary_muscle_groups: list[MuscleGroup] | None = Field(
         default=None, min_length=1, max_length=6
@@ -287,7 +288,7 @@ class SessionStart(BaseModel):
     # A ready-made workout (GET /workouts/presets). Mutually exclusive with
     # routine_id: two plans for one session has no meaning.
     preset_slug: str | None = Field(default=None, min_length=1, max_length=60)
-    name: str | None = Field(default=None, min_length=1, max_length=80)
+    name: HumanName | None = Field(default=None, min_length=1, max_length=80)
 
     @model_validator(mode="after")
     def _one_plan_only(self) -> "SessionStart":
@@ -467,7 +468,7 @@ class RoutineIn(BaseModel):
     """Create, or full replace via PUT - the ordered exercise list is replaced
     as a whole, which is simpler and less error-prone than per-slot patches."""
 
-    name: str = Field(min_length=1, max_length=80)
+    name: HumanName = Field(min_length=1, max_length=80)
     notes: str | None = Field(default=None, max_length=2000)
     exercises: list[RoutineExerciseIn] = Field(default_factory=list, max_length=40)
 

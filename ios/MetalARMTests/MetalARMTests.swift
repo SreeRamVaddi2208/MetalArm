@@ -507,10 +507,14 @@ struct LiveAPIClientTests {
         #expect(sent["points"] == nil)
     }
 
+    /// The whole signUp path, not just the message formatter: a 422 has to
+    /// arrive as an APIError carrying a sentence. APIErrorMessageTests covers
+    /// the shapes; this covers the wiring.
     @Test func validationErrorsAreReadable() async {
         let issue = #"{"detail": [{"loc": ["body", "password"], "msg": "String should have at least 8 characters", "type": "string_too_short"}]}"#
         let (client, _) = makeClient(responses: [(422, issue)])
-        await #expect(throws: APIError.http(status: 422, detail: "String should have at least 8 characters")) {
+        // Labelled with the field, so the person knows which box to go back to.
+        await #expect(throws: APIError.http(status: 422, detail: "Password: String should have at least 8 characters")) {
             try await client.signUp(email: "a@metalarm.dev", password: "short", displayName: "A", timezone: "UTC")
         }
     }
@@ -1168,5 +1172,75 @@ struct AppModelTests {
         api.expireSession()
         #expect(!model.isSignedIn)
         #expect(model.me == nil)
+    }
+}
+
+// MARK: - What a person reads when the API refuses their input
+
+/// The backend's validation rules are only as good as the sentence shown on
+/// screen. FastAPI answers with two different shapes - a plain `detail` string
+/// from HTTPException, a LIST of per-field objects from a 422 - and Pydantic
+/// prefixes a validator's message with "Value error, " for a traceback's
+/// benefit. These pin the translation into something worth showing a person,
+/// and mirror frontend/tests/test_api_errors.py so both clients read alike.
+struct APIErrorMessageTests {
+    private func detail(_ json: String, status: Int = 422) -> String {
+        LiveAPIClient.detail(from: Data(json.utf8), status: status)
+    }
+
+    @Test func plainDetailStringIsShownVerbatim() {
+        #expect(detail(#"{"detail": "Quest already completed"}"#, status: 409) == "Quest already completed")
+    }
+
+    @Test func fieldErrorNamesTheFieldInWords() {
+        let got = detail(#"{"detail": [{"loc": ["body", "display_name"], "msg": "Value error, cannot be blank"}]}"#)
+        #expect(got == "Display name: cannot be blank")
+    }
+
+    /// A validator comparing password against email has loc ("body",). There is
+    /// no "body" field on screen to go and fix.
+    @Test func wholeModelErrorNamesNoField() {
+        let got = detail(#"{"detail": [{"loc": ["body"], "msg": "Value error, password cannot be your email address or your name"}]}"#)
+        #expect(got == "password cannot be your email address or your name")
+    }
+
+    @Test func pydanticBuiltinMessagesPassThroughUnprefixed() {
+        let got = detail(#"{"detail": [{"loc": ["body", "password"], "msg": "String should have at least 8 characters"}]}"#)
+        #expect(got == "Password: String should have at least 8 characters")
+    }
+
+    /// Fixing one field per round trip is a bad form.
+    @Test func severalProblemsAreAllReported() {
+        let got = detail(#"{"detail": [{"loc": ["body", "email"], "msg": "value is not a valid email address"}, {"loc": ["body", "display_name"], "msg": "Value error, cannot be blank"}]}"#)
+        #expect(got == "Email: value is not a valid email address\nDisplay name: cannot be blank")
+    }
+
+    /// A list index inside `loc` (a set inside a session, say) must not stop
+    /// the message decoding.
+    @Test func numericLocEntriesDoNotBreakDecoding() {
+        let got = detail(#"{"detail": [{"loc": ["body", "sets", 0, "reps"], "msg": "Value error, must be positive"}]}"#)
+        #expect(got == "Reps: must be positive")
+    }
+
+    @Test func missingLocIsStillReadable() {
+        #expect(detail(#"{"detail": [{"msg": "Value error, cannot be blank"}]}"#) == "cannot be blank")
+    }
+
+    /// A proxy's HTML error page must read as the status, not as a tag soup.
+    @Test func nonJSONBodyFallsBackToTheStatus() {
+        let got = LiveAPIClient.detail(from: Data("<html>Bad Gateway</html>".utf8), status: 502)
+        #expect(got == HTTPURLResponse.localizedString(forStatusCode: 502).capitalized)
+    }
+
+    @Test func emptyBodyFallsBackToTheStatus() {
+        let got = LiveAPIClient.detail(from: Data(), status: 503)
+        #expect(got == HTTPURLResponse.localizedString(forStatusCode: 503).capitalized)
+    }
+
+    /// Never show a person a bare "[]" or a dictionary's description.
+    @Test func unrecognisedShapeNamesTheStatus() {
+        let expected = HTTPURLResponse.localizedString(forStatusCode: 400).capitalized
+        #expect(detail(#"{"error": "nope"}"#, status: 400) == expected)
+        #expect(detail(#"{"detail": []}"#, status: 400) == expected)
     }
 }

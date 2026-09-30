@@ -299,9 +299,64 @@ final class LiveAPIClient: MetalArmAPI {
         return request
     }
 
-    /// FastAPI errors are {"detail": "..."} or, for validation, {"detail": [{"msg": ...}]}.
+    /// FastAPI errors are {"detail": "..."} or, for validation,
+    /// {"detail": [{"loc": ["body", "display_name"], "msg": ...}]}.
     private struct ErrorBody: Decodable {
-        struct Issue: Decodable { let msg: String }
+        struct Issue: Decodable {
+            let loc: [String]?
+            let msg: String
+
+            /// `loc` mixes strings and array indices, so decode it leniently:
+            /// an index we cannot read is an index we do not need.
+            init(from decoder: Decoder) throws {
+                let container = try decoder.container(keyedBy: CodingKeys.self)
+                msg = try container.decode(String.self, forKey: .msg)
+                if var items = try? container.nestedUnkeyedContainer(forKey: .loc) {
+                    var parts: [String] = []
+                    while !items.isAtEnd {
+                        if let text = try? items.decode(String.self) {
+                            parts.append(text)
+                        } else if let index = try? items.decode(Int.self) {
+                            parts.append(String(index))
+                        } else {
+                            _ = try? items.decode(AnyCodable.self)
+                        }
+                    }
+                    loc = parts
+                } else {
+                    loc = nil
+                }
+            }
+
+            private enum CodingKeys: String, CodingKey { case loc, msg }
+
+            /// A throwaway to advance past a `loc` entry of a shape we do not
+            /// use, since an unkeyed container cannot be skipped otherwise.
+            private struct AnyCodable: Decodable {}
+
+            /// What to call the offending field on screen, or nil when there is
+            /// nothing worth naming.
+            ///
+            /// ("body", "display_name") is a field the person can see and fix.
+            /// ("body",) alone comes from a whole-model validator - the one
+            /// comparing the password against the email - and labelling that
+            /// "body" would send them hunting for a field that does not exist.
+            var fieldLabel: String? {
+                guard let loc, loc.count >= 2, let last = loc.last else { return nil }
+                let spaced = last.replacingOccurrences(of: "_", with: " ")
+                return spaced.prefix(1).uppercased() + spaced.dropFirst()
+            }
+
+            /// Pydantic prefixes a validator's message with "Value error, ",
+            /// which belongs in a traceback and not in front of a person.
+            var sentence: String {
+                let cleaned = msg.hasPrefix("Value error, ")
+                    ? String(msg.dropFirst("Value error, ".count))
+                    : msg
+                guard let fieldLabel else { return cleaned }
+                return "\(fieldLabel): \(cleaned)"
+            }
+        }
 
         enum Detail: Decodable {
             case message(String)
@@ -326,7 +381,11 @@ final class LiveAPIClient: MetalArmAPI {
         }
         switch body.detail {
         case let .message(message): return message
-        case let .issues(issues): return issues.map { $0.msg.replacingOccurrences(of: "Value error, ", with: "") }.joined(separator: "\n")
+        case let .issues(issues):
+            let sentences = issues.map(\.sentence).filter { !$0.isEmpty }
+            return sentences.isEmpty
+                ? HTTPURLResponse.localizedString(forStatusCode: status).capitalized
+                : sentences.joined(separator: "\n")
         }
     }
 }
