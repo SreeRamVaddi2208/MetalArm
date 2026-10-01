@@ -10,7 +10,7 @@
 
 - **API title:** MetalArm API
 - **API version:** 0.1.0
-- **Generated:** 2026-09-25 19:02 UTC
+- **Generated:** 2026-09-25 23:14 UTC
 - **Source:** `http://localhost:8000/openapi.json`
 
 ---
@@ -1385,6 +1385,21 @@ The three paths, in the order they are offered.
 
 ---
 
+### `POST /api/v1/waitlist`
+
+**Join Waitlist**
+
+*Tags:* `waitlist`
+
+*Request body* (`application/json`): `WaitlistJoin`
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
 ### `POST /api/v1/workouts/import`
 
 **Import Workouts**
@@ -2731,6 +2746,20 @@ otherwise 503 with per-dependency detail.
 | `type` | `string` | yes |
 | `input` | `object` | no |
 | `ctx` | `object` | no |
+
+#### `WaitlistJoin`
+
+| Field | Type | Required |
+|---|---|---|
+| `email` | `string` | yes |
+| `source` | `string | null` | no |
+
+#### `WaitlistOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `joined` | `boolean` | no |
+| `message` | `string` | no |
 
 #### `WalletOut`
 

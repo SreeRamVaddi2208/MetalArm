@@ -35,6 +35,9 @@ class Limit:
 LOGIN_PER_IP = Limit("login-ip", 30, 15 * 60)
 SIGNUP_PER_IP = Limit("signup-ip", 5, 60 * 60)
 REFRESH_PER_IP = Limit("refresh-ip", 60, 15 * 60)
+# The marketing site's waitlist. Looser than signup because joining is
+# harmless, tight enough that the table cannot be filled from one address.
+WAITLIST_PER_IP = Limit("waitlist-ip", 10, 60 * 60)
 # Per user: an import rebuilds every touched record, so it is not free.
 IMPORT_PER_USER = Limit("import-user", 10, 60 * 60)
 # Per account, whatever address the guesses come from.

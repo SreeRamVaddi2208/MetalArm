@@ -53,7 +53,10 @@ class Settings(BaseSettings):
     # "production" hides /docs, /redoc and /openapi.json.
     environment: str = "development"
     log_level: str = "info"
-    cors_origins: str = "http://localhost:3000"
+    # 3000 is the web app, 4000 the marketing site (marketing/). Both post to
+    # this API from a browser, so both have to be allowed or the waitlist form
+    # fails with a CORS error that looks like the server being down.
+    cors_origins: str = "http://localhost:3000,http://localhost:4000"
 
     # The example file ships JWT_SECRET_KEY=CHANGE_ME_GENERATE_A_RANDOM_48_BYTE_SECRET.
     # Deployed unchanged, every token would be signed with a string published in
