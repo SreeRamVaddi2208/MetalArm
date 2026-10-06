@@ -10,7 +10,7 @@
 #   scripts/dev.sh e2e          browser end-to-end, both suites
 #   scripts/dev.sh smoke        HTTP smoke test against the running stack
 #   scripts/dev.sh unlimit      clear the signup rate limit (5 per IP per hour)
-#   scripts/dev.sh record [what] record the demo: ios, web, or both
+#   scripts/dev.sh record [what] the narrated demo film: both (default), web, ios, or reel
 #
 # The point of this file is that none of it has to be worked out twice: the
 # environment variables the tests need, the simulator flags that stop xcodebuild
@@ -105,26 +105,42 @@ smoke)
   python3 scripts/smoke_test.py "${@:2}"
   ;;
 record)
-  # Videos land in ~/Desktop/MetalArm Recordings/<today>/, never over an
-  # older take.
+  # The narrated demo film: web tour + iPhone tour, captioned and voiced.
+  # Lands in ~/Desktop/MetalArm Recordings/<today>/demo-<time>/, never over
+  # an older take. `record web|ios` records one half; `record reel` is the
+  # rank-up escalation on its own.
   what="${2:-both}"
+  dest="$HOME/Desktop/MetalArm Recordings/$(date +%Y-%m-%d)/demo-$(date +%H%M)"
+  work=$(mktemp -d)
+  mkdir -p "$dest"
+  if [ "$what" = "reel" ]; then
+    (cd scripts/e2e && node rank_up_reel.mjs)
+    exit 0
+  fi
+  node scripts/demo/render_assets.mjs "$work/assets"
   if [ "$what" = "web" ] || [ "$what" = "both" ]; then
-    echo "==> web: the rank-up escalation"
+    echo "==> web: fresh demo database, then the tour"
     # The stack serves a compiled export, so record the CURRENT frontend.
-    docker compose build frontend >/dev/null && docker compose up -d frontend >/dev/null
-    # A just-restarted container answers the port before it can serve a page;
-    # the recorder's first goto times out against it.
+    POSTGRES_DB=metalarm_demo docker compose build frontend >/dev/null
+    scripts/demo/seed_fresh.sh demo@metalarm.dev demo-passphrase-2026
     for _ in $(seq 1 60); do
       curl -sfo /dev/null "$UI_URL/login" && break
       sleep 2
     done
-    "$0" unlimit >/dev/null
-    (cd scripts/e2e && node rank_up_reel.mjs)
+    (cd scripts/e2e && node web_tour.mjs "$work/web" "$work/assets" demo@metalarm.dev demo-passphrase-2026)
   fi
   if [ "$what" = "ios" ] || [ "$what" = "both" ]; then
     echo "==> iOS: the full tour"
-    scripts/record_tour.sh
+    scripts/record_tour.sh "$work/ios"
   fi
+  if [ "$what" = "both" ]; then
+    python3 scripts/demo/build_demo.py --assets "$work/assets" --web-dir "$work/web" \
+      --ios-dir "$work/ios" --out "$dest"
+  else
+    cp -R "$work"/{web,ios} "$dest"/ 2>/dev/null || true
+  fi
+  rm -rf "$work"
+  echo "film: $dest"
   ;;
 unlimit)
   set -a; . "$root/.env"; set +a

@@ -1,0 +1,241 @@
+{
+ "web": [
+  {
+   "id": "intro",
+   "caption": "MetalArm on the web",
+   "voice": "This is MetalArm: a strength tracker that turns every workout into progress you can see, and a game you want to keep playing."
+  },
+  {
+   "id": "login",
+   "caption": "Sign in - your training follows you",
+   "voice": "Sign in, and everything comes with you. Your workouts, records and rank live on your account, not on one device."
+  },
+  {
+   "id": "dashboard",
+   "caption": "Home: level, rank, XP and streak",
+   "voice": "Home is your status screen. Your level, your rank, how much experience until the next one, and your streak."
+  },
+  {
+   "id": "freeze",
+   "caption": "A freeze saved your streak",
+   "voice": "Missed a week? A streak freeze stepped in automatically. Rest weeks are part of training, so the streak survives one."
+  },
+  {
+   "id": "quests",
+   "caption": "Daily and weekly quests, made for your path",
+   "voice": "Every day and every week, MetalArm hands out quests built for how you train. Progress fills in by itself as you lift. One reroll a day if a quest doesn't suit you."
+  },
+  {
+   "id": "custom",
+   "caption": "Your own quests, your own rewards",
+   "voice": "You can add your own habits too, like stretching or sleep. Completing one pays experience, and here it tips us into a new level."
+  },
+  {
+   "id": "duel_bars",
+   "caption": "Live duels on the home screen",
+   "voice": "Running duels sit right on the home screen, with a head-to-head bar so you always know who's ahead."
+  },
+  {
+   "id": "workout",
+   "caption": "Start a workout",
+   "voice": "Starting a workout takes one tap: a ready-made plan for your training style, one of your routines, or an empty session."
+  },
+  {
+   "id": "preset",
+   "caption": "Every movement, with a demo",
+   "voice": "Each exercise card shows what you lifted last time, a hint for what to try next, and a demo of the movement."
+  },
+  {
+   "id": "logging",
+   "caption": "Log a set in one tap",
+   "voice": "Logging is built for one hand. Nudge the weight and reps, tap log, and the rest timer starts on its own."
+  },
+  {
+   "id": "pr",
+   "caption": "Personal records, celebrated",
+   "voice": "Beat a best, and MetalArm notices. Records are checked on the server the moment the set lands."
+  },
+  {
+   "id": "quest_chip",
+   "caption": "Quests move as you lift",
+   "voice": "The quest chip shows which quest that set just pushed forward. When one completes, you get a short moment, smaller than a record."
+  },
+  {
+   "id": "typed",
+   "caption": "Say it or type it: bench 82.5 for 5",
+   "voice": "Hands full of chalk? Hold the mic and say the set, or type it. MetalArm turns plain words into a set you confirm with one tap."
+  },
+  {
+   "id": "same_again",
+   "caption": "“Same again” repeats your last set",
+   "voice": "Say same again, and it repeats your last set. Nothing is ever logged without your tap, and undo is right there."
+  },
+  {
+   "id": "edit",
+   "caption": "Fix a typo, honestly",
+   "voice": "Made a typo? Edit or delete any set while the workout is live. Points and records are recalculated, never guessed."
+  },
+  {
+   "id": "finish",
+   "caption": "Finish: points, records, quests, streak",
+   "voice": "Finishing banks your points, judges volume records, and shows which quests moved and where your streak stands."
+  },
+  {
+   "id": "share",
+   "caption": "A share card for your story",
+   "voice": "Every workout makes a share card, ready for your story."
+  },
+  {
+   "id": "progress",
+   "caption": "Progress: charts, records, history, body",
+   "voice": "Progress shows the long game: strength over time per lift, every personal record, your full history, and your body weight."
+  },
+  {
+   "id": "parties",
+   "caption": "Parties: your crew",
+   "voice": "Parties are your crew. A weekly workout board, a league to climb, shared quests, and a raid boss you only beat together."
+  },
+  {
+   "id": "duels",
+   "caption": "Fair duels: you vs. your own best",
+   "voice": "Duels are where MetalArm is different. Fair modes score you against your own baseline, so a beginner can beat a veteran by improving more."
+  },
+  {
+   "id": "duel_modes",
+   "caption": "Pick a mode - unfair ones say why",
+   "voice": "Pick a mode. If one isn't fair for the two of you yet, it says why instead of letting you start it."
+  },
+  {
+   "id": "duel_result",
+   "caption": "Win, draw or a good fight",
+   "voice": "When a duel ends, both sides get their moment. Lose, and you still earn points for showing up, with a rematch one tap away."
+  },
+  {
+   "id": "feed",
+   "caption": "What your crew has been doing",
+   "voice": "The activity feed shows what your crew has been up to: records, rank-ups and finished workouts."
+  },
+  {
+   "id": "rewards",
+   "caption": "Spend points on real rewards",
+   "voice": "Points are a currency. Set your own rewards, and redeem them when you've earned them."
+  },
+  {
+   "id": "routines",
+   "caption": "Build your own routines",
+   "voice": "Build routines of your own, with target sets, reps and rest for every exercise."
+  },
+  {
+   "id": "profile",
+   "caption": "Badges, character and rank trials",
+   "voice": "Your profile holds your badges, your character sheet, and the strength trials that guard each rank. You can also import your history from Strong or Hevy."
+  },
+  {
+   "id": "rankup",
+   "caption": "Rank up",
+   "voice": "And when a rank falls, it's an event."
+  },
+  {
+   "id": "end",
+   "caption": "MetalArm - lift. level. repeat.",
+   "voice": "That's MetalArm on the web. Next, the same training on iPhone."
+  }
+ ],
+ "ios": [
+  {
+   "id": "onboarding",
+   "caption": "MetalArm on iPhone",
+   "voice": "On iPhone, MetalArm opens with a short welcome."
+  },
+  {
+   "id": "signup",
+   "caption": "Create an account",
+   "voice": "Create an account in a few seconds."
+  },
+  {
+   "id": "trainingpath",
+   "caption": "Pick how you train",
+   "voice": "Choose a training path: athletic, bodybuilding or powerlifting. It shapes your workouts and quests."
+  },
+  {
+   "id": "home",
+   "caption": "Home: level, tier, streak, trial",
+   "voice": "Home shows your level, tier, streak and the next rank trial."
+  },
+  {
+   "id": "presets",
+   "caption": "Ready-made workouts",
+   "voice": "Ready-made workouts are matched to your path."
+  },
+  {
+   "id": "demo",
+   "caption": "A demo of every movement",
+   "voice": "Every movement has a demo, so you know the form before you lift."
+  },
+  {
+   "id": "workout",
+   "caption": "Start a workout",
+   "voice": "Start, and your session is live."
+  },
+  {
+   "id": "hint",
+   "caption": "What to try next",
+   "voice": "Hints suggest the next weight from your recent sessions."
+  },
+  {
+   "id": "logset",
+   "caption": "Log a set - a personal record",
+   "voice": "Log a set, and a record is caught instantly."
+  },
+  {
+   "id": "levelup",
+   "caption": "Level up",
+   "voice": "Level up."
+  },
+  {
+   "id": "finish",
+   "caption": "The summary",
+   "voice": "Finish for the full summary of what you earned."
+  },
+  {
+   "id": "share",
+   "caption": "Share card",
+   "voice": "And a card to share it."
+  },
+  {
+   "id": "progress",
+   "caption": "History and records",
+   "voice": "Progress keeps your history and records."
+  },
+  {
+   "id": "ranks",
+   "caption": "League and raid",
+   "voice": "Ranks shows your league and your party's raid."
+  },
+  {
+   "id": "character",
+   "caption": "Character sheet",
+   "voice": "Your character sheet grows with your training path."
+  },
+  {
+   "id": "trials",
+   "caption": "Rank trials",
+   "voice": "Rank trials are real strength tests guarding each rank."
+  },
+  {
+   "id": "extras",
+   "caption": "Import, reminders, Apple Health",
+   "voice": "Settings import your old history, set reminders, and connect Apple Health."
+  },
+  {
+   "id": "rankup",
+   "caption": "Rank up",
+   "voice": "One more workout, and the promotion."
+  },
+  {
+   "id": "end",
+   "caption": "MetalArm",
+   "voice": "MetalArm. Lift, level, repeat."
+  }
+ ]
+}
