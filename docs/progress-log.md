@@ -14,6 +14,76 @@ Entry format:
 
 ---
 
+## 2026-10-06 (44) - Opus - overhaul phase 2: clarity and analytics
+
+**Changed**
+- **Analytics read models** (`app/core/analytics.py`, pure): Monday weeks,
+  range starts (3M = 13 weeks incl. this one, 6M, Year, All = from the first
+  workout), the weekly snapshot with deltas, weekly series (duration, volume,
+  workouts from the finish totals; points from the ledger by the day each row
+  was written), the month calendar with runs of consecutive days, and muscle
+  load/intensity. Everything is in the user's local dates.
+- **Recovery** (`app/core/recovery.py`, pure): spec 8.2 exactly - primary
+  1.0 / secondary 0.5 load, halving every 24 h (small) / 36 h (large), last
+  96 h, thresholds 6 / 10; overall is the 7-day-load-weighted average. All
+  constants in `workout_rules.py`. The API returns a note saying it is an
+  estimate, and the UI shows it.
+- **Endpoints** (`routes/analytics.py`): `GET /analytics/snapshot?week=`,
+  `/analytics/series?metric=&range=`, `/analytics/muscles?from=&to=`,
+  `/analytics/calendar?month=`, `/analytics/recovery`, `/history?cursor=`
+  (months, keyset cursor, read from the finish snapshot only),
+  `/me/exercises?cursor=` (best set and e1RM from the records table),
+  `/exercises/{id}/stats?range=` (per-session best set / e1RM / volume / max
+  reps, the last 20 sessions' sets, current records).
+- **Bug fixed:** imported (Strong/Hevy) and seeded workouts never got the
+  finish totals snapshot, so they would have charted as 0. New
+  `store.write_totals`, called by the importer (for every finished session,
+  since a replay can move records between them) and by the demo seed.
+- **Workout tab** (`components/workout_home.py`): date title, week strip
+  (tap a day to see its workouts), Today with session cards and Start New
+  Workout, Suggested Workouts tiles, My insights (recovery ring -> recovery
+  sheet with a body map, streak + freezes, quests done, next rank), ready-made
+  workouts, unit switch. The old game header is gone from this tab; the
+  insights carry it.
+- **You tab** (`pages/you.py`): profile header (initials in the tier-framed
+  avatar, rank, level, points, path), Overview (3M/6M/Year/All, headline,
+  area chart, Duration/Volume/Workouts/Points chips, this week's muscle map,
+  month calendar with paging), Exercises, Measurements (chips per metric,
+  chart, add weight / body fat / custom), History by month. The old profile
+  page stays at `/profile` behind the gear.
+- **Exercise Detail** `/exercise/[id]`: artwork + credit, equipment chip,
+  favourite, Add to workout (into the live session, or a new one), About
+  (body map: primary 100%, secondary 40%; steps; tips), History, Charts (Best
+  set / Estimated 1RM / Volume / Max reps), Records.
+  **Session Detail** `/session/[id]`: stats and every set.
+- `scripts/seed_load.py`: the budget's dataset (2 years x 4 workouts/week)
+  and a p95 timing of every clarity read.
+
+**Verified**
+- `tests/test_analytics.py` (21): every pure function against hand-worked
+  numbers; recovery decay and floors; week boundaries at local midnight
+  (Kolkata) and across the New York DST change; every endpoint against a
+  seeded account worked out in the comments (the gate); input validation;
+  import totals. Full backend suite passes (exit 0, the two dev-DB health
+  tests deselected as before); `alembic check` clean - no migration this phase.
+- `scripts/e2e/analytics_e2e.mjs` (new, Gate 2): one workout of known
+  numbers (2,340 kg, 5 sets, bench 100 x 5, e1RM 116.7) shown exactly on the
+  Workout tab, You Overview/Exercises/History/Measurements, Exercise Detail
+  and Session Detail; recovery % equals the API's - 375 and 430: ALL PASSED (53).
+- `logging_e2e.mjs` 36/36, `workout_e2e.mjs` 104/104 (start-screen
+  selectors updated), `web_tour.mjs` full take with no missed controls.
+- `seed_load.py` on 416 workouts: every read p95 <= 17.4 ms (budget 200).
+- `docs/api-contract.md` regenerated (91 paths).
+- iOS `scripts/dev.sh ios`: ** TEST SUCCEEDED ** - XCTest 25 executed, 0 failures (live-backend tour skipped); Swift Testing 94 passed. The API change is additive.
+
+**Blocked:** nothing.
+
+**Other agent needs to know:** the You header shows points balance as "total
+points"; when `GET /me/game` lands (phase 4) it should move to that. The
+Monthly Summary card on Overview is phase 5.
+
+---
+
 ## 2026-10-06 (43) - Opus - overhaul phase 1: logging depth, Active Workout, Summary, Library
 
 **Changed**

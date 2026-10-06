@@ -510,3 +510,27 @@ def board_points():
             )
         ),
     )
+
+
+def write_totals(db: Session, sessions: Sequence[WorkoutSession]) -> None:
+    """Snapshot each finished session's totals - volume and count of working
+    sets, duration, non-baseline records - as finish does. For sessions that
+    become completed without finishing (imports, seeds), and after a replay
+    that may have moved records between them."""
+    ids = [s.id for s in sessions]
+    if not ids:
+        return
+    working: dict[uuid.UUID, list[SetEntry]] = {i: [] for i in ids}
+    for entry in db.scalars(select(SetEntry).where(SetEntry.session_id.in_(ids), SetEntry.is_warmup.is_(False))):
+        working[entry.session_id].append(entry)
+    records = dict(db.execute(
+        select(PersonalRecord.session_id, func.count(PersonalRecord.id))
+        .where(PersonalRecord.session_id.in_(ids), PersonalRecord.is_baseline.is_(False))
+        .group_by(PersonalRecord.session_id)).tuples().all())
+    for s in sessions:
+        s.total_volume_kg = prs.session_volume(lift_of(e) for e in working[s.id])
+        s.total_working_sets = len(working[s.id])
+        s.total_prs = records.get(s.id, 0)
+        if s.ended_at is not None:
+            s.duration_seconds = max(0, int((s.ended_at - s.started_at).total_seconds()))
+    db.flush()

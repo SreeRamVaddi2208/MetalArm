@@ -477,7 +477,9 @@ class WorkoutState(rx.State):
             return
         auth.weight_unit = data.get("weight_unit") or unit
         self.unit = auth.weight_unit
-        return WorkoutState.load
+        from metalarm.state.workout_home import WorkoutHomeState
+
+        return [WorkoutState.load, WorkoutHomeState.load]
 
     # --- starting ---------------------------------------------------------
 
@@ -1175,8 +1177,13 @@ class WorkoutState(rx.State):
         self._clear_session()
         yield rx.call_script(_STOP_REST)
         yield WorkoutState.load
+        from metalarm.state.workout_home import WorkoutHomeState
+
+        yield WorkoutHomeState.load
         yield AuthState.refresh_me
 
     def close_summary(self):
         self.show_summary = False
-        return WorkoutState.load
+        from metalarm.state.workout_home import WorkoutHomeState
+
+        return [WorkoutState.load, WorkoutHomeState.load]

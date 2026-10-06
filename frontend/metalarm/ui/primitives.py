@@ -279,3 +279,28 @@ def secondary_button(label: Any, on_click: Any = None, *, icon: str = "", disabl
         **t.HEADLINE,
         **props,
     )
+
+
+def sheet(open_: Any, title: Any, on_close: Any, *children: rx.Component) -> rx.Component:
+    """A bottom sheet over everything (tab bar included): scrim, a rounded
+    panel, a title and Done. Dialogs still open above it."""
+    return rx.cond(
+        open_,
+        rx.box(
+            rx.box(position="absolute", inset="0", background=t.SCRIM, on_click=on_close),
+            rx.vstack(
+                rx.hstack(text(title, t.HEADLINE), rx.spacer(),
+                          text("Done", t.HEADLINE, t.ACCENT_BLUE, cursor="pointer", on_click=on_close,
+                               custom_attrs={"role": "button"}),
+                          width="100%", align="center", min_height=t.TOUCH_MIN),
+                *children,
+                position="absolute", left="0", right="0", bottom="0",
+                max_height="88vh", overflow_y="auto",
+                background=t.SURFACE_1,
+                border_radius=f"{t.RADIUS_CARD} {t.RADIUS_CARD} 0 0",
+                padding=f"{t.space(3)} {t.GUTTER} calc({t.space(6)} + env(safe-area-inset-bottom))",
+                spacing="3", width="100%", max_width="560px", margin="0 auto",
+            ),
+            position="fixed", inset="0", z_index="80",
+        ),
+    )

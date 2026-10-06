@@ -2,13 +2,21 @@
 the clarity screens show. No database, no request: the routes load the facts
 and these compute, so every figure can be checked by hand against a fixture.
 
-Phase 1 needs only the muscle map of one session; snapshot deltas, series,
-the calendar and recovery join it in phase 2.
+Everything here works on LOCAL dates: the routes convert each instant to the
+user's calendar date (periods.local_date) before calling in, so a week or a
+month is the user's, not the server's. Weeks start on Monday (ISO).
+
+Recovery lives next door, in app/core/recovery.py.
 """
 
 from __future__ import annotations
 
+import dataclasses
+import datetime as dt
 from collections.abc import Iterable, Sequence
+from decimal import Decimal
+
+from app.core import workout_rules as rules
 
 # A working set loads its exercise's primary muscles fully and the secondary
 # ones half - the same weights the recovery model will use.
@@ -37,3 +45,140 @@ def muscle_intensity(sets: Iterable[tuple[Sequence[str], Sequence[str]]]) -> dic
     if top <= 0:
         return {}
     return {code: round(value / top, 3) for code, value in sorted(load.items())}
+
+
+# ---------------------------------------------------------------------------
+# Weeks
+# ---------------------------------------------------------------------------
+
+
+def monday(day: dt.date) -> dt.date:
+    return day - dt.timedelta(days=day.weekday())
+
+
+def weeks_between(first: dt.date, last: dt.date) -> list[dt.date]:
+    """Every Monday from first's week to last's, inclusive."""
+    start, end = monday(first), monday(last)
+    out = []
+    while start <= end:
+        out.append(start)
+        start += dt.timedelta(days=7)
+    return out
+
+
+def range_start(range_: str, today: dt.date, first_day: dt.date | None) -> dt.date:
+    """The Monday a range starts on. 3M is the last 13 weeks INCLUDING this
+    one; "All" goes back to the week of the first workout (this week if none)."""
+    if range_ == "All":
+        return monday(first_day or today)
+    weeks = rules.ANALYTICS_RANGE_WEEKS[range_]
+    return monday(today) - dt.timedelta(days=7 * (weeks - 1))
+
+
+# ---------------------------------------------------------------------------
+# Session facts -> snapshot, series, calendar
+# ---------------------------------------------------------------------------
+
+
+@dataclasses.dataclass(frozen=True)
+class SessionFact:
+    """One completed workout, as the clarity screens see it."""
+
+    day: dt.date                 # local date it started
+    duration_seconds: int
+    volume_kg: Decimal
+    working_sets: int
+    prs: int
+
+
+METRICS = ("duration", "volume", "workouts", "points")
+
+
+def _value(facts: Sequence[SessionFact], metric: str) -> float:
+    if metric == "workouts":
+        return float(len(facts))
+    if metric == "duration":
+        return float(sum(f.duration_seconds for f in facts))
+    if metric == "volume":
+        return float(sum((f.volume_kg for f in facts), Decimal(0)))
+    raise ValueError(metric)
+
+
+def _in_week(facts: Iterable[SessionFact], week: dt.date) -> list[SessionFact]:
+    end = week + dt.timedelta(days=7)
+    return [f for f in facts if week <= f.day < end]
+
+
+@dataclasses.dataclass(frozen=True)
+class Snapshot:
+    week: dt.date
+    workouts: int
+    duration_seconds: int
+    volume_kg: float
+    # This week minus last week, per stat.
+    workouts_delta: int
+    duration_delta: int
+    volume_delta: float
+
+
+def snapshot(facts: Sequence[SessionFact], week: dt.date) -> Snapshot:
+    """This week's three numbers and how each moved since the week before."""
+    now = _in_week(facts, week)
+    before = _in_week(facts, week - dt.timedelta(days=7))
+    workouts, duration, volume = (int(_value(now, "workouts")), int(_value(now, "duration")),
+                                  round(_value(now, "volume"), 1))
+    return Snapshot(
+        week=week, workouts=workouts, duration_seconds=duration, volume_kg=volume,
+        workouts_delta=workouts - int(_value(before, "workouts")),
+        duration_delta=duration - int(_value(before, "duration")),
+        volume_delta=round(volume - _value(before, "volume"), 1),
+    )
+
+
+def weekly_series(facts: Sequence[SessionFact], metric: str, start: dt.date, end: dt.date,
+                  points_by_day: dict[dt.date, int] | None = None) -> list[tuple[dt.date, float]]:
+    """(Monday, value) for every week from start's to end's, zero weeks
+    included so the chart's x axis is even. Points come from the ledger, by
+    the day each award was written (`points_by_day`), not from sessions -
+    quests and reversals count too."""
+    out = []
+    for week in weeks_between(start, end):
+        if metric == "points":
+            stop = week + dt.timedelta(days=7)
+            value = float(sum(v for d, v in (points_by_day or {}).items() if week <= d < stop))
+        else:
+            value = _value(_in_week(facts, week), metric)
+        out.append((week, round(value, 1)))
+    return out
+
+
+@dataclasses.dataclass(frozen=True)
+class CalendarMonth:
+    month: dt.date               # first of the month
+    days: dict[dt.date, int]     # trained day -> workouts that day
+    runs: list[tuple[dt.date, dt.date]]  # consecutive trained days, first..last
+
+
+def calendar(facts: Sequence[SessionFact], month: dt.date) -> CalendarMonth:
+    first = month.replace(day=1)
+    nxt = (first + dt.timedelta(days=32)).replace(day=1)
+    days: dict[dt.date, int] = {}
+    for f in facts:
+        if first <= f.day < nxt:
+            days[f.day] = days.get(f.day, 0) + 1
+    runs: list[tuple[dt.date, dt.date]] = []
+    for day in sorted(days):
+        if runs and runs[-1][1] + dt.timedelta(days=1) == day:
+            runs[-1] = (runs[-1][0], day)
+        else:
+            runs.append((day, day))
+    return CalendarMonth(month=first, days=days, runs=runs)
+
+
+def muscle_sets(sets: Iterable[tuple[Sequence[str], Sequence[str]]]) -> tuple[dict[str, float], dict[str, float]]:
+    """(load per muscle, 0-1 intensity) for a range's working sets - the
+    You tab's "muscles you worked" map and its legend."""
+    load = {k: round(v, 1) for k, v in muscle_load(sets).items() if k not in ("cardio", "full_body")}
+    top = max(load.values(), default=0.0)
+    intensity = {k: round(v / top, 3) for k, v in sorted(load.items())} if top > 0 else {}
+    return load, intensity

@@ -10,7 +10,7 @@
 
 - **API title:** MetalArm API
 - **API version:** 0.1.0
-- **Generated:** 2026-10-06 17:04 UTC
+- **Generated:** 2026-10-06 17:52 UTC
 - **Source:** `http://localhost:8000/openapi.json`
 
 ---
@@ -26,6 +26,101 @@
 | Status | Description |
 |---|---|
 | `200` | Successful Response |
+
+---
+
+### `GET /api/v1/analytics/calendar`
+
+**Calendar**
+
+Days with a completed workout in a month, and the runs of consecutive
+training days.
+
+*Tags:* `analytics`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `month` | query | `string | null` | no |
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `GET /api/v1/analytics/muscles`
+
+**Muscles**
+
+Working sets per muscle group between two local dates (inclusive;
+default this week), with a 0-1 intensity for the body map.
+
+*Tags:* `analytics`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `from` | query | `string | null` | no |
+| `to` | query | `string | null` | no |
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `GET /api/v1/analytics/recovery`
+
+**Recovery View**
+
+Overall and per-muscle recovery, estimated from recent working sets.
+
+*Tags:* `analytics`
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+
+---
+
+### `GET /api/v1/analytics/series`
+
+**Series**
+
+One value per week over the range, oldest first, empty weeks as 0.
+
+*Tags:* `analytics`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `metric` | query | `string` | no |
+| `range` | query | `string` | no |
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `GET /api/v1/analytics/snapshot`
+
+**Snapshot**
+
+Workouts, duration and volume for a week, with the change since the
+week before.
+
+*Tags:* `analytics`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `week` | query | `string | null` | no |
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
 
 ---
 
@@ -613,6 +708,28 @@ added mid-workout. Empty `sets` when it has never been done.
 
 ---
 
+### `GET /api/v1/exercises/{exercise_id}/stats`
+
+**Exercise Stats**
+
+Exercise Detail's History, Charts and Records: per completed session
+in the range, the best set, estimated 1RM, volume and max reps; the last
+20 sessions' sets; and the current records.
+
+*Tags:* `analytics`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `exercise_id` | path | `string` | yes |
+| `range` | query | `string` | no |
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
 ### `POST /api/v1/favorites`
 
 **Add Favorite**
@@ -661,6 +778,27 @@ What the caller and their parties have been up to, newest first.
 | `party_id` | query | `string | null` | no |
 | `limit` | query | `integer` | no |
 | `before` | query | `string | null` | no |
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `GET /api/v1/history`
+
+**History**
+
+Completed workouts, newest first, grouped by the local month they were
+done in. Totals are the ones written at finish.
+
+*Tags:* `analytics`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `cursor` | query | `string | null` | no |
+| `limit` | query | `integer` | no |
 
 | Status | Description |
 |---|---|
@@ -743,6 +881,27 @@ a phrase corrected to the same exercise twice becomes the user's alias.
 | `parse_id` | path | `string` | yes |
 
 *Request body* (`application/json`): `ParseFeedback`
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `GET /api/v1/me/exercises`
+
+**My Exercises**
+
+Every exercise the user has logged in a completed workout, most
+recently done first, with the best set and estimated 1RM on record.
+
+*Tags:* `analytics`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `cursor` | query | `string | null` | no |
+| `limit` | query | `integer` | no |
 
 | Status | Description |
 |---|---|
@@ -2301,6 +2460,29 @@ otherwise 503 with per-dependency detail.
 | `label` | `string` | yes |
 | `value` | `number` | yes |
 
+#### `CalendarDayOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `date` | `string` | yes |
+| `workouts` | `integer` | yes |
+
+#### `CalendarOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `month` | `string` | yes |
+| `days` | `CalendarDayOut[]` | yes |
+| `runs` | `CalendarRunOut[]` | yes |
+
+#### `CalendarRunOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `start` | `string` | yes |
+| `end` | `string` | yes |
+| `days` | `integer` | yes |
+
 #### `CharacterClass`
 
 | Field | Type | Required |
@@ -2510,6 +2692,16 @@ otherwise 503 with per-dependency detail.
 | `is_custom` | `boolean` | yes |
 | `is_archived` | `boolean` | yes |
 
+#### `ExerciseStatsOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `exercise_id` | `string` | yes |
+| `range` | `string` | yes |
+| `series` | `StatsPoint[]` | yes |
+| `sessions` | `StatsSession[]` | yes |
+| `records` | `StatsRecord[]` | yes |
+
 #### `ExerciseUpdate`
 
 | Field | Type | Required |
@@ -2573,6 +2765,34 @@ otherwise 503 with per-dependency detail.
 | `text` | `string` | yes |
 | `target_weight_kg` | `number | null` | yes |
 | `target_reps` | `integer | null` | yes |
+
+#### `HistoryMonthOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `month` | `string` | yes |
+| `sessions` | `HistoryRowOut[]` | yes |
+
+#### `HistoryPage`
+
+| Field | Type | Required |
+|---|---|---|
+| `months` | `HistoryMonthOut[]` | yes |
+| `next_cursor` | `string | null` | no |
+
+#### `HistoryRowOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `id` | `string` | yes |
+| `name` | `string | null` | yes |
+| `started_at` | `string` | yes |
+| `duration_seconds` | `integer` | yes |
+| `volume_kg` | `number` | yes |
+| `working_sets` | `integer` | yes |
+| `exercise_count` | `integer` | yes |
+| `pr_count` | `integer` | yes |
+| `points` | `integer` | yes |
 
 #### `JoinRequest`
 
@@ -2772,6 +2992,55 @@ otherwise 503 with per-dependency detail.
 | `size_class` | `string` | yes |
 | `tile_asset` | `string` | yes |
 | `browsable` | `boolean` | yes |
+
+#### `MuscleRecoveryOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `code` | `string` | yes |
+| `display_name` | `string` | yes |
+| `percent` | `integer` | yes |
+| `svg_path_ids` | `string[]` | yes |
+
+#### `MuscleVolumeOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `code` | `string` | yes |
+| `display_name` | `string` | yes |
+| `sets` | `number` | yes |
+| `intensity` | `number` | yes |
+| `svg_path_ids` | `string[]` | yes |
+
+#### `MusclesOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `from_date` | `string` | yes |
+| `to_date` | `string` | yes |
+| `muscles` | `MuscleVolumeOut[]` | yes |
+
+#### `MyExerciseOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `exercise_id` | `string` | yes |
+| `name` | `string` | yes |
+| `thumbnail_url` | `string | null` | yes |
+| `primary_muscle_groups` | `string[]` | yes |
+| `equipment` | `string` | yes |
+| `last_performed_at` | `string` | yes |
+| `sessions` | `integer` | yes |
+| `best_weight_kg` | `number | null` | yes |
+| `best_weight_reps` | `integer | null` | yes |
+| `best_est_1rm` | `number | null` | yes |
+
+#### `MyExercisesPage`
+
+| Field | Type | Required |
+|---|---|---|
+| `items` | `MyExerciseOut[]` | yes |
+| `next_cursor` | `string | null` | no |
 
 #### `ParseFeedback`
 
@@ -3201,6 +3470,14 @@ otherwise 503 with per-dependency detail.
 | `session_id` | `string` | yes |
 | `set_id` | `string | null` | yes |
 
+#### `RecoveryOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `overall` | `integer` | yes |
+| `muscles` | `MuscleRecoveryOut[]` | yes |
+| `note` | `string` | yes |
+
 #### `Recurrence`
 
 | Field | Type | Required |
@@ -3326,6 +3603,22 @@ otherwise 503 with per-dependency detail.
 | `order_in_program` | `integer | null` | no |
 | `color` | `string | null` | no |
 | `last_performed_at` | `string | null` | no |
+
+#### `SeriesOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `metric` | `string` | yes |
+| `range` | `string` | yes |
+| `unit` | `string` | yes |
+| `points` | `SeriesPoint[]` | yes |
+
+#### `SeriesPoint`
+
+| Field | Type | Required |
+|---|---|---|
+| `week_start` | `string` | yes |
+| `value` | `number` | yes |
 
 #### `SessionExerciseIn`
 
@@ -3504,6 +3797,18 @@ otherwise 503 with per-dependency detail.
 | `display_name` | `string` | yes |
 | `timezone` | `string` | no |
 
+#### `SnapshotOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `week_start` | `string` | yes |
+| `workouts` | `integer` | yes |
+| `duration_seconds` | `integer` | yes |
+| `volume_kg` | `number` | yes |
+| `workouts_delta` | `integer` | yes |
+| `duration_delta` | `integer` | yes |
+| `volume_delta` | `number` | yes |
+
 #### `StatOut`
 
 | Field | Type | Required |
@@ -3513,6 +3818,46 @@ otherwise 503 with per-dependency detail.
 | `value` | `integer` | yes |
 | `detail` | `string` | yes |
 | `highlighted` | `boolean` | yes |
+
+#### `StatsPoint`
+
+| Field | Type | Required |
+|---|---|---|
+| `session_id` | `string` | yes |
+| `date` | `string` | yes |
+| `best_set_weight_kg` | `number | null` | yes |
+| `best_set_reps` | `integer | null` | yes |
+| `est_1rm` | `number | null` | yes |
+| `volume_kg` | `number` | yes |
+| `max_reps` | `integer | null` | yes |
+
+#### `StatsRecord`
+
+| Field | Type | Required |
+|---|---|---|
+| `record_type` | `string` | yes |
+| `value` | `number` | yes |
+| `weight_kg` | `number | null` | yes |
+| `achieved_at` | `string` | yes |
+
+#### `StatsSession`
+
+| Field | Type | Required |
+|---|---|---|
+| `session_id` | `string` | yes |
+| `name` | `string | null` | yes |
+| `started_at` | `string` | yes |
+| `sets` | `StatsSet[]` | yes |
+
+#### `StatsSet`
+
+| Field | Type | Required |
+|---|---|---|
+| `set_number` | `integer` | yes |
+| `set_type` | `string` | yes |
+| `weight_kg` | `number` | yes |
+| `reps` | `integer | null` | yes |
+| `is_pr` | `boolean` | yes |
 
 #### `StreakOut`
 

@@ -77,6 +77,11 @@ class AuthState(rx.State):
         return bool(self.token)
 
     @rx.var
+    def initials(self) -> str:
+        """Up to two letters for the avatar."""
+        return "".join(w[0] for w in self.display_name.split()[:2]).upper() or "?"
+
+    @rx.var
     def xp_percent(self) -> int:
         """XP bar fill, 0-100.
 

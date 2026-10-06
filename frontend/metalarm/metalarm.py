@@ -15,7 +15,9 @@ from metalarm.pages.gallery import gallery_page
 from metalarm.pages.login import login_page, signup_page
 from metalarm.pages.duels import duels_page
 from metalarm.pages.parties import parties_page
+from metalarm.pages.details import exercise_page, session_page
 from metalarm.pages.profile import profile_page
+from metalarm.pages.you import you_page
 from metalarm.pages.progress import progress_page
 from metalarm.pages.rewards import rewards_page
 from metalarm.pages.library import library_page
@@ -30,6 +32,10 @@ from metalarm.state.duels import DuelState
 from metalarm.state.quests import QuestState
 from metalarm.state.rewards import RewardState
 from metalarm.state.library import LibraryState
+from metalarm.state.exercise_detail import ExerciseDetailState
+from metalarm.state.session_detail import SessionDetailState
+from metalarm.state.workout_home import WorkoutHomeState
+from metalarm.state.you import YouState
 from metalarm.state.routines import RoutineState
 from metalarm.state.workout import WorkoutState
 
@@ -109,13 +115,31 @@ class RouteState(rx.State):
         auth = await self.get_state(AuthState)
         if not auth.token:
             return rx.redirect("/login")
-        return [AuthState.refresh_me, WorkoutState.load]
+        return [AuthState.refresh_me, WorkoutState.load, WorkoutHomeState.load]
 
     async def enter_routines(self):
         auth = await self.get_state(AuthState)
         if not auth.token:
             return rx.redirect("/login")
         return [AuthState.refresh_me, RoutineState.load]
+
+    async def enter_you(self):
+        auth = await self.get_state(AuthState)
+        if not auth.token:
+            return rx.redirect("/login")
+        return [AuthState.refresh_me, YouState.load]
+
+    async def enter_exercise(self):
+        auth = await self.get_state(AuthState)
+        if not auth.token:
+            return rx.redirect("/login")
+        return [AuthState.refresh_me, ExerciseDetailState.load]
+
+    async def enter_session(self):
+        auth = await self.get_state(AuthState)
+        if not auth.token:
+            return rx.redirect("/login")
+        return SessionDetailState.load
 
     async def enter_library(self):
         auth = await self.get_state(AuthState)
@@ -203,8 +227,11 @@ app.add_page(explore_page, route="/explore", title="Explore - MetalArm",
              on_load=RouteState.enter_explore)
 app.add_page(library_page, route="/library", title="Library - MetalArm",
              on_load=RouteState.enter_library)
-app.add_page(profile_page, route="/you", title="You - MetalArm",
-             on_load=RouteState.enter_profile)
+app.add_page(you_page, route="/you", title="You - MetalArm", on_load=RouteState.enter_you)
+app.add_page(exercise_page, route="/exercise/[id]", title="Exercise - MetalArm",
+             on_load=RouteState.enter_exercise)
+app.add_page(session_page, route="/session/[id]", title="Workout - MetalArm",
+             on_load=RouteState.enter_session)
 app.add_page(credits_page, route="/about/credits", title="Credits - MetalArm",
              on_load=RouteState.enter_credits)
 # Hidden: the design-system catalogue, for review and the screenshot sweep.

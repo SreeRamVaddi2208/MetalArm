@@ -88,8 +88,9 @@ try {
   check('signed in through the form', page.url().endsWith('/home'));
 
   await page.goto(UI + '/workout');
-  check('HUD shows the game layer', await page.getByText('LEVEL 1').waitFor({ timeout: 15000 }).then(() => true).catch(() => false));
-  await page.getByText('START EMPTY WORKOUT').click();
+  check('the Workout tab shows the game in its insights',
+    await page.getByText('Next rank', { exact: true }).waitFor({ timeout: 15000 }).then(() => true).catch(() => false));
+  await page.getByText('Start New Workout', { exact: true }).click();
   await page.getByText('Add Exercise').waitFor({ timeout: 15000 });
   check('blank workout started', true);
   check('a blank workout is named by time of day', await visible(page.getByText(/(Morning|Afternoon|Evening|Late-night) workout/).first()));
@@ -199,9 +200,9 @@ try {
     card.suggestedFilename().startsWith('metalarm-') && png.readUInt32BE(16) === 1080 && png.readUInt32BE(20) === 1920,
     `${card.suggestedFilename()} ${png.readUInt32BE(16)}x${png.readUInt32BE(20)}`);
   await page.getByText('Done', { exact: true }).click();
-  await page.getByText('START EMPTY WORKOUT').waitFor({ timeout: 15000 });
-  await page.getByText(/\d+ sets · /).first().waitFor({ timeout: 10000 }).catch(() => {});
-  check('back to the start screen, with the workout in RECENT', await visible(page.getByText(/\d+ sets · /).first()));
+  await page.getByText('Start New Workout', { exact: true }).waitFor({ timeout: 15000 });
+  check('back to the Workout tab, with the workout under Today',
+    await page.getByText(/(Morning|Afternoon|Evening|Late-night) workout/).first().waitFor({ timeout: 10000 }).then(() => true).catch(() => false));
 
   // ---------------------------------------------------------------------
   section('Weight unit is saved on the account');
@@ -212,8 +213,8 @@ try {
   const other = await fresh.newPage();
   await signIn(other);
   await other.goto(UI + '/workout');
-  await other.getByText('START EMPTY WORKOUT').waitFor({ timeout: 15000 });
-  await other.getByText(/\d+ sets · /).first().waitFor({ timeout: 10000 }).catch(() => {});
+  await other.getByText('Start New Workout', { exact: true }).waitFor({ timeout: 15000 });
+  await other.getByText(/\d lb$/).first().waitFor({ timeout: 10000 }).catch(() => {});
   check('a fresh browser gets the account unit (lb)', await visible(other.getByText(/\d lb$/).first()));
   await fresh.close();
   await page.getByRole('button', { name: 'KG', exact: true }).click();
@@ -241,13 +242,13 @@ try {
   await page.getByRole('button', { name: 'Discard workout' }).click();
   await page.getByText('Discard this workout?').waitFor({ timeout: 15000 });
   await page.getByText('Discard', { exact: true }).click();
-  await page.getByText('START EMPTY WORKOUT').waitFor({ timeout: 15000 });
+  await page.getByText('Start New Workout', { exact: true }).waitFor({ timeout: 15000 });
   check('discarding a workout returns to the start screen', true);
 
   // ---------------------------------------------------------------------
   section('Ready-made workouts');
   await page.goto(UI + '/workout');
-  await page.getByText('START EMPTY WORKOUT').waitFor({ timeout: 15000 });
+  await page.getByText('Start New Workout', { exact: true }).waitFor({ timeout: 15000 });
   const cards = page.locator('.ma-preset-card');
   await cards.first().waitFor({ timeout: 15000 });
   check('three ready-made workouts are offered', (await cards.count()) === 3);
@@ -282,7 +283,7 @@ try {
   await page.getByRole('button', { name: 'Discard workout' }).click();
   await page.getByText('Discard this workout?').waitFor({ timeout: 15000 });
   await page.getByText('Discard', { exact: true }).click();
-  await page.getByText('START EMPTY WORKOUT').waitFor({ timeout: 15000 });
+  await page.getByText('Start New Workout', { exact: true }).waitFor({ timeout: 15000 });
 
   // ---------------------------------------------------------------------
   section('Progress');
@@ -300,7 +301,7 @@ try {
   // second workout's card carries the hint - no set is logged, so the records
   // and rank trials the profile checks below stay as they were.
   await page.goto(UI + '/workout');
-  await page.getByText('START EMPTY WORKOUT').click();
+  await page.getByText('Start New Workout', { exact: true }).click();
   await page.getByText('Add Exercise').waitFor({ timeout: 15000 });
   await page.getByText('Add Exercise').click();
   await page.getByPlaceholder('Search exercises…').fill('Barbell Bench');

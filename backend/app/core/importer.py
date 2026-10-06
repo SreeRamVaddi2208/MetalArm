@@ -553,6 +553,10 @@ def run_import(
     # belongs in the history rather than as today's PR.
     for exercise_id in touched:
         store.replay_exercise(db, user.id, exercise_id)
+    # The replay can move records between old sessions too, so every
+    # finished session's snapshot is rewritten, not just the imported ones.
+    store.write_totals(db, list(db.scalars(select(WorkoutSession).where(
+        WorkoutSession.user_id == user.id, WorkoutSession.status == SessionStatus.COMPLETED.value))))
     record.exercises_created = len(resolver.created)
 
     delta = apply_xp(progress, xp=record.xp_awarded, at=now, tz_name=user.timezone)

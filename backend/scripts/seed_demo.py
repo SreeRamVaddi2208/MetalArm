@@ -143,6 +143,9 @@ def rebuild_records(db: Session, user_id: uuid.UUID) -> None:
     db.flush()
     for exercise_id in set(db.scalars(select(SetEntry.exercise_id).where(SetEntry.user_id == user_id))):
         store.replay_exercise(db, user_id, exercise_id)
+    # The totals finish would have written: the clarity screens read them.
+    store.write_totals(db, list(db.scalars(select(WorkoutSession).where(
+        WorkoutSession.user_id == user_id, WorkoutSession.status == SessionStatus.COMPLETED.value))))
 
 
 def progress(db: Session, user_id: uuid.UUID, xp: int, points: int, streak: int) -> None:

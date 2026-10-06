@@ -83,6 +83,21 @@ SUGGEST_CATEGORY_BONUS_DAYS = 3
 SUGGEST_NEVER_DONE_DAYS = 14
 SUGGEST_LIMIT = 10
 
+# --- Analytics (app/core/analytics.py, app/core/recovery.py) -------------------
+# The You tab's range control, in whole weeks; "All" starts at the first workout.
+ANALYTICS_RANGE_WEEKS = {"3M": 13, "6M": 26, "Year": 52}
+# Recovery is an ESTIMATE from training volume, not physiology. A working set
+# loads its primary muscles 1.0 and its secondary 0.5 (analytics.PRIMARY_WEIGHT
+# / SECONDARY_WEIGHT); that load decays, halving every half-life, and only the
+# last RECOVERY_WINDOW_HOURS count. A muscle carrying THRESHOLD units of load
+# reads 0% recovered. Large muscles shrug off load more slowly but take more.
+RECOVERY_WINDOW_HOURS = 96
+RECOVERY_HALF_LIFE_HOURS = {"small": 24.0, "large": 36.0}
+RECOVERY_THRESHOLD = {"small": 6.0, "large": 10.0}
+# Overall recovery: the average over muscles trained in this many days,
+# weighted by how much each was trained.
+RECOVERY_OVERALL_DAYS = 7
+
 # --- Plausibility (app/core/plausibility.py) ---------------------------------
 # A set that trips one of these is still logged and still scores for its owner,
 # but stays out of duels and leaderboards. Generous on purpose: the cost of a

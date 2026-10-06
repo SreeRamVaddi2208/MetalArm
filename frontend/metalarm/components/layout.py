@@ -41,10 +41,10 @@ def session_keeper() -> rx.Component:
 ROUTE_TABS = (
     ("/home", "home"), ("/dashboard", "home"), ("/parties", "home"),
     ("/duels", "home"), ("/rewards", "home"),
-    ("/explore", "explore"),
+    ("/explore", "explore"), ("/exercise/[id]", "explore"),
     ("/workout", "workout"),
     ("/library", "library"), ("/routines", "library"),
-    ("/you", "you"), ("/profile", "you"), ("/progress", "you"),
+    ("/you", "you"), ("/profile", "you"), ("/progress", "you"), ("/session/[id]", "you"),
 )
 
 
