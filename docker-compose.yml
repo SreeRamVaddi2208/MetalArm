@@ -18,6 +18,43 @@ services:
     image: postgres:17-alpine
     container_name: metalarm-postgres
     restart: unless-stopped
+    # Query-level visibility, which a stock server has none of:
+    # log_min_duration_statement is -1, pg_stat_statements is not loaded and
+    # track_io_timing is off, so there is no way to find out WHICH statement is
+    # slow - only that something is. Every optimisation decision after this
+    # point cites these numbers, so they have to exist before the numbers do.
+    #
+    # shared_preload_libraries can only be set at server start, which is why it
+    # lives here and not in a migration. On managed Postgres these are provider
+    # settings rather than ours; the extension itself is created by a migration
+    # so it exists either way.
+    #
+    # Deliberately verbose for development: auto_explain instruments every
+    # statement and logs the plan for any that passes the threshold, and
+    # log_temp_files=0 catches work_mem spilling to disk, which is what a badly
+    # planned aggregate looks like from the outside.
+    command:
+      - postgres
+      - -c
+      - shared_preload_libraries=pg_stat_statements,auto_explain
+      - -c
+      - pg_stat_statements.max=10000
+      - -c
+      - pg_stat_statements.track=all
+      - -c
+      - track_io_timing=on
+      - -c
+      - log_min_duration_statement=200
+      - -c
+      - log_lock_waits=on
+      - -c
+      - log_temp_files=0
+      - -c
+      - auto_explain.log_min_duration=1000
+      - -c
+      - auto_explain.log_analyze=on
+      - -c
+      - auto_explain.log_nested_statements=on
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
