@@ -17,8 +17,8 @@ import datetime as dt
 import uuid
 from collections.abc import Iterable, Sequence
 
-from sqlalchemy import delete, func, or_, select, tuple_
-from sqlalchemy.orm import Session
+from sqlalchemy import and_, delete, func, not_, or_, select, tuple_
+from sqlalchemy.orm import Session, aliased
 
 from app.core import personal_records as prs
 from app.core import progression_hints as hints
@@ -455,4 +455,58 @@ def streak_paid(db: Session, user_id: uuid.UUID, week: str) -> bool:
             )
         ).first()
         is not None
+    )
+
+
+# ---------------------------------------------------------------------------
+# Plausibility inputs
+# ---------------------------------------------------------------------------
+
+
+def recent_best_e1rm(
+    db: Session,
+    user_id: uuid.UUID,
+    exercise_id: uuid.UUID,
+    since: dt.datetime,
+    exclude_set_id: uuid.UUID | None = None,
+):
+    """Best estimated 1RM on one exercise since `since`, from working sets
+    that were not themselves flagged - or None. What plausibility.check
+    measures a new set against."""
+    db.flush()
+    query = select(SetEntry.weight_kg, SetEntry.reps).where(
+        SetEntry.user_id == user_id,
+        SetEntry.exercise_id == exercise_id,
+        SetEntry.completed_at >= since,
+        SetEntry.is_warmup.is_(False),
+        SetEntry.is_flagged.is_(False),
+        SetEntry.reps.is_not(None),
+    )
+    if exclude_set_id is not None:
+        query = query.where(SetEntry.id != exclude_set_id)
+    best = None
+    for weight_kg, reps in db.execute(query):
+        estimate = prs.est_1rm(weight_kg, reps)
+        if estimate is not None and (best is None or estimate > best):
+            best = estimate
+    return best
+
+
+def board_points():
+    """WHERE clause for ledger sums that rank people against each other
+    (leagues, the party workout board): a flagged set's awards - and the
+    reversals of them - stay out. They still count for their owner."""
+    flagged = select(SetEntry.id).where(SetEntry.is_flagged.is_(True))
+    award = aliased(PointsLedgerEntry)
+    flagged_awards = select(award.id).where(
+        award.source_type.in_(_SET_LEVEL), award.source_id.in_(flagged)
+    )
+    return and_(
+        not_(and_(PointsLedgerEntry.source_type.in_(_SET_LEVEL), PointsLedgerEntry.source_id.in_(flagged))),
+        not_(
+            and_(
+                PointsLedgerEntry.source_type == LedgerSource.REVERSAL.value,
+                PointsLedgerEntry.source_id.in_(flagged_awards),
+            )
+        ),
     )

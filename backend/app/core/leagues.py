@@ -29,6 +29,7 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
 
 from app.core import raids
+from app.core import workout_store as store
 from app.models.league import LeagueMembership
 from app.models.user import LevelProgress, User
 from app.models.workout import PointsLedgerEntry
@@ -90,6 +91,7 @@ def _points(
             PointsLedgerEntry.user_id.in_(user_ids),
             PointsLedgerEntry.created_at >= start,
             PointsLedgerEntry.created_at < end,
+            store.board_points(),
         )
         .group_by(PointsLedgerEntry.user_id)
     ).all()

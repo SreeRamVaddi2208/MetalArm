@@ -11,8 +11,8 @@ in place and inserting only what is new. Running it on every start (the compose
 
 JSON: a list of objects with keys
     slug (optional - derived from name), name, category, primary_muscle_groups,
-    equipment, instructions (optional), media_url (optional)
-CSV: the same columns, with primary_muscle_groups separated by ';'.
+    equipment, tags (optional), instructions (optional), media_url (optional)
+CSV: the same columns, with primary_muscle_groups and tags separated by ';'.
 
 Exercises in the database but missing from the file are REPORTED, never
 deleted: sets and routines point at them, and a smaller seed file must not
@@ -36,10 +36,11 @@ from pydantic import BaseModel, Field, ValidationError
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core import exercise_aliases
 from app.core.exercise_names import clean_name, name_key, slugify
 from app.db.session import engine
 from app.models.workout import Exercise
-from app.models.workout_enums import Equipment, ExerciseCategory, MuscleGroup
+from app.models.workout_enums import Equipment, ExerciseCategory, ExerciseTag, MuscleGroup
 
 BACKEND_ROOT = pathlib.Path(__file__).resolve().parents[1]
 DEFAULT_FILE = BACKEND_ROOT / "app" / "data" / "exercises.json"
@@ -50,6 +51,7 @@ _FIELDS = (
     "category",
     "primary_muscle_groups",
     "equipment",
+    "tags",
     "instructions",
     "media_url",
 )
@@ -61,6 +63,7 @@ class LibraryExercise(BaseModel):
     category: ExerciseCategory
     primary_muscle_groups: list[MuscleGroup] = Field(min_length=1, max_length=6)
     equipment: Equipment
+    tags: list[ExerciseTag] = Field(default_factory=list, max_length=len(ExerciseTag))
     instructions: str | None = None
     media_url: str | None = Field(default=None, max_length=500)
 
@@ -72,6 +75,7 @@ class LibraryExercise(BaseModel):
             "category": self.category.value,
             "primary_muscle_groups": [m.value for m in self.primary_muscle_groups],
             "equipment": self.equipment.value,
+            "tags": list(dict.fromkeys(t.value for t in self.tags)),
             "instructions": self.instructions or None,
             "media_url": self.media_url or None,
         }
@@ -95,8 +99,9 @@ def read_file(path: pathlib.Path) -> list[dict]:
         with path.open(newline="", encoding="utf-8") as fh:
             rows = list(csv.DictReader(fh))
         for row in rows:
-            raw = row.get("primary_muscle_groups") or ""
-            row["primary_muscle_groups"] = [m.strip() for m in raw.split(";") if m.strip()]
+            for key in ("primary_muscle_groups", "tags"):
+                raw = row.get(key) or ""
+                row[key] = [m.strip() for m in raw.split(";") if m.strip()]
         return rows
     raise ValueError(f"unsupported seed file type: {path.suffix} (use .json or .csv)")
 
@@ -176,6 +181,9 @@ def main() -> int:
         except ValueError as exc:
             print(f"ERROR: {exc}", file=sys.stderr)
             return 1
+        # The shipped aliases ("bench", "rdl") point at library rows, so they
+        # are seeded right after them.
+        aliases_added = exercise_aliases.seed(db)
         if args.dry_run:
             db.rollback()
         else:
@@ -187,6 +195,7 @@ def main() -> int:
         f"{report.inserted} inserted, {report.updated} updated, "
         f"{report.unchanged} unchanged"
         + (f", {report.not_in_file} in database but not in file (kept)" if report.not_in_file else "")
+        + f"; {aliases_added} aliases added"
     )
     return 0
 

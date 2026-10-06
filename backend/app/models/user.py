@@ -64,6 +64,15 @@ class User(UUIDPrimaryKey, Timestamps, Base):
     token_version: Mapped[int] = mapped_column(
         Integer, nullable=False, server_default="0"
     )
+    # Streak freezes (app/core/streak_freezes.py). The last ISO week whose
+    # freezes have been settled; NULL until the first settle, which starts the
+    # clock at that week so old history earns and spends nothing.
+    freeze_settled_through: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    # When the user last saw their streak screen - a freeze spent after this is
+    # announced ("your streak was saved") once, then acknowledged.
+    streak_seen_at: Mapped[dt.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     progress: Mapped["LevelProgress"] = relationship(
         back_populates="user", cascade="all, delete-orphan", uselist=False

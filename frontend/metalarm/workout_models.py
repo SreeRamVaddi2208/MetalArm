@@ -132,6 +132,8 @@ class SetRow:
     detail: str = ""
     is_warmup: bool = False
     is_pr: bool = False
+    # Kept out of competitions by the server (plausibility). Shown neutrally.
+    flagged: bool = False
     # Raw values in the display unit, used to pre-fill the next set and the
     # edit form.
     rpe: str = ""
@@ -170,6 +172,7 @@ class SetRow:
             detail=" · ".join(details),
             is_warmup=bool(data.get("is_warmup")),
             is_pr=bool(data.get("is_pr")),
+            flagged=bool(data.get("is_flagged")),
             rpe=fmt(_num(data["rpe"])) if data.get("rpe") else "",
             weight=fmt(to_unit(kg, unit)) if kg else "",
             reps=str(reps) if reps else "",
@@ -454,6 +457,11 @@ class HistoryRow:
         )
 
 
+# The most freezes anyone can hold (backend FREEZE_CAP). Display only: the
+# server decides how many are held.
+FREEZE_SLOTS = 2
+
+
 @dataclasses.dataclass
 class StreakView:
     weeks: int = 0
@@ -462,6 +470,9 @@ class StreakView:
     done: bool = False
     label: str = "NO STREAK YET"
     sub: str = ""
+    # One entry per freeze slot, True where a freeze is held - rendered as
+    # icons, so a list rather than a count.
+    freeze_slots: list[bool] = dataclasses.field(default_factory=list)
 
     @classmethod
     def from_api(cls, data: dict[str, Any]) -> "StreakView":
@@ -476,6 +487,7 @@ class StreakView:
             sub = f"{to_go} more workout{'s' if to_go != 1 else ''} this week keeps it alive"
         else:
             sub = f"{this_week}/{target} workouts this week - hit {target} to start a streak"
+        held = data.get("freezes_held") or 0
         return cls(
             weeks=weeks,
             this_week=this_week,
@@ -483,6 +495,7 @@ class StreakView:
             done=done,
             label=f"{weeks}-WEEK STREAK" if weeks else "NO STREAK YET",
             sub=sub,
+            freeze_slots=[i < held for i in range(FREEZE_SLOTS)],
         )
 
 
@@ -491,6 +504,88 @@ class AwardLine:
     label: str = ""
     points_label: str = ""
     negative: bool = False
+
+
+@dataclasses.dataclass
+class Alternative:
+    exercise_id: str = ""
+    name: str = ""
+
+
+@dataclasses.dataclass
+class VoiceProposal:
+    """What POST /log/parse proposed, as an editable card. Fields are strings
+    because they are bound to inputs; nothing here is logged until confirmed."""
+
+    parse_id: str = ""
+    exercise_id: str = ""
+    exercise_name: str = ""
+    weight: str = ""
+    unit: str = "kg"
+    reps: str = ""
+    rpe: str = ""
+    warmup: bool = False
+    set_count: int = 1
+    # The match was a guess: show the alternatives prominently.
+    unsure: bool = False
+    alternatives: list[Alternative] = dataclasses.field(default_factory=list)
+    unparsed_label: str = ""
+    by_llm: bool = False
+    # The proposal as it arrived, to tell "logged as-is" from "edited".
+    original: str = ""
+
+    @classmethod
+    def from_api(cls, data: dict[str, Any]) -> "VoiceProposal":
+        first = (data.get("proposed_sets") or [{}])[0]
+        unparsed = data.get("unparsed_fragments") or []
+        proposal = cls(
+            parse_id=str(data.get("parse_id") or ""),
+            exercise_id=str(first.get("exercise_id") or ""),
+            exercise_name=first.get("exercise_name") or "",
+            weight=fmt(first.get("weight") or 0),
+            unit=first.get("unit") or "kg",
+            reps=str(first.get("reps") or ""),
+            rpe=fmt(first["rpe"]) if first.get("rpe") is not None else "",
+            warmup=bool(first.get("is_warmup")),
+            set_count=int(data.get("set_count") or 1),
+            unsure=float(data.get("exercise_confidence") or 0) < 0.85,
+            alternatives=[
+                Alternative(exercise_id=str(a.get("exercise_id") or ""), name=a.get("name") or "")
+                for a in data.get("exercise_alternatives") or []
+            ],
+            unparsed_label=f"Ignored: {' '.join(unparsed)}" if unparsed else "",
+            by_llm=data.get("parser_used") == "llm",
+        )
+        proposal.original = proposal.signature()
+        return proposal
+
+    def signature(self) -> str:
+        return "|".join(
+            [self.exercise_id, self.weight, self.unit, self.reps, self.rpe,
+             str(self.warmup), str(self.set_count)]
+        )
+
+
+@dataclasses.dataclass
+class QuestLine:
+    """One generated quest as a set or a finish left it - the in-session chip
+    and the summary's "Quests progressed" block."""
+
+    id: str = ""
+    title: str = ""
+    progress_label: str = ""
+    done: bool = False
+    reward_label: str = ""
+
+    @classmethod
+    def from_api(cls, data: dict[str, Any]) -> "QuestLine":
+        return cls(
+            id=str(data.get("assignment_id") or ""),
+            title=data.get("title") or "",
+            progress_label=f"{data.get('progress') or 0}/{data.get('target') or 0}",
+            done=bool(data.get("completed")),
+            reward_label=f"+{data.get('reward_points') or 0}",
+        )
 
 
 @dataclasses.dataclass
@@ -506,6 +601,8 @@ class FinishSummary:
     lines: list[AwardLine] = dataclasses.field(default_factory=list)
     prs: list[PrView] = dataclasses.field(default_factory=list)
     streak: StreakView = dataclasses.field(default_factory=StreakView)
+    # "Quests progressed": every current quest with any progress, done or not.
+    quests: list[QuestLine] = dataclasses.field(default_factory=list)
     # The story card (metalarm/share_card.py): the workout's biggest moment.
     share_kind: str = ""
     share_eyebrow: str = ""
@@ -538,6 +635,7 @@ class FinishSummary:
             ("pr_bonus", "PR bonus"),
             ("session_bonus", "Workout bonus"),
             ("streak_bonus", "Streak bonus"),
+            ("quest_points", "Quests"),
             ("reversals", "Corrections"),
         ):
             points = breakdown.get(key) or 0
@@ -577,6 +675,11 @@ class FinishSummary:
             lines=lines,
             prs=prs,
             streak=StreakView.from_api(data.get("streak") or {}),
+            quests=[
+                QuestLine.from_api(q)
+                for q in data.get("quest_progress") or []
+                if (q.get("progress") or 0) > 0
+            ],
         )
 
 

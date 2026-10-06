@@ -13,11 +13,17 @@ than the client diffing two fetches.
 
 from __future__ import annotations
 
+import datetime as dt
+
 import reflex as rx
 
 from metalarm import api
-from metalarm.models import ActivityEntry, Duel, LeaderboardRow
+from metalarm.models import ActivityEntry, Duel, DuelMode, LeaderboardRow, parse_dt
 from metalarm.state.auth import AuthState
+
+# A settled duel older than this is history, not news: its result screen is
+# not shown to someone opening the app for the first time in weeks.
+RESULT_FRESH_FOR = dt.timedelta(days=3)
 
 
 class DuelState(rx.State):
@@ -38,11 +44,28 @@ class DuelState(rx.State):
     challenge_days: str = "7"
     challenge_opponent: str = ""
 
-    # A win that has just been judged: the overlay reads these, and they are
-    # cleared when it is dismissed.
+    # The mode picker for a challenge to one party member: every mode with
+    # the server's verdict on whether it is open to the two of you.
+    show_modes: bool = False
+    modes: list[DuelMode] = []
+    picking_id: str = ""
+    picking_name: str = ""
+
+    # The duel whose breakdown is open.
+    open_duel: str = ""
+
+    # A settled duel's result, shown once per device: win, draw or loss. The
+    # overlay reads these; they are cleared when it is dismissed.
     show_win: bool = False
+    result_kind: str = ""
     won_against: str = ""
     won_points: int = 0
+    result_duel_id: str = ""
+    result_metric: str = ""
+    result_their_id: str = ""
+    # Settled duels whose result has been seen here, comma-separated. Per
+    # device on purpose: a result is a moment, and each screen gets it once.
+    seen_results: str = rx.LocalStorage("", name="ma_duel_results_seen")
 
     @rx.var
     def has_duels(self) -> bool:
@@ -67,9 +90,82 @@ class DuelState(rx.State):
         self.error = ""
 
     def dismiss_win(self) -> None:
+        if self.result_duel_id:
+            seen = [i for i in self.seen_results.split(",") if i][-50:]
+            self.seen_results = ",".join([*seen, self.result_duel_id])
         self.show_win = False
         self.won_against = ""
         self.won_points = 0
+
+    def toggle_detail(self, duel_id: str) -> None:
+        self.open_duel = "" if self.open_duel == duel_id else duel_id
+
+    def close_modes(self) -> None:
+        self.show_modes = False
+        self.modes = []
+
+    async def open_modes(self, user_id: str, name: str):
+        """Challenge flow: pick a person, then a mode. Modes the two of you
+        cannot use yet come back disabled, with the server's reason."""
+        auth = await self.get_state(AuthState)
+        self.error = ""
+        self.picking_id, self.picking_name = user_id, name
+        try:
+            data = await api.duel_modes(auth.token, user_id)
+        except api.ApiError as exc:
+            self.error = exc.detail
+            return
+        self.modes = [DuelMode.from_api(m) for m in data.get("modes") or []]
+        self.show_modes = True
+
+    async def choose_mode(self, metric: str):
+        auth = await self.get_state(AuthState)
+        self.error = ""
+        try:
+            await api.create_duel(
+                auth.token, metric=metric, days=self._days(), opponent_id=self.picking_id
+            )
+        except api.ApiError as exc:
+            self.error = exc.detail
+            return
+        self.show_modes = False
+        self.show_challenge = False
+        yield DuelState.load
+
+    async def rematch(self):
+        """Same mode, same person, straight from the result screen."""
+        auth = await self.get_state(AuthState)
+        metric, their_id = self.result_metric, self.result_their_id
+        self.dismiss_win()
+        if not their_id:
+            return
+        try:
+            await api.create_duel(auth.token, metric=metric, days=7, opponent_id=their_id)
+        except api.ApiError as exc:
+            self.error = exc.detail
+            return
+        yield DuelState.load
+
+    async def cancel(self, duel_id: str):
+        auth = await self.get_state(AuthState)
+        self.error = ""
+        try:
+            await api.cancel_duel(auth.token, duel_id)
+        except api.ApiError as exc:
+            self.error = exc.detail
+            return
+        yield DuelState.load
+
+    async def load_summary(self):
+        """Just the running duels, for the dashboard's head-to-head bars."""
+        auth = await self.get_state(AuthState)
+        if not auth.token:
+            return
+        try:
+            data = await api.list_duels(auth.token)
+        except api.ApiError:
+            return
+        self.active = [Duel.from_api(d, auth.user_id) for d in data.get("active", [])]
 
     def _days(self) -> int:
         try:
@@ -99,13 +195,30 @@ class DuelState(rx.State):
             return
         self.loading = False
 
-        # A duel the server judged during THIS fetch carries its points; that
-        # is the moment to celebrate, and it happens at most once because the
-        # award is written once.
+        # The first recently settled duel this device has not shown yet - won,
+        # drawn or lost. Both sides get their moment, not just whoever's read
+        # happened to judge it.
+        seen = set(self.seen_results.split(","))
+        now = dt.datetime.now(dt.timezone.utc)
+        fresh = next(
+            (
+                d for d in self.completed
+                if d.id not in seen
+                and (when := parse_dt(d.resolved_at)) is not None
+                and now - when < RESULT_FRESH_FOR
+                and not d.opponent.is_rival
+            ),
+            None,
+        )
         won = next((d for d in self.completed if d.i_won and d.points_awarded), None)
-        if won is not None:
-            self.won_against = won.their_name
-            self.won_points = won.points_awarded
+        pick = fresh or (won if won is not None and won.id not in seen else None)
+        if pick is not None:
+            self.result_kind = "win" if pick.i_won else ("draw" if pick.is_draw else "loss")
+            self.won_against = pick.their_name
+            self.won_points = pick.reward_points or pick.points_awarded
+            self.result_duel_id = pick.id
+            self.result_metric = pick.metric
+            self.result_their_id = pick.their_id
             self.show_win = True
         yield AuthState.refresh_me
 

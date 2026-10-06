@@ -38,8 +38,9 @@ class TrainingCategoryProfile(Timestamps, Base):
     relative_load: Mapped[str] = mapped_column(String(16), nullable=False)
     relative_volume: Mapped[str] = mapped_column(String(16), nullable=False)
     rest_seconds_guidance: Mapped[int] = mapped_column(Integer, nullable=False)
-    # Which kinds of exercise suit this path. Read by whatever suggests work;
-    # the exercise library is not tagged yet, so nothing filters on them today.
+    # Which kinds of exercise suit this path, in the same vocabulary as
+    # exercises.tags. Generated quests (app/data/quest_templates.json) are
+    # written against these; nothing scores on them.
     emphasis_tags: Mapped[list[str]] = mapped_column(ARRAY(String(32)), nullable=False)
 
     __table_args__ = (

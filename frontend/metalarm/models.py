@@ -106,6 +106,62 @@ class Quest:
         )
 
 
+def _time_left(ends_at: str, now: dt.datetime | None = None) -> str:
+    """'5h left', '3d left' - coarse on purpose; a quest is not a countdown."""
+    try:
+        end = dt.datetime.fromisoformat(ends_at.replace("Z", "+00:00"))
+    except (AttributeError, ValueError):
+        return ""
+    seconds = (end - (now or dt.datetime.now(dt.timezone.utc))).total_seconds()
+    if seconds <= 0:
+        return "ending"
+    if seconds < 3600:
+        return f"{max(1, int(seconds // 60))}m left"
+    if seconds < 86400:
+        return f"{int(seconds // 3600)}h left"
+    return f"{int(seconds // 86400)}d left"
+
+
+@dataclasses.dataclass
+class GeneratedQuest:
+    """A quest the server hands out and tracks (GET /quests/current). Unlike
+    Quest, nobody ticks it off: progress comes from the sets logged."""
+
+    id: str = ""
+    title: str = ""
+    description: str = ""
+    period: str = "daily"
+    progress: int = 0
+    target: int = 1
+    # 0-1 as a string, for the bar's scaleX. Derived from the API's numbers
+    # for display only - never a score.
+    scale: str = "0"
+    progress_label: str = ""
+    reward_points: int = 0
+    done: bool = False
+    can_reroll: bool = False
+    time_left: str = ""
+
+    @classmethod
+    def from_api(cls, data: dict[str, Any], now: dt.datetime | None = None) -> "GeneratedQuest":
+        progress = data.get("progress") or 0
+        target = max(data.get("target") or 1, 1)
+        return cls(
+            id=data.get("id") or "",
+            title=data.get("title") or "",
+            description=data.get("description") or "",
+            period=data.get("period") or "daily",
+            progress=progress,
+            target=target,
+            scale=f"{min(1.0, progress / target):.3f}",
+            progress_label=f"{progress:,} / {target:,}",
+            reward_points=data.get("reward_points") or 0,
+            done=data.get("status") == "completed",
+            can_reroll=bool(data.get("can_reroll")),
+            time_left=_time_left(data.get("ends_at") or "", now),
+        )
+
+
 @dataclasses.dataclass
 class Reward:
     id: str = ""
@@ -617,10 +673,66 @@ class DuelSide:
 
 def _metric_label(score: float, metric: str) -> str:
     """Volume is kilograms; the other two are counts, and "3.0 sets" reads
-    like a bug."""
+    like a bug. The fair modes read as what they measure."""
     if metric == "volume":
         return f"{_thousands(score)} kg"
+    if metric == "progress":
+        return f"+{score:.1f}%"
+    if metric == "relative_volume":
+        return f"{round(score)}%"
+    if metric == "consistency":
+        days = int(round(score))
+        return f"{days} day{'s' if days != 1 else ''}"
     return f"{int(round(score))}"
+
+
+METRIC_TITLES = {
+    "consistency": "CONSISTENCY",
+    "progress": "PROGRESS",
+    "relative_volume": "VS. YOUR AVERAGE",
+    "volume": "VOLUME",
+    "sets": "SETS",
+    "sessions": "SESSIONS",
+}
+
+
+@dataclasses.dataclass
+class BreakdownLine:
+    label: str = ""
+    value_label: str = ""
+
+
+@dataclasses.dataclass
+class DuelMode:
+    metric: str = ""
+    title: str = ""
+    fairness: str = ""
+    eligible: bool = True
+    reason: str = ""
+
+    @classmethod
+    def from_api(cls, data: dict[str, Any]) -> "DuelMode":
+        return cls(
+            metric=data.get("metric") or "",
+            title=data.get("title") or "",
+            fairness=data.get("fairness") or "",
+            eligible=bool(data.get("eligible")),
+            reason=data.get("reason") or "",
+        )
+
+
+def _breakdown(lines: list[dict[str, Any]] | None, metric: str) -> list[BreakdownLine]:
+    out = []
+    for line in lines or []:
+        value = float(line.get("value") or 0)
+        if metric == "progress":
+            text = f"+{value:.1f}%"
+        elif metric == "consistency":
+            text = "✓"
+        else:
+            text = f"{_thousands(value)} kg"
+        out.append(BreakdownLine(label=line.get("label") or "", value_label=text))
+    return out
 
 
 @dataclasses.dataclass
@@ -644,6 +756,18 @@ class Duel:
     my_score_label: str = "0"
     their_score_label: str = "0"
     their_name: str = ""
+    their_id: str = ""
+    # My share of the two scores, 0-1 as a string, for the head-to-head bar.
+    my_share: str = "0.5"
+    # What counts toward this mode, and each side's working.
+    rules: str = ""
+    my_breakdown: list[BreakdownLine] = dataclasses.field(default_factory=list)
+    their_breakdown: list[BreakdownLine] = dataclasses.field(default_factory=list)
+    # What the reader was paid when it settled: duel_won / duel_draw /
+    # duel_participation, or "" (still running, or the weekly cap).
+    reward_points: int = 0
+    reward_type: str = ""
+    resolved_at: str = ""
 
     @classmethod
     def from_api(cls, data: dict[str, Any], me: str) -> "Duel":
@@ -651,11 +775,17 @@ class Duel:
         challenger = DuelSide.from_api(data.get("challenger") or {}, metric)
         opponent = DuelSide.from_api(data.get("opponent") or {}, metric)
         mine, theirs = (challenger, opponent) if challenger.user_id == me else (opponent, challenger)
+        raw_mine, raw_theirs = (
+            (data.get("challenger") or {}, data.get("opponent") or {})
+            if challenger.user_id == me
+            else (data.get("opponent") or {}, data.get("challenger") or {})
+        )
         winner = str(data.get("winner_id") or "")
+        total = mine.score + theirs.score
         return cls(
             id=str(data.get("id") or ""),
             metric=metric,
-            metric_label=metric.upper(),
+            metric_label=METRIC_TITLES.get(metric, metric.upper()),
             status=data.get("status") or "pending",
             challenger=challenger,
             opponent=opponent,
@@ -669,6 +799,14 @@ class Duel:
             my_score_label=mine.score_label,
             their_score_label=theirs.score_label,
             their_name=theirs.display_name,
+            their_id=theirs.user_id,
+            my_share=f"{mine.score / total:.3f}" if total > 0 else "0.5",
+            rules=data.get("rules") or "",
+            my_breakdown=_breakdown(raw_mine.get("breakdown"), metric),
+            their_breakdown=_breakdown(raw_theirs.get("breakdown"), metric),
+            reward_points=int(data.get("reward_points") or 0),
+            reward_type=data.get("reward_type") or "",
+            resolved_at=str(data.get("resolved_at") or ""),
         )
 
 

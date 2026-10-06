@@ -70,6 +70,15 @@ class Settings(BaseSettings):
     # leaderboard cache. Empty means no auth, for a bare local redis-server.
     redis_password: str = ""
 
+    # --- Natural-language set logging, tier 2 (app/core/nl_llm.py) ---
+    # Unset means the LLM fallback is off and only the grammar runs. Never
+    # sent to the client; the browser only ever sees parse results.
+    anthropic_api_key: str = ""
+    nl_parse_model: str = "claude-opus-5-5"
+    # Seconds. A voice log the user is waiting on; past this the request is
+    # abandoned and the user sees "couldn't understand that".
+    nl_parse_timeout_s: float = 2.0
+
     # --- Auth (no default secret: must come from the environment) ---
     jwt_secret_key: str
     jwt_algorithm: str = "HS256"

@@ -43,6 +43,9 @@ from app.core import points_engine as pe
 from app.core import workout_rules as rules
 from app.core import workout_store as store
 from app.core import importer, presets, raids, rank_trials, rate_limit
+from app.core import plausibility
+from app.core import quest_board as board
+from app.core import streak_freezes as freezes
 from app.core import training_categories
 from app.core import workout_streaks as streaks
 from app.core.periods import local_now, resolve_timezone
@@ -65,6 +68,7 @@ from app.models.workout import (
 from app.models.duel import ActivityType
 from app.models.workout_enums import LedgerSource, RecordType, SessionStatus, WeightUnit
 from app.schemas.quest import ProgressionDeltaOut
+from app.schemas.quest_board import QuestProgressOut
 from app.schemas.workout import (
     HintOut,
     AbandonResponse,
@@ -177,6 +181,25 @@ def _duration_seconds(session: WorkoutSession) -> int:
 
 def _working(sets: list[SetEntry]) -> list[SetEntry]:
     return [s for s in sets if not s.is_warmup]
+
+
+def _flag(db: Session, entry: SetEntry, exercise: Exercise, now: dt.datetime) -> None:
+    """Judge a set's plausibility. Never blocks it: a flagged set is logged
+    and scored for its owner as usual, and only kept out of competitions."""
+    verdict = plausibility.check(
+        weight_kg=entry.weight_kg,
+        reps=entry.reps,
+        is_warmup=entry.is_warmup,
+        equipment=exercise.equipment,
+        recent_best_e1rm=store.recent_best_e1rm(
+            db,
+            entry.user_id,
+            entry.exercise_id,
+            now - dt.timedelta(days=rules.FLAG_E1RM_LOOKBACK_DAYS),
+            exclude_set_id=entry.id,
+        ),
+    )
+    entry.is_flagged, entry.flag_reason = verdict.flagged, verdict.reason
 
 
 def _volume(sets: list[SetEntry]) -> Decimal:
@@ -350,20 +373,33 @@ def _summaries(db: Session, sessions: list[WorkoutSession]) -> list[SessionSumma
     return out
 
 
-def _streak_out(state: streaks.WeeklyStreak) -> StreakOut:
+def _streak_out(state: streaks.WeeklyStreak, freezes_held: int = 0) -> StreakOut:
     return StreakOut(
         weeks=state.weeks,
         this_week_sessions=state.this_week_sessions,
         target=state.target,
         this_week_done=state.this_week_done,
         sessions_to_go=state.sessions_to_go,
+        freezes_held=freezes_held,
     )
 
 
-def _current_streak(db: Session, user: User) -> streaks.WeeklyStreak:
-    return streaks.weekly_streak(
-        store.qualified_weeks(db, user.id), streaks.week_key(_now(), user.timezone)
-    )
+def _current_streak(db: Session, user: User) -> StreakOut:
+    """Settles closed weeks' freezes first, so the caller holds the
+    level_progress lock and commits."""
+    state, held = freezes.current_streak(db, user, _now())
+    return _streak_out(state, held.balance)
+
+
+def _quest_fields(quests: board.Refresh | None) -> dict:
+    if quests is None:
+        return {}
+    return {
+        "quest_progress": [QuestProgressOut.from_update(u) for u in quests.updates],
+        "quests_completed": [
+            QuestProgressOut.from_update(u) for u in quests.updates if u.completed_now
+        ],
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -416,6 +452,7 @@ def _set_response(
     points: int,
     delta: ProgressionDelta,
     duplicate: bool = False,
+    quests: board.Refresh | None = None,
 ) -> SetLogResponse:
     ledger = store.session_ledger(db, session.id)
     rows = list(db.scalars(select(PersonalRecord).where(PersonalRecord.set_id == entry.id)))
@@ -433,6 +470,7 @@ def _set_response(
         ),
         progression=_delta_out(delta),
         is_duplicate=duplicate,
+        **_quest_fields(quests),
     )
 
 
@@ -754,6 +792,7 @@ def log_set(
             status_code=status.HTTP_409_CONFLICT, detail="That set was already logged"
         ) from None
 
+    _flag(db, entry, exercise, now)
     events = prs.detect(store.load_bests(db, current_user.id, exercise.id), store.lift_of(entry))
     store.add_records(
         db,
@@ -769,13 +808,17 @@ def log_set(
     entry.is_pr = any(not e.is_baseline for e in events)
 
     outcome = _award_set(db, user=current_user, session=session, entry=entry, events=events)
-    delta = apply_xp(progress, xp=outcome.total, at=now, tz_name=current_user.timezone)
+    # Quest rewards are their own ledger rows, outside the set and PR caps.
+    quests = board.refresh(db, current_user, now, session=session)
+    delta = apply_xp(
+        progress, xp=outcome.total + quests.xp, at=now, tz_name=current_user.timezone
+    )
     # A new heaviest lift can pass a rank trial - and level up the rank here.
     delta = rank_trials.refresh(db, progress, current_user, delta)
 
     response = _set_response(
         db, session=session, entry=entry, exercise=exercise, outcome=outcome,
-        points=outcome.total, delta=delta,
+        points=outcome.total + quests.xp, delta=delta, quests=quests,
     )
     db.commit()
 
@@ -830,6 +873,7 @@ def update_set(
         )
 
     now = _now()
+    _flag(db, entry, db.get(Exercise, entry.exercise_id), now)  # type: ignore[arg-type]
     ledger = store.session_ledger(db, session.id)
     reversed_points = store.reverse(
         db,
@@ -846,14 +890,15 @@ def update_set(
         entry=entry,
         events=store.events_for_set(db, entry.id),
     )
-    net = outcome.total - reversed_points
+    quests = board.refresh(db, current_user, now, session=session)
+    net = outcome.total - reversed_points + quests.xp
     delta = apply_xp(progress, xp=net, at=now, tz_name=current_user.timezone)
     delta = rank_trials.refresh(db, progress, current_user, delta)
 
     exercise = db.get(Exercise, entry.exercise_id)
     response = _set_response(
         db, session=session, entry=entry, exercise=exercise, outcome=outcome,  # type: ignore[arg-type]
-        points=net, delta=delta,
+        points=net, delta=delta, quests=quests,
     )
     db.commit()
     return response
@@ -893,14 +938,19 @@ def delete_set(
     )
     store.replay_exercise(db, current_user.id, exercise_id)
 
-    delta = apply_xp(progress, xp=-reversed_points, at=_now(), tz_name=current_user.timezone)
+    now = _now()
+    # A quest this set completed is reopened if it now falls short.
+    quests = board.refresh(db, current_user, now, session=session)
+    net = quests.xp - reversed_points
+    delta = apply_xp(progress, xp=net, at=now, tz_name=current_user.timezone)
     delta = rank_trials.refresh(db, progress, current_user, delta)
     session_points = store.session_ledger(db, session.id).total
     db.commit()
     return SetDeleteResponse(
-        points_awarded=-reversed_points,
+        points_awarded=net,
         session_points=session_points,
         progression=_delta_out(delta),
+        quest_progress=_quest_fields(quests)["quest_progress"],
     )
 
 
@@ -950,7 +1000,7 @@ def finish_session(
                 at=now,
             )
 
-    state = streaks.weekly_streak(store.qualified_weeks(db, current_user.id), week)
+    state, held = freezes.current_streak(db, current_user, now)
     awards = pe.award_for_completion(
         pe.CompletionContext(
             duration_minutes=minutes,
@@ -970,10 +1020,14 @@ def finish_session(
             period_key=week if award.source_type is LedgerSource.STREAK_BONUS else None,
         )
 
+    # Before the ledger is totalled: a quest this workout completes is paid
+    # into this workout's ledger, and so credited by this finish.
+    quests = board.refresh(db, current_user, now, session=session)
+
     ledger = store.session_ledger(db, session.id)
     credit = max(0, ledger.total)
     session.points_credited = credit
-    completion_xp = sum(a.points for a in awards)
+    completion_xp = sum(a.points for a in awards) + quests.xp
 
     if qualified:
         # A real workout also advances the global daily streak that gates the
@@ -992,7 +1046,9 @@ def finish_session(
     # A real workout hits the boss of every party the user is in.
     raid_hits = (
         raids.hit_parties(
-            db, user_id=current_user.id, session_id=session.id, volume=_volume(working), now=now
+            db, user_id=current_user.id, session_id=session.id,
+            # A flagged set does not hit a boss for the whole party.
+            volume=_volume([s for s in working if not s.is_flagged]), now=now
         )
         if qualified
         else []
@@ -1016,6 +1072,8 @@ def finish_session(
         session_bonus=ledger.gross(LedgerSource.SESSION_COMPLETED),
         streak_bonus=ledger.gross(LedgerSource.STREAK_BONUS),
         reversals=ledger.gross(LedgerSource.REVERSAL),
+        quest_points=ledger.gross(LedgerSource.QUEST_COMPLETED)
+        + ledger.gross(LedgerSource.QUEST_BONUS),
         total=ledger.total,
     )
     # The feed, fanned out from what just happened. Last, so a feed write can
@@ -1061,9 +1119,10 @@ def finish_session(
         breakdown=breakdown,
         points_credited=credit,
         pr_events=_pr_events_out(records, names, ledger.pr_bonus_set_ids()),
-        streak=_streak_out(state),
+        streak=_streak_out(state, held.balance),
         progression=_delta_out(delta),
         raids=raid_hits,
+        **_quest_fields(quests),
     )
     db.commit()
     return response
@@ -1099,7 +1158,13 @@ def abandon_session(
     for exercise_id in exercise_ids:
         store.replay_exercise(db, current_user.id, exercise_id)
 
-    delta = apply_xp(progress, xp=-reversed_points, at=now, tz_name=current_user.timezone)
+    # The reversal above took back any quest this workout completed; the quest
+    # reopens, and completes again only if finished workouts still carry it.
+    quests = board.refresh(db, current_user, now)
+    progress.points_balance += quests.points_now
+    delta = apply_xp(
+        progress, xp=quests.xp - reversed_points, at=now, tz_name=current_user.timezone
+    )
     delta = rank_trials.refresh(db, progress, current_user, delta)
     summary = _summaries(db, [session])[0]
     db.commit()
@@ -1184,6 +1249,8 @@ def list_records(
 @router.get("/points", response_model=PointsSummaryOut)
 def points_summary(current_user: CurrentUser, db: DbSession) -> PointsSummaryOut:
     """Workout points totals and the weekly streak."""
+    # Reading the streak settles closed weeks' freezes, which writes.
+    lock_progress(db, current_user.id)
     local = local_now(current_user.timezone)
     monday = local.date() - dt.timedelta(days=local.weekday())
     week_start = dt.datetime.combine(
@@ -1206,12 +1273,14 @@ def points_summary(current_user: CurrentUser, db: DbSession) -> PointsSummaryOut
         )
     ).scalar_one()
 
-    return PointsSummaryOut(
+    out = PointsSummaryOut(
         total_points=_sum(),
         this_week_points=_sum(PointsLedgerEntry.created_at >= week_start),
         sessions_completed=int(completed),
-        streak=_streak_out(_current_streak(db, current_user)),
+        streak=_current_streak(db, current_user),
     )
+    db.commit()
+    return out
 
 
 @router.get("/points/ledger", response_model=list[LedgerEntryOut])

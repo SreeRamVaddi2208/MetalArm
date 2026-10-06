@@ -55,6 +55,48 @@ STREAK_SESSIONS_PER_WEEK = 3
 STREAK_BONUS_PER_WEEK = 10
 STREAK_BONUS_CAP = 100
 
+# --- Generated quests (app/core/quest_board.py) --------------------------------
+# How many are handed out per period. Each template carries its own reward;
+# these are what the shipped templates are sized against.
+DAILY_QUESTS = 2
+WEEKLY_QUESTS = 3
+DAILY_QUEST_POINTS = 15
+WEEKLY_QUEST_POINTS = 40
+# Paid once a week, when the last of that week's quests is done.
+ALL_WEEKLY_QUESTS_BONUS = 25
+# Swaps of one daily quest for another, per local day.
+QUEST_REROLLS_PER_DAY = 1
+
+# --- Streak freezes (app/core/streak_freezes.py) -------------------------------
+# A freeze covers one week that fell short, so the weekly streak survives a
+# deliberate rest week. Earned every FREEZE_EARN_EVERY_WEEKS counting weeks of
+# streak and for finishing a week's quests; never more than FREEZE_CAP held.
+# Weeks rather than the spec's "every 7 days", because the streak is weekly.
+FREEZE_CAP = 2
+FREEZE_EARN_EVERY_WEEKS = 4
+
+# --- Plausibility (app/core/plausibility.py) ---------------------------------
+# A set that trips one of these is still logged and still scores for its owner,
+# but stays out of duels and leaderboards. Generous on purpose: the cost of a
+# false flag is someone's honest PR not counting against a friend.
+FLAG_E1RM_JUMP = 0.15          # e1RM this far above the last 7 days' best
+FLAG_E1RM_LOOKBACK_DAYS = 7
+FLAG_MAX_WEIGHTED_REPS = 50    # reps on a set with any weight on it
+# Heaviest believable load by equipment, in kg (per hand for dumbbells and
+# kettlebells, as logged). Anything above is past world records.
+FLAG_CEILING_KG = {
+    "barbell": 500,
+    "trap_bar": 500,
+    "smith_machine": 500,
+    "ez_bar": 200,
+    "dumbbell": 120,
+    "kettlebell": 100,
+    "cable": 300,
+    "machine": 700,
+    "plate": 100,
+    "band": 150,
+}
+
 # --- Session hygiene -------------------------------------------------------
 # A session left open this long refuses new sets, and duration counts only up
 # to this for the bonus - a forgotten session cannot bank a 20-hour multiplier.

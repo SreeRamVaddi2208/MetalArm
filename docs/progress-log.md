@@ -14,6 +14,91 @@ Entry format:
 
 ---
 
+## 2026-10-05 (41) - Opus - quests & freezes, voice logging, fair duels
+
+**Changed**
+- **Generated quests** (`app/models/quest_board.py`, `app/core/quest_engine.py`
+  pure, `app/core/quest_board.py`, `app/api/routes/quest_board.py`, migration
+  `32523b4e7c01`): 2 daily + 3 weekly per user, chosen deterministically from
+  user + period out of `app/data/quest_templates.json` (31 templates, filtered by
+  training path). Separate from user-written quests, which are unchanged.
+  Progress is recomputed from the sets on every log / edit / delete / finish /
+  abandon - never accumulated. Rewards are `quest_completed` / `quest_bonus`
+  ledger rows outside the set and PR caps. A completion made during a live
+  workout rides that workout's ledger (XP now, shop points at finish) and is
+  reversed if the set behind it is deleted or the workout abandoned; one made
+  with no workout live is final and credited at once. One reroll a day.
+- **Exercise tags** (`exercises.tags`, in `exercises.json`): big3,
+  compound_heavy, compound, compound_light, isolation, mobility, plyometric.
+- **Streak freezes** (`app/core/streak_freezes.py`): protect the WEEKLY workout
+  streak. Earned every 4 counting weeks and for a week with all weekly quests
+  done, cap 2; spent automatically on a short week that would break a live
+  streak. Settled lazily, one CLOSED week at a time, from the week the user
+  first meets the feature (`users.freeze_settled_through`) - old history earns
+  nothing. A covered week keeps the streak but adds no week and pays no bonus.
+  `GET /streak`, `POST /streak/seen` for the one-time "streak saved" notice.
+- **Natural-language logging** (`app/core/nl_parser.py` pure grammar,
+  `app/core/nl_llm.py` Claude fallback, `app/core/nl_log.py`,
+  `app/api/routes/nl_log.py`, migration `4e8b1c2d9a17`): `POST /log/parse`
+  proposes sets and never logs them. Tier 2 runs only when the grammar finds no
+  set and `ANTHROPIC_API_KEY` is set; its answer is held to the candidate
+  exercise list and the grammar's bounds. Aliases moved to
+  `app/data/exercise_aliases.json`, read by both the parser and the Strong/Hevy
+  importer. A phrase corrected to the same exercise twice becomes a personal
+  alias.
+- **Fair duels** (`app/core/duel_scoring.py` pure, `app/core/plausibility.py`
+  pure, migration `7a3e9f0b5c42`): new modes consistency / progress /
+  relative_volume scored against each side's own baseline (snapshotted into
+  `duel_baselines` on accept). Draws pay 15 each, a loser who trained gets 10,
+  capped at 3 duel rewards a week - fair modes only; volume/sets/sessions pay
+  exactly as before. Fair-mode challenges expire after 48 h and are capped at 3
+  live; the original modes keep open-ended challenges and no cap.
+  `POST /duels/{id}/cancel`, `GET /duels/modes` (eligibility + reason).
+- **Set flags**: `set_entries.is_flagged` from plausibility checks on log and
+  edit. A flagged set is logged and scores for its owner, but is excluded from
+  duels, raids, leagues and the party workout board
+  (`workout_store.board_points()`).
+- **Web**: quest panel + freeze icons + "streak saved" notice on the dashboard;
+  in-session quest chip and quest-complete line in the workout HUD; "Quests
+  progressed" in the summary; hold-to-talk mic + typed box + editable proposal
+  card + Undo; duel mode picker with disabled modes and reasons, head-to-head
+  bars (dashboard and cards), breakdown, draw/loss result screens with Rematch,
+  neutral flagged-set note.
+
+**Spec deviations, on purpose**
+- Freezes are earned/spent per WEEK (the streak is weekly), "every 4 weeks"
+  instead of "every 7 days", and quest-earned freezes land when the week
+  closes rather than mid-week, so an earn never needs taking back.
+- Duel scores stay computed on read (no `DuelScore` table), as the existing
+  duels already are. Parties remain the friend graph; no `Friendship` table.
+- `quest_completed` is NOT in `uq_points_ledger_once`: like a set award it can
+  be reversed and re-earned; the level_progress lock serialises it.
+- The web app uses `theme.py` and the system font stack; Space Grotesk /
+  Manrope exist only on iOS.
+- The LLM fallback defaults to `claude-opus-5-5` at low effort
+  (`NL_PARSE_MODEL` to change); its p95 against the 2 s target is unmeasured.
+
+**Verified**
+- Database-free suites: `test_quest_engine`, `test_streak_freezes`,
+  `test_workout_streaks`, `test_points_engine`, `test_nl_parser` (62 fixture
+  utterances), `test_duel_scoring`, `test_plausibility` - all pass.
+- Frontend: `pytest frontend/tests` passes; dashboard, workout and duels pages
+  build and render.
+- `docs/api-contract.md` regenerated from the app's OpenAPI (71 paths).
+
+**Blocked**
+- NOT yet run: everything that needs Postgres - `test_quest_board`,
+  `test_nl_log`, the new `test_duels` cases, the rest of the suite against the
+  changed routes, `alembic upgrade head && alembic check` for the three
+  migrations. Docker was down for the whole session.
+
+**Other agent needs to know**
+- Tests run with generated quests OFF unless marked `@pytest.mark.quests`
+  (conftest), because which quests a random user id draws would otherwise make
+  exact-XP assertions flaky.
+- Seeding on deploy now also runs `scripts.seed_quest_templates`; aliases seed
+  inside `scripts.import_exercises`.
+
 ## 2026-09-26 (40) - Opus - duels, and the feed they feed into
 
 **Changed**

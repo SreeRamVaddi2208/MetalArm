@@ -45,13 +45,31 @@ class DuelMetric(str, enum.Enum):
     VOLUME = "volume"      # kilograms lifted in working sets
     SETS = "sets"          # working sets logged
     SESSIONS = "sessions"  # workouts finished
+    # The fair modes (app/core/duel_scoring.py): each scores you against your
+    # OWN baseline, so a beginner and a veteran - or a powerlifter and an
+    # athlete - meet on equal terms.
+    CONSISTENCY = "consistency"          # days trained (1 a day, 3+ working sets)
+    PROGRESS = "progress"                # % e1RM gained over your own best
+    RELATIVE_VOLUME = "relative_volume"  # this week's volume vs your own average
+
+
+# Modes scored against a baseline snapshotted when the duel starts.
+BASELINE_METRICS = frozenset({DuelMetric.PROGRESS.value, DuelMetric.RELATIVE_VOLUME.value})
+FAIR_METRICS = frozenset(BASELINE_METRICS | {DuelMetric.CONSISTENCY.value})
 
 
 class DuelStatus(str, enum.Enum):
     PENDING = "pending"      # challenged, not yet accepted
     ACTIVE = "active"        # accepted (or synthetic), window running
     COMPLETED = "completed"  # window closed and judged
-    DECLINED = "declined"    # turned down, or withdrawn before acceptance
+    DECLINED = "declined"    # turned down by the person challenged
+    EXPIRED = "expired"      # not answered within ACCEPT_WITHIN
+    CANCELLED = "cancelled"  # withdrawn by the challenger before acceptance
+
+
+class BaselineType(str, enum.Enum):
+    E1RM = "e1rm"
+    AVG_WEEKLY_VOLUME = "avg_weekly_volume"
 
 
 class ActivityType(str, enum.Enum):
@@ -119,6 +137,46 @@ class Duel(UUIDPrimaryKey, Timestamps, Base):
         ),
         Index("ix_duels_challenger", "challenger_id", "status"),
         Index("ix_duels_opponent", "opponent_id", "status"),
+    )
+
+
+class DuelBaseline(UUIDPrimaryKey, Base):
+    """One side's starting point for a fair duel, fixed when the window opens.
+
+    Snapshotted, not recomputed, so a score never shifts because history was
+    edited afterwards: progress is measured from the best estimated 1RM per
+    exercise in the 28 days before the duel, relative volume from the average
+    week over the 4 weeks before it.
+    """
+
+    __tablename__ = "duel_baselines"
+
+    duel_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("duels.id", ondelete="CASCADE"), nullable=False
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False,
+        index=True,
+    )
+    # NULL for the volume baseline, which is not about one exercise.
+    exercise_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("exercises.id", ondelete="CASCADE"), nullable=True,
+        index=True,
+    )
+    baseline_type: Mapped[str] = mapped_column(String(24), nullable=False)
+    baseline_value: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
+
+    __table_args__ = (
+        CheckConstraint(check_in("baseline_type", BaselineType), name="ck_duel_baselines_type"),
+        CheckConstraint("baseline_value > 0", name="ck_duel_baselines_value"),
+        CheckConstraint(
+            "(baseline_type = 'e1rm') = (exercise_id IS NOT NULL)",
+            name="ck_duel_baselines_scope",
+        ),
+        UniqueConstraint(
+            "duel_id", "user_id", "exercise_id",
+            name="uq_duel_baselines_once", postgresql_nulls_not_distinct=True,
+        ),
     )
 
 

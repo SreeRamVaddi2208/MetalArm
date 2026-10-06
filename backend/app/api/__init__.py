@@ -9,8 +9,10 @@ from app.api.routes import (
     duels,
     exercises,
     leagues,
+    nl_log,
     parties,
     profile,
+    quest_board,
     quests,
     rewards,
     routines,
@@ -24,10 +26,14 @@ API_V1_PREFIX = "/api/v1"
 # breaking change can ship as /api/v2 without stranding an older client.
 api_router = APIRouter(prefix=API_V1_PREFIX)
 api_router.include_router(auth.router)
+# Before quests: /quests/current must not match /quests/{quest_id}.
+api_router.include_router(quest_board.router)
 api_router.include_router(quests.router)
 api_router.include_router(rewards.router)
 api_router.include_router(parties.router)
 api_router.include_router(profile.router)
+# Before exercises: /exercises/aliases must not match /exercises/{exercise_id}.
+api_router.include_router(nl_log.router)
 api_router.include_router(exercises.router)
 api_router.include_router(routines.router)
 api_router.include_router(workouts.router)

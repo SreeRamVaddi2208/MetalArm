@@ -38,6 +38,7 @@ from app.models.mixins import Timestamps, UUIDPrimaryKey
 from app.models.workout_enums import (
     Equipment,
     ExerciseCategory,
+    ExerciseTag,
     LedgerSource,
     MeasurementMetric,
     MeasurementUnit,
@@ -49,6 +50,7 @@ from app.models.workout_enums import (
 )
 
 _MUSCLES_ARRAY = ", ".join(f"'{v}'" for v in values(MuscleGroup))
+_TAGS_ARRAY = ", ".join(f"'{v}'" for v in values(ExerciseTag))
 
 
 class Exercise(UUIDPrimaryKey, Timestamps, Base):
@@ -72,6 +74,11 @@ class Exercise(UUIDPrimaryKey, Timestamps, Base):
         ARRAY(String(32)), nullable=False, server_default=text("'{}'")
     )
     equipment: Mapped[str] = mapped_column(String(32), nullable=False)
+    # What kind of work it is (ExerciseTag). Library rows get theirs from the
+    # seed file; custom exercises have none, so tag-based quests ignore them.
+    tags: Mapped[list[str]] = mapped_column(
+        ARRAY(String(24)), nullable=False, server_default=text("'{}'")
+    )
     instructions: Mapped[str | None] = mapped_column(Text, nullable=True)
     media_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     is_custom: Mapped[bool] = mapped_column(
@@ -95,6 +102,9 @@ class Exercise(UUIDPrimaryKey, Timestamps, Base):
             f"primary_muscle_groups <@ ARRAY[{_MUSCLES_ARRAY}]::varchar[] "
             "AND cardinality(primary_muscle_groups) >= 1",
             name="ck_exercises_muscle_groups",
+        ),
+        CheckConstraint(
+            f"tags <@ ARRAY[{_TAGS_ARRAY}]::varchar[]", name="ck_exercises_tags"
         ),
         # Exactly one owner model: library rows belong to nobody, custom rows
         # to exactly one user.
@@ -371,6 +381,11 @@ class SetEntry(UUIDPrimaryKey, Base):
     client_set_id: Mapped[uuid.UUID | None] = mapped_column(
         Uuid(as_uuid=True), nullable=True
     )
+    # Tripped a plausibility check (app/core/plausibility.py). Still logged,
+    # still in history, still earns its owner's points and records - but kept
+    # out of duels and leaderboards, where it would cost somebody else.
+    is_flagged: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
+    flag_reason: Mapped[str | None] = mapped_column(String(32), nullable=True)
 
     session: Mapped["WorkoutSession"] = relationship(back_populates="sets")
     exercise: Mapped["Exercise"] = relationship()
@@ -402,6 +417,12 @@ class SetEntry(UUIDPrimaryKey, Base):
             name="ck_set_entries_has_measure",
         ),
         Index("ix_set_entries_user_exercise_time", "user_id", "exercise_id", "completed_at"),
+        CheckConstraint(
+            "is_flagged = (flag_reason IS NOT NULL)", name="ck_set_entries_flag_reason"
+        ),
+        # Boards exclude flagged sets' awards; flagged sets are rare, so a
+        # partial index keeps that lookup to the few that exist.
+        Index("ix_set_entries_flagged", "id", postgresql_where=text("is_flagged")),
     )
 
 
@@ -546,7 +567,8 @@ class PointsLedgerEntry(UUIDPrimaryKey, Base):
             "source_id",
             unique=True,
             postgresql_where=text(
-                "source_type IN ('session_completed', 'streak_bonus', 'duel_won', 'reversal')"
+                "source_type IN ('session_completed', 'streak_bonus', 'duel_won', "
+                "'duel_draw', 'duel_participation', 'reversal')"
             ),
         ),
         # One streak bonus per ISO week.

@@ -3,9 +3,10 @@
 import reflex as rx
 
 from metalarm import theme
-from metalarm.components.layout import error_banner, section_heading, shell
+from metalarm.components.layout import error_banner, notice_banner, section_heading, shell
 from metalarm.components.level_up import keyframes, level_up_overlay
-from metalarm.components.quest_card import empty_board, quest_card
+from metalarm.components.duel_card import dashboard_duels
+from metalarm.components.quest_card import empty_board, generated_board, quest_card
 from metalarm.components.scroll_reveal import pinned, reveal, reveal_assets
 from metalarm.components.stat_panel import stat_panel
 from metalarm.state.quests import QuestState
@@ -114,8 +115,29 @@ def dashboard_page() -> rx.Component:
                     flex_shrink="0",
                 ),
                 rx.vstack(
+                    rx.cond(
+                        QuestState.streak_saved_notice != "",
+                        rx.hstack(
+                            notice_banner(QuestState.streak_saved_notice),
+                            rx.button(
+                                "OK",
+                                on_click=QuestState.dismiss_streak_notice,
+                                background="transparent",
+                                color=theme.MUTED,
+                                border=f"1px solid {theme.BORDER}",
+                                border_radius="8px",
+                                font_size="0.7rem",
+                                cursor="pointer",
+                            ),
+                            width="100%",
+                            align="center",
+                        ),
+                    ),
+                    dashboard_duels(),
+                    section_heading("QUESTS"),
+                    generated_board(),
                     section_heading(
-                        "QUEST BOARD",
+                        "YOUR QUESTS",
                         rx.button(
                             rx.cond(QuestState.show_form, "CLOSE", "+ NEW QUEST"),
                             on_click=QuestState.toggle_form,

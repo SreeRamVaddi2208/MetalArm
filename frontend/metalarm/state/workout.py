@@ -37,6 +37,8 @@ from metalarm.workout_models import (
     HistoryRow,
     PresetSlot,
     PrView,
+    QuestLine,
+    VoiceProposal,
     RoutineItem,
     WorkoutPreset,
     SetRow,
@@ -254,6 +256,21 @@ class WorkoutState(rx.State):
     pr: PrView = PrView()
     pr_others: list[PrView] = []
     pr_points: int = 0
+    # The in-session quest chip: the quest the last set moved, as the API
+    # reported it. Read-only - it adds nothing to the logging loop.
+    quest_chip: QuestLine = QuestLine()
+    # A quest the last set completed: a small inline moment in the HUD,
+    # deliberately below the PR overlay and the level-up in size.
+    quest_done: QuestLine = QuestLine()
+    # Voice / typed logging. The proposal is the API's (POST /log/parse);
+    # nothing in it is logged until the user taps "Log it".
+    voice_text: str = ""
+    show_typed: bool = False
+    voice_busy: bool = False
+    voice_error: str = ""
+    proposal: VoiceProposal = VoiceProposal()
+    # Sets the last confirmed proposal logged, for Undo.
+    undo_set_ids: list[str] = []
     # A level-up earned by the same set waits until the PR moment is
     # dismissed, so the two celebrations never stack on top of each other.
     _pending_beat: Beat = Beat()
@@ -293,12 +310,33 @@ class WorkoutState(rx.State):
     def has_pr_others(self) -> bool:
         return len(self.pr_others) > 0
 
+    @rx.var
+    def has_proposal(self) -> bool:
+        return self.proposal.parse_id != ""
+
+    @rx.var
+    def can_undo_voice(self) -> bool:
+        return len(self.undo_set_ids) > 0
+
+    @rx.var
+    def has_quest_chip(self) -> bool:
+        return self.quest_chip.id != ""
+
+    @rx.var
+    def has_quest_done(self) -> bool:
+        return self.quest_done.id != ""
+
     # --- helpers ----------------------------------------------------------
 
     async def _auth(self) -> AuthState:
         return await self.get_state(AuthState)
 
     def _clear_session(self) -> None:
+        self.quest_chip = QuestLine()
+        self.quest_done = QuestLine()
+        self.proposal = VoiceProposal()
+        self.undo_set_ids = []
+        self.voice_error = ""
         self.session_id = ""
         self.session_name = ""
         self.started_at = ""
@@ -612,13 +650,210 @@ class WorkoutState(rx.State):
         # Rotate the idempotency key only now, after a confirmed log.
         self._update(index, client_set_id=str(uuid.uuid4()))
         self._apply_session(session)
+        self.undo_set_ids = []
         if not result.get("is_duplicate"):
+            self._show_quests(result)
             await self._show_outcome(card.exercise_id, result)
             if not card.warmup:
                 yield rx.call_script(
                     f"window.maRest && window.maRest.start({int(card.rest_seconds)})"
                 )
         yield AuthState.refresh_me
+
+    def _show_quests(self, result: dict[str, Any]) -> None:
+        """The chip follows whichever quest this set moved; a quest it
+        completed gets the small moment. Both straight from the response."""
+        done = result.get("quests_completed") or []
+        moved = [q for q in result.get("quest_progress") or [] if q.get("advanced")]
+        self.quest_done = QuestLine.from_api(done[0]) if done else QuestLine()
+        if moved:
+            # An unfinished quest is the more useful thing to keep in view.
+            moved.sort(key=lambda q: bool(q.get("completed")))
+            self.quest_chip = QuestLine.from_api(moved[0])
+
+    # --- voice / typed logging ------------------------------------------------
+
+    def set_voice_text(self, value: str) -> None:
+        self.voice_text = value
+
+    def toggle_typed(self) -> None:
+        self.show_typed = not self.show_typed
+
+    def _current_card_id(self) -> str:
+        """The exercise a bare "80 for 8" means: a card added but not logged
+        yet. Otherwise the server uses the session's last set."""
+        fresh = [c for c in self.cards if not c.sets]
+        return fresh[-1].exercise_id if fresh else ""
+
+    async def voice_done(self, outcome: dict):
+        """The mic was released: `outcome` is what the speech script heard,
+        {text} or {error}. Errors fall back to the typed box."""
+        outcome = outcome or {}
+        error = outcome.get("error") or ""
+        text = (outcome.get("text") or "").strip()
+        if error or not text:
+            self.voice_error = {
+                "denied": "Microphone access is off - type it instead.",
+                "unsupported": "Voice isn't available in this browser - type it instead.",
+            }.get(error, "Didn't catch anything - try again or type it.")
+            self.show_typed = True
+            return
+        self.voice_text = text
+        async for update in self._parse(text):
+            yield update
+
+    async def submit_typed(self):
+        text = self.voice_text.strip()
+        if not text:
+            return
+        async for update in self._parse(text):
+            yield update
+
+    async def _parse(self, text: str):
+        auth = await self._auth()
+        self.voice_busy = True
+        self.voice_error = ""
+        yield
+        try:
+            data = await wapi.parse_set(
+                auth.token, text, self.session_id, self._current_card_id()
+            )
+        except ApiError as exc:
+            self.voice_busy = False
+            self.voice_error = exc.detail
+            return
+        self.voice_busy = False
+        if not data.get("proposed_sets"):
+            self.proposal = VoiceProposal()
+            self.voice_error = data.get("problem") or "Couldn't understand that."
+            self.show_typed = True
+            return
+        self.proposal = VoiceProposal.from_api(data)
+        self.voice_text = ""
+
+    def _edit(self, **changes: Any) -> None:
+        self.proposal = dataclasses.replace(self.proposal, **changes)
+
+    def set_proposal_weight(self, value: str) -> None:
+        self._edit(weight=value)
+
+    def set_proposal_reps(self, value: str) -> None:
+        self._edit(reps=value)
+
+    def set_proposal_rpe(self, value: str) -> None:
+        self._edit(rpe=value)
+
+    def toggle_proposal_warmup(self) -> None:
+        self._edit(warmup=not self.proposal.warmup)
+
+    def bump_proposal_sets(self, direction: int) -> None:
+        self._edit(set_count=max(1, min(20, self.proposal.set_count + direction)))
+
+    def pick_alternative(self, exercise_id: str, name: str) -> None:
+        self._edit(exercise_id=exercise_id, exercise_name=name, unsure=False)
+
+    async def discard_proposal(self):
+        """Thrown away: recorded as not accepted, so the parser learns what
+        it got wrong."""
+        auth = await self._auth()
+        parse_id, self.proposal = self.proposal.parse_id, VoiceProposal()
+        try:
+            await wapi.parse_feedback(auth.token, parse_id, {"accepted": False})
+        except ApiError:
+            pass
+
+    async def confirm_proposal(self):
+        """One tap: each proposed set goes through the ordinary log-set
+        endpoint, so PRs, points and quests fire exactly as for a tapped set."""
+        p = self.proposal
+        if self.busy or not p.parse_id or not self.session_id:
+            return
+        reps, weight = _num(p.reps), _num(p.weight)
+        if reps < 1 or reps != int(reps) or weight < 0:
+            self.voice_error = "Check the weight and reps."
+            return
+        payload: dict[str, Any] = {
+            "exercise_id": p.exercise_id,
+            "weight": weight,
+            "unit": p.unit,
+            "reps": int(reps),
+            "is_warmup": p.warmup,
+        }
+        if p.rpe.strip():
+            rpe = _num(p.rpe)
+            if not 1 <= rpe <= 10:
+                self.voice_error = "RPE is 1 to 10."
+                return
+            payload["rpe"] = rpe
+
+        auth = await self._auth()
+        self.busy = True
+        self.voice_error = ""
+        yield
+        logged: list[str] = []
+        result: dict[str, Any] = {}
+        try:
+            for _ in range(p.set_count):
+                result = await wapi.log_set(
+                    auth.token, self.session_id, {**payload, "client_set_id": str(uuid.uuid4())}
+                )
+                logged.append((result.get("set") or {}).get("id") or "")
+            session = await wapi.get_session(auth.token, self.session_id)
+        except ApiError as exc:
+            self.busy = False
+            self.voice_error = exc.detail
+            if logged:
+                yield WorkoutState.load
+            return
+        self.busy = False
+
+        edited = p.signature() != p.original
+        feedback: dict[str, Any] = {"accepted": not edited}
+        if edited:
+            feedback["corrected_result"] = {
+                **{k: v for k, v in payload.items() if k != "is_warmup"},
+                "is_warmup": p.warmup,
+                "set_count": p.set_count,
+            }
+        try:
+            await wapi.parse_feedback(auth.token, p.parse_id, feedback)
+        except ApiError:
+            pass  # feedback is for learning; the sets are already logged
+
+        self.proposal = VoiceProposal()
+        self.undo_set_ids = [i for i in logged if i]
+        self._apply_session(session)
+        self._show_quests(result)
+        await self._show_outcome(p.exercise_id, result)
+        yield AuthState.refresh_me
+
+    async def undo_voice(self):
+        auth = await self._auth()
+        ids, self.undo_set_ids = self.undo_set_ids, []
+        try:
+            for set_id in ids:
+                await wapi.delete_set(auth.token, self.session_id, set_id)
+            session = await wapi.get_session(auth.token, self.session_id)
+        except ApiError as exc:
+            self.voice_error = exc.detail
+            return
+        self._apply_session(session)
+        yield AuthState.refresh_me
+
+    def _refresh_chip(self, result: dict[str, Any]) -> None:
+        """After a delete nothing ADVANCES, but the chip's quest may have
+        gone back (and a completed one reopened): show where it stands now."""
+        for q in (result or {}).get("quest_progress") or []:
+            if str(q.get("assignment_id") or "") == self.quest_chip.id:
+                self.quest_chip = QuestLine.from_api(q)
+        if self.quest_done.id and not any(
+            str(q.get("assignment_id") or "") == self.quest_done.id and q.get("completed")
+            for q in (result or {}).get("quest_progress") or []
+        ):
+            self.quest_done = QuestLine()
+
+    def dismiss_quest_done(self) -> None:
+        self.quest_done = QuestLine()
 
     async def _show_outcome(self, exercise_id: str, result: dict[str, Any]) -> None:
         """Turn the API's verdict on a set into the right-sized moment.
@@ -669,7 +904,7 @@ class WorkoutState(rx.State):
         auth = await self._auth()
         self.error = ""
         try:
-            await wapi.delete_set(auth.token, self.session_id, set_id)
+            result = await wapi.delete_set(auth.token, self.session_id, set_id)
             session = await wapi.get_session(auth.token, self.session_id)
         except ApiError as exc:
             self.error = exc.detail
@@ -677,6 +912,7 @@ class WorkoutState(rx.State):
         if self.editing_set_id == set_id:
             self.editing_set_id = ""
         self._apply_session(session)
+        self._refresh_chip(result)
         return AuthState.refresh_me
 
     # --- editing a logged set ---------------------------------------------

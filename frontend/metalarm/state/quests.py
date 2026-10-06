@@ -5,7 +5,8 @@ from __future__ import annotations
 import reflex as rx
 
 from metalarm import api
-from metalarm.models import Quest
+from metalarm.models import GeneratedQuest, Quest
+from metalarm.workout_models import StreakView
 from metalarm.state.auth import AuthState
 from metalarm import rank_tiers, ranks
 
@@ -14,6 +15,17 @@ class QuestState(rx.State):
     quests: list[Quest] = []
     loading: bool = False
     error: str = ""
+
+    # Generated quests (GET /quests/current): handed out and tracked by the
+    # server, so there is nothing here to tick off - only to render.
+    daily: list[GeneratedQuest] = []
+    weekly: list[GeneratedQuest] = []
+    rerolls_left: int = 0
+    # The weekly workout streak and its freezes (GET /streak).
+    streak: StreakView = StreakView()
+    # "Your streak was saved by a freeze" - set from the API's unseen list,
+    # shown once, then acknowledged.
+    streak_saved_notice: str = ""
 
     # Create form
     show_form: bool = False
@@ -65,6 +77,10 @@ class QuestState(rx.State):
     @rx.var
     def has_quests(self) -> bool:
         return len(self.quests) > 0
+
+    @rx.var
+    def has_generated(self) -> bool:
+        return len(self.daily) + len(self.weekly) > 0
 
     @rx.var
     def sound_muted(self) -> bool:
@@ -170,10 +186,48 @@ class QuestState(rx.State):
         try:
             data = await api.list_quests(auth.token)
             self.quests = [Quest.from_api(q) for q in data]
+            await self._load_board(auth.token)
         except api.ApiError as exc:
             self.error = exc.detail
         finally:
             self.loading = False
+
+    async def _load_board(self, token: str) -> None:
+        board = await api.quest_board(token)
+        self.daily = [GeneratedQuest.from_api(q) for q in board.get("daily") or []]
+        self.weekly = [GeneratedQuest.from_api(q) for q in board.get("weekly") or []]
+        self.rerolls_left = board.get("rerolls_left") or 0
+        streak = await api.streak(token)
+        self.streak = StreakView.from_api(streak)
+        saved = streak.get("freezes_used_unseen") or []
+        if saved:
+            weeks = len(saved)
+            self.streak_saved_notice = (
+                "Your streak was saved by a freeze"
+                + (f" ({weeks} weeks covered)." if weeks > 1 else " - last week came up short.")
+            )
+
+    async def dismiss_streak_notice(self):
+        """Acknowledged server-side, so the notice is shown once per freeze
+        rather than once per device."""
+        self.streak_saved_notice = ""
+        auth = await self.get_state(AuthState)
+        try:
+            await api.acknowledge_streak(auth.token)
+        except api.ApiError:
+            pass  # it shows again next time - harmless
+
+    async def reroll(self, assignment_id: str):
+        auth = await self.get_state(AuthState)
+        self.error = ""
+        try:
+            result = await api.reroll_quest(auth.token, assignment_id)
+            await self._load_board(auth.token)
+        except api.ApiError as exc:
+            self.error = exc.detail
+            return
+        if result.get("progression"):
+            yield AuthState.refresh_me
 
     async def create(self):
         auth = await self.get_state(AuthState)

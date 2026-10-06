@@ -10,7 +10,7 @@
 
 - **API title:** MetalArm API
 - **API version:** 0.1.0
-- **Generated:** 2026-09-25 19:02 UTC
+- **Generated:** 2026-10-05 12:45 UTC
 - **Source:** `http://localhost:8000/openapi.json`
 
 ---
@@ -331,6 +331,26 @@ is noise rather than a game.
 
 ---
 
+### `GET /api/v1/duels/modes`
+
+**Duel Modes**
+
+Every mode, with whether a duel against `opponent_id` could use it and
+why not. Only fair modes need history; the rest are always open.
+
+*Tags:* `duels`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `opponent_id` | query | `string | null` | no |
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
 ### `GET /api/v1/duels/{duel_id}`
 
 **Get Duel**
@@ -356,6 +376,25 @@ Take up a challenge. The window starts NOW, not when it was sent.
 
 Otherwise a challenge left sitting for six days would hand the challenger
 almost the whole window to themselves.
+
+*Tags:* `duels`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `duel_id` | path | `string` | yes |
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `POST /api/v1/duels/{duel_id}/cancel`
+
+**Cancel Duel**
+
+Withdraw a challenge you sent, before it is accepted.
 
 *Tags:* `duels`
 
@@ -422,6 +461,38 @@ Search the library plus the caller's own exercises, by name.
 *Tags:* `exercises`
 
 *Request body* (`application/json`): `ExerciseCreate`
+
+| Status | Description |
+|---|---|
+| `201` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `GET /api/v1/exercises/aliases`
+
+**List Aliases**
+
+Every alias the parser will use for this user: the shipped ones and
+their own (which win on a clash).
+
+*Tags:* `natural-language logging`
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+
+---
+
+### `POST /api/v1/exercises/aliases`
+
+**Create Alias**
+
+A personal alias: "flat bb" means Barbell Bench Press, for this user.
+
+*Tags:* `natural-language logging`
+
+*Request body* (`application/json`): `AliasCreate`
 
 | Status | Description |
 |---|---|
@@ -576,6 +647,47 @@ week in UTC, never a stored score.
 | Status | Description |
 |---|---|
 | `200` | Successful Response |
+
+---
+
+### `POST /api/v1/log/parse`
+
+**Parse Text**
+
+Turn "bench 80 for 8" into proposed sets. Side-effect free apart from
+the parse log. `problem` is set, and `proposed_sets` empty, when nothing
+could be understood - a normal answer, not an error.
+
+*Tags:* `natural-language logging`
+
+*Request body* (`application/json`): `ParseRequest`
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `POST /api/v1/log/parse/{parse_id}/feedback`
+
+**Parse Feedback**
+
+Whether the proposal was logged as-is or edited first. Edits teach:
+a phrase corrected to the same exercise twice becomes the user's alias.
+
+*Tags:* `natural-language logging`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `parse_id` | path | `string` | yes |
+
+*Request body* (`application/json`): `ParseFeedback`
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
 
 ---
 
@@ -1028,6 +1140,41 @@ The caller's quest board, newest first.
 
 ---
 
+### `POST /api/v1/quests/assignments/{assignment_id}/reroll`
+
+**Reroll Quest**
+
+Swap one of today's active daily quests for another. 409 when none are
+left today, the quest is already done, or it is not a daily quest.
+
+*Tags:* `quest board`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `assignment_id` | path | `string` | yes |
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `GET /api/v1/quests/current`
+
+**Current Quests**
+
+Today's daily quests and this week's weekly quests, with progress.
+Generated on the first read of a period, the same ones on every read.
+
+*Tags:* `quest board`
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+
+---
+
 ### `DELETE /api/v1/quests/{quest_id}`
 
 **Delete Quest**
@@ -1371,6 +1518,37 @@ Full replace. The ordered exercise list is swapped as a whole.
 
 ---
 
+### `GET /api/v1/streak`
+
+**Read Streak**
+
+The weekly workout streak with its freezes. Weeks that closed since the
+last read are settled first: a short week is covered automatically if a
+freeze is held, and freezes earned are added.
+
+*Tags:* `quest board`
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+
+---
+
+### `POST /api/v1/streak/seen`
+
+**Acknowledge Streak**
+
+The user has seen the "your streak was saved" notice; stop sending
+those weeks in `freezes_used_unseen`.
+
+*Tags:* `quest board`
+
+| Status | Description |
+|---|---|
+| `204` | Successful Response |
+
+---
+
 ### `GET /api/v1/training-categories`
 
 **List Training Categories**
@@ -1707,6 +1885,49 @@ otherwise 503 with per-dependency detail.
 | `source_id` | `string | null` | yes |
 | `created_at` | `string` | yes |
 
+#### `AliasCreate`
+
+| Field | Type | Required |
+|---|---|---|
+| `alias` | `string` | yes |
+| `exercise_id` | `string` | yes |
+
+#### `AliasOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `id` | `string` | yes |
+| `alias` | `string` | yes |
+| `exercise_id` | `string` | yes |
+| `exercise_name` | `string` | yes |
+| `source` | `string` | yes |
+
+#### `AlternativeOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `exercise_id` | `string` | yes |
+| `name` | `string` | yes |
+| `confidence` | `number` | yes |
+
+#### `AssignmentOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `id` | `string` | yes |
+| `template_code` | `string` | yes |
+| `title` | `string` | yes |
+| `description` | `string` | yes |
+| `period` | `string` | yes |
+| `objective_type` | `string` | yes |
+| `progress` | `integer` | yes |
+| `target` | `integer` | yes |
+| `reward_points` | `integer` | yes |
+| `status` | `string` | yes |
+| `completed_at` | `string | null` | yes |
+| `ends_at` | `string` | yes |
+| `can_reroll` | `boolean` | yes |
+
 #### `AwardOut`
 
 | Field | Type | Required |
@@ -1760,6 +1981,13 @@ otherwise 503 with per-dependency detail.
 | `client_id` | `string | null` | no |
 | `client_secret` | `string | null` | no |
 
+#### `BreakdownLine`
+
+| Field | Type | Required |
+|---|---|---|
+| `label` | `string` | yes |
+| `value` | `number` | yes |
+
 #### `CharacterClass`
 
 | Field | Type | Required |
@@ -1792,6 +2020,18 @@ otherwise 503 with per-dependency detail.
 | `xp_awarded` | `integer` | yes |
 | `points_awarded` | `integer` | yes |
 
+#### `CorrectedSet`
+
+| Field | Type | Required |
+|---|---|---|
+| `exercise_id` | `string` | yes |
+| `weight` | `number` | yes |
+| `unit` | `WeightUnit` | no |
+| `reps` | `integer | null` | no |
+| `rpe` | `number | null` | no |
+| `is_warmup` | `boolean` | no |
+| `set_count` | `integer` | no |
+
 #### `DeleteAccountRequest`
 
 | Field | Type | Required |
@@ -1814,12 +2054,29 @@ otherwise 503 with per-dependency detail.
 | `active` | `DuelOut[]` | yes |
 | `pending` | `DuelOut[]` | yes |
 | `completed` | `DuelOut[]` | yes |
+| `closed` | `DuelOut[]` | no |
 
 #### `DuelMetric`
 
 | Field | Type | Required |
 |---|---|---|
 | _(no properties)_ | | |
+
+#### `DuelMode`
+
+| Field | Type | Required |
+|---|---|---|
+| `metric` | `string` | yes |
+| `title` | `string` | yes |
+| `fairness` | `string` | yes |
+| `eligible` | `boolean` | yes |
+| `reason` | `string | null` | no |
+
+#### `DuelModesOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `modes` | `DuelMode[]` | yes |
 
 #### `DuelOut`
 
@@ -1836,6 +2093,10 @@ otherwise 503 with per-dependency detail.
 | `is_draw` | `boolean` | no |
 | `resolved_at` | `string | null` | no |
 | `points_awarded` | `integer | null` | no |
+| `reward_points` | `integer | null` | no |
+| `reward_type` | `string | null` | no |
+| `rules` | `string` | no |
+| `expires_at` | `string | null` | no |
 
 #### `DuelSide`
 
@@ -1845,6 +2106,8 @@ otherwise 503 with per-dependency detail.
 | `display_name` | `string` | yes |
 | `score` | `number` | yes |
 | `is_rival` | `boolean` | no |
+| `breakdown` | `BreakdownLine[]` | no |
+| `tiebreak` | `number | null` | no |
 
 #### `Equipment`
 
@@ -1909,6 +2172,7 @@ otherwise 503 with per-dependency detail.
 | `category` | `string` | yes |
 | `primary_muscle_groups` | `string[]` | yes |
 | `equipment` | `string` | yes |
+| `tags` | `string[]` | no |
 | `instructions` | `string | null` | yes |
 | `media_url` | `string | null` | yes |
 | `is_custom` | `boolean` | yes |
@@ -1945,6 +2209,8 @@ otherwise 503 with per-dependency detail.
 | `streak` | `StreakOut` | yes |
 | `progression` | `ProgressionDeltaOut` | yes |
 | `raids` | `RaidHitOut[]` | no |
+| `quest_progress` | `QuestProgressOut[]` | no |
+| `quests_completed` | `QuestProgressOut[]` | no |
 
 #### `HTTPValidationError`
 
@@ -2116,6 +2382,40 @@ otherwise 503 with per-dependency detail.
 |---|---|---|
 | _(no properties)_ | | |
 
+#### `ParseFeedback`
+
+| Field | Type | Required |
+|---|---|---|
+| `accepted` | `boolean` | yes |
+| `corrected_result` | `CorrectedSet | null` | no |
+
+#### `ParseFeedbackResponse`
+
+| Field | Type | Required |
+|---|---|---|
+| `alias_learned` | `boolean` | yes |
+
+#### `ParseRequest`
+
+| Field | Type | Required |
+|---|---|---|
+| `text` | `string` | yes |
+| `session_id` | `string | null` | no |
+| `exercise_id` | `string | null` | no |
+
+#### `ParseResponse`
+
+| Field | Type | Required |
+|---|---|---|
+| `parse_id` | `string` | yes |
+| `parser_used` | `string` | yes |
+| `proposed_sets` | `ProposedSetOut[]` | yes |
+| `set_count` | `integer` | yes |
+| `exercise_confidence` | `number` | yes |
+| `exercise_alternatives` | `AlternativeOut[]` | yes |
+| `unparsed_fragments` | `string[]` | yes |
+| `problem` | `string | null` | no |
+
 #### `PartyCreate`
 
 | Field | Type | Required |
@@ -2212,6 +2512,7 @@ otherwise 503 with per-dependency detail.
 | `session_bonus` | `integer` | yes |
 | `streak_bonus` | `integer` | yes |
 | `reversals` | `integer` | yes |
+| `quest_points` | `integer` | no |
 | `total` | `integer` | yes |
 
 #### `PointsSummaryOut`
@@ -2306,6 +2607,18 @@ otherwise 503 with per-dependency detail.
 | `leveled_up` | `boolean` | yes |
 | `ranked_up` | `boolean` | yes |
 
+#### `ProposedSetOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `exercise_id` | `string` | yes |
+| `exercise_name` | `string` | yes |
+| `weight` | `number` | yes |
+| `unit` | `string` | yes |
+| `reps` | `integer | null` | yes |
+| `rpe` | `number | null` | yes |
+| `is_warmup` | `boolean` | yes |
+
 #### `PushDeviceRegister`
 
 | Field | Type | Required |
@@ -2318,6 +2631,14 @@ otherwise 503 with per-dependency detail.
 | Field | Type | Required |
 |---|---|---|
 | _(no properties)_ | | |
+
+#### `QuestBoardOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `daily` | `AssignmentOut[]` | yes |
+| `weekly` | `AssignmentOut[]` | yes |
+| `rerolls_left` | `integer` | yes |
 
 #### `QuestCreate`
 
@@ -2345,6 +2666,20 @@ otherwise 503 with per-dependency detail.
 | `created_at` | `string` | yes |
 | `current_period_key` | `string` | yes |
 | `completed_in_current_period` | `boolean` | yes |
+
+#### `QuestProgressOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `assignment_id` | `string` | yes |
+| `title` | `string` | yes |
+| `period` | `string` | yes |
+| `progress` | `integer` | yes |
+| `target` | `integer` | yes |
+| `advanced` | `boolean` | yes |
+| `completed` | `boolean` | yes |
+| `completed_now` | `boolean` | yes |
+| `reward_points` | `integer` | yes |
 
 #### `QuestStatus`
 
@@ -2444,6 +2779,15 @@ otherwise 503 with per-dependency detail.
 | Field | Type | Required |
 |---|---|---|
 | `refresh_token` | `string` | yes |
+
+#### `RerollResponse`
+
+| Field | Type | Required |
+|---|---|---|
+| `replaced` | `string` | yes |
+| `quest` | `AssignmentOut` | yes |
+| `rerolls_left` | `integer` | yes |
+| `progression` | `ProgressionDeltaOut | null` | no |
 
 #### `RewardCreate`
 
@@ -2600,6 +2944,7 @@ otherwise 503 with per-dependency detail.
 | `points_awarded` | `integer` | yes |
 | `session_points` | `integer` | yes |
 | `progression` | `ProgressionDeltaOut` | yes |
+| `quest_progress` | `QuestProgressOut[]` | no |
 
 #### `SetLogResponse`
 
@@ -2613,6 +2958,8 @@ otherwise 503 with per-dependency detail.
 | `set_cap_reached` | `boolean` | yes |
 | `progression` | `ProgressionDeltaOut` | yes |
 | `is_duplicate` | `boolean` | no |
+| `quest_progress` | `QuestProgressOut[]` | no |
+| `quests_completed` | `QuestProgressOut[]` | no |
 
 #### `SetOut`
 
@@ -2627,6 +2974,7 @@ otherwise 503 with per-dependency detail.
 | `rpe` | `number | null` | yes |
 | `is_warmup` | `boolean` | yes |
 | `is_pr` | `boolean` | yes |
+| `is_flagged` | `boolean` | no |
 | `duration_seconds` | `integer | null` | yes |
 | `distance_m` | `number | null` | yes |
 | `completed_at` | `string` | yes |
@@ -2671,6 +3019,21 @@ otherwise 503 with per-dependency detail.
 | `target` | `integer` | yes |
 | `this_week_done` | `boolean` | yes |
 | `sessions_to_go` | `integer` | yes |
+| `freezes_held` | `integer` | no |
+
+#### `StreakStatusOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `weeks` | `integer` | yes |
+| `this_week_sessions` | `integer` | yes |
+| `target` | `integer` | yes |
+| `this_week_done` | `boolean` | yes |
+| `sessions_to_go` | `integer` | yes |
+| `freezes_held` | `integer` | yes |
+| `freeze_cap` | `integer` | yes |
+| `weeks_to_next_freeze` | `integer` | yes |
+| `freezes_used_unseen` | `string[]` | yes |
 
 #### `TokenResponse`
 

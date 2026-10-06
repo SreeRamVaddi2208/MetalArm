@@ -177,3 +177,20 @@ async def create_measurement(token: str, payload: dict) -> dict:
 
 async def delete_measurement(token: str, measurement_id: str) -> None:
     await request("DELETE", f"/body-measurements/{measurement_id}", token=token)
+
+
+# --- Natural-language logging ----------------------------------------------
+# A parse PROPOSES sets; nothing is logged until each is sent to log_set.
+
+
+async def parse_set(token: str, text: str, session_id: str = "", exercise_id: str = "") -> dict:
+    body: dict = {"text": text}
+    if session_id:
+        body["session_id"] = session_id
+    if exercise_id:
+        body["exercise_id"] = exercise_id
+    return await request("POST", "/log/parse", token=token, json=body)
+
+
+async def parse_feedback(token: str, parse_id: str, payload: dict) -> dict:
+    return await request("POST", f"/log/parse/{parse_id}/feedback", token=token, json=payload)

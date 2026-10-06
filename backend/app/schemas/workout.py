@@ -26,6 +26,7 @@ from app.models.workout_enums import (
     WeightUnit,
 )
 from app.schemas.quest import ProgressionDeltaOut
+from app.schemas.quest_board import QuestProgressOut
 
 _CENTS = Decimal("0.01")
 # The largest submittable number is MAX_WEIGHT_KG expressed in pounds; the
@@ -76,6 +77,7 @@ class ExerciseOut(BaseModel):
     category: str
     primary_muscle_groups: list[str]
     equipment: str
+    tags: list[str] = []
     instructions: str | None
     media_url: str | None
     is_custom: bool
@@ -123,6 +125,9 @@ class SetOut(BaseModel):
     rpe: float | None
     is_warmup: bool
     is_pr: bool
+    # Kept out of duels and leaderboards (app/core/plausibility.py). Shown as
+    # a neutral note; the reason is for support, not for the UI.
+    is_flagged: bool = False
     duration_seconds: int | None
     distance_m: float | None
     completed_at: dt.datetime
@@ -269,12 +274,17 @@ class SetLogResponse(BaseModel):
     progression: ProgressionDeltaOut
     # True when client_set_id matched an existing set: nothing new was logged.
     is_duplicate: bool = False
+    # Every current generated quest after this set (GET /quests/current), and
+    # the ones it completed - so the UI can celebrate in the same round trip.
+    quest_progress: list[QuestProgressOut] = []
+    quests_completed: list[QuestProgressOut] = []
 
 
 class SetDeleteResponse(BaseModel):
     points_awarded: int
     session_points: int
     progression: ProgressionDeltaOut
+    quest_progress: list[QuestProgressOut] = []
 
 
 # ---------------------------------------------------------------------------
@@ -382,6 +392,8 @@ class StreakOut(BaseModel):
     target: int
     this_week_done: bool
     sessions_to_go: int
+    # Streak freezes held (GET /streak has the detail).
+    freezes_held: int = 0
 
 
 class PointsBreakdownOut(BaseModel):
@@ -390,6 +402,8 @@ class PointsBreakdownOut(BaseModel):
     session_bonus: int
     streak_bonus: int
     reversals: int
+    # Generated quests completed during the workout, and the all-weekly bonus.
+    quest_points: int = 0
     total: int
 
 
@@ -418,6 +432,8 @@ class FinishResponse(BaseModel):
     progression: ProgressionDeltaOut
     # Party bosses hit by this workout (qualified workouts only).
     raids: list[RaidHitOut] = []
+    quest_progress: list[QuestProgressOut] = []
+    quests_completed: list[QuestProgressOut] = []
 
 
 class AbandonResponse(BaseModel):
