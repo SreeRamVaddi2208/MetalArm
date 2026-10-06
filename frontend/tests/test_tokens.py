@@ -20,7 +20,7 @@ LEGACY = {
     "components/stat_panel.py",
     "components/voice_log.py", "components/workout.py",
     "pages/dashboard.py", "pages/duels.py", "pages/login.py", "pages/parties.py",
-    "pages/profile.py", "pages/progress.py", "pages/rewards.py", "pages/routines.py",
+    "pages/profile.py", "pages/progress.py", "pages/rewards.py",
     "pages/workout.py",
 }
 

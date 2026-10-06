@@ -31,8 +31,14 @@ def _field(value: Any, on_change: Any, *, placeholder: str = "", width: str = "5
     )
 
 
+def _cell(value: Any, done: Any) -> rx.Component:
+    """A logged value: plain text where an input would be."""
+    return rx.center(text(value, t.HEADLINE, when(done, t.TEXT_PRIMARY, t.TEXT_SECONDARY), **t.TABULAR),
+                     height=t.TOUCH_MIN)
+
+
 def set_header(rpe: bool = False) -> rx.Component:
-    cols = ["SET", "PREVIOUS", "KG", "REPS"] + (["RPE"] if rpe else []) + [""]
+    cols = ["SET", "PREV", "KG", "REPS"] + (["RPE"] if rpe else []) + [""]
     return rx.grid(*[text(c, t.CAPTION, t.TEXT_SECONDARY, text_align="center") for c in cols],
                    grid_template_columns=_columns(rpe), gap=t.space(1.5), width="100%",
                    align_items="center")
@@ -66,16 +72,16 @@ def set_row(number: Any, *, set_type: Any = "normal", previous: Any = "-", weigh
                   else (rx.icon("medal", size=15, color=t.PR_GOLD) if pr else rx.fragment()),
                   justify="center", align="center", spacing="1", min_width="0",
                   cursor="pointer", on_click=on_copy),
-        _field(weight, on_weight),
-        _field(reps, on_reps, mode="numeric"),
+        _cell(weight, done) if on_weight is None else _field(weight, on_weight),
+        _cell(reps, done) if on_reps is None else _field(reps, on_reps, mode="numeric"),
     ]
     if with_rpe:
-        cells.append(_field(rpe, on_rpe, width="44px", placeholder="-"))
+        cells.append(_cell(rpe, done) if on_rpe is None else _field(rpe, on_rpe, width="44px", placeholder="-"))
     cells.append(rx.center(
         rx.icon("check", size=20, color=when(done, t.TEXT_PRIMARY, t.TEXT_SECONDARY), stroke_width=2.5),
         width=t.TOUCH_MIN, height=t.TOUCH_MIN, border_radius=t.RADIUS_THUMB,
         background=when(done, t.RECOVERY_GREEN, t.SURFACE_2), cursor="pointer", on_click=on_check,
-        custom_attrs={"role": "button", "aria-label": "Log set"},
+        custom_attrs={"role": "button", "aria-label": when(done, "Edit set", "Log set")},
     ))
     return rx.box(
         rx.grid(*cells, grid_template_columns=_columns(with_rpe), gap=t.space(1.5), width="100%",

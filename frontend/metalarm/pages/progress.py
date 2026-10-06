@@ -29,7 +29,7 @@ def stats_panel() -> rx.Component:
         stat("THIS WEEK", ProgressState.week_points.to_string(), theme.ACCENT),
         stat("WORKOUTS", ProgressState.sessions_completed.to_string()),
         stat("STREAK", ProgressState.streak.label, theme.SUCCESS),
-        columns=rx.breakpoints(initial="2", md="4"),
+        columns="2",
         gap="1rem",
         **theme.panel(),
     )
@@ -229,7 +229,7 @@ def progress_page() -> rx.Component:
         rx.grid(
             reveal(records_panel()),
             reveal(history_panel()),
-            columns=rx.breakpoints(initial="1", lg="2"),
+            columns="1",
             gap="1.25rem",
             width="100%",
         ),

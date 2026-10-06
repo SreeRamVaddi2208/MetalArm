@@ -10,7 +10,7 @@
 
 - **API title:** MetalArm API
 - **API version:** 0.1.0
-- **Generated:** 2026-10-06 15:58 UTC
+- **Generated:** 2026-10-06 17:04 UTC
 - **Source:** `http://localhost:8000/openapi.json`
 
 ---
@@ -1611,6 +1611,30 @@ Same transaction shape as completing a quest, and for the same reason:
 
 ---
 
+### `POST /api/v1/routines/from-session/{session_id}`
+
+**Routine From Session**
+
+"Save as routine" on the workout summary: the session's cards, in
+order, with their supersets, notes and rest. Each slot's target is what
+was done - the working-set count and the top working set's reps and
+weight - so the routine starts where this workout left off.
+
+*Tags:* `routines`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `session_id` | path | `string` | yes |
+
+*Request body* (`application/json`): `FromSessionIn`
+
+| Status | Description |
+|---|---|
+| `201` | Successful Response |
+| `422` | Validation Error |
+
+---
+
 ### `DELETE /api/v1/routines/{routine_id}`
 
 **Delete Routine**
@@ -2528,6 +2552,12 @@ otherwise 503 with per-dependency detail.
 | `rank_change` | `object | null` | no |
 | `quest_progress` | `QuestProgressOut[]` | no |
 | `quests_completed` | `QuestProgressOut[]` | no |
+
+#### `FromSessionIn`
+
+| Field | Type | Required |
+|---|---|---|
+| `name` | `string | null` | no |
 
 #### `HTTPValidationError`
 

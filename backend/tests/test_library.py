@@ -125,3 +125,31 @@ def test_abbreviations() -> None:
     assert suggestions.abbreviation("Lower A") == "Lo"
     assert suggestions.abbreviation("5x5 day") == "5x"
     assert suggestions.abbreviation("!") == "?"
+
+
+def test_a_finished_workout_saves_as_a_routine(client: TestClient, auth: dict) -> None:
+    bench, squat = exercise_id(client, auth, BENCH), exercise_id(client, auth, SQUAT)
+    s = start(client, auth, name="Monday")
+    log(client, auth, s["id"], squat, 60, 8, is_warmup=True)
+    log(client, auth, s["id"], squat, 120, 5)
+    log(client, auth, s["id"], squat, 125, 3)
+    log(client, auth, s["id"], bench, 80, 8)
+    # Not yet: only a finished workout is a template.
+    assert client.post(f"/api/v1/routines/from-session/{s['id']}", json={},
+                       headers=auth).status_code == 409
+    finish(client, auth, s["id"])
+    r = client.post(f"/api/v1/routines/from-session/{s['id']}", json={}, headers=auth)
+    assert r.status_code == 201, r.text
+    body = r.json()
+    assert body["name"] == "Monday"
+    slots = [(x["exercise"]["id"], x["target_sets"], x["target_reps"]) for x in body["exercises"]]
+    # Warm-ups are not targets; the top working set is.
+    assert slots == [(squat, 2, 3), (bench, 1, 8)]
+
+
+def test_someone_elses_workout_cannot_be_saved(client: TestClient, user_factory) -> None:
+    mine, _ = user_factory()
+    theirs, _ = user_factory()
+    s = start(client, mine)
+    assert client.post(f"/api/v1/routines/from-session/{s['id']}", json={},
+                       headers=theirs).status_code == 404

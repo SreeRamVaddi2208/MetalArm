@@ -134,6 +134,10 @@ class SetRow:
     is_pr: bool = False
     # Kept out of competitions by the server (plausibility). Shown neutrally.
     flagged: bool = False
+    # normal / warmup / drop / failure.
+    set_type: str = "normal"
+    # Last session's set at this position ("80 kg × 8"), for the PREVIOUS column.
+    previous: str = "-"
     # Raw values in the display unit, used to pre-fill the next set and the
     # edit form.
     rpe: str = ""
@@ -173,6 +177,7 @@ class SetRow:
             is_warmup=bool(data.get("is_warmup")),
             is_pr=bool(data.get("is_pr")),
             flagged=bool(data.get("is_flagged")),
+            set_type=data.get("set_type") or ("warmup" if data.get("is_warmup") else "normal"),
             rpe=fmt(_num(data["rpe"])) if data.get("rpe") else "",
             weight=fmt(to_unit(kg, unit)) if kg else "",
             reps=str(reps) if reps else "",
@@ -190,10 +195,24 @@ class ExerciseCard:
     """
 
     exercise_id: str = ""
+    # The card on the server: what log, edit, reorder and remove address.
+    session_exercise_id: str = ""
+    # 0 = not in a superset; cards sharing a number are one.
+    superset_group: int = 0
+    notes: str = ""
+    # The next set's type, tapped through on the entry row's SET cell.
+    entry_type: str = "normal"
+    # PREVIOUS for the next set: last session's set at that position.
+    entry_previous: str = "-"
+    menu_open: bool = False
+    # "+N" for the set just logged on this card, faded out by CSS.
+    last_points: str = ""
     name: str = ""
     muscles_label: str = ""
     # "" when the library has no demo clip for this movement yet.
     media_url: str = ""
+    # The exercise artwork (wger, credited on /about/credits).
+    thumbnail_url: str = ""
     is_cardio: bool = False
     target_label: str = ""
     rest_seconds: int = 90
@@ -379,11 +398,18 @@ class RoutineSlot:
     target_weight: str = ""
     rest_seconds: str = ""
     target_label: str = ""
+    # Slots sharing a number are a superset; 0 is none.
+    superset_group: int = 0
+    notes: str = ""
+    image: str = ""
 
     @classmethod
     def from_api(cls, data: dict[str, Any], unit: str) -> "RoutineSlot":
         exercise = data.get("exercise") or {}
-        sets, reps, kg = data.get("target_sets"), data.get("target_reps"), data.get("target_weight_kg")
+        sets, kg = data.get("target_sets"), data.get("target_weight_kg")
+        low, high = data.get("target_reps_low"), data.get("target_reps_high")
+        # "8-12" for a range, "8" for a single target; the editor parses both.
+        reps = f"{low}-{high}" if low and high and low != high else (data.get("target_reps") or "")
         bits = []
         if sets:
             bits.append(f"{sets}")
@@ -400,6 +426,9 @@ class RoutineSlot:
             target_weight=fmt(to_unit(kg, unit)) if kg else "",
             rest_seconds=str(data.get("rest_seconds")) if data.get("rest_seconds") else "",
             target_label=" ".join(bits),
+            superset_group=data.get("superset_group") or 0,
+            notes=data.get("notes") or "",
+            image=exercise.get("thumbnail_url") or "",
         )
 
 
@@ -411,6 +440,7 @@ class RoutineItem:
     summary_label: str = ""
     exercise_count: int = 0
     slots: list[RoutineSlot] = dataclasses.field(default_factory=list)
+    program_id: str = ""
 
     @classmethod
     def from_api(cls, data: dict[str, Any], unit: str) -> "RoutineItem":
@@ -424,6 +454,7 @@ class RoutineItem:
             summary_label=summary or "No exercises yet",
             exercise_count=len(slots),
             slots=slots,
+            program_id=data.get("program_id") or "",
         )
 
 

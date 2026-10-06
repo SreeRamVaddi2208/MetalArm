@@ -258,3 +258,24 @@ def primary_button(label: Any, on_click: Any = None, *, icon: str = "", disabled
         **t.HEADLINE,
         **props,
     )
+
+
+def secondary_button(label: Any, on_click: Any = None, *, icon: str = "", disabled: Any = False,
+                     color: str = t.TEXT_PRIMARY, **props) -> rx.Component:
+    """The quieter action beside a primary one: grey fill, white or tinted label."""
+    return rx.el.button(
+        rx.hstack(rx.icon(icon, size=18) if icon else rx.fragment(), rx.el.span(label),
+                  spacing="2", align="center", justify="center"),
+        on_click=on_click,
+        disabled=disabled,
+        background=t.SURFACE_2,
+        color=color,
+        border="none",
+        border_radius=t.RADIUS_PILL,
+        min_height=t.TOUCH_MIN,
+        padding=f"0 {t.space(4)}",
+        opacity=when(disabled, "0.4", "1"),
+        cursor=when(disabled, "not-allowed", "pointer"),
+        **t.HEADLINE,
+        **props,
+    )

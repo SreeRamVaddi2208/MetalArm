@@ -28,6 +28,7 @@ from metalarm import ranks
 from metalarm import workout_api as wapi
 from metalarm.api import ApiError
 from metalarm.share_card import share_card_script
+from metalarm.ui.body_map import paths_for
 from metalarm.state.auth import AuthState
 from metalarm.state.quests import QuestState
 from metalarm.workout_models import (
@@ -72,6 +73,7 @@ def build_card(
     unit: str,
     keep: ExerciseCard | None,
     hint: dict[str, Any] | None = None,
+    meta: dict[str, Any] | None = None,
 ) -> ExerciseCard:
     """An exercise card from API data.
 
@@ -81,9 +83,14 @@ def build_card(
     set logged this session, else last time's first set, else the routine's
     target - one tap then repeats it, which is the whole logging loop.
     """
-    rows = [SetRow.from_api(s, unit) for s in sets]
     prev = [SetRow.from_api(s, unit) for s in previous]
+    # Each logged set shows last session's set at the same position.
+    rows = [
+        dataclasses.replace(SetRow.from_api(s, unit), previous=prev[i].summary if i < len(prev) else "-")
+        for i, s in enumerate(sets)
+    ]
     t = target or {}
+    m = meta or {}
 
     bits = []
     if t.get("target_sets"):
@@ -95,12 +102,17 @@ def build_card(
 
     card = ExerciseCard(
         exercise_id=exercise.get("id") or "",
+        session_exercise_id=str(m.get("session_exercise_id") or ""),
+        superset_group=int(m.get("superset_group") or 0),
+        notes=m.get("notes") or "",
+        entry_previous=prev[len(rows)].summary if len(rows) < len(prev) else "-",
         name=exercise.get("name") or "",
         muscles_label=muscles_label(exercise.get("primary_muscle_groups")),
         media_url=exercise.get("media_url") or "",
+        thumbnail_url=exercise.get("thumbnail_url") or "",
         is_cardio=exercise.get("category") == "cardio",
         target_label=" ".join(bits),
-        rest_seconds=int(t.get("rest_seconds") or DEFAULT_REST_SECONDS),
+        rest_seconds=int(m.get("rest_seconds") or t.get("rest_seconds") or DEFAULT_REST_SECONDS),
         sets=rows,
         previous=prev,
         # Only worth saying before anything is logged: once sets exist in
@@ -123,6 +135,9 @@ def build_card(
             duration_input=keep.duration_input,
             distance_input=keep.distance_input,
             warmup=keep.warmup,
+            entry_type=keep.entry_type,
+            menu_open=keep.menu_open,
+            last_points=keep.last_points,
             client_set_id=keep.client_set_id,
             flash_kind=keep.flash_kind,
             flash_label=keep.flash_label,
@@ -162,9 +177,11 @@ def set_payload(card: ExerciseCard, unit: str) -> tuple[dict[str, Any] | None, s
     payload: dict[str, Any] = {
         "exercise_id": card.exercise_id,
         "unit": unit,
-        "is_warmup": card.warmup,
+        "set_type": card.entry_type,
         "client_set_id": card.client_set_id,
     }
+    if card.session_exercise_id:
+        payload["session_exercise_id"] = card.session_exercise_id
     if card.is_cardio:
         minutes, km = _num(card.duration_input), _num(card.distance_input)
         if minutes < 0 or km < 0:
@@ -228,7 +245,6 @@ class WorkoutState(rx.State):
     # Display unit, copied from the account (AuthState.weight_unit) on load.
     unit: str = "kg"
     # Exercises added but not yet logged: {"session": id, "ids": [...]}.
-    pending: str = rx.LocalStorage("", name="ma_pending")
 
     loaded: bool = False
     busy: bool = False
@@ -288,6 +304,12 @@ class WorkoutState(rx.State):
 
     show_summary: bool = False
     summary: FinishSummary = FinishSummary()
+    # The finished workout, for "Save as routine"; and its muscles: path id ->
+    # intensity for the body map, plus the names, most worked first.
+    summary_session_id: str = ""
+    summary_muscles: dict[str, float] = {}
+    summary_muscle_names: list[str] = []
+    summary_saved: str = ""
     confirm_abandon: bool = False
 
     @rx.var
@@ -346,30 +368,12 @@ class WorkoutState(rx.State):
         self.cards = []
         self.confirm_abandon = False
         self.editing_set_id = ""
-        self.pending = ""
-
-    def _pending_for(self, session_id: str) -> list[str]:
-        try:
-            data = json.loads(self.pending or "{}")
-        except ValueError:
-            return []
-        if not isinstance(data, dict) or data.get("session") != session_id:
-            return []
-        return [i for i in data.get("ids") or [] if isinstance(i, str)]
-
-    def _save_pending(self) -> None:
-        ids = [c.exercise_id for c in self.cards if not c.sets]
-        self.pending = (
-            json.dumps({"session": self.session_id, "ids": ids})
-            if self.session_id and ids
-            else ""
-        )
 
     def _apply_session(self, data: dict[str, Any]) -> None:
         """Render the server's copy of the session, keeping per-card entry
         fields and any exercise added from the picker but not yet logged."""
         same = data.get("id") == self.session_id
-        existing = {c.exercise_id: c for c in self.cards} if same else {}
+        existing = {c.session_exercise_id: c for c in self.cards} if same else {}
         unit = self.unit
 
         self.session_id = data.get("id") or ""
@@ -391,34 +395,13 @@ class WorkoutState(rx.State):
                     item.get("previous_sets") or [],
                     item.get("target"),
                     unit,
-                    existing.get(exercise.get("id") or ""),
+                    existing.get(str(item.get("session_exercise_id") or "")),
                     hint=item.get("hint"),
+                    meta=item,
                 )
             )
-        if same:
-            cards += [c for c in self.cards if c.exercise_id not in seen and not c.sets]
+        # The server holds every card now, logged or not: no client-side copy.
         self.cards = cards
-        self._save_pending()
-
-    async def _restore_pending(self, token: str, ids: list[str]) -> None:
-        """Re-add exercises picked before a refresh but never logged."""
-        present = {c.exercise_id for c in self.cards}
-        cards = list(self.cards)
-        for exercise_id in ids:
-            if exercise_id in present:
-                continue
-            try:
-                exercise = await wapi.get_exercise(token, exercise_id)
-                last = await wapi.last_performance(token, exercise_id)
-            except ApiError:
-                # Deleted or no longer visible: drop it quietly.
-                continue
-            cards.append(
-                build_card(exercise, [], last.get("sets") or [], None, self.unit, None, hint=last.get("hint"))
-            )
-            present.add(exercise_id)
-        self.cards = cards
-        self._save_pending()
 
     def _update(self, index: int, **changes: Any) -> None:
         # Reassign the list: Reflex marks a var dirty on assignment, and a
@@ -458,10 +441,7 @@ class WorkoutState(rx.State):
             active = (await wapi.active_session(auth.token)).get("session")
             self.streak = StreakView.from_api((await wapi.points(auth.token)).get("streak") or {})
             if active:
-                restore = self._pending_for(active.get("id") or "")
                 self._apply_session(active)
-                if restore:
-                    await self._restore_pending(auth.token, restore)
             else:
                 self._clear_session()
                 self.routines = [
@@ -563,27 +543,111 @@ class WorkoutState(rx.State):
         return rx.redirect("/workout")
 
     async def add_exercise(self, exercise_id: str):
-        if self._index_of(exercise_id) >= 0:
-            return
+        """A new card at the end of the workout - on the server, so it is there
+        after a refresh before a single set is logged."""
         auth = await self._auth()
         try:
-            exercise = await wapi.get_exercise(auth.token, exercise_id)
-            last = await wapi.last_performance(auth.token, exercise_id)
+            session = await wapi.add_session_exercise(auth.token, self.session_id, exercise_id)
         except ApiError as exc:
             self.error = exc.detail
             return
-        self.cards = [
-            *self.cards,
-            build_card(exercise, [], last.get("sets") or [], None, self.unit, None, hint=last.get("hint")),
-        ]
-        self._save_pending()
+        self._apply_session(session)
 
-    def remove_card(self, index: int) -> None:
-        """Only an exercise with nothing logged can be removed - a logged set
-        is removed by deleting the set."""
-        if 0 <= index < len(self.cards) and not self.cards[index].sets:
-            self.cards = [c for i, c in enumerate(self.cards) if i != index]
-            self._save_pending()
+    async def remove_card(self, index: int):
+        """Take a card out. With sets on it, those sets go too and their
+        awards are reversed - the menu asks first."""
+        if not 0 <= index < len(self.cards):
+            return
+        card = self.cards[index]
+        auth = await self._auth()
+        try:
+            session = await wapi.remove_session_exercise(
+                auth.token, self.session_id, card.session_exercise_id, force=bool(card.sets))
+        except ApiError as exc:
+            self.error = exc.detail
+            return
+        self._apply_session(session)
+        yield AuthState.refresh_me
+
+    # --- the card menu ----------------------------------------------------
+
+    def toggle_menu(self, index: int) -> None:
+        if 0 <= index < len(self.cards):
+            self._update(index, menu_open=not self.cards[index].menu_open)
+
+    async def _patch_card(self, index: int, payload: dict[str, Any]) -> None:
+        auth = await self._auth()
+        try:
+            session = await wapi.update_session_exercise(
+                auth.token, self.session_id, self.cards[index].session_exercise_id, payload)
+        except ApiError as exc:
+            self.error = exc.detail
+            return
+        self._apply_session(session)
+
+    async def move_card(self, index: int, direction: int):
+        target = index + direction
+        if not (0 <= index < len(self.cards) and 0 <= target < len(self.cards)):
+            return
+        order = [c.session_exercise_id for c in self.cards]
+        order[index], order[target] = order[target], order[index]
+        auth = await self._auth()
+        try:
+            session = await wapi.reorder_session_exercises(auth.token, self.session_id, order)
+        except ApiError as exc:
+            self.error = exc.detail
+            return
+        self._apply_session(session)
+        self.cards = [dataclasses.replace(c, menu_open=False) for c in self.cards]
+
+    async def superset_with_next(self, index: int):
+        """This card and the next become one superset (or leave it)."""
+        if not 0 <= index < len(self.cards) - 1:
+            return
+        this, nxt = self.cards[index], self.cards[index + 1]
+        if this.superset_group and this.superset_group == nxt.superset_group:
+            await self._patch_card(index, {"superset_group": None})
+            await self._patch_card(index + 1, {"superset_group": None})
+            return
+        group = this.superset_group or nxt.superset_group or (
+            max([c.superset_group for c in self.cards] + [0]) + 1)
+        await self._patch_card(index, {"superset_group": group})
+        await self._patch_card(index + 1, {"superset_group": group})
+
+    def set_notes(self, index: int, value: str) -> None:
+        self._update(index, notes=value)
+
+    async def save_notes(self, card_id: str, value: str):
+        """On blur, keyed by card id: a reorder can land first and move the
+        card to another index."""
+        index = next((i for i, c in enumerate(self.cards) if c.session_exercise_id == card_id), -1)
+        if index >= 0:
+            await self._patch_card(index, {"notes": (value or "").strip() or None})
+
+    async def bump_rest(self, index: int, seconds: int):
+        if 0 <= index < len(self.cards):
+            rest = max(0, min(600, self.cards[index].rest_seconds + seconds))
+            await self._patch_card(index, {"rest_seconds": rest})
+
+    # --- the set row --------------------------------------------------------
+
+    def cycle_type(self, index: int) -> None:
+        """Tap the SET cell: normal -> warm-up -> drop -> failure -> normal."""
+        order = ["normal", "warmup", "drop", "failure"]
+        if 0 <= index < len(self.cards):
+            current = self.cards[index].entry_type
+            nxt = order[(order.index(current) + 1) % len(order)] if current in order else "normal"
+            self._update(index, entry_type=nxt, warmup=nxt == "warmup")
+
+    def copy_previous(self, index: int) -> None:
+        """Tap PREVIOUS: last session's set at this position into the fields."""
+        if not 0 <= index < len(self.cards):
+            return
+        card = self.cards[index]
+        position = len(card.sets)
+        if position < len(card.previous):
+            last = card.previous[position]
+            self._update(index, weight_input=last.weight, reps_input=last.reps)
 
     # --- entry fields -----------------------------------------------------
 
@@ -648,7 +712,10 @@ class WorkoutState(rx.State):
         self.busy = False
 
         # Rotate the idempotency key only now, after a confirmed log.
-        self._update(index, client_set_id=str(uuid.uuid4()))
+        points = int(result.get("points_awarded") or 0)
+        # A set type is for one set: the next entry is a normal set again.
+        self._update(index, client_set_id=str(uuid.uuid4()), entry_type="normal", warmup=False,
+                     last_points=f"+{points}" if points > 0 else "")
         self._apply_session(session)
         self.undo_set_ids = []
         if not result.get("is_duplicate"):
@@ -1051,6 +1118,9 @@ class WorkoutState(rx.State):
             return
         self.busy = False
         self.summary = FinishSummary.from_api(result, self.session_name, self.unit)
+        self.summary_session_id = self.session_id
+        self.summary_saved = ""
+        await self._summary_muscles(auth.token, result.get("muscles_worked") or {})
         self.show_summary = True
         self._clear_session()
         yield rx.call_script(_STOP_REST)
@@ -1059,6 +1129,34 @@ class WorkoutState(rx.State):
         if beat.kind:
             await self._raise_level_up(beat)
         yield AuthState.refresh_me
+
+    async def _summary_muscles(self, token: str, worked: dict[str, float]) -> None:
+        """The body map's input. Intensities come from the server; only the
+        taxonomy's path ids and names are looked up here."""
+        self.summary_muscles, self.summary_muscle_names = {}, []
+        if not worked:
+            return
+        try:
+            taxonomy = await core_api.taxonomy(token)
+        except ApiError:
+            return
+        groups = {m["code"]: m for m in taxonomy.get("muscle_groups", [])}
+        self.summary_muscles = paths_for(worked, {c: m["svg_path_ids"] for c, m in groups.items()})
+        self.summary_muscle_names = [
+            groups[c]["display_name"] for c, _ in sorted(worked.items(), key=lambda kv: -kv[1])
+            if c in groups
+        ][:6]
+
+    async def save_as_routine(self):
+        if not self.summary_session_id or self.summary_saved:
+            return
+        auth = await self._auth()
+        try:
+            routine = await wapi.routine_from_session(auth.token, self.summary_session_id)
+        except ApiError as exc:
+            self.error = exc.detail
+            return
+        self.summary_saved = routine.get("name") or "Saved"
 
     def ask_abandon(self) -> None:
         self.confirm_abandon = True

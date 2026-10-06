@@ -352,7 +352,7 @@ def start_view() -> rx.Component:
         preset_cards(),
         section_heading(
             "FROM A ROUTINE",
-            rx.link("MANAGE ROUTINES", href="/routines", color=theme.ACCENT, font_size="0.68rem",
+            rx.link("MANAGE ROUTINES", href="/library", color=theme.ACCENT, font_size="0.68rem",
                     font_weight="800", letter_spacing="0.12em"),
         ),
         rx.cond(

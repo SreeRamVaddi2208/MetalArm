@@ -25,6 +25,17 @@ def _int_or_none(value: str) -> int | None:
     return int(float(value))
 
 
+def _reps(value: str) -> dict:
+    """"8" or "8-12" (any dash) -> the routine slot's rep fields."""
+    value = (value or "").strip().replace("–", "-").replace("—", "-")
+    if "-" in value:
+        low, high = (_int_or_none(v) for v in value.split("-", 1))
+        if low and high:
+            low, high = min(low, high), max(low, high)
+            return {"target_reps_low": low, "target_reps_high": high}
+    return {"target_reps": _int_or_none(value)}
+
+
 class RoutineState(rx.State):
     routines: list[RoutineItem] = []
     loading: bool = False
@@ -35,6 +46,8 @@ class RoutineState(rx.State):
     edit_id: str = ""
     form_name: str = ""
     form_notes: str = ""
+    # The program a new routine is filed under, if any.
+    form_program_id: str = ""
     slots: list[RoutineSlot] = []
 
     @rx.var
@@ -69,14 +82,26 @@ class RoutineState(rx.State):
 
     # --- editor -------------------------------------------------------------
 
-    def new_routine(self) -> None:
+    def new_routine(self, program_id: str = "") -> None:
         self.editing = True
         self.edit_id = ""
         self.form_name = ""
         self.form_notes = ""
+        self.form_program_id = program_id
         self.slots = []
         self.error = ""
         self.notice = ""
+
+    async def open_routine(self, routine_id: str):
+        """Edit a routine fetched by id - the Library lists summaries only."""
+        token, unit = await self._ctx()
+        try:
+            routine = RoutineItem.from_api(await wapi.get_routine(token, routine_id), unit)
+        except ApiError as exc:
+            self.error = exc.detail
+            return
+        self.routines = [r for r in self.routines if r.id != routine.id] + [routine]
+        self.edit(routine.id)
 
     def edit(self, routine_id: str) -> None:
         routine = next((r for r in self.routines if r.id == routine_id), None)
@@ -86,6 +111,7 @@ class RoutineState(rx.State):
         self.edit_id = routine.id
         self.form_name = routine.name
         self.form_notes = routine.notes
+        self.form_program_id = routine.program_id
         self.slots = [dataclasses.replace(s) for s in routine.slots]
         self.error = ""
         self.notice = ""
@@ -118,6 +144,25 @@ class RoutineState(rx.State):
     def set_slot_rest(self, index: int, value: str) -> None:
         self._update(index, rest_seconds=value)
 
+    def set_slot_notes(self, index: int, value: str) -> None:
+        self._update(index, notes=value)
+
+    def superset_with_next(self, index: int) -> None:
+        """Link this slot and the next into one superset, or unlink them."""
+        if not (0 <= index < len(self.slots) - 1):
+            return
+        here, after = self.slots[index], self.slots[index + 1]
+        if here.superset_group and here.superset_group == after.superset_group:
+            self._update(index + 1, superset_group=0)
+            if not any(s.superset_group == here.superset_group
+                       for i, s in enumerate(self.slots) if i != index):
+                self._update(index, superset_group=0)
+            return
+        group = here.superset_group or after.superset_group or (
+            max((s.superset_group for s in self.slots), default=0) + 1)
+        self._update(index, superset_group=group)
+        self._update(index + 1, superset_group=group)
+
     def move_slot(self, index: int, direction: int) -> None:
         other = index + direction
         if 0 <= index < len(self.slots) and 0 <= other < len(self.slots):
@@ -145,6 +190,7 @@ class RoutineState(rx.State):
                 target_sets="" if cardio else "3",
                 target_reps="" if cardio else "8",
                 rest_seconds="90",
+                image=exercise.get("thumbnail_url") or "",
             ),
         ]
 
@@ -164,9 +210,11 @@ class RoutineState(rx.State):
                     {
                         "exercise_id": slot.exercise_id,
                         "target_sets": _int_or_none(slot.target_sets),
-                        "target_reps": _int_or_none(slot.target_reps),
+                        **_reps(slot.target_reps),
                         "target_weight_kg": round(kg, 2) if kg is not None else None,
                         "rest_seconds": _int_or_none(slot.rest_seconds),
+                        "superset_group": slot.superset_group or None,
+                        "notes": slot.notes.strip() or None,
                     }
                 )
         except ValueError:
@@ -177,6 +225,7 @@ class RoutineState(rx.State):
             "name": self.form_name.strip(),
             "notes": self.form_notes.strip() or None,
             "exercises": exercises,
+            "program_id": self.form_program_id or None,
         }
         try:
             if self.edit_id:
@@ -188,7 +237,9 @@ class RoutineState(rx.State):
             return
         self.editing = False
         self.notice = f"Saved {payload['name']}."
-        return RoutineState.load
+        from metalarm.state.library import LibraryState
+
+        return [RoutineState.load, LibraryState.refresh]
 
     async def delete(self, routine_id: str):
         token, _ = await self._ctx()
@@ -199,7 +250,10 @@ class RoutineState(rx.State):
             return
         if self.edit_id == routine_id:
             self.editing = False
-        return RoutineState.load
+        from metalarm.state.library import LibraryState
+
+        return [RoutineState.load, LibraryState.refresh]
 
     def start(self, routine_id: str):
+        self.editing = False
         return WorkoutState.start_session(routine_id)

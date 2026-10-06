@@ -18,7 +18,7 @@ from metalarm.pages.parties import parties_page
 from metalarm.pages.profile import profile_page
 from metalarm.pages.progress import progress_page
 from metalarm.pages.rewards import rewards_page
-from metalarm.pages.routines import routines_page
+from metalarm.pages.library import library_page
 from metalarm.pages.workout import workout_page
 from metalarm.state.auth import AuthState
 from metalarm.state.credits import CreditsState
@@ -29,6 +29,7 @@ from metalarm.state.progress import ProgressState
 from metalarm.state.duels import DuelState
 from metalarm.state.quests import QuestState
 from metalarm.state.rewards import RewardState
+from metalarm.state.library import LibraryState
 from metalarm.state.routines import RoutineState
 from metalarm.state.workout import WorkoutState
 
@@ -116,6 +117,15 @@ class RouteState(rx.State):
             return rx.redirect("/login")
         return [AuthState.refresh_me, RoutineState.load]
 
+    async def enter_library(self):
+        auth = await self.get_state(AuthState)
+        if not auth.token:
+            return rx.redirect("/login")
+        return [AuthState.refresh_me, RoutineState.load, LibraryState.load]
+
+    def to_library(self):
+        return rx.redirect("/library")
+
     async def enter_progress(self):
         auth = await self.get_state(AuthState)
         if not auth.token:
@@ -133,6 +143,8 @@ class RouteState(rx.State):
 # and their reduced-motion variants. Values come from theme tokens.
 GLOBAL_CSS = f"""
 html, body {{ background: {theme.COLOR_BG}; }}
+/* Dialogs (the exercise picker) open over full-screen sheets and the tab bar. */
+.rt-BaseDialogOverlay {{ z-index: 90; }}
 body {{ font-family: {theme.FONT_UI}; font-variant-numeric: tabular-nums;
        -webkit-font-smoothing: antialiased; }}
 .ma-skeleton {{ background: linear-gradient(90deg, {theme.SURFACE_1} 0%, {theme.SURFACE_2} 50%,
@@ -189,8 +201,8 @@ app.add_page(
 app.add_page(landing, route="/dashboard", title="MetalArm", on_load=RouteState.to_home)
 app.add_page(explore_page, route="/explore", title="Explore - MetalArm",
              on_load=RouteState.enter_explore)
-app.add_page(routines_page, route="/library", title="Library - MetalArm",
-             on_load=RouteState.enter_routines)
+app.add_page(library_page, route="/library", title="Library - MetalArm",
+             on_load=RouteState.enter_library)
 app.add_page(profile_page, route="/you", title="You - MetalArm",
              on_load=RouteState.enter_profile)
 app.add_page(credits_page, route="/about/credits", title="Credits - MetalArm",
@@ -227,12 +239,8 @@ app.add_page(
     title="Workout - MetalArm",
     on_load=RouteState.enter_workout,
 )
-app.add_page(
-    routines_page,
-    route="/routines",
-    title="Routines - MetalArm",
-    on_load=RouteState.enter_routines,
-)
+# The routines page became the Library tab.
+app.add_page(landing, route="/routines", title="MetalArm", on_load=RouteState.to_library)
 app.add_page(
     progress_page,
     route="/progress",

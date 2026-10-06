@@ -14,6 +14,67 @@ Entry format:
 
 ---
 
+## 2026-10-06 (43) - Opus - overhaul phase 1: logging depth, Active Workout, Summary, Library
+
+**Changed**
+- **Backend** (committed separately in 5509e6d): `SessionExercise` cards
+  (order, supersets, notes, rest) with backfill; `set_type` (normal / warm-up
+  / drop / failure; `is_warmup` kept in step by a CHECK); card endpoints (add,
+  patch, reorder, delete with `?force` reversing awards); `/previous`; session
+  totals snapshot; `muscles_worked` + `rank_change` on finish; programs,
+  favourites, `GET /library` (cursor-paged), `GET /workouts/suggested`.
+  This session: `POST /routines/from-session/{id}` ("Save as routine": the
+  cards in order with supersets/notes/rest; targets = working-set count and
+  the top working set; 409 until finished, 404 for someone else's).
+- **Active Workout** (`components/active_workout.py`): sticky header (name,
+  elapsed, sets/volume, discard, Finish); one card per SessionExercise with
+  artwork, superset stripe, notes, a menu (notes, rest -15/+15, move up/down,
+  superset with next, remove - forcing when it has sets); the SetRow table
+  (SET badge tap-cycles W/D/F, PREV, KG, REPS, RPE, check). Targets/last set
+  pre-fill the entry row, so a set is ONE tap; a set type applies to one set
+  only. Inline "+N", PR medal, record/baseline line, quest chip. Rest bar
+  restyled (-15/+15/skip) and lifted above the tab bar; only shown during a
+  live session.
+- **Workout Summary** (`components/workout_summary.py`): gradient stat card
+  (points, duration, volume, sets, records), muscles-worked body map from the
+  server's `muscles_worked` via taxonomy path ids, records, points
+  breakdown, quests, streak; Save as routine / Share / Done. Level/rank-up
+  still plays after it.
+- **Library tab** (`pages/library.py`, `state/library.py`): chips (Programs /
+  Routines / Exercises), sort cycle (Recents / Name / Most used), grid/list,
+  Favorites row, stars, "Create new program", program detail (routines,
+  start, add routine, delete), "Show more" on the cursor. Routine editor as a
+  full-screen sheet: rep ranges ("8-12"), supersets, per-slot notes, reorder,
+  picker, Start workout. `/routines` redirects to `/library`.
+- Legacy pages no longer use viewport breakpoints: inside the phone-width
+  shell they squeezed two columns into ~530 px on desktop (Home's quest board).
+- `scripts/dev.sh ios` failed on macOS bash 3.2 with no filter (empty array
+  under `set -u`); fixed.
+
+**Verified**
+- `scripts/e2e/logging_e2e.mjs` (new, Gate 1): a 5-exercise upper day with
+  two supersets, started from the Library, every set logged, a warm-up, a
+  reorder + note surviving a refresh, finish, Save as routine - at 375 and
+  430: ALL PASSED (36). Worst set: 2 taps (the warm-up); every other set 1.
+- `workout_e2e.mjs` ported to the new screens: ALL PASSED (104), including
+  every tab at phone and desktop width with no overflow.
+- `web_tour.mjs` ported (and its Sam-challenge selector fixed - it clicked
+  Maya's row): full take, no missed controls.
+- `screens.mjs`: no horizontal overflow on any tab at 375/430.
+- Backend suite passes (exit 0) with the two dev-DB health tests deselected
+  (they compare against the dev DB's other-branch revision); `alembic check`
+  clean at head `53f6a8cbeda0` on a scratch DB.
+- `docs/api-contract.md` regenerated (83 paths).
+- iOS `scripts/dev.sh ios`: XCTest 25 executed, 0 failures (testLiveBackendTour skipped - live-backend only); Swift Testing 94 tests in 13 suites passed. API changes are additive.
+
+**Blocked:** nothing.
+
+**Other agent needs to know:** the legacy `exercise_card`, `session_header`
+and old `summary_view` in `components/workout.py` are now only used for cardio
+cards and the edit row; delete them as those get their own rebuild.
+
+---
+
 ## 2026-10-06 (42) - Opus - overhaul phase 0: design system, five-tab shell, taxonomy
 
 The "Lyfta-competitive overhaul" spec, phase 0, built on what exists (real

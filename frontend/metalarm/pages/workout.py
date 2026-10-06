@@ -12,7 +12,9 @@ from metalarm.components.level_up import keyframes, level_up_overlay
 from metalarm.components.pr_overlay import pr_overlay
 from metalarm.components.presets import preset_dialog
 from metalarm.components.rest_timer import rest_bar, timer_assets
-from metalarm.components.workout import hud, live_view, start_view, summary_view
+from metalarm.components.active_workout import live_view
+from metalarm.components.workout import hud, start_view
+from metalarm.components.workout_summary import summary_view
 from metalarm.state.workout import WorkoutState
 
 
@@ -24,9 +26,11 @@ def workout_page() -> rx.Component:
         pr_overlay(),
         picker_dialog(),
         preset_dialog(),
-        rest_bar(),
+        rx.cond(WorkoutState.has_session & ~WorkoutState.show_summary, rest_bar()),
         rx.vstack(
-            hud(),
+            # The game header belongs to the start screen; a live session
+            # opens on its own header.
+            rx.cond(WorkoutState.has_session, rx.fragment(), hud()),
             error_banner(WorkoutState.error),
             rx.cond(
                 WorkoutState.loaded,

@@ -31,7 +31,8 @@ _CSS = f"""
 .ma-rest {{
   position: fixed;
   left: 50%;
-  bottom: 16px;
+  /* Above the floating tab bar, where the Start pill sits. */
+  bottom: calc({theme.TAB_BAR_HEIGHT} + {theme.space(6)} + env(safe-area-inset-bottom));
   transform: translate(-50%, 160%);
   opacity: 0;
   pointer-events: none;
@@ -39,8 +40,8 @@ _CSS = f"""
   z-index: 60;
 }}
 .ma-rest[data-ma-state] {{ transform: translate(-50%, 0); opacity: 1; pointer-events: auto; }}
-.ma-rest-time::after {{ content: attr(data-ma-time); color: {theme.ACCENT}; }}
-.ma-rest[data-ma-state="done"] .ma-rest-time::after {{ color: {theme.SUCCESS}; }}
+.ma-rest-time::after {{ content: attr(data-ma-time); color: {theme.TEXT_PRIMARY}; }}
+.ma-rest[data-ma-state="done"] .ma-rest-time::after {{ color: {theme.RECOVERY_GREEN}; }}
 [data-ma-start]::after {{ content: attr(data-ma-clock); }}
 @media (prefers-reduced-motion: reduce) {{
   .ma-rest, .ma-rest[data-ma-state] {{ transform: translate(-50%, 0); transition: opacity 120ms ease; }}
@@ -106,45 +107,44 @@ def timer_assets() -> rx.Component:
 
 
 def _bar_button(label: str, script: str) -> rx.Component:
-    return rx.button(
+    return rx.el.button(
         label,
         on_click=rx.call_script(script),
-        background="transparent",
-        color=theme.MUTED,
-        border=f"1px solid {theme.BORDER_HI}",
-        border_radius="9px",
-        font_size="0.72rem",
-        font_weight="800",
-        letter_spacing="0.1em",
-        padding="0.55rem 0.8rem",
+        background=theme.SURFACE_3,
+        color=theme.TEXT_PRIMARY,
+        border="none",
+        border_radius=theme.RADIUS_PILL,
+        padding=f"0 {theme.space(3)}",
+        min_height="36px",
         cursor="pointer",
-        height="40px",
+        **theme.FOOTNOTE,
     )
 
 
 def rest_bar() -> rx.Component:
+    """Rest: the countdown, -15 / +15 and skip. Hidden until a working set is
+    logged; the script shows it."""
     return rx.hstack(
-        rx.text("REST", **theme.LABEL_STYLE),
-        rx.text(
+        rx.icon("timer", size=18, color=theme.TEXT_SECONDARY),
+        rx.el.span(
             id="ma-rest-time",
             class_name="ma-rest-time",
-            font_size="1.6rem",
-            font_weight="900",
             min_width="4.2ch",
             text_align="center",
-            font_variant_numeric="tabular-nums",
+            **{**theme.TITLE_2, **theme.TABULAR},
         ),
-        _bar_button("+30s", "window.maRest && window.maRest.add(30)"),
-        _bar_button("SKIP", "window.maRest && window.maRest.stop()"),
+        _bar_button("−15", "window.maRest && window.maRest.add(-15)"),
+        _bar_button("+15", "window.maRest && window.maRest.add(15)"),
+        _bar_button("Skip", "window.maRest && window.maRest.stop()"),
         id="ma-rest",
         class_name="ma-rest",
         align="center",
-        spacing="3",
-        padding="0.6rem 0.9rem",
-        background=theme.PANEL,
-        border=f"1px solid {theme.BORDER_HI}",
-        border_radius="14px",
-        box_shadow=f"0 12px 40px -12px #000, {theme.glow(theme.ACCENT, '50px')}",
+        spacing="2",
+        padding=f"{theme.space(2)} {theme.space(3)}",
+        background=theme.TRANSLUCENT_BAR,
+        backdrop_filter=theme.BLUR,
+        border_radius=theme.RADIUS_PILL,
+        white_space="nowrap",
     )
 
 

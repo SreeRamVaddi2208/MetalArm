@@ -270,7 +270,7 @@ def generated_board() -> rx.Component:
             rx.grid(
                 column("TODAY", QuestState.daily),
                 column("THIS WEEK", QuestState.weekly),
-                columns=rx.breakpoints(initial="1", md="2"),
+                columns="1",
                 gap="1rem",
                 width="100%",
             ),

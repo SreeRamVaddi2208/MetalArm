@@ -12,8 +12,11 @@ from app.api.deps import CurrentUser, DbSession
 from app.core import workout_store as store
 from app.models.user import User
 from app.models.program import Program
-from app.models.workout import Exercise, Routine, RoutineExercise, WorkoutSession
+from app.models.workout import (
+    Exercise, Routine, RoutineExercise, SessionExercise, SetEntry, WorkoutSession,
+)
 from app.models.workout_enums import SessionStatus
+from pydantic import BaseModel, Field
 from app.schemas.workout import (
     ExerciseOut,
     RoutineExerciseIn,
@@ -156,6 +159,56 @@ def create_routine(payload: RoutineIn, current_user: CurrentUser, db: DbSession)
         color=payload.color,
     )
     routine.exercises = _slots(payload.exercises)
+    db.add(routine)
+    db.commit()
+    return _out(_get_owned(db, routine.id, current_user))
+
+
+class FromSessionIn(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=80)
+
+
+@router.post("/from-session/{session_id}", response_model=RoutineOut,
+             status_code=status.HTTP_201_CREATED)
+def routine_from_session(
+    session_id: uuid.UUID, payload: FromSessionIn, current_user: CurrentUser, db: DbSession
+) -> RoutineOut:
+    """"Save as routine" on the workout summary: the session's cards, in
+    order, with their supersets, notes and rest. Each slot's target is what
+    was done - the working-set count and the top working set's reps and
+    weight - so the routine starts where this workout left off."""
+    session = db.get(WorkoutSession, session_id)
+    if session is None or session.user_id != current_user.id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Workout not found")
+    if session.status != SessionStatus.COMPLETED.value:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Finish the workout first")
+    cards = db.scalars(
+        select(SessionExercise).where(SessionExercise.session_id == session.id)
+        .order_by(SessionExercise.position)
+    ).all()
+    sets = db.scalars(
+        select(SetEntry).where(SetEntry.session_id == session.id, SetEntry.is_warmup.is_(False))
+    ).all()
+    by_card: dict[uuid.UUID, list[SetEntry]] = {}
+    for entry in sets:
+        by_card.setdefault(entry.session_exercise_id, []).append(entry)
+    slots = []
+    for card in cards:
+        done = by_card.get(card.id, [])
+        if not done:
+            continue
+        top = max(done, key=lambda e: (e.weight_kg or 0, e.reps or 0))
+        slots.append(RoutineExerciseIn(
+            exercise_id=card.exercise_id, target_sets=min(len(done), 50),
+            target_reps=top.reps or None,
+            target_weight_kg=float(top.weight_kg) if top.weight_kg else None,
+            rest_seconds=card.rest_seconds, superset_group=card.superset_group, notes=card.notes,
+        ))
+    if not slots:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "This workout has no working sets")
+    routine = Routine(user_id=current_user.id,
+                      name=(payload.name or session.name or "Saved workout").strip()[:80])
+    routine.exercises = _slots(slots[:40])
     db.add(routine)
     db.commit()
     return _out(_get_owned(db, routine.id, current_user))

@@ -72,8 +72,12 @@ async function clearOverlays() {
   }
 }
 
+// The first exercise card of the active workout, and its entry row.
+const firstCard = () => page.locator('.ma-card').first();
+const entry = (i) => firstCard().locator('input').nth(i);
+
 async function logSet(label) {
-  await tap(text('LOG SET'), label);
+  await tap(firstCard().getByRole('button', { name: 'Log set' }), label);
   await wait(1300);
 }
 
@@ -109,7 +113,7 @@ try {
     await page.locator('input[type=password]').pressSequentially(PASSWORD, { delay: 25 });
     await wait(300);
     await text('ENTER').click();
-    await page.waitForURL('**/dashboard', { timeout: 30000 });
+    await page.waitForURL('**/home', { timeout: 30000 });
     await wait(1800);
   });
 
@@ -157,15 +161,16 @@ try {
     await tap(page.getByText('Powerlifter', { exact: false }).first(), 'open a preset');
     await wait(1500);
     await tap(page.getByText('START THIS WORKOUT', { exact: true }), 'start preset');
-    await page.getByText('LOG SET', { exact: true }).first().waitFor({ timeout: 15000 });
+    await firstCard().waitFor({ timeout: 15000 });
     await wait(1500);
   });
 
-  const plus = () => page.getByRole('button', { name: '+', exact: true });
   await chapter('logging', async () => {
-    // Last time's weight, as pre-filled: an ordinary working set. Reps nudged
+    // Last time's weight, as pre-filled: an ordinary working set. Reps one
     // down, so it is not a rep record either.
-    await tap(page.getByRole('button', { name: '−', exact: true }).nth(1), 'reps -');
+    const reps = Number(await entry(1).inputValue().catch(() => '5')) || 5;
+    await entry(1).fill(String(Math.max(1, reps - 1))).catch(() => missed.push('reps field'));
+    await wait(400);
     await logSet('log set 1');
     await clearOverlays();
     await logSet('log set 2');
@@ -174,8 +179,10 @@ try {
 
   await chapter('pr', async () => {
     // A clearly heavier set: the PR moment, held while it plays.
-    for (let i = 0; i < 2; i++) await tap(plus().nth(0), 'weight + (pr)');
-    await tap(text('LOG SET'), 'log PR set');
+    const kg = Number(await entry(0).inputValue().catch(() => '0')) || 0;
+    await entry(0).fill(String(kg + 5)).catch(() => missed.push('weight field'));
+    await wait(500);
+    await tap(firstCard().getByRole('button', { name: 'Log set' }), 'log PR set');
     await page.getByText('PERSONAL RECORD', { exact: true }).waitFor({ timeout: 8000 }).catch(() => missed.push('pr card'));
     await wait(4200);
     await clearOverlays();
@@ -221,15 +228,15 @@ try {
   await chapter('edit', async () => {
     await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'smooth' }));
     await wait(800);
-    await tap(page.getByRole('button', { name: 'Edit set' }).first(), 'edit a set');
+    await tap(firstCard().getByRole('button', { name: 'Edit set' }).first(), 'edit a set');
     await wait(1800);
     await tap(page.getByRole('button', { name: 'CANCEL', exact: true }).first(), 'cancel edit');
     await wait(800);
   });
 
   await chapter('finish', async () => {
-    await tap(text('FINISH WORKOUT'), 'finish');
-    await page.getByText('WORKOUT COMPLETE', { exact: true }).waitFor({ timeout: 15000 }).catch(() => missed.push('summary'));
+    await tap(text('Finish'), 'finish');
+    await page.getByText('Workout complete', { exact: true }).waitFor({ timeout: 15000 }).catch(() => missed.push('summary'));
     await wait(1500);
     await clearOverlays();
     await glide(500);
@@ -239,7 +246,7 @@ try {
   await chapter('share', async () => {
     await glide(0);
     await wait(600);
-    await tap(page.getByRole('button', { name: 'SHARE', exact: true }), 'share');
+    await tap(page.getByRole('button', { name: 'Share', exact: true }), 'share');
     await wait(2500);
   });
 
@@ -276,8 +283,9 @@ try {
     await glide(0);
     // Sam joined this week with no history: the fair modes that need a
     // baseline come back disabled, each saying why.
-    const sam = page.locator('div').filter({ has: page.getByText('Sam', { exact: true }) })
-      .getByRole('button', { name: 'CHALLENGE', exact: true }).last();
+    // Sam's own row: the name and its button are siblings.
+    const sam = page.getByText('Sam', { exact: true }).first().locator('xpath=..')
+      .getByRole('button', { name: 'CHALLENGE', exact: true });
     await tap(sam, 'challenge Sam');
     await page.getByText('CHALLENGE SAM', { exact: false }).waitFor({ timeout: 8000 }).catch(() => missed.push('mode picker'));
     await wait(3500);
@@ -309,7 +317,7 @@ try {
   });
 
   await chapter('routines', async () => {
-    await go('/routines');
+    await go('/library');
     await wait(1500);
     await glide(500);
   });
@@ -323,7 +331,7 @@ try {
   });
 
   await chapter('rankup', async () => {
-    await go('/dashboard?celebrate=S');
+    await go('/home?celebrate=S');
     await page.locator('.lf-celebrate').waitFor({ state: 'visible', timeout: 15000 }).catch(() => missed.push('rank-up'));
     await wait(5800);
   });

@@ -51,7 +51,7 @@ async function signIn(page) {
   await page.locator('input').first().fill(email);
   await page.locator('input[type=password]').fill(password);
   await page.getByText('ENTER', { exact: true }).click();
-  await page.waitForURL('**/dashboard', { timeout: 20000 });
+  await page.waitForURL('**/home', { timeout: 20000 });
 }
 
 // Scroll through the page so scroll-linked reveals play before a full-page
@@ -85,46 +85,47 @@ try {
   // ---------------------------------------------------------------------
   section('Workout: logging loop');
   await signIn(page);
-  check('signed in through the form', page.url().endsWith('/dashboard'));
+  check('signed in through the form', page.url().endsWith('/home'));
 
   await page.goto(UI + '/workout');
+  check('HUD shows the game layer', await page.getByText('LEVEL 1').waitFor({ timeout: 15000 }).then(() => true).catch(() => false));
   await page.getByText('START EMPTY WORKOUT').click();
-  await page.getByText('IN PROGRESS').waitFor({ timeout: 15000 });
+  await page.getByText('Add Exercise').waitFor({ timeout: 15000 });
   check('blank workout started', true);
-  check('HUD shows the game layer', await visible(page.getByText('LEVEL 1')));
   check('a blank workout is named by time of day', await visible(page.getByText(/(Morning|Afternoon|Evening|Late-night) workout/).first()));
 
-  await page.getByText('+ ADD EXERCISE').click();
+  await page.getByText('Add Exercise').click();
   await page.getByPlaceholder('Search exercises…').fill('Barbell Bench');
   await page.getByText('Barbell Bench Press', { exact: true }).first().click();
   await page.getByText('First time - this sets your baseline').waitFor({ timeout: 15000 });
   check('exercise added from the picker', true);
 
-  const nums = page.locator('input[type=number]');
-  await nums.nth(0).fill('60');
-  await nums.nth(1).fill('5');
-  await page.getByText('LOG SET', { exact: true }).click();
-  await page.getByText('60 kg × 5').waitFor({ timeout: 15000 });
-  check('set logged and rendered', true);
+  const bench = page.locator('.ma-card').first();
+  const fields = bench.locator('input');
+  const logged = () => bench.getByRole('button', { name: 'Edit set' }).count();
+  async function logSet(weight, reps) {
+    const before = await logged();
+    if (weight !== undefined) await fields.nth(0).fill(String(weight));
+    if (reps !== undefined) await fields.nth(1).fill(String(reps));
+    await bench.getByRole('button', { name: 'Log set' }).click();
+    await bench.getByRole('button', { name: 'Edit set' }).nth(before).waitFor({ timeout: 15000 });
+  }
+  await logSet(60, 5);
+  check('set logged and rendered', (await logged()) === 1);
   check('first-ever set is a baseline, not a PR moment',
     (await visible(page.getByText('BASELINE SET'))) && !(await visible(page.getByText('PERSONAL RECORD'))));
-  check('a baseline set carries no PR badge', (await page.getByText('PR', { exact: true }).count()) === 0);
   await page.waitForTimeout(400);
   check('rest timer started (client-side)', (await page.locator('#ma-rest[data-ma-state="on"]').count()) === 1);
-  check('entry pre-filled for the next set', (await nums.nth(0).inputValue()) === '60');
+  check('entry pre-filled for the next set', (await fields.nth(0).inputValue()) === '60');
   await page.screenshot({ path: `${OUT}/01-first-set.png` });
 
-  await page.getByRole('button', { name: '+', exact: true }).first().click();
-  await page.waitForTimeout(600);
-  check('weight stepper adds 2.5 kg', (await nums.nth(0).inputValue()) === '62.5', await nums.nth(0).inputValue());
-
-  await nums.nth(0).fill('65');
-  await page.getByText('LOG SET', { exact: true }).click();
+  await fields.nth(0).fill('65');
+  await bench.getByRole('button', { name: 'Log set' }).click();
   await page.getByText('PERSONAL RECORD').waitFor({ timeout: 15000 });
   check('a heavier set raises the PR moment (not a toast)', true);
   check('PR moment says what was beaten', await visible(page.getByText('+5 kg')));
   check('PR bonus shown from the API', await visible(page.getByText(/\+\d+ PR BONUS/)));
-  await page.waitForTimeout(700); // let the entrance animation settle
+  await page.waitForTimeout(700);
   await page.screenshot({ path: `${OUT}/02-pr-moment.png` });
   await page.getByText('KEEP LIFTING').click();
   const leveled = await page.getByText('LEVEL UP', { exact: true }).waitFor({ timeout: 6000 }).then(() => true).catch(() => false);
@@ -134,26 +135,28 @@ try {
     await page.screenshot({ path: `${OUT}/03-level-up.png` });
     await page.getByText('CONTINUE', { exact: true }).click();
   }
+  check('the record carries a medal in its row', (await bench.locator('svg.lucide-medal').count()) >= 1);
 
   // ---------------------------------------------------------------------
   section('Workout: editing and deleting');
-  await page.getByRole('button', { name: 'Edit set' }).first().click();
+  await bench.getByRole('button', { name: 'Edit set' }).first().click();
   await page.getByText('EDIT SET').waitFor({ timeout: 10000 });
-  // The edit form renders above the card's own entry fields.
-  await page.locator('input[type=number]').nth(1).fill('8');
+  // The edit form renders in place of the row; its inputs come first.
+  await bench.locator('input[type=number]').nth(1).fill('8');
   await page.getByText('SAVE', { exact: true }).click();
-  await page.getByText('60 kg × 8').waitFor({ timeout: 15000 });
-  check('editing a logged set saves it', !(await visible(page.getByText('60 kg × 5'))));
+  await page.getByText('EDIT SET').waitFor({ state: 'detached', timeout: 15000 });
+  const firstReps = await bench.getByRole('button', { name: 'Edit set' }).first().locator('xpath=ancestor::div[contains(@class,"rt-Grid")][1]').innerText();
+  check('editing a logged set saves it', /\b8\b/.test(firstReps), firstReps);
 
-  await nums.nth(0).fill('50');
-  await page.getByText('LOG SET', { exact: true }).click();
-  await page.getByText('50 kg × 5').waitFor({ timeout: 15000 });
-  await page.getByRole('button', { name: 'Delete set' }).last().click();
-  await page.getByText('50 kg × 5').waitFor({ state: 'detached', timeout: 15000 }).catch(() => {});
-  check('deleting a set removes it', !(await visible(page.getByText('50 kg × 5'))));
+  await logSet(50, 5);
+  await bench.getByRole('button', { name: 'Edit set' }).last().click();
+  await page.getByText('EDIT SET').waitFor({ timeout: 10000 });
+  await page.getByText('DELETE', { exact: true }).click();
+  await page.waitForTimeout(1500);
+  check('deleting a set removes it', (await logged()) === 2, String(await logged()));
 
   // An exercise picked but not logged: must survive the refresh below.
-  await page.getByText('+ ADD EXERCISE').click();
+  await page.getByText('Add Exercise').click();
   await page.getByPlaceholder('Search exercises…').fill('Back Squat');
   await page.getByText('Back Squat', { exact: true }).first().click();
   await page.getByText('Back Squat', { exact: true }).first().waitFor({ timeout: 15000 });
@@ -161,33 +164,33 @@ try {
   // ---------------------------------------------------------------------
   section('Workout: refresh mid-workout');
   await page.reload();
-  await page.getByText('65 kg × 5').waitFor({ timeout: 20000 });
-  check('refresh rehydrates the live session', await visible(page.getByText('60 kg × 8')));
+  await bench.getByRole('button', { name: 'Edit set' }).nth(1).waitFor({ timeout: 20000 });
+  check('refresh rehydrates the live session', (await logged()) === 2);
   check('an added-but-unlogged exercise survives the refresh',
     await page.getByText('Back Squat', { exact: true }).first().waitFor({ timeout: 10000 }).then(() => true).catch(() => false));
   await page.waitForTimeout(600); // one timer tick after hydration
   check('rest timer survives the refresh', (await page.locator('#ma-rest[data-ma-state="on"]').count()) === 1);
   const restLeft = (await page.locator('#ma-rest-time').getAttribute('data-ma-time')) || '';
   check('rest countdown shows time left', /^\d+:\d\d$/.test(restLeft), restLeft);
-  const clock = (await page.locator('[data-ma-start]').getAttribute('data-ma-clock')) || '';
+  const clock = (await page.locator('[data-ma-start]').first().getAttribute('data-ma-clock')) || '';
   check('elapsed clock ticks client-side', /^\d+:\d\d/.test(clock), clock);
   await revealAll(page);
   await page.screenshot({ path: `${OUT}/04-live-workout.png`, fullPage: true });
 
   // ---------------------------------------------------------------------
   section('Workout: finish');
-  await page.getByText('FINISH WORKOUT').click();
-  await page.getByText('WORKOUT COMPLETE').waitFor({ timeout: 15000 });
+  await page.getByText('Finish', { exact: true }).click();
+  await page.getByText('Workout complete').waitFor({ timeout: 15000 });
   check('finishing shows the summary', true);
   check('a short session explains the missing bonus', await visible(page.getByText(/Short session/)));
   const last = (await api('/workouts/sessions?limit=1', 'GET', null, token)).body[0];
   check('summary points match the API',
     await visible(page.getByText(`+${last.points_total}`, { exact: true }).first()), `api=${last.points_total}`);
   await page.screenshot({ path: `${OUT}/05-summary.png`, fullPage: true });
-  // SHARE draws the story card in the browser; a desktop browser downloads it.
+  // Share draws the story card in the browser; a desktop browser downloads it.
   const [card] = await Promise.all([
     page.waitForEvent('download', { timeout: 15000 }),
-    page.getByText('SHARE', { exact: true }).click(),
+    page.getByText('Share', { exact: true }).click(),
   ]);
   const cardPath = `${OUT}/05b-share-card.png`;
   await card.saveAs(cardPath);
@@ -195,7 +198,7 @@ try {
   check('share makes a 1080x1920 story card',
     card.suggestedFilename().startsWith('metalarm-') && png.readUInt32BE(16) === 1080 && png.readUInt32BE(20) === 1920,
     `${card.suggestedFilename()} ${png.readUInt32BE(16)}x${png.readUInt32BE(20)}`);
-  await page.getByText('DONE', { exact: true }).click();
+  await page.getByText('Done', { exact: true }).click();
   await page.getByText('START EMPTY WORKOUT').waitFor({ timeout: 15000 });
   await page.getByText(/\d+ sets · /).first().waitFor({ timeout: 10000 }).catch(() => {});
   check('back to the start screen, with the workout in RECENT', await visible(page.getByText(/\d+ sets · /).first()));
@@ -218,26 +221,26 @@ try {
   check('switching back to kg', await visible(page.getByText(/\d kg$/).first()));
 
   // ---------------------------------------------------------------------
-  section('Routines');
-  await page.goto(UI + '/routines');
-  await page.getByText('+ NEW ROUTINE').click();
-  await page.getByPlaceholder('Routine name, e.g. Push day').fill('E2E Legs');
-  await page.getByText('+ ADD EXERCISE').click();
+  section('Routines (Library)');
+  await page.goto(UI + '/library');
+  await page.getByText('New routine', { exact: true }).first().click();
+  await page.getByPlaceholder('Routine name').fill('E2E Legs');
+  await page.getByText('Add exercise', { exact: true }).click();
   await page.getByPlaceholder('Search exercises…').fill('Back Squat');
   await page.getByText('Back Squat', { exact: true }).first().click();
-  await page.locator('input[type=number]').first().waitFor({ timeout: 15000 });
-  await page.getByText('SAVE ROUTINE').click();
-  await page.getByText('Saved E2E Legs.').waitFor({ timeout: 15000 });
+  await page.getByRole('button', { name: 'Move down' }).first().waitFor({ timeout: 15000 });
+  await page.getByText('Save', { exact: true }).click();
+  await page.getByText('E2E Legs').first().waitFor({ timeout: 15000 });
   check('routine created with the picker', true);
-  await page.getByText('START', { exact: true }).first().click();
+  await page.getByText('E2E Legs').first().click();
+  await page.getByText('Start workout').click();
   await page.waitForURL('**/workout', { timeout: 20000 });
-  await page.getByText('TARGET', { exact: false }).first().waitFor({ timeout: 15000 });
-  check('starting a routine opens a workout with its targets', await visible(page.getByText('Back Squat', { exact: true })));
-  await page.getByText('DISCARD', { exact: true }).click();
-  // The confirm row replaces the button; clicking `.last()` before it renders
-  // hit the same button again and the test stalled.
+  await page.locator('.ma-card').first().waitFor({ timeout: 15000 });
+  check('starting a routine opens a workout with its targets',
+    (await visible(page.getByText('Back Squat', { exact: true }))) && (await visible(page.getByText(/3 sets × 8/).first())));
+  await page.getByRole('button', { name: 'Discard workout' }).click();
   await page.getByText('Discard this workout?').waitFor({ timeout: 15000 });
-  await page.getByText('DISCARD', { exact: true }).last().click();
+  await page.getByText('Discard', { exact: true }).click();
   await page.getByText('START EMPTY WORKOUT').waitFor({ timeout: 15000 });
   check('discarding a workout returns to the start screen', true);
 
@@ -273,12 +276,12 @@ try {
   );
 
   await page.locator('.ma-preset-start').click();
-  await page.getByText('FINISH WORKOUT').waitFor({ timeout: 20000 });
+  await page.getByText('Finish', { exact: true }).waitFor({ timeout: 20000 });
   check('starting a ready-made workout loads its plan', await visible(page.getByText('Back Squat', { exact: true })));
-  check('its targets come with it', await visible(page.getByText('TARGET', { exact: false }).first()));
-  await page.getByText('DISCARD', { exact: true }).click();
+  check('its targets come with it', await visible(page.getByText(/\d+ sets × /).first()));
+  await page.getByRole('button', { name: 'Discard workout' }).click();
   await page.getByText('Discard this workout?').waitFor({ timeout: 15000 });
-  await page.getByText('DISCARD', { exact: true }).last().click();
+  await page.getByText('Discard', { exact: true }).click();
   await page.getByText('START EMPTY WORKOUT').waitFor({ timeout: 15000 });
 
   // ---------------------------------------------------------------------
@@ -298,8 +301,8 @@ try {
   // and rank trials the profile checks below stay as they were.
   await page.goto(UI + '/workout');
   await page.getByText('START EMPTY WORKOUT').click();
-  await page.getByText('IN PROGRESS').waitFor({ timeout: 15000 });
-  await page.getByText('+ ADD EXERCISE').click();
+  await page.getByText('Add Exercise').waitFor({ timeout: 15000 });
+  await page.getByText('Add Exercise').click();
   await page.getByPlaceholder('Search exercises…').fill('Barbell Bench');
   await page.getByText('Barbell Bench Press', { exact: true }).first().click();
   const hint = await page.getByText(/Try .* x \d+/).waitFor({ timeout: 15000 }).then(() => true).catch(() => false);
@@ -368,7 +371,7 @@ try {
 
   // ---------------------------------------------------------------------
   section('Every page, phone and desktop');
-  const routes = ['/dashboard', '/workout', '/routines', '/progress', '/parties', '/duels', '/rewards', '/profile'];
+  const routes = ['/home', '/explore', '/workout', '/library', '/you', '/progress', '/parties', '/duels', '/rewards'];
   for (const [label, viewport] of [['phone', { width: 400, height: 860 }], ['desktop', { width: 1280, height: 900 }]]) {
     const sweep = await browser.newContext({ viewport });
     const p = await sweep.newPage();

@@ -90,7 +90,7 @@ ios)
   set +e
   xcodebuild test -scheme MetalARM -project ios/MetalARM.xcodeproj \
     -destination "platform=iOS Simulator,id=$udid" \
-    -parallel-testing-enabled NO "${filter[@]}" \
+    -parallel-testing-enabled NO ${filter[@]+"${filter[@]}"} \
     CODE_SIGNING_ALLOWED=NO 2>&1 | tee /tmp/metalarm-ios.log \
     | grep -E "Test Case.*(passed|failed)|error:|Executed |\*\* TEST"
   code=${PIPESTATUS[0]}

@@ -111,7 +111,7 @@ def dashboard_page() -> rx.Component:
             rx.flex(
                 rx.box(
                     pinned(stat_panel()),
-                    width=rx.breakpoints(initial="100%", lg="340px"),
+                    width="100%",
                     flex_shrink="0",
                 ),
                 rx.vstack(
@@ -173,7 +173,7 @@ def dashboard_page() -> rx.Component:
                 # `lg` is 1024px and MUST match the .lf-pinned media query in
                 # scroll_reveal.py - pinning the panel at a width where there
                 # is no second column beside it would just freeze it in place.
-                direction=rx.breakpoints(initial="column", lg="row"),
+                direction="column",
                 gap="1.25rem",
                 width="100%",
                 align="start",
