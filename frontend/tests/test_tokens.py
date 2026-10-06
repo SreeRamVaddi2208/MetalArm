@@ -13,7 +13,7 @@ ROOT = Path(__file__).resolve().parents[1] / "metalarm"
 
 # Rebuilt in a later phase of the overhaul; remove each as it is.
 LEGACY = {
-    "components/duel_card.py", "components/exercise_demo.py", "components/exercise_picker.py",
+    "components/duel_card.py", "components/exercise_demo.py",
     "components/layout.py", "components/level_up.py", "components/party_card.py",
     "components/pr_overlay.py", "components/presets.py", "components/quest_card.py",
     "components/rest_timer.py", "components/reward_card.py", "components/scroll_reveal.py",

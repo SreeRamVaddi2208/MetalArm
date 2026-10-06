@@ -106,6 +106,7 @@ try {
     await page.getByText('Add exercise', { exact: true }).click();
     await page.getByPlaceholder('Search exercises…').fill('Cable Lateral Raise');
     await page.getByText('Cable Lateral Raise', { exact: true }).first().click();
+    await page.getByRole('button', { name: /^Add \d+ exercise/ }).click();
     await page.getByText('Cable Lateral Raise', { exact: true }).first().waitFor({ timeout: 15000 });
     await page.waitForTimeout(800);
     const slots = await page.getByRole('button', { name: 'Move down' }).count();

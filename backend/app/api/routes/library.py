@@ -18,13 +18,16 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import CurrentUser, DbSession
 from app.api.routes.routines import last_performed
-from app.core import presets, suggestions
+from app.core import curated, presets, suggestions
 from app.core import workout_store as store
 from app.models.program import Favorite, Program
 from app.models.user import User
 from app.models.workout import Exercise, Routine, RoutineExercise, SetEntry, WorkoutSession
 from app.models.workout_enums import SessionStatus
 from app.schemas.library import (
+    CuratedExerciseOut,
+    CuratedProgramOut,
+    CuratedRoutineOut,
     FavoriteIn,
     LibraryItem,
     LibraryPage,
@@ -116,6 +119,77 @@ def list_programs(current_user: CurrentUser, db: DbSession,
     if not mine:
         rows.sort(key=lambda p: p.training_category != current_user.character_class)
     return [_program_out(db, current_user, p) for p in rows]
+
+
+# ---------------------------------------------------------------------------
+# Curated programs (Explore -> Programs)
+# ---------------------------------------------------------------------------
+
+
+def _library(db: Session, slugs: set[str]) -> dict[str, Exercise]:
+    return {e.slug: e for e in db.scalars(select(Exercise).where(Exercise.slug.in_(slugs)))}
+
+
+def _curated_out(p: dict, exercises: dict[str, Exercise], saved: uuid.UUID | None) -> CuratedProgramOut:
+    return CuratedProgramOut(
+        slug=p["slug"], name=p["name"], category=p["category"], level=p["level"], weeks=p["weeks"],
+        sessions_per_week=p["sessions_per_week"], description=p["description"], saved_program_id=saved,
+        routines=[CuratedRoutineOut(name=r["name"], exercises=[
+            CuratedExerciseOut(exercise_id=exercises[e["slug"]].id, name=exercises[e["slug"]].name,
+                               thumbnail_url=exercises[e["slug"]].thumbnail_url, target_sets=e["sets"],
+                               target_reps_low=e["reps_low"], target_reps_high=e["reps_high"],
+                               rest_seconds=e["rest_seconds"], superset_group=e.get("superset"))
+            for e in r["exercises"] if e["slug"] in exercises]) for r in p["routines"]],
+    )
+
+
+def _saved(db: Session, user: User) -> dict[str, uuid.UUID]:
+    """Curated program name -> the caller's copy."""
+    names = {p["name"] for p in curated.definitions()}
+    return {name: pid for pid, name in db.execute(
+        select(Program.id, Program.name).where(Program.owner_user_id == user.id, Program.name.in_(names)))}
+
+
+@router.get("/programs/curated", response_model=list[CuratedProgramOut])
+def curated_programs(current_user: CurrentUser, db: DbSession,
+                     category: str | None = Query(default=None, pattern="^(powerlifter|bodybuilder|athlete)$")
+                     ) -> list[CuratedProgramOut]:
+    """Plans shipped with the app, the caller's training path first. A short,
+    fixed list (app/data/programs.json), so it is not paged."""
+    programs = [p for p in curated.definitions() if category is None or p["category"] == category]
+    programs.sort(key=lambda p: p["category"] != current_user.character_class)
+    exercises = _library(db, curated.slugs_used())
+    saved = _saved(db, current_user)
+    return [_curated_out(p, exercises, saved.get(p["name"])) for p in programs]
+
+
+@router.post("/programs/curated/{slug}/save", response_model=ProgramOut, status_code=status.HTTP_201_CREATED)
+def save_curated(slug: str, current_user: CurrentUser, db: DbSession) -> ProgramOut:
+    """Copy a curated program into the caller's Library: a program they own,
+    its routines in order. Once only - a second save is a 409."""
+    p = curated.by_slug(slug)
+    if p is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Program not found")
+    if p["name"] in _saved(db, current_user):
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Already in your Library")
+    exercises = _library(db, curated.slugs_used())
+    program = Program(owner_user_id=current_user.id, name=p["name"], description=p["description"],
+                      training_category=p["category"], level=p["level"], weeks=p["weeks"],
+                      sessions_per_week=p["sessions_per_week"])
+    db.add(program)
+    db.flush()
+    for order, r in enumerate(p["routines"]):
+        routine = Routine(user_id=current_user.id, name=r["name"], program_id=program.id, order_in_program=order)
+        routine.exercises = [
+            RoutineExercise(exercise_id=exercises[e["slug"]].id, position=i, target_sets=e["sets"],
+                            target_reps=e["reps_high"], target_reps_low=e["reps_low"],
+                            target_reps_high=e["reps_high"], rest_seconds=e["rest_seconds"],
+                            superset_group=e.get("superset"))
+            for i, e in enumerate(x for x in r["exercises"] if x["slug"] in exercises)
+        ]
+        db.add(routine)
+    db.commit()
+    return _program_out(db, current_user, program)
 
 
 @router.post("/programs", response_model=ProgramOut, status_code=status.HTTP_201_CREATED)

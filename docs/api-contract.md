@@ -10,7 +10,7 @@
 
 - **API title:** MetalArm API
 - **API version:** 0.1.0
-- **Generated:** 2026-10-06 17:52 UTC
+- **Generated:** 2026-10-06 20:45 UTC
 - **Source:** `http://localhost:8000/openapi.json`
 
 ---
@@ -593,6 +593,32 @@ A personal alias: "flat bb" means Barbell Bench Press, for this user.
 | Status | Description |
 |---|---|
 | `201` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `GET /api/v1/exercises/browse`
+
+**Browse Exercises**
+
+Explore's exercise list: the library plus the caller's own, filtered
+by any mix of search, muscle, equipment and category, A-Z, cursor-paged.
+`total` counts every match, for "142 exercises".
+
+*Tags:* `exercises`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `q` | query | `string | null` | no |
+| `muscle` | query | `MuscleGroup | null` | no |
+| `equipment` | query | `Equipment | null` | no |
+| `category` | query | `ExerciseCategory | null` | no |
+| `cursor` | query | `string | null` | no |
+| `limit` | query | `integer` | no |
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
 | `422` | Validation Error |
 
 ---
@@ -1352,6 +1378,46 @@ training path first.
 *Tags:* `library`
 
 *Request body* (`application/json`): `ProgramIn`
+
+| Status | Description |
+|---|---|
+| `201` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `GET /api/v1/programs/curated`
+
+**Curated Programs**
+
+Plans shipped with the app, the caller's training path first. A short,
+fixed list (app/data/programs.json), so it is not paged.
+
+*Tags:* `library`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `category` | query | `string | null` | no |
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `POST /api/v1/programs/curated/{slug}/save`
+
+**Save Curated**
+
+Copy a curated program into the caller's Library: a program they own,
+its routines in order. Once only - a second save is a 409.
+
+*Tags:* `library`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `slug` | path | `string` | yes |
 
 | Status | Description |
 |---|---|
@@ -2527,6 +2593,40 @@ otherwise 503 with per-dependency detail.
 | `is_warmup` | `boolean` | no |
 | `set_count` | `integer` | no |
 
+#### `CuratedExerciseOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `exercise_id` | `string` | yes |
+| `name` | `string` | yes |
+| `thumbnail_url` | `string | null` | yes |
+| `target_sets` | `integer` | yes |
+| `target_reps_low` | `integer` | yes |
+| `target_reps_high` | `integer` | yes |
+| `rest_seconds` | `integer` | yes |
+| `superset_group` | `integer | null` | no |
+
+#### `CuratedProgramOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `slug` | `string` | yes |
+| `name` | `string` | yes |
+| `category` | `string` | yes |
+| `level` | `string` | yes |
+| `weeks` | `integer` | yes |
+| `sessions_per_week` | `integer` | yes |
+| `description` | `string` | yes |
+| `routines` | `CuratedRoutineOut[]` | yes |
+| `saved_program_id` | `string | null` | no |
+
+#### `CuratedRoutineOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `name` | `string` | yes |
+| `exercises` | `CuratedExerciseOut[]` | yes |
+
 #### `DeleteAccountRequest`
 
 | Field | Type | Required |
@@ -2618,6 +2718,29 @@ otherwise 503 with per-dependency detail.
 | `display_name` | `string` | yes |
 | `icon_asset` | `string` | yes |
 | `browsable` | `boolean` | yes |
+
+#### `ExerciseBrowsePage`
+
+| Field | Type | Required |
+|---|---|---|
+| `items` | `ExerciseCardOut[]` | yes |
+| `total` | `integer` | yes |
+| `next_cursor` | `string | null` | no |
+
+#### `ExerciseCardOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `id` | `string` | yes |
+| `name` | `string` | yes |
+| `category` | `string` | yes |
+| `equipment` | `string` | yes |
+| `primary_muscle_groups` | `string[]` | yes |
+| `thumbnail_url` | `string | null` | yes |
+| `is_custom` | `boolean` | yes |
+| `media_author` | `string | null` | no |
+| `media_license` | `string | null` | no |
+| `media_source_url` | `string | null` | no |
 
 #### `ExerciseCategory`
 

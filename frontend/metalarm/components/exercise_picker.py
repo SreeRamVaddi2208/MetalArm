@@ -1,59 +1,39 @@
-"""The exercise picker dialog: search, muscle-group filter, and custom
-exercise creation. Serves both the live workout and the routine editor."""
+"""The exercise picker (overhaul 7.5.6): Explore's library in multi-select -
+search, muscle and equipment chips, tap to pick several, add them in the
+order picked. Custom exercises from the same sheet. Serves the live workout
+and the routine editor."""
 
 import reflex as rx
 
-from metalarm import theme
-from metalarm.components.exercise_demo import exercise_demo
+from metalarm import theme as t
 from metalarm.components.layout import error_banner
 from metalarm.state.picker import PickerState
-from metalarm.workout_models import Chip, ExercisePick
+from metalarm.ui.primitives import filter_chip, primary_button, secondary_button, text, thumb
 
 
-def _chip(chip: Chip) -> rx.Component:
-    active = PickerState.muscle == chip.value
-    return rx.button(
-        chip.label,
-        on_click=PickerState.pick_muscle(chip.value),
-        background=rx.cond(active, f"{theme.ACCENT}22", "transparent"),
-        color=rx.cond(active, theme.ACCENT, theme.MUTED),
-        border=rx.cond(active, f"1px solid {theme.ACCENT}", f"1px solid {theme.BORDER}"),
-        border_radius="999px",
-        font_size="0.62rem",
-        font_weight="800",
-        letter_spacing="0.1em",
-        padding="0.3rem 0.65rem",
-        height="auto",
-        cursor="pointer",
+def _row(item) -> rx.Component:
+    on = PickerState.selected.contains(item["id"])
+    return rx.hstack(
+        thumb(item["image"], size="48px", icon="dumbbell"),
+        rx.vstack(text(item["name"], t.HEADLINE, overflow="hidden", text_overflow="ellipsis",
+                       white_space="nowrap", max_width="100%"),
+                  text(item["sub"], t.FOOTNOTE, t.TEXT_SECONDARY),
+                  spacing="0", align="start", min_width="0", flex="1"),
+        rx.center(rx.cond(on, rx.icon("check", size=18, color=t.TEXT_PRIMARY)),
+                  width="28px", height="28px", border_radius=t.RADIUS_PILL, flex_shrink="0",
+                  background=rx.cond(on, t.ACCENT_BLUE, "transparent"),
+                  border=rx.cond(on, f"2px solid {t.ACCENT_BLUE}", f"2px solid {t.SURFACE_3}")),
+        width="100%", align="center", spacing="3", min_height="56px", cursor="pointer",
+        on_click=PickerState.toggle(item["id"]),
+        custom_attrs={"role": "checkbox", "aria-checked": rx.cond(on, "true", "false"), "aria-label": item["name"]},
     )
 
 
-def _row(item: ExercisePick) -> rx.Component:
-    return rx.box(
-        rx.hstack(
-            exercise_demo(item.media_url, item.name, size="40px", radius="8px"),
-            rx.vstack(
-                rx.text(item.name, color=theme.TEXT, font_weight="700", font_size="0.92rem"),
-                rx.text(item.muscles_label, color=theme.FAINT, font_size="0.66rem", letter_spacing="0.08em"),
-                spacing="1",
-                align="start",
-                min_width="0",
-            ),
-            rx.spacer(),
-            rx.text(item.meta_label, color=theme.FAINT, font_size="0.6rem", letter_spacing="0.1em"),
-            rx.text("+", color=theme.ACCENT, font_size="1.3rem", font_weight="800"),
-            align="center",
-            spacing="3",
-            width="100%",
-        ),
-        on_click=PickerState.pick(item.id),
-        width="100%",
-        padding="0.7rem 0.8rem",
-        border_radius="10px",
-        border=f"1px solid {theme.BORDER}",
-        background=theme.FIELD,
-        cursor="pointer",
-        _hover={"border_color": theme.ACCENT},
+def _chips(items, selected, on_pick) -> rx.Component:
+    return rx.hstack(
+        rx.foreach(items, lambda x: filter_chip(x["label"], selected=selected == x["code"],
+                                                on_click=on_pick(x["code"]))),
+        spacing="2", overflow_x="auto", width="100%", flex_shrink="0", style={"scrollbar_width": "none"},
     )
 
 
@@ -63,40 +43,21 @@ def _select(items, value, on_change) -> rx.Component:
 
 def _create_form() -> rx.Component:
     return rx.vstack(
-        rx.text(PickerState.create_label, color=theme.TEXT, font_weight="700", font_size="0.85rem"),
-        rx.hstack(
-            rx.vstack(rx.text("MUSCLE", **theme.LABEL_STYLE),
-                      _select(PickerState.muscle_values, PickerState.new_muscle, PickerState.set_new_muscle),
-                      spacing="1", width="100%"),
-            rx.vstack(rx.text("EQUIPMENT", **theme.LABEL_STYLE),
-                      _select(PickerState.equipment, PickerState.new_equipment, PickerState.set_new_equipment),
-                      spacing="1", width="100%"),
-            rx.vstack(rx.text("TYPE", **theme.LABEL_STYLE),
+        text(PickerState.create_label, t.HEADLINE),
+        rx.grid(
+            rx.vstack(text("Muscle", t.CAPTION, t.TEXT_SECONDARY),
+                      _select(PickerState.muscle_codes, PickerState.new_muscle, PickerState.set_new_muscle),
+                      spacing="1"),
+            rx.vstack(text("Equipment", t.CAPTION, t.TEXT_SECONDARY),
+                      _select(PickerState.gear_codes, PickerState.new_equipment, PickerState.set_new_equipment),
+                      spacing="1"),
+            rx.vstack(text("Type", t.CAPTION, t.TEXT_SECONDARY),
                       _select(PickerState.categories, PickerState.new_category, PickerState.set_new_category),
-                      spacing="1", width="100%"),
-            spacing="2",
-            width="100%",
-            flex_wrap="wrap",
+                      spacing="1"),
+            columns="3", gap=t.space(2), width="100%",
         ),
-        rx.button(
-            "CREATE AND ADD",
-            on_click=PickerState.create_custom,
-            background=theme.ACCENT,
-            color=theme.ON_ACCENT,
-            border="none",
-            border_radius="9px",
-            font_weight="800",
-            letter_spacing="0.12em",
-            font_size="0.72rem",
-            width="100%",
-            height="42px",
-            cursor="pointer",
-        ),
-        spacing="3",
-        width="100%",
-        padding="0.9rem",
-        border=f"1px dashed {theme.BORDER_HI}",
-        border_radius="12px",
+        primary_button("Create and add", PickerState.create_custom, width="100%"),
+        spacing="3", width="100%", background=t.SURFACE_2, border_radius=t.RADIUS_CARD, padding=t.CARD_PADDING,
     )
 
 
@@ -105,25 +66,10 @@ def picker_dialog() -> rx.Component:
         rx.dialog.content(
             rx.vstack(
                 rx.hstack(
-                    rx.dialog.title(
-                        "ADD EXERCISE",
-                        **{**theme.LABEL_STYLE, "color": theme.ACCENT, "margin": "0"},
-                    ),
+                    rx.dialog.title("Add exercises", margin="0", **t.HEADLINE),
                     rx.spacer(),
-                    rx.dialog.close(
-                        rx.button(
-                            "CLOSE",
-                            background="transparent",
-                            color=theme.FAINT,
-                            border=f"1px solid {theme.BORDER}",
-                            border_radius="8px",
-                            font_size="0.65rem",
-                            letter_spacing="0.12em",
-                            cursor="pointer",
-                        )
-                    ),
-                    width="100%",
-                    align="center",
+                    rx.dialog.close(text("Cancel", t.BODY, t.ACCENT_BLUE, cursor="pointer")),
+                    width="100%", align="center", min_height=t.TOUCH_MIN,
                 ),
                 rx.input(
                     placeholder="Search exercises…",
@@ -132,53 +78,43 @@ def picker_dialog() -> rx.Component:
                     debounce_timeout=250,
                     width="100%",
                     size="3",
-                    background=theme.FIELD,
-                    color=theme.TEXT,
+                    variant="soft",
+                    radius="full",
                 ),
-                rx.flex(
-                    rx.foreach(PickerState.muscles, _chip),
-                    wrap="wrap",
-                    gap="0.35rem",
-                    width="100%",
-                ),
+                _chips(PickerState.muscles, PickerState.muscle, PickerState.pick_muscle),
+                _chips(PickerState.gears, PickerState.gear, PickerState.pick_gear),
                 error_banner(PickerState.error),
                 rx.box(
                     rx.cond(
-                        PickerState.has_results,
-                        rx.vstack(rx.foreach(PickerState.results, _row), spacing="2", width="100%"),
-                        rx.cond(
-                            PickerState.loading,
-                            rx.center(rx.spinner(), width="100%", padding="1rem"),
-                            rx.text("No matches.", color=theme.FAINT, font_size="0.85rem"),
+                        PickerState.results.length() > 0,
+                        rx.vstack(
+                            rx.foreach(PickerState.results, _row),
+                            rx.cond(PickerState.cursor != "",
+                                    secondary_button("Show more", PickerState.more, width="100%")),
+                            spacing="1", width="100%",
                         ),
+                        rx.cond(PickerState.loading,
+                                rx.center(rx.spinner(), width="100%", padding=t.space(4)),
+                                text("No matches.", t.SUBHEAD, t.TEXT_SECONDARY)),
                     ),
-                    max_height="42vh",
-                    overflow_y="auto",
-                    width="100%",
-                    padding_right="0.25rem",
+                    flex="1", overflow_y="auto", width="100%", min_height="0",
                 ),
                 rx.cond(
                     PickerState.show_create,
                     _create_form(),
-                    rx.button(
-                        "Can't find it? Create a custom exercise",
-                        on_click=PickerState.toggle_create,
-                        background="transparent",
-                        color=theme.MUTED,
-                        border="none",
-                        font_size="0.78rem",
-                        cursor="pointer",
-                        text_decoration="underline",
-                    ),
+                    text("Can't find it? Create a custom exercise", t.SUBHEAD, t.ACCENT_BLUE, cursor="pointer",
+                         on_click=PickerState.toggle_create),
                 ),
-                spacing="3",
-                width="100%",
+                primary_button(PickerState.add_label, PickerState.add_selected,
+                               disabled=PickerState.selected.length() == 0, width="100%"),
+                spacing="3", width="100%", height="100%",
             ),
-            background=theme.PANEL,
-            border=f"1px solid {theme.BORDER_HI}",
-            border_radius="16px",
+            background=t.SURFACE_1,
+            border_radius=t.RADIUS_CARD,
             max_width="560px",
             width="94vw",
+            height="86vh",
+            padding=t.CARD_PADDING,
         ),
         open=PickerState.is_open,
         on_open_change=PickerState.set_open,

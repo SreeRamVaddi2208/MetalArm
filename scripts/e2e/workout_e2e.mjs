@@ -98,6 +98,7 @@ try {
   await page.getByText('Add Exercise').click();
   await page.getByPlaceholder('Search exercises…').fill('Barbell Bench');
   await page.getByText('Barbell Bench Press', { exact: true }).first().click();
+  await page.getByRole('button', { name: /^Add \d+ exercise/ }).click();
   await page.getByText('First time - this sets your baseline').waitFor({ timeout: 15000 });
   check('exercise added from the picker', true);
 
@@ -160,6 +161,7 @@ try {
   await page.getByText('Add Exercise').click();
   await page.getByPlaceholder('Search exercises…').fill('Back Squat');
   await page.getByText('Back Squat', { exact: true }).first().click();
+  await page.getByRole('button', { name: /^Add \d+ exercise/ }).click();
   await page.getByText('Back Squat', { exact: true }).first().waitFor({ timeout: 15000 });
 
   // ---------------------------------------------------------------------
@@ -229,6 +231,7 @@ try {
   await page.getByText('Add exercise', { exact: true }).click();
   await page.getByPlaceholder('Search exercises…').fill('Back Squat');
   await page.getByText('Back Squat', { exact: true }).first().click();
+  await page.getByRole('button', { name: /^Add \d+ exercise/ }).click();
   await page.getByRole('button', { name: 'Move down' }).first().waitFor({ timeout: 15000 });
   await page.getByText('Save', { exact: true }).click();
   await page.getByText('E2E Legs').first().waitFor({ timeout: 15000 });
@@ -306,6 +309,7 @@ try {
   await page.getByText('Add Exercise').click();
   await page.getByPlaceholder('Search exercises…').fill('Barbell Bench');
   await page.getByText('Barbell Bench Press', { exact: true }).first().click();
+  await page.getByRole('button', { name: /^Add \d+ exercise/ }).click();
   const hint = await page.getByText(/Try .* x \d+/).waitFor({ timeout: 15000 }).then(() => true).catch(() => false);
   check('the card suggests what to try next', hint);
 

@@ -14,18 +14,30 @@ class CreditsState(rx.State):
     rows: list[dict] = []
     error: str = ""
 
+    diagrams: int = 0
+
     async def load(self):
         auth = await self.get_state(AuthState)
         if not auth.token:
             return
+        rows, diagrams, cursor = [], 0, ""
         try:
-            exercises = await wapi.search_exercises(auth.token, limit=500)
+            while True:
+                page = await wapi.browse(auth.token, cursor=cursor, limit=100)
+                for e in page.get("items") or []:
+                    if e.get("is_custom") or not e.get("media_license"):
+                        continue
+                    if e.get("media_author") == "MetalArm":
+                        diagrams += 1
+                        continue
+                    rows.append({"name": e["name"], "author": e.get("media_author") or "",
+                                 "license": e.get("media_license") or "",
+                                 "source": e.get("media_source_url") or "",
+                                 "image": e.get("thumbnail_url") or ""})
+                cursor = page.get("next_cursor") or ""
+                if not cursor:
+                    break
         except ApiError as exc:
             self.error = exc.detail
             return
-        self.rows = [
-            {"name": e["name"], "author": e.get("media_author") or "",
-             "license": e.get("media_license") or "", "source": e.get("media_source_url") or "",
-             "image": e.get("thumbnail_url") or ""}
-            for e in exercises if e.get("media_license")
-        ]
+        self.rows, self.diagrams = rows, diagrams

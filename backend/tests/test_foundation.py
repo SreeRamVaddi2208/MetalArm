@@ -77,10 +77,10 @@ def test_library_artwork_without_attribution_is_refused() -> None:
 
 
 def test_the_database_refuses_unattributed_artwork(db: Session) -> None:
-    exercise = db.scalars(
-        select(Exercise).where(Exercise.media_license.is_(None)).limit(1)
-    ).one()
-    exercise.illustration_url = "/assets/x.png"
+    # Every library exercise has credited artwork now: take one and drop
+    # the credit, keeping the picture.
+    exercise = db.scalars(select(Exercise).where(Exercise.illustration_url.is_not(None)).limit(1)).one()
+    exercise.media_license = None
     with pytest.raises(IntegrityError):
         with db.begin_nested():
             db.flush()

@@ -14,6 +14,71 @@ Entry format:
 
 ---
 
+## 2026-10-07 (45) - Opus - overhaul phase 3: Explore, the full wger import, curated programs
+
+**Changed**
+- **wger library import** (`scripts/import_wger.py library`): the snapshot now
+  keeps each description with its own licence; the import adds wger exercises
+  the library lacks, under an allow list (CC-BY-SA 3.0/4.0, CC-BY 4.0, CC0),
+  no AI-flagged images, usable English names, mapped muscles. Then every
+  candidate was read by hand into `backend/app/data/wger/review.json`:
+  45 were library exercises under another name (matched, not duplicated -
+  so a lifter's records do not split), 25 left out (non-English, unclear,
+  duplicates), 87 corrected (names, muscles, equipment - wger has no
+  "machine" - category, stretches as mobility). Every new image was then
+  checked on a contact sheet: 17 kept without their image (watermarks,
+  third-party logos, copyright notices an uploader cannot licence, or
+  unflagged AI art) and without wger's text, which would need a credit.
+  Result: 193 exercises (was 91), 102 new; 30 existing ones took their
+  wger twin's image. `docs/wger-licence-review.md` has the counts.
+- **MetalArm diagrams** (`scripts/exercise_diagrams.py`): the 48 exercises
+  with no licensed art get our own drawing - the body-map figure, primary
+  muscles lit, secondary at 40%, equipment named - CC0, credited "MetalArm".
+- **Curated programs** (`app/data/programs.json`, `core/curated.py`): two per
+  path with real routines (rep ranges, rest, supersets), original names.
+  `GET /programs/curated?category=` (the user's path first, with their saved
+  copy's id) and `POST /programs/curated/{slug}/save` (copies it into the
+  Library as an owned program and routines; 409 the second time).
+- **`GET /exercises/browse`**: search by name or shipped alias ("rdl"),
+  muscle, equipment, category, A-Z keyset cursor, `total`, and each image's
+  credit. Credits page pages through it.
+- **Explore** (`pages/explore.py`): search with recent searches; muscle and
+  equipment grids open a list filtered by both (chip rows to combine); count
+  and "Show more"; Programs by path with a detail sheet and Save to Library;
+  People says it arrives with following (phase 4).
+- **Picker** rebuilt on the new tokens: multi-select (tap to pick, "Add N
+  exercises" in the order picked), muscle and equipment chips, artwork
+  thumbnails, custom exercises kept. Off the token-lint legacy list.
+
+**Verified**
+- `tests/test_explore.py` (11): every library exercise has credited art,
+  real muscles (primary set, disjoint secondary), a table of 31 well-known
+  lifts has the right primary muscle, every browsable muscle has exercises;
+  curated programs well formed; browse filters/aliases/paging/visibility;
+  curated listing and save. Three older tests updated for the bigger library
+  (size bound; the attribution check; Strong's Smith squat now matches the
+  library's Smith Machine Squat - on equipment, never the barbell squat).
+  Full backend suite passes (exit 0, the two dev-DB health tests deselected);
+  `alembic check` clean - no migration.
+- `frontend/tests/test_assets.py`: every image file is shipped; no orphans.
+- `scripts/e2e/explore_e2e.mjs` (new, Gate 3): all 193 images served as
+  images, each credited; alias search; recent searches; Chest and Chest +
+  Dumbbell list exactly the API's counts; Exercise Detail shows its picture;
+  six programs, the user's path first; save -> Library with its routines;
+  the picker adds two at once - 375 and 430: ALL PASSED (36).
+- `workout_e2e` 104/104, `logging_e2e` 36/36, `analytics_e2e` 53/53 (picker
+  steps updated), `web_tour.mjs` full take, no missed controls.
+- `docs/api-contract.md` regenerated.
+- iOS `scripts/dev.sh ios`: ** TEST SUCCEEDED ** - XCTest 25 executed, 0 failures (live tour skipped); the API change is additive.
+
+**Blocked:** nothing.
+
+**Other agent needs to know:** wger images are mixed formats (png, jpg,
+webp, gif). Re-running the import is safe; `review.json` is the place to
+correct a wger exercise, not `exercises.json`.
+
+---
+
 ## 2026-10-06 (44) - Opus - overhaul phase 2: clarity and analytics
 
 **Changed**

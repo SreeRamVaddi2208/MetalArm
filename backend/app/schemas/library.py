@@ -82,3 +82,54 @@ class SuggestedOut(BaseModel):
     # Null when never done.
     days_since: int | None
     fits_path: bool
+
+
+class CuratedExerciseOut(BaseModel):
+    exercise_id: uuid.UUID
+    name: str
+    thumbnail_url: str | None
+    target_sets: int
+    target_reps_low: int
+    target_reps_high: int
+    rest_seconds: int
+    superset_group: int | None = None
+
+
+class CuratedRoutineOut(BaseModel):
+    name: str
+    exercises: list[CuratedExerciseOut]
+
+
+class CuratedProgramOut(BaseModel):
+    slug: str
+    name: str
+    category: str
+    level: str
+    weeks: int
+    sessions_per_week: int
+    description: str
+    routines: list[CuratedRoutineOut]
+    # The caller's saved copy, if they have one.
+    saved_program_id: uuid.UUID | None = None
+
+
+class ExerciseCardOut(BaseModel):
+    """A browse row: enough to list, not the whole exercise."""
+
+    id: uuid.UUID
+    name: str
+    category: str
+    equipment: str
+    primary_muscle_groups: list[str]
+    thumbnail_url: str | None
+    is_custom: bool
+    # The artwork's credit (CC-BY-SA needs it wherever the picture is).
+    media_author: str | None = None
+    media_license: str | None = None
+    media_source_url: str | None = None
+
+
+class ExerciseBrowsePage(BaseModel):
+    items: list[ExerciseCardOut]
+    total: int
+    next_cursor: str | None = None

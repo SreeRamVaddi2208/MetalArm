@@ -264,3 +264,20 @@ async def favorite(token: str, target_type: str, target_id: str, on: bool) -> No
 
 async def suggested(token: str) -> list[dict]:
     return await request("GET", "/workouts/suggested", token=token)
+
+
+# --- Explore (overhaul phase 3) ---------------------------------------------
+
+
+async def browse(token: str, q: str = "", muscle: str = "", equipment: str = "", category: str = "",
+                 cursor: str = "", limit: int = 30) -> dict:
+    return await request("GET", _q("/exercises/browse", q=q, muscle=muscle, equipment=equipment,
+                                    category=category, cursor=cursor, limit=limit), token=token)
+
+
+async def curated_programs(token: str, category: str = "") -> list[dict]:
+    return await request("GET", _q("/programs/curated", category=category), token=token)
+
+
+async def save_curated(token: str, slug: str) -> dict:
+    return await request("POST", f"/programs/curated/{slug}/save", token=token)

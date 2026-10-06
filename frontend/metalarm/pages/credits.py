@@ -24,10 +24,12 @@ def _row(row) -> rx.Component:
 def credits_page() -> rx.Component:
     return shell(
         top_bar("Credits"),
-        text("Exercise images come from the wger project (wger.de) and its contributors, "
-             "under Creative Commons Attribution-ShareAlike licences. They have been resized "
-             "for MetalArm and remain under the same licence. Tap an entry for its source.",
+        text("Exercise images and how-to steps come from the wger project (wger.de) and its "
+             "contributors, under Creative Commons Attribution-ShareAlike licences. The images have "
+             "been resized for MetalArm and remain under the same licence. Tap an entry for its source.",
              t.SUBHEAD, t.TEXT_SECONDARY),
+        text(f"The muscle diagrams on the other {CreditsState.diagrams} exercises are MetalArm's own "
+             "drawings, released under CC0 1.0.", t.SUBHEAD, t.TEXT_SECONDARY),
         error_banner(CreditsState.error),
         section_header("Exercise images"),
         rx.vstack(rx.foreach(CreditsState.rows, _row), spacing="3", width="100%"),
