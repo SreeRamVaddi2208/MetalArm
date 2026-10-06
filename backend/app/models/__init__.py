@@ -15,6 +15,7 @@ from app.models.party import (
 )
 from app.models.league import LeagueMembership
 from app.models.nl_log import ExerciseAlias, ParseLog
+from app.models.program import Favorite, Program
 from app.models.push_device import PushDevice
 from app.models.quest import Quest, QuestCompletion
 from app.models.quest_board import (
@@ -35,6 +36,7 @@ from app.models.workout import (
     PointsLedgerEntry,
     Routine,
     RoutineExercise,
+    SessionExercise,
     SetEntry,
     WorkoutImport,
     WorkoutSession,
@@ -74,6 +76,9 @@ __all__ = [
     "WorkoutSession",
     "WorkoutImport",
     "SetEntry",
+    "SessionExercise",
+    "Program",
+    "Favorite",
     "PersonalRecord",
     "PointsLedgerEntry",
     "BodyMeasurement",

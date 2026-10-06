@@ -40,6 +40,8 @@ from app.models.workout_enums import (
     ExerciseCategory,
     ExerciseTag,
     LedgerSource,
+    SetType,
+    Visibility,
     MeasurementMetric,
     MeasurementUnit,
     MuscleGroup,
@@ -195,6 +197,14 @@ class Routine(UUIDPrimaryKey, Timestamps, Base):
     # (app/core/presets.py). Starting the same preset again reuses this row
     # rather than stacking up copies, and the UI can label where it came from.
     preset_slug: Mapped[str | None] = mapped_column(String(60), nullable=True)
+    # In a program (app/models/program.py), and where in it; NULL = standalone.
+    program_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("programs.id", ondelete="SET NULL"),
+        nullable=True, index=True,
+    )
+    order_in_program: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # A tile colour; NULL means "hash the name" (theme.tile_color).
+    color: Mapped[str | None] = mapped_column(String(9), nullable=True)
 
     exercises: Mapped[list["RoutineExercise"]] = relationship(
         back_populates="routine",
@@ -231,6 +241,13 @@ class RoutineExercise(UUIDPrimaryKey, Base):
         Numeric(7, 2), nullable=True
     )
     rest_seconds: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # A rep RANGE ("8-12"); target_reps stays as the single-number form older
+    # clients read, kept equal to the top of the range.
+    target_reps_low: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    target_reps_high: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # Slots sharing a number are a superset, done back to back.
+    superset_group: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     routine: Mapped["Routine"] = relationship(back_populates="exercises")
     exercise: Mapped["Exercise"] = relationship()
@@ -254,6 +271,11 @@ class RoutineExercise(UUIDPrimaryKey, Base):
         CheckConstraint(
             "rest_seconds IS NULL OR (rest_seconds >= 0 AND rest_seconds <= 3600)",
             name="ck_routine_exercises_rest",
+        ),
+        CheckConstraint(
+            "target_reps_low IS NULL OR target_reps_high IS NULL "
+            "OR target_reps_low <= target_reps_high",
+            name="ck_routine_exercises_rep_range",
         ),
     )
 
@@ -333,6 +355,16 @@ class WorkoutSession(UUIDPrimaryKey, Timestamps, Base):
         nullable=True,
         index=True,
     )
+    # Who sees it in a feed. Defaults from users.default_visibility at start.
+    visibility: Mapped[str] = mapped_column(
+        String(10), nullable=False, server_default=Visibility.FOLLOWERS.value
+    )
+    # Totals snapshotted at finish, so history and feeds read one row instead
+    # of summing sets per request. A finished session's sets cannot change.
+    total_volume_kg: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    total_working_sets: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    total_prs: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    duration_seconds: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     sets: Mapped[list["SetEntry"]] = relationship(
         back_populates="session",
@@ -350,6 +382,7 @@ class WorkoutSession(UUIDPrimaryKey, Timestamps, Base):
         CheckConstraint(
             "points_credited >= 0", name="ck_workout_sessions_points_non_negative"
         ),
+        CheckConstraint(check_in("visibility", Visibility), name="ck_workout_sessions_visibility"),
         # ONE live session per user, enforced by the database. Two concurrent
         # "start workout" taps cannot both succeed, and parallel sessions cannot
         # be used to multiply the per-session caps.
@@ -367,6 +400,43 @@ class WorkoutSession(UUIDPrimaryKey, Timestamps, Base):
         # comes second because it is always an equality on 'completed', which
         # keeps the ended_at range contiguous in the index.
         Index("ix_workout_sessions_user_status_ended", "user_id", "status", "ended_at"),
+    )
+
+
+class SessionExercise(UUIDPrimaryKey, Base):
+    """One exercise card in a session: its place in the order, the superset
+    it is part of, its notes and rest. Sets belong to a card, so the same
+    exercise can appear twice (a heavy top set early, a back-off later) and an
+    exercise added but not yet logged is still part of the workout."""
+
+    __tablename__ = "session_exercises"
+
+    session_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("workout_sessions.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    # NO ACTION - see the module docstring.
+    exercise_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("exercises.id"), nullable=False, index=True
+    )
+    position: Mapped[int] = mapped_column(Integer, nullable=False)
+    # Cards sharing a number are a superset.
+    superset_group: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    rest_seconds: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    created_at: Mapped[dt.datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+    __table_args__ = (
+        CheckConstraint("position >= 0", name="ck_session_exercises_position"),
+        CheckConstraint(
+            "rest_seconds IS NULL OR (rest_seconds >= 0 AND rest_seconds <= 3600)",
+            name="ck_session_exercises_rest",
+        ),
+        # Not UNIQUE on position: a reorder rewrites every position in one
+        # statement, which a unique index would trip on halfway.
+        Index("ix_session_exercises_session_position", "session_id", "position"),
     )
 
 
@@ -392,6 +462,11 @@ class SetEntry(UUIDPrimaryKey, Base):
     exercise_id: Mapped[uuid.UUID] = mapped_column(
         Uuid(as_uuid=True), ForeignKey("exercises.id"), nullable=False, index=True
     )
+    # The exercise card in the session this set belongs to.
+    session_exercise_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("session_exercises.id", ondelete="CASCADE"),
+        nullable=False, index=True,
+    )
     # 1-based within (session, exercise). Renumbered on delete, so no UNIQUE:
     # a renumbering UPDATE would trip it mid-statement.
     set_number: Mapped[int] = mapped_column(Integer, nullable=False)
@@ -405,6 +480,11 @@ class SetEntry(UUIDPrimaryKey, Base):
     distance_m: Mapped[Decimal | None] = mapped_column(Numeric(10, 2), nullable=True)
     is_warmup: Mapped[bool] = mapped_column(
         Boolean, nullable=False, server_default="false"
+    )
+    # normal / warmup / drop / failure. is_warmup is kept equal to
+    # (set_type = 'warmup') by a CHECK - see SetType.
+    set_type: Mapped[str] = mapped_column(
+        String(8), nullable=False, server_default=SetType.NORMAL.value
     )
     # Computed server-side: whether this set beat an existing record. A
     # first-ever baseline holds personal_records rows but is NOT a PR.
@@ -430,6 +510,8 @@ class SetEntry(UUIDPrimaryKey, Base):
     __table_args__ = (
         UniqueConstraint("session_id", "client_set_id", name="uq_set_entries_client_id"),
         CheckConstraint("set_number >= 1", name="ck_set_entries_set_number"),
+        CheckConstraint(check_in("set_type", SetType), name="ck_set_entries_set_type"),
+        CheckConstraint("is_warmup = (set_type = 'warmup')", name="ck_set_entries_warmup_type"),
         CheckConstraint(
             f"weight_kg >= 0 AND weight_kg <= {rules.MAX_WEIGHT_KG}",
             name="ck_set_entries_weight",
@@ -668,3 +750,72 @@ class BodyMeasurement(UUIDPrimaryKey, Base):
             "ix_body_measurements_user_metric_time", "user_id", "metric", "recorded_at"
         ),
     )
+
+
+# ---------------------------------------------------------------------------
+# Every set has a card
+# ---------------------------------------------------------------------------
+# The workout routes always say which card a set belongs to. Everything else
+# that writes sets - the Strong/Hevy importer, the demo seeder, tests - writes
+# them the way it always has, and this attaches each new set to its session's
+# card for that exercise, making one at the end of the order if there is
+# none. So session_exercise_id is never NULL, whoever wrote the set.
+
+
+def _sync_set_type(entry: "SetEntry") -> None:
+    """Writers that only know is_warmup (the importer, older code) get the
+    set type it implies; a warm-up is always 'warmup', and a set that stops
+    being one goes back to 'normal' unless it is a drop or failure set."""
+    if entry.is_warmup:
+        entry.set_type = SetType.WARMUP.value
+    elif entry.set_type in (None, SetType.WARMUP.value):
+        entry.set_type = SetType.NORMAL.value
+
+
+def _attach_cards(session, flush_context, instances) -> None:  # noqa: ARG001
+    from sqlalchemy import func as sa_func, select as sa_select
+
+    for obj in list(session.new) + list(session.dirty):
+        if isinstance(obj, SetEntry):
+            _sync_set_type(obj)
+    pending = [o for o in session.new if isinstance(o, SetEntry) and o.session_exercise_id is None]
+    if not pending:
+        return
+    cards: dict[tuple, uuid.UUID] = {}
+    next_position: dict[uuid.UUID, int] = {}
+    for obj in session.new:
+        if isinstance(obj, SessionExercise) and obj.id is not None:
+            cards.setdefault((obj.session_id, obj.exercise_id), obj.id)
+    with session.no_autoflush:
+        for entry in pending:
+            key = (entry.session_id, entry.exercise_id)
+            if key not in cards:
+                found = session.execute(
+                    sa_select(SessionExercise.id)
+                    .where(SessionExercise.session_id == entry.session_id,
+                           SessionExercise.exercise_id == entry.exercise_id)
+                    .order_by(SessionExercise.position)
+                    .limit(1)
+                ).scalar_one_or_none()
+                if found is None:
+                    if entry.session_id not in next_position:
+                        top = session.execute(
+                            sa_select(sa_func.max(SessionExercise.position))
+                            .where(SessionExercise.session_id == entry.session_id)
+                        ).scalar_one()
+                        next_position[entry.session_id] = -1 if top is None else top
+                    next_position[entry.session_id] += 1
+                    card = SessionExercise(
+                        id=uuid.uuid4(), session_id=entry.session_id,
+                        exercise_id=entry.exercise_id, position=next_position[entry.session_id],
+                    )
+                    session.add(card)
+                    found = card.id
+                cards[key] = found
+            entry.session_exercise_id = cards[key]
+
+
+from sqlalchemy import event as _event  # noqa: E402
+from sqlalchemy.orm import Session as _OrmSession  # noqa: E402
+
+_event.listen(_OrmSession, "before_flush", _attach_cards)

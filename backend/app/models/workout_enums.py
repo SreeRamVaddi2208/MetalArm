@@ -75,6 +75,24 @@ class ExerciseTag(str, enum.Enum):
     PLYOMETRIC = "plyometric"
 
 
+class SetType(str, enum.Enum):
+    """What kind of set it was. Only a warm-up is not a working set: drop and
+    failure sets count for points, quests, duels and records like any other.
+    set_entries.is_warmup is kept in step by a CHECK, so every rule written
+    against is_warmup stays correct without knowing set types exist."""
+
+    NORMAL = "normal"
+    WARMUP = "warmup"
+    DROP = "drop"
+    FAILURE = "failure"
+
+
+class Visibility(str, enum.Enum):
+    PUBLIC = "public"
+    FOLLOWERS = "followers"
+    PRIVATE = "private"
+
+
 class SessionStatus(str, enum.Enum):
     IN_PROGRESS = "in_progress"
     COMPLETED = "completed"

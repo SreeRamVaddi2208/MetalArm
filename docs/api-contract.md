@@ -10,7 +10,7 @@
 
 - **API title:** MetalArm API
 - **API version:** 0.1.0
-- **Generated:** 2026-10-06 15:41 UTC
+- **Generated:** 2026-10-06 15:58 UTC
 - **Source:** `http://localhost:8000/openapi.json`
 
 ---
@@ -613,6 +613,41 @@ added mid-workout. Empty `sets` when it has never been done.
 
 ---
 
+### `POST /api/v1/favorites`
+
+**Add Favorite**
+
+Star something. Starring it again is not an error.
+
+*Tags:* `library`
+
+*Request body* (`application/json`): `FavoriteIn`
+
+| Status | Description |
+|---|---|
+| `204` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `DELETE /api/v1/favorites/{target_type}/{target_id}`
+
+**Remove Favorite**
+
+*Tags:* `library`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `target_type` | path | `string` | yes |
+| `target_id` | path | `string` | yes |
+
+| Status | Description |
+|---|---|
+| `204` | Successful Response |
+| `422` | Validation Error |
+
+---
+
 ### `GET /api/v1/feed`
 
 **Get Feed**
@@ -648,6 +683,30 @@ week in UTC, never a stored score.
 | Status | Description |
 |---|---|
 | `200` | Successful Response |
+
+---
+
+### `GET /api/v1/library`
+
+**Library**
+
+One list for the Library tab. Programs and routines are the caller's;
+exercises are the ones they have logged. Sorted by recent use, name, or
+how often they have been used.
+
+*Tags:* `library`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `filter` | query | `string` | no |
+| `sort` | query | `string` | no |
+| `cursor` | query | `string | null` | no |
+| `limit` | query | `integer` | no |
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
 
 ---
 
@@ -1104,6 +1163,96 @@ the user's latest bodyweight, their best so far, and whether it is passed
 | Status | Description |
 |---|---|
 | `200` | Successful Response |
+
+---
+
+### `GET /api/v1/programs`
+
+**List Programs**
+
+The caller's programs, or (mine=false) the curated ones - the user's
+training path first.
+
+*Tags:* `library`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `mine` | query | `boolean` | no |
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `POST /api/v1/programs`
+
+**Create Program**
+
+*Tags:* `library`
+
+*Request body* (`application/json`): `ProgramIn`
+
+| Status | Description |
+|---|---|
+| `201` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `DELETE /api/v1/programs/{program_id}`
+
+**Delete Program**
+
+Its routines stay, as standalone routines (program_id is SET NULL).
+
+*Tags:* `library`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `program_id` | path | `string` | yes |
+
+| Status | Description |
+|---|---|
+| `204` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `GET /api/v1/programs/{program_id}`
+
+**Read Program**
+
+*Tags:* `library`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `program_id` | path | `string` | yes |
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `PUT /api/v1/programs/{program_id}`
+
+**Update Program**
+
+*Tags:* `library`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `program_id` | path | `string` | yes |
+
+*Request body* (`application/json`): `ProgramIn`
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
 
 ---
 
@@ -1765,6 +1914,95 @@ bank XP without ever finishing a workout.
 
 ---
 
+### `POST /api/v1/workouts/sessions/{session_id}/exercises`
+
+**Add Session Exercise**
+
+Add an exercise card at the end of a live workout. The same exercise
+may be added twice (a back-off block later in the session).
+
+*Tags:* `workouts`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `session_id` | path | `string` | yes |
+
+*Request body* (`application/json`): `SessionExerciseIn`
+
+| Status | Description |
+|---|---|
+| `201` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `POST /api/v1/workouts/sessions/{session_id}/exercises/reorder`
+
+**Reorder Session Exercises**
+
+Put the cards in a new order: every card id of the session, once.
+
+*Tags:* `workouts`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `session_id` | path | `string` | yes |
+
+*Request body* (`application/json`): `ReorderIn`
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `DELETE /api/v1/workouts/sessions/{session_id}/exercises/{card_id}`
+
+**Remove Session Exercise**
+
+Take a card out of a live workout. With sets on it, 409 unless
+`force` - then its sets go too and every award they earned is reversed,
+exactly as deleting them one by one would.
+
+*Tags:* `workouts`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `session_id` | path | `string` | yes |
+| `card_id` | path | `string` | yes |
+| `force` | query | `boolean` | no |
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `PATCH /api/v1/workouts/sessions/{session_id}/exercises/{card_id}`
+
+**Update Session Exercise**
+
+Notes, rest, superset grouping - and swapping the exercise, while the
+card has no sets yet.
+
+*Tags:* `workouts`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `session_id` | path | `string` | yes |
+| `card_id` | path | `string` | yes |
+
+*Request body* (`application/json`): `SessionExercisePatch`
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
 ### `POST /api/v1/workouts/sessions/{session_id}/finish`
 
 **Finish Session**
@@ -1777,6 +2015,27 @@ streak bonuses, and credit the session's points to the wallet.
 | Param | In | Type | Required |
 |---|---|---|---|
 | `session_id` | path | `string` | yes |
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `GET /api/v1/workouts/sessions/{session_id}/previous`
+
+**Previous Performance**
+
+The PREVIOUS column: the last finished session's sets on this exercise
+(other than this one), by set number.
+
+*Tags:* `workouts`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `session_id` | path | `string` | yes |
+| `exercise_id` | query | `string` | yes |
 
 | Status | Description |
 |---|---|
@@ -1851,6 +2110,21 @@ set is judged afresh. Other sets' awards are not revisited.
 |---|---|
 | `200` | Successful Response |
 | `422` | Validation Error |
+
+---
+
+### `GET /api/v1/workouts/suggested`
+
+**Suggested**
+
+The caller's routines, longest left alone first, nudged toward their
+training path.
+
+*Tags:* `library`
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
 
 ---
 
@@ -2223,6 +2497,13 @@ otherwise 503 with per-dependency detail.
 | `instructions` | `string | null` | no |
 | `media_url` | `string | null` | no |
 
+#### `FavoriteIn`
+
+| Field | Type | Required |
+|---|---|---|
+| `target_type` | `string` | yes |
+| `target_id` | `string` | yes |
+
 #### `FeedOut`
 
 | Field | Type | Required |
@@ -2243,6 +2524,8 @@ otherwise 503 with per-dependency detail.
 | `streak` | `StreakOut` | yes |
 | `progression` | `ProgressionDeltaOut` | yes |
 | `raids` | `RaidHitOut[]` | no |
+| `muscles_worked` | `object` | no |
+| `rank_change` | `object | null` | no |
 | `quest_progress` | `QuestProgressOut[]` | no |
 | `quests_completed` | `QuestProgressOut[]` | no |
 
@@ -2334,6 +2617,27 @@ otherwise 503 with per-dependency detail.
 | `reason` | `string` | yes |
 | `session_id` | `string | null` | yes |
 | `created_at` | `string` | yes |
+
+#### `LibraryItem`
+
+| Field | Type | Required |
+|---|---|---|
+| `type` | `string` | yes |
+| `id` | `string` | yes |
+| `title` | `string` | yes |
+| `subtitle` | `string` | yes |
+| `color` | `string | null` | no |
+| `image` | `string | null` | no |
+| `favorite` | `boolean` | yes |
+| `last_used_at` | `string | null` | no |
+
+#### `LibraryPage`
+
+| Field | Type | Required |
+|---|---|---|
+| `items` | `LibraryItem[]` | yes |
+| `favorite_count` | `integer` | yes |
+| `next_cursor` | `string | null` | no |
 
 #### `LifetimeStats`
 
@@ -2616,6 +2920,25 @@ otherwise 503 with per-dependency detail.
 | `exercises` | `PresetExerciseOut[]` | yes |
 | `matches_your_path` | `boolean` | no |
 
+#### `PreviousOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `exercise_id` | `string` | yes |
+| `session_id` | `string | null` | yes |
+| `performed_at` | `string | null` | yes |
+| `sets` | `PreviousSetOut[]` | yes |
+
+#### `PreviousSetOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `set_number` | `integer` | yes |
+| `weight_kg` | `number` | yes |
+| `reps` | `integer | null` | yes |
+| `set_type` | `string` | yes |
+| `rpe` | `number | null` | yes |
+
 #### `ProfileOut`
 
 | Field | Type | Required |
@@ -2626,6 +2949,46 @@ otherwise 503 with per-dependency detail.
 | `badges` | `BadgeOut[]` | yes |
 | `badges_earned` | `integer` | yes |
 | `badges_total` | `integer` | yes |
+
+#### `ProgramIn`
+
+| Field | Type | Required |
+|---|---|---|
+| `name` | `string` | yes |
+| `description` | `string | null` | no |
+| `training_category` | `string | null` | no |
+| `level` | `string | null` | no |
+| `weeks` | `integer | null` | no |
+| `sessions_per_week` | `integer | null` | no |
+| `is_public` | `boolean` | no |
+| `cover_color` | `string | null` | no |
+
+#### `ProgramOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `id` | `string` | yes |
+| `name` | `string` | yes |
+| `description` | `string | null` | yes |
+| `training_category` | `string | null` | yes |
+| `level` | `string | null` | yes |
+| `weeks` | `integer | null` | yes |
+| `sessions_per_week` | `integer | null` | yes |
+| `is_public` | `boolean` | yes |
+| `cover_color` | `string | null` | yes |
+| `owner_user_id` | `string | null` | yes |
+| `routines` | `ProgramRoutineOut[]` | yes |
+| `favorite` | `boolean` | no |
+
+#### `ProgramRoutineOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `id` | `string` | yes |
+| `name` | `string` | yes |
+| `order_in_program` | `integer | null` | yes |
+| `exercise_count` | `integer` | yes |
+| `last_performed_at` | `string | null` | yes |
 
 #### `ProgressOut`
 
@@ -2837,6 +3200,12 @@ otherwise 503 with per-dependency detail.
 |---|---|---|
 | `refresh_token` | `string` | yes |
 
+#### `ReorderIn`
+
+| Field | Type | Required |
+|---|---|---|
+| `order` | `string[]` | yes |
+
 #### `RerollResponse`
 
 | Field | Type | Required |
@@ -2880,8 +3249,12 @@ otherwise 503 with per-dependency detail.
 | `exercise_id` | `string` | yes |
 | `target_sets` | `integer | null` | no |
 | `target_reps` | `integer | null` | no |
+| `target_reps_low` | `integer | null` | no |
+| `target_reps_high` | `integer | null` | no |
 | `target_weight_kg` | `number | null` | no |
 | `rest_seconds` | `integer | null` | no |
+| `superset_group` | `integer | null` | no |
+| `notes` | `string | null` | no |
 
 #### `RoutineExerciseOut`
 
@@ -2891,8 +3264,12 @@ otherwise 503 with per-dependency detail.
 | `exercise` | `ExerciseOut` | yes |
 | `target_sets` | `integer | null` | yes |
 | `target_reps` | `integer | null` | yes |
+| `target_reps_low` | `integer | null` | no |
+| `target_reps_high` | `integer | null` | no |
 | `target_weight_kg` | `number | null` | yes |
 | `rest_seconds` | `integer | null` | yes |
+| `superset_group` | `integer | null` | no |
+| `notes` | `string | null` | no |
 
 #### `RoutineIn`
 
@@ -2901,6 +3278,9 @@ otherwise 503 with per-dependency detail.
 | `name` | `string` | yes |
 | `notes` | `string | null` | no |
 | `exercises` | `RoutineExerciseIn[]` | no |
+| `program_id` | `string | null` | no |
+| `order_in_program` | `integer | null` | no |
+| `color` | `string | null` | no |
 
 #### `RoutineOut`
 
@@ -2912,16 +3292,42 @@ otherwise 503 with per-dependency detail.
 | `exercises` | `RoutineExerciseOut[]` | yes |
 | `created_at` | `string` | yes |
 | `updated_at` | `string` | yes |
+| `program_id` | `string | null` | no |
+| `order_in_program` | `integer | null` | no |
+| `color` | `string | null` | no |
+| `last_performed_at` | `string | null` | no |
+
+#### `SessionExerciseIn`
+
+| Field | Type | Required |
+|---|---|---|
+| `exercise_id` | `string` | yes |
+| `rest_seconds` | `integer | null` | no |
+| `notes` | `string | null` | no |
 
 #### `SessionExerciseOut`
 
 | Field | Type | Required |
 |---|---|---|
+| `session_exercise_id` | `string | null` | no |
+| `position` | `integer` | no |
+| `superset_group` | `integer | null` | no |
+| `notes` | `string | null` | no |
+| `rest_seconds` | `integer | null` | no |
 | `exercise` | `ExerciseOut` | yes |
 | `hint` | `HintOut | null` | no |
 | `target` | `SessionTargetOut | null` | yes |
 | `sets` | `SetOut[]` | yes |
 | `previous_sets` | `SetOut[]` | yes |
+
+#### `SessionExercisePatch`
+
+| Field | Type | Required |
+|---|---|---|
+| `rest_seconds` | `integer | null` | no |
+| `notes` | `string | null` | no |
+| `superset_group` | `integer | null` | no |
+| `exercise_id` | `string | null` | no |
 
 #### `SessionOut`
 
@@ -2989,9 +3395,11 @@ otherwise 503 with per-dependency detail.
 | `reps` | `integer | null` | no |
 | `rpe` | `number | null` | no |
 | `is_warmup` | `boolean` | no |
+| `set_type` | `SetType | null` | no |
 | `duration_seconds` | `integer | null` | no |
 | `distance_m` | `number | null` | no |
 | `exercise_id` | `string` | yes |
+| `session_exercise_id` | `string | null` | no |
 | `client_set_id` | `string | null` | no |
 
 #### `SetDeleteResponse`
@@ -3030,11 +3438,19 @@ otherwise 503 with per-dependency detail.
 | `reps` | `integer | null` | yes |
 | `rpe` | `number | null` | yes |
 | `is_warmup` | `boolean` | yes |
+| `set_type` | `string` | no |
+| `session_exercise_id` | `string | null` | no |
 | `is_pr` | `boolean` | yes |
 | `is_flagged` | `boolean` | no |
 | `duration_seconds` | `integer | null` | yes |
 | `distance_m` | `number | null` | yes |
 | `completed_at` | `string` | yes |
+
+#### `SetType`
+
+| Field | Type | Required |
+|---|---|---|
+| _(no properties)_ | | |
 
 #### `SetUpdate`
 
@@ -3045,6 +3461,7 @@ otherwise 503 with per-dependency detail.
 | `reps` | `integer | null` | no |
 | `rpe` | `number | null` | no |
 | `is_warmup` | `boolean | null` | no |
+| `set_type` | `SetType | null` | no |
 | `duration_seconds` | `integer | null` | no |
 | `distance_m` | `number | null` | no |
 
@@ -3091,6 +3508,19 @@ otherwise 503 with per-dependency detail.
 | `freeze_cap` | `integer` | yes |
 | `weeks_to_next_freeze` | `integer` | yes |
 | `freezes_used_unseen` | `string[]` | yes |
+
+#### `SuggestedOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `routine_id` | `string` | yes |
+| `name` | `string` | yes |
+| `abbreviation` | `string` | yes |
+| `color` | `string | null` | yes |
+| `exercise_count` | `integer` | yes |
+| `last_performed_at` | `string | null` | yes |
+| `days_since` | `integer | null` | yes |
+| `fits_path` | `boolean` | yes |
 
 #### `TaxonomyOut`
 

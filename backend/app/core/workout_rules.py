@@ -75,6 +75,14 @@ QUEST_REROLLS_PER_DAY = 1
 FREEZE_CAP = 2
 FREEZE_EARN_EVERY_WEEKS = 4
 
+# --- Suggested workouts (GET /workouts/suggested) -------------------------------
+# Routines are ranked by how long since they were last done; one that fits the
+# user's training path counts as this many days staler, and one never done
+# counts as this many days since. Tune by moving these, not the code.
+SUGGEST_CATEGORY_BONUS_DAYS = 3
+SUGGEST_NEVER_DONE_DAYS = 14
+SUGGEST_LIMIT = 10
+
 # --- Plausibility (app/core/plausibility.py) ---------------------------------
 # A set that trips one of these is still logged and still scores for its owner,
 # but stays out of duels and leaderboards. Generous on purpose: the cost of a
