@@ -23,7 +23,7 @@ from sqlalchemy.orm import Session
 # name `app` in this module from the FastAPI instance to the package, and
 # app.dependency_overrides then resolves against the module.
 from app import models as _models  # noqa: F401
-from app.core import exercise_aliases, quest_templates, training_categories
+from app.core import exercise_aliases, quest_templates, taxonomy, training_categories
 from app.core.config import get_settings
 from app.db.session import Base, get_db
 from app.main import app
@@ -66,6 +66,7 @@ def engine() -> Generator[Engine, None, None]:
     # cleanly. Committed, so they survive each test's rollback. Production gets
     # both the same way, on deploy.
     with Session(test_engine) as seed:
+        taxonomy.seed(seed)
         import_exercises(seed, read_file(DEFAULT_FILE))
         exercise_aliases.seed(seed)
         training_categories.seed(seed)

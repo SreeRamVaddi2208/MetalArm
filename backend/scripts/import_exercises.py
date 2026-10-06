@@ -32,11 +32,13 @@ import json
 import pathlib
 import sys
 
-from pydantic import BaseModel, Field, ValidationError
+from typing import Literal
+
+from pydantic import BaseModel, Field, ValidationError, model_validator
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.core import exercise_aliases
+from app.core import exercise_aliases, taxonomy
 from app.core.exercise_names import clean_name, name_key, slugify
 from app.db.session import engine
 from app.models.workout import Exercise
@@ -52,6 +54,16 @@ _FIELDS = (
     "primary_muscle_groups",
     "equipment",
     "tags",
+    "secondary_muscle_groups",
+    "mechanic",
+    "steps",
+    "tips",
+    "thumbnail_url",
+    "illustration_url",
+    "animation_url",
+    "media_license",
+    "media_author",
+    "media_source_url",
     "instructions",
     "media_url",
 )
@@ -64,8 +76,26 @@ class LibraryExercise(BaseModel):
     primary_muscle_groups: list[MuscleGroup] = Field(min_length=1, max_length=6)
     equipment: Equipment
     tags: list[ExerciseTag] = Field(default_factory=list, max_length=len(ExerciseTag))
+    secondary_muscle_groups: list[MuscleGroup] = Field(default_factory=list, max_length=8)
+    mechanic: Literal["compound", "isolation"] | None = None
     instructions: str | None = None
+    steps: list[str] = Field(default_factory=list, max_length=20)
+    tips: list[str] = Field(default_factory=list, max_length=10)
     media_url: str | None = Field(default=None, max_length=500)
+    thumbnail_url: str | None = Field(default=None, max_length=500)
+    illustration_url: str | None = Field(default=None, max_length=500)
+    animation_url: str | None = Field(default=None, max_length=500)
+    media_license: str | None = Field(default=None, max_length=40)
+    media_author: str | None = Field(default=None, max_length=200)
+    media_source_url: str | None = Field(default=None, max_length=500)
+
+    @model_validator(mode="after")
+    def _attributed(self) -> "LibraryExercise":
+        """Library artwork is mostly CC-BY-SA: no picture without its credit."""
+        has_media = self.thumbnail_url or self.illustration_url or self.animation_url
+        if has_media and not (self.media_license and self.media_author):
+            raise ValueError("artwork needs media_license and media_author")
+        return self
 
     def columns(self) -> dict[str, object]:
         return {
@@ -76,6 +106,19 @@ class LibraryExercise(BaseModel):
             "primary_muscle_groups": [m.value for m in self.primary_muscle_groups],
             "equipment": self.equipment.value,
             "tags": list(dict.fromkeys(t.value for t in self.tags)),
+            "secondary_muscle_groups": list(dict.fromkeys(
+                m.value for m in self.secondary_muscle_groups
+                if m not in self.primary_muscle_groups
+            )),
+            "mechanic": self.mechanic,
+            "steps": self.steps,
+            "tips": self.tips,
+            "thumbnail_url": self.thumbnail_url or None,
+            "illustration_url": self.illustration_url or None,
+            "animation_url": self.animation_url or None,
+            "media_license": self.media_license or None,
+            "media_author": self.media_author or None,
+            "media_source_url": self.media_source_url or None,
             "instructions": self.instructions or None,
             "media_url": self.media_url or None,
         }
@@ -176,6 +219,8 @@ def main() -> int:
         return 1
 
     with Session(engine) as db:
+        # The taxonomy first: it is what the exercises' codes refer to.
+        taxonomy.seed(db)
         try:
             report = import_exercises(db, records)
         except ValueError as exc:

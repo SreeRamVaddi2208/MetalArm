@@ -344,3 +344,11 @@ async def decline_duel(token: str, duel_id: str) -> dict:
 async def activity_feed(token: str, *, party_id: str = "", limit: int = 30) -> dict:
     params = f"?limit={limit}" + (f"&party_id={party_id}" if party_id else "")
     return await request("GET", f"/feed{params}", token=token)
+
+
+# --- Overhaul: taxonomy ----------------------------------------------------
+
+
+async def taxonomy(token: str) -> dict:
+    """Muscle groups and equipment, with display names and body-map path ids."""
+    return await request("GET", "/taxonomy", token=token)

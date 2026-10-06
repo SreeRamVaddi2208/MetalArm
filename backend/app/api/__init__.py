@@ -16,6 +16,7 @@ from app.api.routes import (
     quests,
     rewards,
     routines,
+    taxonomy,
     training_paths,
     workouts,
 )
@@ -42,3 +43,4 @@ api_router.include_router(leagues.router)
 api_router.include_router(duels.router)
 api_router.include_router(devices.router)
 api_router.include_router(training_paths.router)
+api_router.include_router(taxonomy.router)

@@ -64,6 +64,22 @@ class User(UUIDPrimaryKey, Timestamps, Base):
     token_version: Mapped[int] = mapped_column(
         Integer, nullable=False, server_default="0"
     )
+    # Public handle, unique ignoring case. NULL until chosen: the social
+    # features (follows, profiles) need one, logging never does.
+    username: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    username_normalized: Mapped[str | None] = mapped_column(
+        String(30), nullable=True, unique=True
+    )
+    avatar_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    bio: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    # What a new exercise card's rest timer starts at.
+    default_rest_seconds: Mapped[int] = mapped_column(
+        Integer, nullable=False, server_default="90"
+    )
+    # Who sees a finished workout unless the user says otherwise.
+    default_visibility: Mapped[str] = mapped_column(
+        String(10), nullable=False, server_default="followers"
+    )
     # Streak freezes (app/core/streak_freezes.py). The last ISO week whose
     # freezes have been settled; NULL until the first settle, which starts the
     # clock at that week so old history earns and spends nothing.
@@ -84,6 +100,19 @@ class User(UUIDPrimaryKey, Timestamps, Base):
         CheckConstraint(
             "character_class IN ('', 'powerlifter', 'bodybuilder', 'athlete')",
             name="ck_users_character_class",
+        ),
+        CheckConstraint(
+            "default_visibility IN ('public', 'followers', 'private')",
+            name="ck_users_default_visibility",
+        ),
+        CheckConstraint(
+            "default_rest_seconds >= 0 AND default_rest_seconds <= 900",
+            name="ck_users_default_rest",
+        ),
+        # Lowercase letters, digits, underscore and dot; 3-30 long.
+        CheckConstraint(
+            "username_normalized IS NULL OR username_normalized ~ '^[a-z0-9_.]{3,30}$'",
+            name="ck_users_username",
         ),
     )
 

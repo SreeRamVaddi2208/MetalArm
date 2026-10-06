@@ -78,8 +78,21 @@ class ExerciseOut(BaseModel):
     primary_muscle_groups: list[str]
     equipment: str
     tags: list[str] = []
+    secondary_muscle_groups: list[str] = []
+    # 'compound' | 'isolation' | null
+    mechanic: str | None = None
     instructions: str | None
+    # Numbered steps and tips for the detail screen.
+    steps: list[str] = []
+    tips: list[str] = []
     media_url: str | None
+    thumbnail_url: str | None = None
+    illustration_url: str | None = None
+    animation_url: str | None = None
+    # Attribution for the artwork above; shown wherever it is.
+    media_license: str | None = None
+    media_author: str | None = None
+    media_source_url: str | None = None
     is_custom: bool
     is_archived: bool
 

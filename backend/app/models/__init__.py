@@ -23,6 +23,7 @@ from app.models.quest_board import (
     QuestTemplate,
     StreakFreezeEvent,
 )
+from app.models.taxonomy import EquipmentInfo, MuscleGroupInfo
 from app.models.training_category import TrainingCategoryProfile
 from app.models.raid import RaidBoss, RaidHit
 from app.models.reward import RewardItem, RewardRedemption
@@ -52,6 +53,8 @@ __all__ = [
     "LevelProgress",
     "Quest",
     "TrainingCategoryProfile",
+    "MuscleGroupInfo",
+    "EquipmentInfo",
     "QuestCompletion",
     "QuestAssignment",
     "QuestReroll",

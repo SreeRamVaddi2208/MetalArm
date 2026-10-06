@@ -10,7 +10,7 @@
 
 - **API title:** MetalArm API
 - **API version:** 0.1.0
-- **Generated:** 2026-10-05 12:45 UTC
+- **Generated:** 2026-10-06 15:41 UTC
 - **Source:** `http://localhost:8000/openapi.json`
 
 ---
@@ -122,8 +122,9 @@ The signed-in user plus progression - what the Stat Panel renders.
 
 **Update Me**
 
-Update account preferences: the workout weight unit and the cosmetic
-character class.
+Update the profile and preferences: name, username, avatar, bio, the
+weight unit, default rest and workout visibility, and the training path.
+409 when the username is taken.
 
 Stored on the account rather than in the browser, so the choice follows
 the user across devices.
@@ -1549,6 +1550,20 @@ those weeks in `freezes_used_unseen`.
 
 ---
 
+### `GET /api/v1/taxonomy`
+
+**Read Taxonomy**
+
+Every muscle group and piece of equipment, in display order.
+
+*Tags:* `taxonomy`
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+
+---
+
 ### `GET /api/v1/training-categories`
 
 **List Training Categories**
@@ -2115,6 +2130,15 @@ otherwise 503 with per-dependency detail.
 |---|---|---|
 | _(no properties)_ | | |
 
+#### `EquipmentOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `code` | `string` | yes |
+| `display_name` | `string` | yes |
+| `icon_asset` | `string` | yes |
+| `browsable` | `boolean` | yes |
+
 #### `ExerciseCategory`
 
 | Field | Type | Required |
@@ -2173,8 +2197,18 @@ otherwise 503 with per-dependency detail.
 | `primary_muscle_groups` | `string[]` | yes |
 | `equipment` | `string` | yes |
 | `tags` | `string[]` | no |
+| `secondary_muscle_groups` | `string[]` | no |
+| `mechanic` | `string | null` | no |
 | `instructions` | `string | null` | yes |
+| `steps` | `string[]` | no |
+| `tips` | `string[]` | no |
 | `media_url` | `string | null` | yes |
+| `thumbnail_url` | `string | null` | no |
+| `illustration_url` | `string | null` | no |
+| `animation_url` | `string | null` | no |
+| `media_license` | `string | null` | no |
+| `media_author` | `string | null` | no |
+| `media_source_url` | `string | null` | no |
 | `is_custom` | `boolean` | yes |
 | `is_archived` | `boolean` | yes |
 
@@ -2343,6 +2377,11 @@ otherwise 503 with per-dependency detail.
 | `weight_unit` | `string` | no |
 | `character_class` | `string` | no |
 | `character_class_set_at` | `string | null` | no |
+| `username` | `string | null` | no |
+| `avatar_url` | `string | null` | no |
+| `bio` | `string | null` | no |
+| `default_rest_seconds` | `integer` | no |
+| `default_visibility` | `string` | no |
 | `progress` | `ProgressOut` | yes |
 
 #### `MeUpdate`
@@ -2351,6 +2390,12 @@ otherwise 503 with per-dependency detail.
 |---|---|---|
 | `weight_unit` | `WeightUnit | null` | no |
 | `character_class` | `CharacterClass | string | null` | no |
+| `display_name` | `string | null` | no |
+| `username` | `string | null` | no |
+| `avatar_url` | `string | null` | no |
+| `bio` | `string | null` | no |
+| `default_rest_seconds` | `integer | null` | no |
+| `default_visibility` | `string | null` | no |
 
 #### `MeasurementMetric`
 
@@ -2381,6 +2426,18 @@ otherwise 503 with per-dependency detail.
 | Field | Type | Required |
 |---|---|---|
 | _(no properties)_ | | |
+
+#### `MuscleGroupOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `code` | `string` | yes |
+| `display_name` | `string` | yes |
+| `body_side` | `string` | yes |
+| `svg_path_ids` | `string[]` | yes |
+| `size_class` | `string` | yes |
+| `tile_asset` | `string` | yes |
+| `browsable` | `boolean` | yes |
 
 #### `ParseFeedback`
 
@@ -3035,6 +3092,13 @@ otherwise 503 with per-dependency detail.
 | `weeks_to_next_freeze` | `integer` | yes |
 | `freezes_used_unseen` | `string[]` | yes |
 
+#### `TaxonomyOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `muscle_groups` | `MuscleGroupOut[]` | yes |
+| `equipment` | `EquipmentOut[]` | yes |
+
 #### `TokenResponse`
 
 | Field | Type | Required |
@@ -3084,6 +3148,11 @@ otherwise 503 with per-dependency detail.
 | `weight_unit` | `string` | no |
 | `character_class` | `string` | no |
 | `character_class_set_at` | `string | null` | no |
+| `username` | `string | null` | no |
+| `avatar_url` | `string | null` | no |
+| `bio` | `string | null` | no |
+| `default_rest_seconds` | `integer` | no |
+| `default_visibility` | `string` | no |
 
 #### `ValidationError`
 

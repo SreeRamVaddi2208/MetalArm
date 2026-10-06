@@ -226,7 +226,7 @@ class AuthState(rx.State):
             self.loading = False
 
         if ok:
-            yield rx.redirect("/dashboard")
+            yield rx.redirect("/home")
 
     async def do_signup(self):
         # Async generator - see the note in do_login about yield vs return.
@@ -256,7 +256,7 @@ class AuthState(rx.State):
             self.loading = False
 
         if ok:
-            yield rx.redirect("/dashboard")
+            yield rx.redirect("/home")
 
     async def do_logout(self):
         # End this browser's session on the server too, with the refresh token

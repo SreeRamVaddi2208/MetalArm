@@ -79,8 +79,31 @@ class Exercise(UUIDPrimaryKey, Timestamps, Base):
     tags: Mapped[list[str]] = mapped_column(
         ARRAY(String(24)), nullable=False, server_default=text("'{}'")
     )
+    secondary_muscle_groups: Mapped[list[str]] = mapped_column(
+        ARRAY(String(32)), nullable=False, server_default=text("'{}'")
+    )
+    # compound / isolation; NULL where it is not a meaningful split (cardio).
+    mechanic: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    # A one-paragraph description - kept, because every existing client reads
+    # it - and the same thing as numbered steps for the detail screen.
     instructions: Mapped[str | None] = mapped_column(Text, nullable=True)
+    steps: Mapped[list[str]] = mapped_column(
+        ARRAY(Text), nullable=False, server_default=text("'{}'")
+    )
+    tips: Mapped[list[str]] = mapped_column(
+        ARRAY(Text), nullable=False, server_default=text("'{}'")
+    )
+    # A user's own demo link (custom exercises), as before.
     media_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    # Library artwork. Every piece carries its licence and author, because
+    # most of it is CC-BY-SA (wger) and attribution is a condition of use -
+    # shown on /about/credits.
+    thumbnail_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    illustration_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    animation_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    media_license: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    media_author: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    media_source_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     is_custom: Mapped[bool] = mapped_column(
         Boolean, nullable=False, server_default="false"
     )
@@ -105,6 +128,20 @@ class Exercise(UUIDPrimaryKey, Timestamps, Base):
         ),
         CheckConstraint(
             f"tags <@ ARRAY[{_TAGS_ARRAY}]::varchar[]", name="ck_exercises_tags"
+        ),
+        CheckConstraint(
+            f"secondary_muscle_groups <@ ARRAY[{_MUSCLES_ARRAY}]::varchar[]",
+            name="ck_exercises_secondary_muscles",
+        ),
+        CheckConstraint(
+            "mechanic IS NULL OR mechanic IN ('compound', 'isolation')",
+            name="ck_exercises_mechanic",
+        ),
+        # No artwork without its licence and author.
+        CheckConstraint(
+            "(thumbnail_url IS NULL AND illustration_url IS NULL AND animation_url IS NULL)"
+            " OR (media_license IS NOT NULL AND media_author IS NOT NULL)",
+            name="ck_exercises_media_attribution",
         ),
         # Exactly one owner model: library rows belong to nobody, custom rows
         # to exactly one user.

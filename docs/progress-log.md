@@ -14,6 +14,47 @@ Entry format:
 
 ---
 
+## 2026-10-06 (42) - Opus - overhaul phase 0: design system, five-tab shell, taxonomy
+
+The "Lyfta-competitive overhaul" spec, phase 0, built on what exists (real
+auth, Postgres, multi-exercise sessions were already here - the spec assumed
+otherwise).
+
+**Changed**
+- **Design system** (`frontend/metalarm/theme.py`): the spec's tokens - pure
+  black, three surfaces, one blue accent for interaction, meaning-only colours
+  (streak, recovery, muscle, PR gold, tier colours), the type scale, 4-pt
+  spacing, radii, blur. Inter + system stack; Space Grotesk kept only for game
+  numerals. The legacy token names are re-pointed at the new palette so the
+  pre-overhaul screens already sit on it.
+- **Component library** (`frontend/metalarm/ui/`): TopBar, BottomTabBar,
+  StartWorkoutPill, SubTabs, FilterChip, SegmentedControl, StatTile, DeltaPill,
+  SectionHeader, HeroCard, MuscleTile, EquipmentCircle, RoutineTile, ListRow,
+  WeekStrip, MonthCalendar, RingMetric, AreaChart, MetricChips, BodyMap (an
+  original geometric figure, path ids = taxonomy svg_path_ids), FeedCard,
+  GameStrip, SetRow, EmptyState, skeletons, AvatarFrame (hexagon, tier colour).
+  Hidden `/gallery` shows all of it at 375 and 430 px.
+- **Five-tab shell**: Home, Explore, Workout, Library, You with a floating
+  translucent tab bar and the Start pill; `/dashboard` -> `/home`. Existing
+  pages are re-homed under their future tab, not rebuilt yet.
+- **Backend**: profile fields (username, avatar, bio, default rest, default
+  visibility); `muscle_groups` / `equipment` taxonomy + `GET /taxonomy`;
+  exercise fields (secondary muscles, mechanic, steps, tips, artwork with a
+  required licence + author). Migration `283a16dfbc66`.
+- **wger** (`scripts/import_wger.py`): pinned snapshot of wger's open exercise
+  data; 56/91 library exercises matched, 30 now carry wger artwork (CC-BY-SA
+  3.0/4.0, resized), each credited; `/about/credits` lists them all.
+
+**Verified**
+- Backend: full suite passes; `alembic check` clean; upgrade/downgrade round trip.
+- Frontend: tests + token lint pass; `scripts/e2e/screens.mjs` sweep of
+  /gallery and every tab at 375x812 and 430x932 - no horizontal overflow.
+
+**Other agent needs to know**
+- `frontend/tests/test_tokens.py`: no hex, rgba, literal font_size or radius
+  outside theme.py in ui/ and overhaul pages. Pre-overhaul files are on a
+  LEGACY allowlist that should only shrink.
+
 ## 2026-10-05 (41) - Opus - quests & freezes, voice logging, fair duels
 
 **Changed**

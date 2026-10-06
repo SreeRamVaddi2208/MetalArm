@@ -91,6 +91,11 @@ def _serialize_me(user: User) -> MeOut:
         weight_unit=user.weight_unit,
         character_class=user.character_class,
         character_class_set_at=user.character_class_set_at,
+        username=user.username,
+        avatar_url=user.avatar_url,
+        bio=user.bio,
+        default_rest_seconds=user.default_rest_seconds,
+        default_visibility=user.default_visibility,
         progress=ProgressOut(
             total_xp=progress.total_xp,
             current_level=progress.current_level,
@@ -324,8 +329,9 @@ def read_me(current_user: CurrentUser) -> MeOut:
 
 @router.patch("/me", response_model=MeOut)
 def update_me(payload: MeUpdate, current_user: CurrentUser, db: DbSession) -> MeOut:
-    """Update account preferences: the workout weight unit and the cosmetic
-    character class.
+    """Update the profile and preferences: name, username, avatar, bio, the
+    weight unit, default rest and workout visibility, and the training path.
+    409 when the username is taken.
 
     Stored on the account rather than in the browser, so the choice follows
     the user across devices.
@@ -340,6 +346,25 @@ def update_me(payload: MeUpdate, current_user: CurrentUser, db: DbSession) -> Me
         current_user.character_class = getattr(
             payload.character_class, "value", payload.character_class
         )
+    changes = payload.model_dump(exclude_unset=True)
+    # Clearable: sending null removes the avatar or the bio.
+    for field in ("avatar_url", "bio"):
+        if field in changes:
+            setattr(current_user, field, changes[field])
+    # Not clearable: null means "unchanged", like an omitted field.
+    for field in ("display_name", "default_rest_seconds", "default_visibility"):
+        if changes.get(field) is not None:
+            setattr(current_user, field, changes[field])
+    if "username" in changes:
+        current_user.username = payload.username
+        current_user.username_normalized = payload.username.lower() if payload.username else None
+    try:
+        db.flush()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail="That username is taken"
+        ) from None
     db.commit()
     db.refresh(current_user)
     return _serialize_me(current_user)
