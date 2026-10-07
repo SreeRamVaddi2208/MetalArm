@@ -1,9 +1,8 @@
-"""The workout summary (overhaul 7.6): what the workout was, what it earned,
-what it broke, and what it worked - then Save as routine, Share, Done.
+"""The workout summary: what the workout was, what it earned, what it broke.
 
 Every number comes from the finish response; the body map's intensities are
 the server's `muscles_worked`. A rank-up plays after this screen, as the
-level-up overlay already does.
+level-up overlay already does. One primary: Done.
 """
 
 import reflex as rx
@@ -11,126 +10,91 @@ import reflex as rx
 from metalarm import theme as t
 from metalarm.state.workout import WorkoutState
 from metalarm.ui.body_map import body_map
-from metalarm.ui.primitives import card, primary_button, secondary_button, section_header, segmented_control, text
+from metalarm.ui.chrome import top_bar
+from metalarm.ui.primitives import (
+    button,
+    icon_button,
+    list_row,
+    number,
+    pill,
+    rows,
+    section,
+    segmented,
+    stat_group,
+    stat_tile,
+    text,
+)
 from metalarm.workout_models import AwardLine, PrView, QuestLine
 
 
-def _stat(label: str, value, color: str = t.TEXT_PRIMARY) -> rx.Component:
-    return rx.vstack(
-        text(label, t.CAPTION, t.TEXT_SECONDARY),
-        text(value, t.TITLE_2, color, **t.TABULAR),
-        spacing="1",
-        align="start",
-        min_width="0",
-    )
-
-
-def _row(left: rx.Component, right: rx.Component) -> rx.Component:
-    return rx.hstack(left, rx.spacer(), right, width="100%", align="center", spacing="2",
-                     min_height=t.TOUCH_MIN, border_bottom=t.HAIRLINE)
-
-
 def _award(line: AwardLine) -> rx.Component:
-    return _row(text(line.label, t.SUBHEAD, t.TEXT_SECONDARY),
-                text(line.points_label, t.HEADLINE, rx.cond(line.negative, t.DANGER_RED, t.TEXT_PRIMARY),
-                     **t.NUMERAL_GAME))
+    return list_row(line.label, trailing=text(line.points_label, t.BODY, rx.cond(line.negative, t.DANGER, t.TEXT),
+                                              **t.TABULAR))
 
 
 def _record(view: PrView) -> rx.Component:
-    return _row(
-        rx.hstack(
-            rx.icon("medal", size=18, color=t.PR_GOLD),
-            rx.vstack(text(view.exercise_name, t.SUBHEAD), text(view.record_label, t.FOOTNOTE, t.TEXT_SECONDARY),
-                      spacing="0", align="start", min_width="0"),
-            spacing="2", align="center", min_width="0",
+    return rx.box(
+        list_row(
+            view.exercise_name, view.record_label,
+            leading=pill("PR"),
+            trailing=rx.vstack(text(view.headline, t.BODY, **t.TABULAR),
+                               rx.cond(view.delta != "", text(view.delta, t.CAPTION, t.TEXT_2)),
+                               spacing="0", align="end"),
         ),
-        rx.vstack(text(view.headline, t.HEADLINE, **t.TABULAR),
-                  rx.cond(view.delta != "", text(view.delta, t.FOOTNOTE, t.PR_GOLD)),
-                  spacing="0", align="end"),
+        background=t.ACCENT_SOFT, border_radius=t.RADIUS, padding_x=t.space(12), width="100%",
+        class_name="ma-pr-row",
     )
 
 
 def _quest(line: QuestLine) -> rx.Component:
-    return _row(
-        text(line.title, t.SUBHEAD, rx.cond(line.done, t.TEXT_PRIMARY, t.TEXT_SECONDARY)),
-        rx.cond(line.done, text(line.reward_label, t.HEADLINE, t.STREAK_ORANGE, **t.NUMERAL_GAME),
-                text(line.progress_label, t.FOOTNOTE, t.TEXT_SECONDARY, **t.TABULAR)),
-    )
+    return list_row(line.title, title_color=rx.cond(line.done, t.TEXT, t.TEXT_2),
+                    trailing=rx.cond(line.done, text(line.reward_label, t.BODY, **t.TABULAR),
+                                     text(line.progress_label, t.CAPTION, t.TEXT_2, **t.TABULAR)))
 
 
 def summary_view() -> rx.Component:
     s = WorkoutState.summary
     return rx.vstack(
-        rx.vstack(
-            text("Workout complete", t.CAPTION, t.TEXT_SECONDARY),
-            text(s.title, t.TITLE_1),
-            rx.hstack(
-                text(f"+{s.points_credited}", t.DISPLAY_NUMBER, **t.NUMERAL_GAME),
-                text("points", t.SUBHEAD, t.TEXT_SECONDARY),
-                align="baseline", spacing="2",
-            ),
-            rx.grid(
-                _stat("Duration", s.duration_label),
-                _stat("Volume", s.volume_label),
-                _stat("Sets", s.sets_label),
-                _stat("Records", s.pr_count.to_string(), rx.cond(s.pr_count > 0, t.PR_GOLD, t.TEXT_PRIMARY)),
-                columns="2",
-                gap=t.space(4),
-                width="100%",
-                padding_top=t.space(2),
-            ),
-            spacing="2",
-            width="100%",
-            align="start",
-            background=t.SUMMARY_GRADIENT,
-            border_radius=t.RADIUS_CARD,
-            padding=t.space(5),
+        top_bar("Workout complete", large=True,
+                trailing=icon_button("share", "Share", on_click=WorkoutState.share_card)),
+        text(s.title, t.BODY, t.TEXT_2, margin_top=f"-{t.space(16)}"),
+        stat_group(stat_tile(s.duration_label, "Duration"), stat_tile(s.volume_label, "Volume"),
+                   stat_tile(s.sets_label, "Sets")),
+        rx.cond(s.prs.length() > 0, section("Records", rx.vstack(rx.foreach(s.prs, _record), spacing="2",
+                                                                 width="100%"))),
+        section(
+            "Points",
+            rows(rx.foreach(s.lines, _award)),
+            rx.hstack(text("Total", t.BODY, t.TEXT_2), rx.spacer(),
+                      number(f"+{s.points_credited}", style=t.DISPLAY, color=t.ACCENT),
+                      width="100%", align="baseline", class_name="ma-points-total"),
+            rx.cond(s.qualified_note != "", text(s.qualified_note, t.CAPTION, t.TEXT_2)),
         ),
-        rx.cond(s.qualified_note != "", text(s.qualified_note, t.FOOTNOTE, t.STREAK_ORANGE)),
+        rows(list_row(s.streak.label, s.streak.sub,
+                      leading=rx.icon("flame", size=20, stroke_width=1.75,
+                                      color=rx.cond(s.streak.weeks > 0, t.TEXT, t.TEXT_3)))),
+        rx.cond(s.quests.length() > 0, section("Quests", rows(rx.foreach(s.quests, _quest)))),
         rx.cond(
             WorkoutState.summary_muscle_names.length() > 0,
-            card(
-                section_header("Muscles worked"),
-                body_map(WorkoutState.summary_muscles, size="200px"),
-                text(WorkoutState.summary_muscle_names.join(" · "), t.FOOTNOTE, t.TEXT_SECONDARY,
-                     text_align="center", width="100%"),
-            ),
+            section("Muscles worked",
+                    rx.center(body_map(WorkoutState.summary_muscles, size="180px"), width="100%"),
+                    text(WorkoutState.summary_muscle_names.join(" · "), t.CAPTION, t.TEXT_2,
+                         text_align="center", width="100%")),
         ),
-        rx.cond(s.prs.length() > 0, card(section_header("Records"), rx.foreach(s.prs, _record))),
-        card(section_header("Points"), rx.foreach(s.lines, _award)),
-        rx.cond(s.quests.length() > 0, card(section_header("Quests"), rx.foreach(s.quests, _quest))),
-        card(
-            rx.hstack(
-                rx.icon("flame", size=22, color=rx.cond(s.streak.weeks > 0, t.STREAK_ORANGE, t.TEXT_TERTIARY)),
-                rx.vstack(text(s.streak.label, t.HEADLINE), text(s.streak.sub, t.FOOTNOTE, t.TEXT_SECONDARY),
-                          spacing="0", align="start"),
-                spacing="3", align="center",
-            ),
+        section(
+            "Who can see this",
+            segmented(["Public", "Followers", "Only me"],
+                      rx.match(WorkoutState.summary_visibility, ("public", "Public"), ("private", "Only me"),
+                               "Followers"),
+                      WorkoutState.set_summary_visibility),
         ),
-        rx.vstack(
-            text("Who can see this", t.FOOTNOTE, t.TEXT_SECONDARY),
-            segmented_control(["Public", "Followers", "Only me"],
-                              rx.match(WorkoutState.summary_visibility, ("public", "Public"),
-                                       ("private", "Only me"), "Followers"),
-                              WorkoutState.set_summary_visibility),
-            spacing="1", width="100%",
-        ),
-        rx.vstack(
-            secondary_button(
-                rx.cond(WorkoutState.summary_saved != "", "Saved to your Library", "Save as routine"),
-                WorkoutState.save_as_routine,
-                icon="bookmark-plus",
-                disabled=WorkoutState.summary_saved != "",
-                width="100%",
-            ),
-            rx.hstack(
-                secondary_button("Share", WorkoutState.share_card, icon="share", flex="1"),
-                primary_button("Done", WorkoutState.close_summary, flex="1"),
-                width="100%", spacing="2",
-            ),
-            width="100%",
-            spacing="2",
-        ),
-        spacing="3",
-        width="100%",
+        button(rx.cond(WorkoutState.summary_saved != "", "Saved to your routines", "Save as routine"),
+               WorkoutState.save_as_routine, variant="secondary", icon="bookmark-plus",
+               disabled=WorkoutState.summary_saved != "", full=True),
+        spacing="6", width="100%", class_name="ma-summary",
     )
+
+
+def summary_done() -> rx.Component:
+    """The summary's one primary, pinned above the tab bar."""
+    return button("Done", WorkoutState.close_summary, full=True)

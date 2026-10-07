@@ -1,358 +1,199 @@
-"""Profile - the Stat Panel as a character sheet, with badges."""
+"""/profile: who you are in the game, then settings as grouped rows -
+People, Game, Training, App, Account. Detail sits behind sheets."""
 
 import reflex as rx
 
-from metalarm import theme
-from metalarm.components.layout import error_banner, section_heading, shell
-from metalarm.components.scroll_reveal import pinned, reveal, reveal_assets
-from metalarm.components.stat_panel import stat_panel
-from metalarm.models import Badge, StatRow, TrainingPathRow, TrialRow
+from metalarm import theme as t
+from metalarm.components.layout import error_banner, shell
+from metalarm.models import Badge, StatRow, TrialRow
+from metalarm.ranks import rank_title_var
+from metalarm.state.auth import AuthState
 from metalarm.state.profile import ProfileState
+from metalarm.state.quests import QuestState
+from metalarm.state.settings import SettingsState
+from metalarm.ui.chrome import avatar, top_bar
+from metalarm.ui.path_card import path_card
+from metalarm.ui.primitives import (
+    icon_button,
+    list_row,
+    progress_bar,
+    rows,
+    section,
+    segmented,
+    sheet,
+    stat_group,
+    stat_tile,
+    text,
+)
+from metalarm.ui.rank_badge import rank_badge
 
 
-def badge_tile(badge: Badge) -> rx.Component:
-    earned = badge.earned
-    return rx.box(
-        rx.vstack(
-            rx.text(
-                badge.icon,
-                font_size="1.6rem",
-                line_height="1",
-                # Unearned badges are desaturated rather than hidden, so the
-                # panel shows what there is to aim at.
-                filter=rx.cond(earned, "none", "grayscale(1)"),
-                opacity=rx.cond(earned, "1", "0.45"),
-            ),
-            rx.text(
-                badge.name,
-                color=rx.cond(earned, theme.TEXT, theme.FAINT),
-                font_weight="700",
-                font_size="0.8rem",
-                text_align="center",
-            ),
-            rx.text(
-                badge.description,
-                color=theme.FAINT,
-                font_size="0.68rem",
-                text_align="center",
-                line_height="1.4",
-            ),
-            rx.cond(
-                earned,
-                rx.text(
-                    "EARNED",
-                    color=theme.SUCCESS,
-                    font_size="0.6rem",
-                    letter_spacing="0.14em",
-                    font_weight="800",
-                ),
-                rx.vstack(
-                    rx.box(
-                        rx.box(
-                            width="100%",
-                            height="100%",
-                            # scaleX, not width - a compositor property, same
-                            # rule as the XP bar.
-                            transform=f"scaleX({badge.scale})",
-                            transform_origin="left center",
-                            background=theme.BORDER_HI,
-                            border_radius="999px",
-                        ),
-                        width="100%",
-                        height="4px",
-                        background=theme.FIELD,
-                        border_radius="999px",
-                        overflow="hidden",
-                    ),
-                    rx.text(
-                        badge.progress_label,
-                        color=theme.FAINT,
-                        font_size="0.62rem",
-                    ),
-                    spacing="1",
-                    width="100%",
-                    align="center",
-                ),
-            ),
-            spacing="2",
-            align="center",
-            width="100%",
-        ),
-        padding="1rem 0.75rem",
-        background=theme.PANEL,
-        border=f"1px solid {rx.cond(earned, theme.BORDER_HI, theme.BORDER)}",
-        border_radius="12px",
-        box_shadow=rx.cond(earned, theme.glow(theme.ACCENT, "34px"), "none"),
-        height="100%",
-    )
+class ProfileSheets(rx.State):
+    """Which detail sheet is open: "", "trials", "stats", "badges"."""
+
+    open: str = ""
+
+    def show(self, name: str) -> None:
+        self.open = name
+
+    def close(self) -> None:
+        self.open = ""
 
 
-def stat_line(label: str, value: rx.Var | str) -> rx.Component:
-    return rx.hstack(
-        rx.text(label, **theme.LABEL_STYLE),
-        rx.spacer(),
-        rx.text(value, color=theme.TEXT, font_weight="700", font_size="0.9rem"),
-        width="100%",
-    )
+def _icon(name: str) -> rx.Component:
+    return rx.icon(name, size=20, color=t.TEXT_2, stroke_width=1.75)
 
 
-def lifetime_panel() -> rx.Component:
-    s = ProfileState.stats
-    return rx.vstack(
-        rx.text("LIFETIME", **theme.LABEL_STYLE),
-        rx.divider(border_color=theme.BORDER),
-        stat_line("QUESTS COMPLETED", s.quests_completed.to_string()),
-        stat_line("PARTY QUESTS", s.party_quests_completed.to_string()),
-        stat_line("POINTS EARNED", s.points_earned.to_string()),
-        stat_line("POINTS SPENT", s.points_spent.to_string()),
-        stat_line("REWARDS REDEEMED", s.rewards_redeemed.to_string()),
-        stat_line("PARTIES", s.parties_joined.to_string()),
-        stat_line("PARTY XP", s.party_xp_contributed.to_string()),
-        rx.divider(border_color=theme.BORDER),
-        rx.text("TRAINING", **{**theme.LABEL_STYLE, "color": theme.ACCENT}),
-        stat_line("WORKOUTS", s.workouts_completed.to_string()),
-        stat_line("PR SETS", s.workout_prs.to_string()),
-        stat_line("VOLUME LIFTED", s.volume_label),
-        stat_line("BEST WEEK STREAK", s.streak_label),
-        rx.divider(border_color=theme.BORDER),
-        rx.text(
-            f"Hunter since {s.member_since}",
-            color=theme.FAINT,
-            font_size="0.72rem",
-        ),
-        spacing="3",
-        **theme.panel(),
-    )
-
-
-def stat_bar(stat: StatRow) -> rx.Component:
+def _header() -> rx.Component:
+    p = AuthState.progress
     return rx.vstack(
         rx.hstack(
-            rx.text(
-                stat.label,
-                color=rx.cond(stat.highlighted, theme.ACCENT, theme.TEXT),
-                font_weight="700",
-                font_size="0.85rem",
-            ),
+            avatar(AuthState.initials, size=96),
             rx.spacer(),
-            rx.text(stat.value.to_string(), color=theme.TEXT, font_weight="800", font_size="0.85rem"),
-            width="100%",
+            rank_badge(p.rank, 96),
+            width="100%", align="center",
         ),
-        rx.box(
-            rx.box(
-                width=f"{stat.value}%",
-                height="100%",
-                background=rx.cond(stat.highlighted, theme.ACCENT, theme.ACCENT_DIM),
-                border_radius="999px",
-            ),
-            width="100%",
-            height="6px",
-            background=theme.FIELD,
-            border_radius="999px",
-            overflow="hidden",
-        ),
-        rx.text(stat.detail, color=theme.FAINT, font_size="0.72rem"),
-        spacing="2",
-        width="100%",
+        rx.vstack(text(AuthState.display_name, t.TITLE_LG),
+                  text(f"{rank_title_var(p.rank)} · Level {p.current_level}", t.BODY, t.TEXT_2),
+                  spacing="0", align="start", width="100%"),
+        progress_bar(AuthState.xp_scale,
+                     label=rx.cond(p.xp_for_next_level > 0,
+                                   f"{p.xp_into_level} / {p.xp_for_next_level} XP to level {p.current_level + 1}",
+                                   "Top level")),
+        rx.cond(AuthState.rank_gate_message != "", text(AuthState.rank_gate_message, t.CAPTION, t.TEXT_2)),
+        stat_group(stat_tile(ProfileState.stats.workouts_completed, "Workouts"),
+                   stat_tile(ProfileState.stats.workout_prs, "Records"),
+                   stat_tile(ProfileState.stats.volume_value, "Lifted", ProfileState.stats.volume_unit)),
+        spacing="4", width="100%", padding_top=t.space(16),
     )
 
 
-def path_card(path: TrainingPathRow) -> rx.Component:
-    """One training path. The same three the iPhone asks about at onboarding;
-    picking one here changes what the app suggests."""
-    chosen = ProfileState.character_class == path.category
+def _switch(checked, on_change, label: str) -> rx.Component:
+    return rx.switch(checked=checked, on_change=on_change, aria_label=label, size="3",
+                     class_name="ma-switch")
+
+
+def _groups() -> rx.Component:
+    s = SettingsState
     return rx.vstack(
-        rx.text(
-            path.display_name,
-            color=rx.cond(chosen, theme.ACCENT, theme.TEXT),
-            font_weight="800",
-            font_size="0.86rem",
-        ),
-        rx.text(path.tagline, color=theme.MUTED, font_size="0.72rem"),
-        rx.text(path.summary, color=theme.FAINT, font_size="0.68rem", font_weight="700"),
-        on_click=ProfileState.choose_class(path.category),
-        cursor="pointer",
-        spacing="1",
-        align="start",
-        flex="1",
-        min_width="150px",
-        padding="0.7rem 0.8rem",
-        background=rx.cond(chosen, theme.SUCCESS_BG, theme.FIELD),
-        border=f"1px solid {rx.cond(chosen, theme.ACCENT, theme.BORDER)}",
-        border_radius="12px",
-        class_name="ma-path-card",
-        custom_attrs={"data-path": path.category},
+        section("People", rows(
+            list_row("Find friends", "Search, and people you may know", leading=_icon("user-plus"), chevron=True,
+                     href="/profile/people"),
+            list_row("Followers and following", f"{s.followers} followers · {s.following} following",
+                     leading=_icon("users"), chevron=True, href="/profile/people"),
+        )),
+        section("Game", rows(
+            list_row("Quests", "Today's and this week's", leading=_icon("scroll-text"), chevron=True, href="/quests"),
+            list_row("Duels", "One-on-one challenges", leading=_icon("swords"), chevron=True, href="/duels"),
+            list_row("Parties", "Train as a group", leading=_icon("users-round"), chevron=True, href="/parties"),
+            list_row("Rewards", f"{AuthState.progress.points_balance} points to spend", leading=_icon("gift"),
+                     chevron=True, href="/rewards"),
+            list_row("Rank trials", "The lifts between you and the next rank", leading=_icon("shield"),
+                     chevron=True, on_click=ProfileSheets.show("trials")),
+            list_row("Badges", ProfileState.badge_summary, leading=_icon("award"), chevron=True,
+                     on_click=ProfileSheets.show("badges")),
+        )),
+        section("Training", rows(
+            list_row("Training path", rx.cond(ProfileState.class_label != "", ProfileState.class_label, "Not set"),
+                     leading=_icon("route"), chevron=True, on_click=s.open_paths),
+            list_row("Character stats", "Strength, endurance and the rest", leading=_icon("bar-chart-3"),
+                     chevron=True, on_click=ProfileSheets.show("stats")),
+            list_row("Units", leading=_icon("weight"),
+                     trailing=rx.box(segmented(["kg", "lb"], AuthState.weight_unit, s.set_unit), width="120px")),
+            list_row("Default rest", leading=_icon("timer"),
+                     trailing=rx.hstack(icon_button("minus", "Shorter rest", on_click=s.bump_rest(-15)),
+                                        text(s.rest_label, t.BODY, **t.TABULAR),
+                                        icon_button("plus", "Longer rest", on_click=s.bump_rest(15)),
+                                        spacing="1", align="center")),
+        )),
+        rx.vstack(text("Who sees new workouts", t.CAPTION, t.TEXT_2),
+                  segmented(["Public", "Followers", "Only me"], s.visibility_label, s.set_visibility),
+                  spacing="2", width="100%"),
+        section("App", rows(
+            list_row("Sound", "The level-up fanfare", leading=_icon("volume-2"),
+                     trailing=_switch(~QuestState.sound_muted, lambda _v: QuestState.toggle_sound, "Sound")),
+            list_row("Haptics", "A tap when a set logs or a record falls", leading=_icon("vibrate"),
+                     trailing=_switch(s.haptics_on, lambda _v: s.toggle_haptics, "Haptics")),
+            list_row("Reduce motion", "Still screens, no animations", leading=_icon("pause"),
+                     trailing=_switch(s.reduce_on, lambda _v: s.toggle_reduce, "Reduce motion")),
+        )),
+        section("Account", rows(
+            rx.upload(
+                list_row(rx.cond(ProfileState.importing, "Importing…", "Import history"),
+                         rx.cond(ProfileState.import_message != "", ProfileState.import_message,
+                                 "A Strong or Hevy CSV"), leading=_icon("upload"), chevron=True),
+                id="history_csv", accept={"text/csv": [".csv"]}, max_files=1, multiple=False, no_drag=False,
+                on_drop=ProfileState.import_history(rx.upload_files(upload_id="history_csv")),
+                border="none", padding="0", width="100%",
+            ),
+            list_row("Credits", "Exercise images and their authors", leading=_icon("info"), chevron=True,
+                     href="/about/credits"),
+            list_row("Sign out", leading=rx.icon("log-out", size=20, color=t.DANGER, stroke_width=1.75),
+                     title_color=t.DANGER, on_click=AuthState.do_logout),
+        )),
+        spacing="6", width="100%",
     )
 
 
-def character_panel() -> rx.Component:
+def _trial(trial: TrialRow) -> rx.Component:
     return rx.vstack(
-        rx.hstack(
-            rx.text("CHARACTER", **theme.LABEL_STYLE),
-            rx.spacer(),
-            rx.cond(
-                ProfileState.class_label != "",
-                rx.text(ProfileState.class_label, color=theme.ACCENT, font_size="0.75rem", font_weight="700"),
-            ),
-            width="100%",
-            align="center",
-        ),
-        rx.divider(border_color=theme.BORDER),
-        rx.foreach(ProfileState.stats_sheet, stat_bar),
-        rx.text(
-            "Your training path highlights the stats you care about and decides "
-            "what MetalArm suggests. It never changes a score.",
-            color=theme.MUTED,
-            font_size="0.72rem",
-        ),
-        rx.flex(
-            rx.foreach(ProfileState.paths, path_card),
-            spacing="2",
-            wrap="wrap",
-            width="100%",
-        ),
-        spacing="3",
-        **theme.panel(),
+        rx.hstack(rank_badge(trial.rank, 24), text(trial.description, t.BODY, flex="1", min_width="0"),
+                  rx.cond(trial.passed, rx.icon("check", size=20, color=t.ACCENT)),
+                  width="100%", align="center", spacing="3"),
+        progress_bar(trial.pct / 100, label=trial.progress_label),
+        spacing="2", width="100%", padding_y=t.space(12), border_bottom=t.HAIRLINE,
     )
 
 
-def trial_row(trial: TrialRow) -> rx.Component:
+def _stat(stat: StatRow) -> rx.Component:
     return rx.vstack(
-        rx.hstack(
-            rx.center(
-                rx.text(trial.rank, font_weight="800", font_size="0.85rem"),
-                width="1.75rem",
-                height="1.75rem",
-                border_radius="8px",
-                border=f"1px solid {theme.BORDER}",
-                background=rx.cond(trial.passed, theme.ACCENT, theme.FIELD),
-                color=rx.cond(trial.passed, theme.ON_ACCENT, theme.TEXT),
-                flex_shrink="0",
-            ),
-            rx.text(trial.description, color=theme.TEXT, font_weight="600", font_size="0.85rem"),
-            rx.spacer(),
-            rx.cond(trial.passed, rx.icon("badge-check", size=18, color=theme.SUCCESS)),
-            width="100%",
-            align="center",
-        ),
-        rx.box(
-            rx.box(
-                width=f"{trial.pct}%",
-                height="100%",
-                background=theme.ACCENT,
-                border_radius="999px",
-            ),
-            width="100%",
-            height="6px",
-            background=theme.FIELD,
-            border_radius="999px",
-            overflow="hidden",
-        ),
-        rx.text(trial.progress_label, color=theme.FAINT, font_size="0.72rem"),
-        spacing="2",
-        width="100%",
+        rx.hstack(text(stat.label, t.BODY, rx.cond(stat.highlighted, t.TEXT, t.TEXT_2)), rx.spacer(),
+                  text(stat.value, t.BODY, **t.TABULAR), width="100%"),
+        progress_bar(stat.value / 100, label=stat.detail),
+        spacing="2", width="100%", padding_y=t.space(12),
     )
 
 
-def trials_panel() -> rx.Component:
-    return rx.vstack(
-        rx.text("RANK TRIALS", **theme.LABEL_STYLE),
-        rx.text(
-            "Ranks B, A and S also need a lift at a multiple of your bodyweight.",
-            color=theme.MUTED,
-            font_size="0.78rem",
-        ),
-        rx.divider(border_color=theme.BORDER),
-        rx.foreach(ProfileState.trials, trial_row),
-        spacing="3",
-        **theme.panel(),
-    )
+def _badge(badge: Badge) -> rx.Component:
+    return list_row(badge.name, rx.cond(badge.earned, badge.description, badge.progress_label),
+                    title_color=rx.cond(badge.earned, t.TEXT, t.TEXT_2),
+                    leading=rx.center(rx.text(badge.icon, opacity=rx.cond(badge.earned, "1", "0.4"),
+                                              filter=rx.cond(badge.earned, "none", "grayscale(1)"), **t.TITLE),
+                                      width="40px", height="40px", border_radius=t.RADIUS_PILL,
+                                      background=t.SURFACE_2),
+                    trailing=rx.cond(badge.earned, rx.icon("check", size=20, color=t.ACCENT)))
 
 
-def import_panel() -> rx.Component:
-    return rx.vstack(
-        rx.text("IMPORT HISTORY", **theme.LABEL_STYLE),
-        rx.text(
-            "Bring your history from Strong or Hevy: export a CSV in the app and drop it here. "
-            "Records and rank trials count it; points and streaks don't.",
-            color=theme.MUTED,
-            font_size="0.78rem",
-        ),
-        rx.upload(
-            rx.vstack(
-                rx.icon("upload", size=20, color=theme.MUTED),
-                rx.text(
-                    rx.cond(ProfileState.importing, "IMPORTING...", "CHOOSE OR DROP A CSV"),
-                    color=theme.TEXT,
-                    font_weight="700",
-                    font_size="0.78rem",
-                    letter_spacing="0.08em",
-                ),
-                align="center",
-                spacing="2",
-            ),
-            id="history_csv",
-            accept={"text/csv": [".csv"], "text/plain": [".txt"]},
-            max_files=1,
-            multiple=False,
-            on_drop=ProfileState.import_history(rx.upload_files(upload_id="history_csv")),
-            border=f"1px dashed {theme.BORDER}",
-            border_radius="12px",
-            padding="1.25rem",
-            width="100%",
-            cursor="pointer",
-            background=theme.FIELD,
-        ),
-        rx.cond(
-            ProfileState.import_message != "",
-            rx.text(ProfileState.import_message, color=theme.TEXT, font_size="0.8rem"),
-        ),
-        spacing="3",
-        **theme.panel(),
+def _sheets() -> rx.Component:
+    o = ProfileSheets.open
+    return rx.fragment(
+        sheet(o == "trials", ProfileSheets.close,
+              text("Pass a trial to unlock its rank, on top of the level and streak it asks for.", t.BODY, t.TEXT_2),
+              rx.vstack(rx.foreach(ProfileState.trials, _trial), spacing="0", width="100%"),
+              title="Rank trials"),
+        sheet(o == "stats", ProfileSheets.close,
+              text("Your training path highlights the stats it cares about. It never changes a score.", t.BODY,
+                   t.TEXT_2),
+              rx.vstack(rx.foreach(ProfileState.stats_sheet, _stat), spacing="0", width="100%"),
+              title="Character stats"),
+        sheet(o == "badges", ProfileSheets.close, rows(rx.foreach(ProfileState.badges, _badge)), title="Badges"),
+        sheet(SettingsState.show_paths, SettingsState.close_paths,
+              text("It shapes what MetalArm suggests - never your score. Tap yours again to clear it.", t.BODY,
+                   t.TEXT_2),
+              rx.vstack(rx.foreach(SettingsState.paths,
+                                   lambda p: path_card(p, selected=AuthState.character_class == p.category,
+                                                       on_click=SettingsState.choose_path(p.category))),
+                        spacing="3", width="100%", custom_attrs={"role": "radiogroup"}),
+              title="Training path"),
     )
 
 
 def profile_page() -> rx.Component:
     return shell(
-        reveal_assets(),
+        top_bar("Profile", large=True),
         error_banner(ProfileState.error),
-        rx.flex(
-            rx.box(
-                pinned(stat_panel()),
-                width="100%",
-                flex_shrink="0",
-            ),
-            rx.vstack(
-                reveal(lifetime_panel()),
-                rx.cond(ProfileState.stats_sheet.length() > 0, reveal(character_panel())),
-                rx.cond(ProfileState.trials.length() > 0, reveal(trials_panel())),
-                reveal(import_panel()),
-                rx.vstack(
-                    section_heading(
-                        "BADGES",
-                        rx.text(
-                            ProfileState.badge_summary,
-                            color=theme.FAINT,
-                            font_size="0.72rem",
-                        ),
-                    ),
-                    rx.grid(
-                        rx.foreach(ProfileState.badges, badge_tile),
-                        columns="2",
-                        gap="0.75rem",
-                        width="100%",
-                    ),
-                    spacing="3",
-                    width="100%",
-                ),
-                spacing="5",
-                width="100%",
-                flex="1",
-                min_width="0",
-            ),
-            direction="column",
-            gap="1.25rem",
-            width="100%",
-            align="start",
-        ),
+        error_banner(SettingsState.error),
+        _header(),
+        _groups(),
+        _sheets(),
     )

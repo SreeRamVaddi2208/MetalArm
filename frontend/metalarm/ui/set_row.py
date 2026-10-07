@@ -1,5 +1,10 @@
-"""The set row of the active workout: SET (number or a W / D / F badge),
-PREVIOUS (tap to copy), KG, REPS, optional RPE, and the check."""
+"""The workout's set rows.
+
+A logged set is one calm line: its number (or W / D / F), what was lifted,
+a PR pill if it was one, and an accent check. The set being entered is the
+entry panel: weight and reps as large steppers, last time's values as ghosts
+in text-3, and the screen's one accent action - Log set - under them.
+"""
 
 from __future__ import annotations
 
@@ -8,92 +13,51 @@ from typing import Any
 import reflex as rx
 
 from metalarm import theme as t
-from metalarm.ui.primitives import text, when
+from metalarm.ui.primitives import button, pill, stepper, text, when
 
-TYPE_BADGE = {"warmup": "W", "drop": "D", "failure": "F"}
+TYPE_LETTER = {"warmup": "W", "drop": "D", "failure": "F"}
 
 
-def _field(value: Any, on_change: Any, *, placeholder: str = "", width: str = "56px",
-           mode: str = "decimal") -> rx.Component:
-    return rx.el.input(
-        value=value,
-        on_change=on_change,
-        placeholder=placeholder,
-        input_mode=mode,
-        width=width,
-        height=t.TOUCH_MIN,
-        background=t.SURFACE_2,
-        color=t.TEXT_PRIMARY,
-        border="none",
-        border_radius=t.RADIUS_THUMB,
-        text_align="center",
-        **{**t.HEADLINE, **t.TABULAR},
+def _badge(number: Any, set_type: Any) -> Any:
+    return rx.match(set_type, ("warmup", "W"), ("drop", "D"), ("failure", "F"), number)
+
+
+def done_row(number: Any, set_type: Any, line: Any, *, pr: Any = False, on_click: Any = None,
+             flash: Any = False) -> rx.Component:
+    """A logged set. Tap it for its options (edit, type, RPE, delete)."""
+    return rx.hstack(
+        text(_badge(number, set_type), t.LABEL, t.TEXT_2, width="24px", text_align="center"),
+        text(line, t.BODY, t.TEXT_2, flex="1", min_width="0"),
+        rx.cond(pr, pill("PR")),
+        rx.icon("check", size=20, stroke_width=2, color=t.ACCENT),
+        width="100%", align="center", spacing="3", min_height=t.TOUCH, padding_x=t.space(8),
+        border_radius=t.RADIUS, cursor="pointer", on_click=on_click,
+        background=when(flash, t.ACCENT_SOFT, "transparent"),
+        transition=f"background {t.BASE} {t.EASE}",
+        class_name="ma-done-row ma-press",
+        custom_attrs={"role": "button", "aria-label": "Edit set"},
     )
 
 
-def _cell(value: Any, done: Any) -> rx.Component:
-    """A logged value: plain text where an input would be."""
-    return rx.center(text(value, t.HEADLINE, when(done, t.TEXT_PRIMARY, t.TEXT_SECONDARY), **t.TABULAR),
-                     height=t.TOUCH_MIN)
-
-
-def set_header(rpe: bool = False) -> rx.Component:
-    cols = ["SET", "PREV", "KG", "REPS"] + (["RPE"] if rpe else []) + [""]
-    return rx.grid(*[text(c, t.CAPTION, t.TEXT_SECONDARY, text_align="center") for c in cols],
-                   grid_template_columns=_columns(rpe), gap=t.space(1.5), width="100%",
-                   align_items="center")
-
-
-def _columns(rpe: bool) -> str:
-    """SET, PREVIOUS (takes the rest), KG, REPS, [RPE], check. Fixed widths
-    keep every input at least touch-sized while PREVIOUS stays readable at
-    375px."""
-    return " ".join(["32px", "minmax(0,1fr)", "56px", "56px"] + (["44px"] if rpe else []) + [t.TOUCH_MIN])
-
-
-def set_row(number: Any, *, set_type: Any = "normal", previous: Any = "-", weight: Any = "",
-            reps: Any = "", rpe: Any = None, done: Any = False, on_type: Any = None,
-            on_copy: Any = None, on_weight: Any = None, on_reps: Any = None, on_rpe: Any = None,
-            on_check: Any = None, pr: Any = False, points: Any = "") -> rx.Component:
-    badge = rx.match(set_type, ("warmup", "W"), ("drop", "D"), ("failure", "F"), number) \
-        if not isinstance(set_type, str) else TYPE_BADGE.get(set_type, number)
-    badge_color = rx.match(set_type, ("warmup", t.STREAK_ORANGE), ("drop", t.ACCENT_BLUE),
-                           ("failure", t.DANGER_RED), t.TEXT_PRIMARY) \
-        if not isinstance(set_type, str) else {"warmup": t.STREAK_ORANGE, "drop": t.ACCENT_BLUE,
-                                                "failure": t.DANGER_RED}.get(set_type, t.TEXT_PRIMARY)
-    with_rpe = rpe is not None
-    cells = [
-        rx.center(text(badge, t.HEADLINE, badge_color, **t.TABULAR), height=t.TOUCH_MIN,
-                  cursor="pointer", on_click=on_type,
-                  custom_attrs={"role": "button", "aria-label": "Set type"}),
-        rx.hstack(text(previous, t.SUBHEAD, t.TEXT_SECONDARY, overflow="hidden",
-                       text_overflow="ellipsis", white_space="nowrap", **t.TABULAR),
-                  rx.cond(pr, rx.icon("medal", size=15, color=t.PR_GOLD)) if not isinstance(pr, bool)
-                  else (rx.icon("medal", size=15, color=t.PR_GOLD) if pr else rx.fragment()),
-                  justify="center", align="center", spacing="1", min_width="0",
-                  cursor="pointer", on_click=on_copy),
-        _cell(weight, done) if on_weight is None else _field(weight, on_weight),
-        _cell(reps, done) if on_reps is None else _field(reps, on_reps, mode="numeric"),
-    ]
-    if with_rpe:
-        cells.append(_cell(rpe, done) if on_rpe is None else _field(rpe, on_rpe, width="44px", placeholder="-"))
-    cells.append(rx.center(
-        rx.icon("check", size=20, color=when(done, t.TEXT_PRIMARY, t.TEXT_SECONDARY), stroke_width=2.5),
-        width=t.TOUCH_MIN, height=t.TOUCH_MIN, border_radius=t.RADIUS_THUMB,
-        background=when(done, t.RECOVERY_GREEN, t.SURFACE_2), cursor="pointer", on_click=on_check,
-        custom_attrs={"role": "button", "aria-label": when(done, "Edit set", "Log set")},
-    ))
-    return rx.box(
-        rx.grid(*cells, grid_template_columns=_columns(with_rpe), gap=t.space(1.5), width="100%",
-                align_items="center"),
-        rx.cond(points != "", rx.el.span(points, class_name="ma-points-fade", color=t.RECOVERY_GREEN,
-                                         position="absolute", right=t.space(14), top=t.space(1),
-                                         **t.FOOTNOTE)) if not isinstance(points, str)
-        else (rx.el.span(points, class_name="ma-points-fade", color=t.RECOVERY_GREEN,
-                         position="absolute", right=t.space(14), top=t.space(1), **t.FOOTNOTE)
-              if points else rx.fragment()),
-        position="relative",
-        width="100%",
-        background=when(done, t.alpha(t.RECOVERY_GREEN, 0.08), "transparent"),
-        border_radius=t.RADIUS_THUMB,
+def entry_panel(number: Any, set_type: Any, *, weight: Any, reps: Any, unit: Any, ghost_weight: Any,
+                ghost_reps: Any, on_weight: Any, on_reps: Any, on_weight_minus: Any, on_weight_plus: Any,
+                on_reps_minus: Any, on_reps_plus: Any, on_log: Any, on_type: Any, busy: Any = False,
+                **attrs) -> rx.Component:
+    """The next set: two steppers and Log set."""
+    return rx.vstack(
+        rx.hstack(
+            rx.hstack(text(rx.cond(set_type == "normal", "Set", ""), t.LABEL, t.TEXT_2),
+                      text(_badge(number, set_type), t.LABEL, when(set_type == "normal", t.TEXT_2, t.ACCENT)),
+                      spacing="1", align="center", cursor="pointer", on_click=on_type, min_height=t.TOUCH, min_width=t.TOUCH,
+                      custom_attrs={"role": "button", "aria-label": "Set type"}),
+            rx.spacer(),
+            width="100%", align="center",
+        ),
+        stepper(weight, on_weight, on_weight_minus, on_weight_plus, unit=unit, placeholder=ghost_weight,
+                label="Weight"),
+        stepper(reps, on_reps, on_reps_minus, on_reps_plus, unit="reps", placeholder=ghost_reps,
+                label="Reps", mode="numeric"),
+        button("Log set", on_log, icon="check", full=True, disabled=busy,
+               custom_attrs={"aria-label": "Log set"}),
+        spacing="3", width="100%", class_name="ma-entry", **attrs,
     )

@@ -130,11 +130,11 @@ window.maShareCard = function (card) {
 
 _COLOURS = {
     "__BG__": theme.BG,
-    "__DIM__": theme.MUTED,
-    "__SILVER__": theme.RANK_COLORS["B"],
+    "__DIM__": theme.TEXT_2,
+    "__SILVER__": theme.ACCENT,
     "__TEXT__": theme.TEXT,
-    "__CARD__": theme.PANEL,
-    "__BORDER__": theme.BORDER_HI,
+    "__CARD__": theme.SURFACE,
+    "__BORDER__": theme.BORDER,
 }
 
 _SCRIPT = _DRAW

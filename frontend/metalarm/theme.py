@@ -1,196 +1,135 @@
 """MetalArm's design tokens - the ONLY place a colour, type size, radius,
-spacing step or blur is written down.
+spacing step or duration is written down. (The redesign spec calls this module
+`tokens.py`; it keeps the name every screen already imports.)
 
-The direction (overhaul, Section 5): pure black, dark grey surfaces, white
-bold titles, grey secondary text, ONE accent - blue - for interaction, and
-colour otherwise only where it means something (orange streak, green
-recovery, red-orange worked muscle, gold record, tier colours for rank).
-Inter and the system stack for everything; Space Grotesk survives only as the
-game's numerals (rank, points), MetalArm's signature.
+The system (docs/DESIGN_SYSTEM.md): dark-first, seven neutrals, ONE accent
+(Forge orange) and one danger colour - nothing else in the everyday UI.
+Tokens are named by role, never by colour, so a light theme is a token swap.
+Rank tier colours exist only for RankBadge and the rank-up overlay.
 
-Components in metalarm/ui/ read tokens only - frontend/tests/test_tokens.py
-fails on a hex colour or a raw size anywhere else. The screens built before
-the overhaul read the LEGACY names at the bottom, re-pointed at the new
-palette, until each is rebuilt.
-
-Values were estimated from reference screenshots by eye; confirm against a
-device capture before treating them as final.
+Components read tokens only - frontend/tests/test_tokens.py fails on a hex
+colour, a raw size or radius anywhere else, and on tier colours outside their
+two homes. frontend/tests/test_contrast.py checks every text/background pair
+against WCAG AA.
 """
 
+from __future__ import annotations
+
 # ---------------------------------------------------------------------------
-# Colour
+# Colour - 7 neutrals, 1 accent, 1 danger
 # ---------------------------------------------------------------------------
-COLOR_BG = "#000000"
-SURFACE_1 = "#1C1C1E"         # cards, list rows, inputs
-SURFACE_2 = "#2C2C2E"         # chips, segmented track, delta pills
-SURFACE_3 = "#3A3A3C"         # pressed, selected segment
-SEPARATOR = "rgba(255,255,255,0.08)"
-TEXT_PRIMARY = "#FFFFFF"
-TEXT_SECONDARY = "#8E8E93"
-TEXT_TERTIARY = "#636366"
+BG = "#0E0E10"            # app background
+SURFACE = "#17171A"       # cards, sheets, tab bar
+SURFACE_2 = "#202024"     # inputs, pressed states, nested rows
+BORDER = "#2A2A2F"        # 1px hairlines and input outlines only
+TEXT = "#F4F4F2"          # primary text and hero numbers
+TEXT_2 = "#A1A1A8"        # labels, secondary info
+TEXT_3 = "#6E6E76"        # placeholders, ghost "last time" values, disabled - never needed to act  (spec #66666E: 2.85:1 on surface-2; see FLAGS.md)
 
-ACCENT_BLUE = "#0A84FF"       # interaction only: links, selection, play, focus
-CHART_LINE = "#3B9EFF"
-MUSCLE_ACTIVE = "#E5533D"
-STREAK_ORANGE = "#FF9F0A"
-RECOVERY_GREEN = "#30D158"
-PR_GOLD = "#FFD60A"
-DANGER_RED = "#FF453A"
+ACCENT = "#FF6B2C"        # Forge: primary button, active tab, progress fills, PR highlight
+ON_ACCENT = "#0E0E10"     # text and icons sitting on the accent
+DANGER = "#E5484D"        # destructive actions only
 
-SUMMARY_GRADIENT = "linear-gradient(135deg, #0B1E3F 0%, #1E4E8C 100%)"
-TILE_PALETTE = ("#4E4459", "#E57F84", "#3E5C76", "#5B7553",
-                "#8C6A4F", "#6B5B95", "#2F6F73", "#A0616A")
-TRANSLUCENT_BAR = "rgba(28,28,30,0.72)"   # SURFACE_1 under a blur
-SCRIM = "rgba(0,0,0,0.72)"
-ON_LIGHT = "#000000"                      # text on the white Start pill
 
-# Rank tiers (E..S): the avatar frame, the rank badge, the rank-up takeover.
+def alpha(color: str, opacity: float) -> str:
+    """`color` (#RRGGBB) at `opacity`."""
+    value = color.lstrip("#")
+    r, g, b = (int(value[i : i + 2], 16) for i in (0, 2, 4))
+    return f"rgba({r},{g},{b},{opacity})"
+
+
+ACCENT_SOFT = alpha(ACCENT, 0.14)   # selected chip/card background, PR row tint
+SCRIM = "rgba(0,0,0,0.6)"           # behind sheets and dialogs
+HAIRLINE = f"1px solid {BORDER}"
+
+# Rank tiers (E..S). ONLY ui/rank_badge.py and the rank-up overlay
+# (components/level_up.py) may read these - the lint enforces it.
 TIER_COLORS: dict[str, str] = {
     "E": "#8A6B4E",   # bronze
     "D": "#9AA4AE",   # silver
     "C": "#D4A93C",   # gold
     "B": "#3FB6B0",   # platinum
     "A": "#5BA8FF",   # diamond
-    "S": "#C77DFF",   # world class
+    "S": "#C77DFF",   # royal
 }
 
 
 def tier_color(rank: str) -> str:
-    return TIER_COLORS.get(rank, TEXT_SECONDARY)
-
-
-def tile_color(name: str) -> str:
-    """A stable colour per routine name, from the tile palette."""
-    total = sum(ord(c) for c in name or "?")
-    return TILE_PALETTE[total % len(TILE_PALETTE)]
-
-
-def alpha(color: str, opacity: float) -> str:
-    """`color` (#RRGGBB) at `opacity` - for tints without new hex values."""
-    value = color.lstrip("#")
-    r, g, b = (int(value[i : i + 2], 16) for i in (0, 2, 4))
-    return f"rgba({r},{g},{b},{opacity})"
+    """For RankBadge and the rank-up overlay only."""
+    return TIER_COLORS.get(rank, TEXT_2)
 
 
 # ---------------------------------------------------------------------------
-# Type
+# Type - Space Grotesk for numbers and headings, Manrope for everything else.
+# Three sizes per screen at most: a display number, a title, body/caption.
 # ---------------------------------------------------------------------------
-FONT_UI = ("Inter, -apple-system, 'SF Pro Display', 'SF Pro Text', system-ui, "
-           "'Helvetica Neue', Arial, sans-serif")
-FONT_GAME = "'Space Grotesk', Inter, system-ui, sans-serif"
+FONT_HEAD = "'Space Grotesk', Manrope, system-ui, sans-serif"
+FONT_BODY = "Manrope, -apple-system, system-ui, 'Helvetica Neue', Arial, sans-serif"
 FONT_STYLESHEET = (
-    "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800"
-    "&family=Space+Grotesk:wght@500;700&display=swap"
+    "https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700"
+    "&family=Space+Grotesk:wght@500;600&display=swap"
 )
 TABULAR = {"font_variant_numeric": "tabular-nums"}
 
 
-def _type(size: int, line: int, weight: int, **extra) -> dict:
-    return {"font_size": f"{size}px", "line_height": f"{line}px",
-            "font_weight": str(weight), **extra}
+def _type(font: str, size: int, line: int, weight: int) -> dict:
+    return {"font_family": font, "font_size": f"{size}px", "line_height": f"{line}px",
+            "font_weight": str(weight), **TABULAR}
 
 
-LARGE_TITLE = _type(34, 41, 700, letter_spacing="-0.01em")
-DISPLAY_NUMBER = _type(40, 44, 700, **TABULAR)
-# The Monthly Summary's one big number per slide.
-DISPLAY_HERO = _type(64, 68, 700, **TABULAR)
-TITLE_1 = _type(28, 34, 700)
-TITLE_2 = _type(22, 28, 700)
-HEADLINE = _type(17, 22, 600)
-BODY = _type(17, 22, 400)
-SUBHEAD = _type(15, 20, 400)
-FOOTNOTE = _type(13, 18, 400)
-CAPTION = _type(11, 13, 500, letter_spacing="0.5px", text_transform="uppercase")
-# The game's numerals: rank letters, points, XP.
-NUMERAL_GAME = {"font_family": FONT_GAME, **TABULAR}
-# Units next to a number: about half its size, same weight, on the baseline.
-UNIT_SCALE = 0.52
-
+DISPLAY = _type(FONT_HEAD, 48, 52, 600)      # the hero number: timer, set weight, rank
+TITLE_LG = _type(FONT_HEAD, 28, 34, 600)     # screen title
+TITLE = _type(FONT_HEAD, 20, 26, 600)        # section and card titles
+BODY = _type(FONT_BODY, 16, 24, 500)         # default text
+LABEL = _type(FONT_BODY, 14, 20, 600)        # buttons, row labels
+CAPTION = _type(FONT_BODY, 12, 16, 500)      # meta, units, timestamps
 
 # ---------------------------------------------------------------------------
-# Space, shape, depth
+# Space, shape, motion
 # ---------------------------------------------------------------------------
-def space(steps: int) -> str:
-    """The 4-point grid: space(4) == "16px"."""
-    return f"{steps * 4}px"
+SPACE = (0, 4, 8, 12, 16, 24, 32, 48)
 
 
-GUTTER = space(4)             # screen side padding
-GUTTER_WIDE = space(5)
-SECTION_GAP = space(8)
-CARD_PADDING = space(4)
-TOUCH_MIN = "44px"
+def space(px: int) -> str:
+    """One of the allowed steps, as CSS: space(16) == "16px"."""
+    if px not in SPACE:
+        raise ValueError(f"{px}px is not on the spacing scale {SPACE}")
+    return f"{px}px"
+
+
+GUTTER = "20px"           # screen side padding
+SECTION_GAP = space(32)
+CARD_PADDING = space(16)
+TOUCH = "48px"            # minimum tap target
+ICON_HIT = "44px"         # IconButton hit area
+ROW_MIN = "56px"          # ListRow minimum height
+BUTTON_HEIGHT = "52px"
+MAX_WIDTH = "430px"       # the app column; centred on wide screens
 TAB_BAR_HEIGHT = "64px"
-# Content keeps clear of the floating tab bar and Start pill.
-TAB_BAR_CLEARANCE = "148px"
+# Content keeps clear of the tab bar and anything pinned above it.
+BOTTOM_CLEARANCE = "160px"
+# Where a toast or banner floats: above the tab bar AND the pinned button.
+FLOAT_BOTTOM = f"calc({TAB_BAR_HEIGHT} + 12px + {BUTTON_HEIGHT} + 16px + env(safe-area-inset-bottom))"
 
-RADIUS_CARD = "20px"
-RADIUS_THUMB = "12px"
-RADIUS_TILE = "16px"
-RADIUS_PILL = "999px"
-RADIUS_BAR = "32px"
-BLUR = "blur(20px)"
-HAIRLINE = f"1px solid {SEPARATOR}"
-EASE = "cubic-bezier(0.22, 1, 0.36, 1)"
-DURATION_FAST = "160ms"
-DURATION = "260ms"
+RADIUS = "12px"           # cards and inputs
+RADIUS_SHEET = "16px"     # sheets (top corners)
+RADIUS_PILL = "999px"     # buttons and chips
 
-# Phone frames the gallery and the screenshot sweep render at.
-PHONE_WIDTHS = (375, 430)
+FAST = "150ms"            # taps and toggles
+BASE = "250ms"            # sheets and screen transitions
+EASE = "cubic-bezier(0.22, 1, 0.36, 1)"   # ease-out
 
-
-# ---------------------------------------------------------------------------
-# Legacy names - the pre-overhaul screens read these until each is rebuilt.
-# Re-pointed at the new palette, so those screens already sit on black and
-# grey; new code must use the tokens above.
-# ---------------------------------------------------------------------------
-BG = COLOR_BG
-PANEL = SURFACE_1
-PANEL_HI = "rgba(255,255,255,0)"
-FIELD = SURFACE_2
-BORDER = SURFACE_2
-BORDER_HI = SURFACE_3
-ACCENT = TEXT_PRIMARY        # the old primary action fill was white
-ACCENT_DIM = TEXT_SECONDARY
-ON_ACCENT = ON_LIGHT
-SUCCESS = RECOVERY_GREEN
-WARNING = STREAK_ORANGE
-DANGER = DANGER_RED
-SUCCESS_BG = alpha(RECOVERY_GREEN, 0.12)
-WARNING_BG = alpha(STREAK_ORANGE, 0.12)
-DANGER_BG = alpha(DANGER_RED, 0.14)
-VEIL = SCRIM
-TEXT = TEXT_PRIMARY
-MUTED = TEXT_SECONDARY
-FAINT = TEXT_TERTIARY
-RANK_COLORS = TIER_COLORS
+# Phone widths the design-system page and the screenshot sweep render at.
+PHONE_WIDTHS = (360, 390, 430)
 
 
-def rank_color(rank: str) -> str:
-    return tier_color(rank)
-
-
-PANEL_STYLE = {
-    "background": PANEL,
-    "border": "none",
-    "border_radius": RADIUS_CARD,
-    "padding": CARD_PADDING,
-    "width": "100%",
-}
-
-LABEL_STYLE = {
-    "color": MUTED,
-    "font_size": "0.7rem",
-    "letter_spacing": "0.08em",
-    "font_weight": "600",
-}
-
-
-def panel(**overrides: object) -> dict:
-    """PANEL_STYLE merged with per-call overrides (see the legacy screens)."""
-    return {**PANEL_STYLE, **overrides}
-
-
-def glow(color: str = ACCENT, strength: str = "40px") -> str:
-    """Kept for the legacy screens; the new system has no glows."""
-    return "none"
+def css_variables() -> str:
+    """Every token as a CSS custom property on :root."""
+    pairs = {
+        "bg": BG, "surface": SURFACE, "surface-2": SURFACE_2, "border": BORDER,
+        "text": TEXT, "text-2": TEXT_2, "text-3": TEXT_3, "accent": ACCENT,
+        "accent-soft": ACCENT_SOFT, "on-accent": ON_ACCENT, "danger": DANGER, "scrim": SCRIM,
+        "radius": RADIUS, "radius-sheet": RADIUS_SHEET, "fast": FAST, "base": BASE, "ease": EASE,
+        "font-head": FONT_HEAD, "font-body": FONT_BODY,
+    }
+    return ":root { " + "; ".join(f"--ma-{k}: {v}" for k, v in pairs.items()) + "; }"

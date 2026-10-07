@@ -1,237 +1,258 @@
-"""Progress: exercise charts, personal records, workout history, points, and
-body measurements."""
+"""The Progress tab.
+
+/progress                 one chart (all training, or one exercise), records,
+                          and the way to everything else. No primary button.
+/progress/history         the calendar, then every workout, week by week
+/progress/measurements    body weight and the rest; Log measurement
+/progress/recovery        what you worked this week, and what has recovered
+"""
 
 import reflex as rx
 
-from metalarm import theme
-from metalarm.components.layout import error_banner, section_heading, shell
-from metalarm.components.scroll_reveal import reveal, reveal_assets
-from metalarm.components.workout import FIELD_BG, PR_COLOR, button, empty, history_row, pill, stat
+from metalarm import theme as t
+from metalarm.components.layout import error_banner, shell
 from metalarm.state.auth import AuthState
-from metalarm.state.progress import ProgressState
-from metalarm.workout_models import BodyRow, ExerciseOption, RecordRow
+from metalarm.state.monthly import MonthlyState
+from metalarm.state.workout_home import WorkoutHomeState
+from metalarm.state.you import FOCUS_METRICS, METRICS, RANGES, YouState
+from metalarm.ui.body_map import body_map
+from metalarm.ui.calendar import month_calendar
+from metalarm.ui.chart import line_chart
+from metalarm.ui.chrome import top_bar
+from metalarm.ui.primitives import (
+    button,
+    card,
+    chip,
+    chips,
+    empty_state,
+    field,
+    icon_button,
+    list_row,
+    number,
+    rows,
+    section,
+    segmented,
+    sheet,
+    skeleton,
+    skeleton_rows,
+    stat_group,
+    stat_tile,
+    text,
+)
+
+# ---------------------------------------------------------------------------
+# /progress
+# ---------------------------------------------------------------------------
 
 
-def _axis_style() -> dict:
-    return {"stroke": theme.FAINT, "font_size": 11}
-
-
-def _tooltip() -> rx.Component:
-    return rx.recharts.graphing_tooltip(
-        content_style={"background": theme.PANEL, "border": f"1px solid {theme.BORDER_HI}", "borderRadius": "8px"},
-        label_style={"color": theme.MUTED},
+def _month_card() -> rx.Component:
+    """Last month's story, in the first week of a month."""
+    m = MonthlyState
+    return rx.cond(
+        m.hero_show,
+        card(text(f"Your {m.hero_title}", t.TITLE), text(f"{m.hero_workouts} workouts · see your month", t.CAPTION,
+                                                         t.TEXT_2),
+             href=f"/summary/{m.hero_month}"),
     )
 
 
-def stats_panel() -> rx.Component:
-    return rx.grid(
-        stat("WORKOUT POINTS", ProgressState.total_points.to_string(), theme.WARNING),
-        stat("THIS WEEK", ProgressState.week_points.to_string(), theme.ACCENT),
-        stat("WORKOUTS", ProgressState.sessions_completed.to_string()),
-        stat("STREAK", ProgressState.streak.label, theme.SUCCESS),
-        columns="2",
-        gap="1rem",
-        **theme.panel(),
+def _focus_row() -> rx.Component:
+    return rows(list_row(YouState.focus_label, "Change what the chart shows",
+                         leading=rx.icon("chart-line", size=20, color=t.TEXT_2, stroke_width=1.75),
+                         chevron=True, on_click=YouState.open_focus, class_name="ma-focus-row"))
+
+
+def _focus_sheet() -> rx.Component:
+    s = YouState
+    return sheet(
+        s.show_focus, s.close_focus,
+        rows(
+            list_row("All training", "Duration, volume, workouts and points by week",
+                     trailing=rx.cond(s.focus_id == "", rx.icon("check", size=20, color=t.ACCENT)),
+                     on_click=s.pick_focus("", "")),
+            rx.foreach(s.exercises, lambda e: list_row(
+                e["name"], e["sub"], on_click=s.pick_focus(e["id"], e["name"]),
+                trailing=rx.cond(s.focus_id == e["id"], rx.icon("check", size=20, color=t.ACCENT))),
+            ),
+        ),
+        rx.cond(s.exercises_cursor != "", button("Show more", s.more_exercises, variant="ghost", full=True)),
+        title="Show on the chart",
     )
 
 
-def _option(option: ExerciseOption) -> rx.Component:
-    return rx.select.item(option.name, value=option.id)
-
-
-def exercise_panel() -> rx.Component:
+def _chart() -> rx.Component:
+    s = YouState
     return rx.vstack(
-        section_heading("EXERCISE PROGRESS"),
-        rx.cond(
-            ProgressState.exercise_options.length() > 0,
-            rx.select.root(
-                rx.select.trigger(placeholder="Choose an exercise", width="100%"),
-                rx.select.content(rx.foreach(ProgressState.exercise_options, _option)),
-                value=ProgressState.selected_id,
-                on_change=ProgressState.select_exercise,
-                size="3",
-            ),
-        ),
-        rx.cond(
-            ProgressState.has_chart,
-            rx.vstack(
-                rx.text(f"TOP SET & ESTIMATED 1RM ({AuthState.weight_unit})", **theme.LABEL_STYLE),
-                rx.recharts.line_chart(
-                    rx.recharts.cartesian_grid(stroke_dasharray="3 3", stroke=theme.BORDER),
-                    rx.recharts.x_axis(data_key="date", **_axis_style()),
-                    rx.recharts.y_axis(**_axis_style()),
-                    _tooltip(),
-                    rx.recharts.line(data_key="top", name="Top set", stroke=theme.ACCENT, stroke_width=2, connect_nulls=True),
-                    rx.recharts.line(data_key="e1rm", name="Est. 1RM", stroke=PR_COLOR, stroke_width=2, connect_nulls=True),
-                    data=ProgressState.chart_data,
-                    width="100%",
-                    height=240,
-                ),
-                rx.text(f"VOLUME PER WORKOUT ({AuthState.weight_unit})", **theme.LABEL_STYLE),
-                rx.recharts.bar_chart(
-                    rx.recharts.cartesian_grid(stroke_dasharray="3 3", stroke=theme.BORDER),
-                    rx.recharts.x_axis(data_key="date", **_axis_style()),
-                    rx.recharts.y_axis(**_axis_style()),
-                    _tooltip(),
-                    rx.recharts.bar(data_key="volume", name="Volume", fill=theme.ACCENT_DIM),
-                    data=ProgressState.chart_data,
-                    width="100%",
-                    height=180,
-                ),
-                spacing="2",
-                width="100%",
-            ),
-            empty("Finish a workout and your charts start here - one point per session."),
-        ),
-        spacing="3",
-        **theme.panel(),
+        rx.vstack(text(s.headline_label, t.CAPTION, t.TEXT_2), number(s.headline, s.headline_unit),
+                  spacing="1", align="start", width="100%"),
+        rx.cond(s.chart.length() > 1,
+                rx.box(line_chart(s.chart), width="100%", class_name="ma-progress-chart"),
+                empty_state("chart-line", "Log a few workouts to see the line.")),
+        rx.cond(s.focus_id == "", segmented(METRICS, s.metric, s.set_metric),
+                segmented(FOCUS_METRICS, s.focus_metric, s.set_focus_metric)),
+        segmented(RANGES, s.range_, s.set_range),
+        spacing="4", width="100%",
     )
 
 
-def _record_row(row: RecordRow) -> rx.Component:
-    # Two fixed lines rather than one wrapping line: on a phone the wrap put
-    # the date under the name at a random point, which read as broken.
-    return rx.hstack(
-        rx.vstack(
-            rx.text(row.exercise_name, color=theme.TEXT, font_size="0.85rem", font_weight="600"),
-            pill(row.record_label, PR_COLOR),
-            spacing="1",
-            align="start",
-            min_width="0",
-        ),
-        rx.spacer(),
-        rx.vstack(
-            rx.text(row.value_label, color=theme.TEXT, font_weight="800", font_size="0.92rem", white_space="nowrap"),
-            rx.text(row.date_label, color=theme.FAINT, font_size="0.68rem"),
-            spacing="1",
-            align="end",
-        ),
-        width="100%",
-        align="center",
-        spacing="3",
-        padding_block="0.55rem",
-        border_bottom=f"1px solid {theme.BORDER}",
-    )
-
-
-def records_panel() -> rx.Component:
-    return rx.vstack(
-        section_heading("PERSONAL RECORDS"),
-        rx.cond(
-            ProgressState.has_records,
-            rx.box(rx.foreach(ProgressState.records, _record_row), width="100%",
-                   max_height="420px", overflow_y="auto"),
-            empty("Records appear the moment you log your first sets."),
-        ),
-        spacing="3",
-        **theme.panel(),
-    )
-
-
-def history_panel() -> rx.Component:
-    return rx.vstack(
-        section_heading("WORKOUT HISTORY"),
-        rx.cond(
-            ProgressState.has_history,
-            rx.vstack(
-                rx.box(rx.foreach(ProgressState.history, history_row), width="100%"),
-                rx.cond(
-                    ProgressState.has_more,
-                    button("LOAD MORE", ProgressState.more_history, color=theme.MUTED, solid=False, width="100%"),
-                ),
-                spacing="3",
-                width="100%",
-            ),
-            empty("No workouts yet."),
-        ),
-        spacing="3",
-        **theme.panel(),
-    )
-
-
-def _body_row(row: BodyRow) -> rx.Component:
-    return rx.hstack(
-        rx.text(row.metric_label, **{**theme.LABEL_STYLE, "font_size": "0.62rem"}),
-        rx.text(row.value_label, color=theme.TEXT, font_weight="800", font_size="0.9rem"),
-        rx.spacer(),
-        rx.text(row.date_label, color=theme.FAINT, font_size="0.72rem"),
-        rx.button(
-            "✕",
-            on_click=ProgressState.delete_measurement(row.id),
-            background="transparent",
-            color=theme.FAINT,
-            border="none",
-            cursor="pointer",
-            padding="0.3rem 0.5rem",
-            custom_attrs={"aria-label": "Delete measurement"},
-            _hover={"color": theme.DANGER},
-        ),
-        width="100%",
-        align="center",
-        spacing="3",
-        padding_block="0.4rem",
-        border_bottom=f"1px solid {theme.BORDER}",
-    )
-
-
-def body_panel() -> rx.Component:
-    return rx.vstack(
-        section_heading("BODY"),
-        rx.flex(
-            rx.select(["weight", "body_fat", "custom"], value=ProgressState.m_metric,
-                      on_change=ProgressState.set_m_metric, size="3"),
-            rx.cond(
-                ProgressState.is_custom_metric,
-                rx.input(placeholder="Name, e.g. Waist", value=ProgressState.m_label,
-                         on_change=ProgressState.set_m_label, size="3", background=FIELD_BG,
-                         color=theme.TEXT, flex="1", min_width="8rem"),
-            ),
-            rx.input(placeholder="Value", value=ProgressState.m_value, on_change=ProgressState.set_m_value,
-                     type="number", size="3", background=FIELD_BG, color=theme.TEXT, width="7rem"),
-            rx.select(ProgressState.m_unit_options, value=ProgressState.m_unit,
-                      on_change=ProgressState.set_m_unit, size="3"),
-            button("ADD", ProgressState.add_measurement, height="40px"),
-            gap="0.5rem",
-            wrap="wrap",
-            align="center",
-            width="100%",
-        ),
-        rx.cond(
-            ProgressState.has_weight_chart,
-            rx.recharts.line_chart(
-                rx.recharts.cartesian_grid(stroke_dasharray="3 3", stroke=theme.BORDER),
-                rx.recharts.x_axis(data_key="date", **_axis_style()),
-                rx.recharts.y_axis(domain=["dataMin - 2", "dataMax + 2"], **_axis_style()),
-                _tooltip(),
-                rx.recharts.line(data_key="value", name="Body weight", stroke=theme.SUCCESS, stroke_width=2),
-                data=ProgressState.weight_chart,
-                width="100%",
-                height=200,
-            ),
-        ),
-        rx.cond(
-            ProgressState.has_measurements,
-            rx.box(rx.foreach(ProgressState.measurements, _body_row), width="100%",
-                   max_height="320px", overflow_y="auto"),
-            empty("Track body weight, body fat, or any measurement. Tracking only - no points."),
-        ),
-        spacing="3",
-        **theme.panel(),
-    )
+def _pr(r) -> rx.Component:
+    return list_row(r["exercise_name"], f"{r['record_label']} · {r['date_label']}", trailing=r["value_label"],
+                    href=f"/exercise/{r['exercise_id']}")
 
 
 def progress_page() -> rx.Component:
+    s = YouState
     return shell(
-        reveal_assets(),
-        stats_panel(),
-        error_banner(ProgressState.error),
-        reveal(exercise_panel()),
-        rx.grid(
-            reveal(records_panel()),
-            reveal(history_panel()),
-            columns="1",
-            gap="1.25rem",
-            width="100%",
+        top_bar("Progress", large=True),
+        error_banner(s.error),
+        _month_card(),
+        _focus_row(),
+        rx.cond(s.loaded, _chart(), skeleton("320px")),
+        section("Records",
+                rx.cond(s.visible_prs.length() > 0, rows(rx.foreach(s.visible_prs, _pr)),
+                        rx.cond(s.loaded, text("Records appear as you beat your best.", t.BODY, t.TEXT_2),
+                                skeleton_rows(3)))),
+        rows(
+            list_row("History", "Every workout, week by week", chevron=True, href="/progress/history",
+                     leading=rx.icon("history", size=20, color=t.TEXT_2, stroke_width=1.75)),
+            list_row("Body measurements", "Weight, body fat, and the rest", chevron=True,
+                     href="/progress/measurements",
+                     leading=rx.icon("ruler", size=20, color=t.TEXT_2, stroke_width=1.75)),
+            list_row("Muscles & recovery", "What you worked, and what is ready", chevron=True,
+                     href="/progress/recovery",
+                     leading=rx.icon("activity", size=20, color=t.TEXT_2, stroke_width=1.75)),
+            list_row("Monthly summary", "Your month, as a story", chevron=True,
+                     href=f"/summary/{MonthlyState.hero_month}",
+                     leading=rx.icon("calendar", size=20, color=t.TEXT_2, stroke_width=1.75)),
         ),
-        reveal(body_panel()),
+        _focus_sheet(),
+    )
+
+
+# ---------------------------------------------------------------------------
+# /progress/history
+# ---------------------------------------------------------------------------
+
+
+def session_row(row) -> rx.Component:
+    """A finished workout in a list: title, when, how long, how much."""
+    return list_row(row["title"], f"{row['date_label']} · {row['duration']} · {row['volume']}",
+                    trailing=row["points"], chevron=True, href=f"/session/{row['id']}", class_name="ma-session-row")
+
+
+def _history_row(row) -> rx.Component:
+    return rx.fragment(
+        rx.cond(row["first_of_week"] != "",
+                text(row["week_label"], t.CAPTION, t.TEXT_2, padding_top=t.space(16), padding_bottom=t.space(4),
+                     width="100%")),
+        session_row(row),
+    )
+
+
+def history_page() -> rx.Component:
+    s = YouState
+    return shell(
+        top_bar("History", back="/progress"),
+        error_banner(s.error),
+        rx.vstack(
+            rx.hstack(
+                icon_button("chevron-left", "Previous month", on_click=s.shift_month(-1)),
+                rx.vstack(text(s.month_title, t.LABEL), text(s.month_count, t.CAPTION, t.TEXT_2),
+                          spacing="0", align="center", flex="1"),
+                icon_button("chevron-right", "Next month", on_click=s.shift_month(1)),
+                width="100%", align="center",
+            ),
+            month_calendar("", s.month_weeks),
+            spacing="2", width="100%",
+        ),
+        rx.cond(
+            s.history.length() > 0,
+            rx.vstack(rows(rx.foreach(s.history, _history_row)),
+                      rx.cond(s.history_cursor != "", button("Show more", s.more_history, variant="ghost", full=True)),
+                      spacing="3", width="100%"),
+            rx.cond(s.loaded, empty_state("history", "Finished workouts are kept here."), skeleton_rows(5)),
+        ),
+    )
+
+
+# ---------------------------------------------------------------------------
+# /progress/measurements
+# ---------------------------------------------------------------------------
+
+
+def _measure_row(group) -> rx.Component:
+    return list_row(group["title"], group["when"], trailing=group["latest"],
+                    title_color=rx.cond(YouState.measure_selected == group["key"], t.TEXT, t.TEXT_2),
+                    leading=rx.icon("chart-line", size=20, stroke_width=1.75,
+                                    color=rx.cond(YouState.measure_selected == group["key"], t.TEXT, t.TEXT_3)),
+                    on_click=YouState.pick_measure(group["key"]))
+
+
+def _log_sheet() -> rx.Component:
+    s = YouState
+    return sheet(
+        s.show_log, s.close_log,
+        chips(*[chip(label, selected=s.measure_kind == kind, on_click=s.set_measure_kind(kind))
+                for label, kind in (("Body weight", "weight"), ("Body fat", "body_fat"), ("Custom", "custom"))]),
+        rx.cond(s.measure_kind == "custom", field(s.measure_label, s.set_measure_label, "Name, e.g. Waist (cm)")),
+        field(s.measure_value, s.set_measure_value,
+              rx.match(s.measure_kind, ("weight", f"Value ({AuthState.weight_unit})"), ("body_fat", "Value (%)"),
+                       "Value (cm)"), mode="decimal"),
+        error_banner(s.error),
+        title="Log measurement",
+        action=button("Save", s.add_measure, full=True),
+    )
+
+
+def measurements_page() -> rx.Component:
+    s = YouState
+    latest = s.measure_groups[0]
+    return shell(
+        top_bar("Body measurements", back="/progress"),
+        rx.cond(
+            s.measure_groups.length() > 0,
+            rx.vstack(
+                stat_group(stat_tile(latest["latest"], f"{latest['title']} · {latest['when']}")),
+                rx.cond(s.measure_chart.length() > 1, line_chart(s.measure_chart, height=200, from_zero=False)),
+                rows(rx.foreach(s.measure_groups, _measure_row)),
+                spacing="5", width="100%",
+            ),
+            rx.cond(s.loaded, empty_state("ruler", "Log your body weight to see it over time."), skeleton_rows(3)),
+        ),
+        _log_sheet(),
+        pinned=button("Log measurement", s.open_log, icon="plus", full=True),
+    )
+
+
+# ---------------------------------------------------------------------------
+# /progress/recovery
+# ---------------------------------------------------------------------------
+
+
+def recovery_page() -> rx.Component:
+    w = WorkoutHomeState
+    return shell(
+        top_bar("Muscles & recovery", back="/progress"),
+        error_banner(w.error),
+        section("This week",
+                rx.cond(YouState.muscle_names != "",
+                        rx.vstack(rx.center(body_map(YouState.muscle_paths, size="190px"), width="100%"),
+                                  text(YouState.muscle_names, t.CAPTION, t.TEXT_2, text_align="center",
+                                       width="100%"), spacing="2", width="100%"),
+                        text("No workouts yet this week.", t.BODY, t.TEXT_2))),
+        section(
+            "Recovery",
+            rx.cond(
+                w.recovery_loaded,
+                rx.vstack(
+                    stat_group(stat_tile(f"{w.recovery_overall}%", "Recovered overall")),
+                    rx.cond(w.recovery_note != "", text(w.recovery_note, t.BODY, t.TEXT_2)),
+                    rx.cond(w.recovery_rows.length() > 0,
+                            rows(rx.foreach(w.recovery_rows, lambda r: list_row(r["name"], trailing=r["percent"]))),
+                            text("Everything is fully recovered.", t.BODY, t.TEXT_2)),
+                    spacing="4", width="100%",
+                ),
+                skeleton_rows(4),
+            ),
+        ),
     )

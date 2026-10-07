@@ -1,23 +1,20 @@
-"""Page shell: the five-tab chrome (metalarm/ui/chrome.py) around every
-signed-in page, plus the shared banners."""
+"""Page frame: the four-tab shell (metalarm/ui/chrome.py) around every
+signed-in page, the session keeper, and the inline message lines."""
 
 import reflex as rx
 
-from metalarm import theme
+from metalarm import theme as t
+from metalarm.components.rest_timer import timer_assets
 from metalarm.state.auth import AuthState
 from metalarm.ui import chrome
+from metalarm.ui.primitives import text
+from metalarm.ui.toast import toast
 
 
 def brand() -> rx.Component:
     """The wordmark, for the signed-out pages."""
-    return rx.hstack(
-        rx.box(width="10px", height="10px", background=theme.ACCENT_BLUE,
-               border_radius=theme.RADIUS_PILL),
-        rx.text("MetalArm", color=theme.TEXT_PRIMARY, font_family=theme.FONT_UI,
-                **theme.HEADLINE),
-        spacing="2",
-        align="center",
-    )
+    return rx.hstack(rx.box(width="10px", height="10px", background=t.ACCENT, border_radius=t.RADIUS_PILL),
+                     text("MetalArm", t.TITLE), spacing="2", align="center")
 
 
 def session_keeper() -> rx.Component:
@@ -26,81 +23,46 @@ def session_keeper() -> rx.Component:
     in; the seconds in the format make every tick a change, so on_change fires."""
     return rx.cond(
         AuthState.is_authenticated,
-        rx.moment(
-            interval=5 * 60 * 1000,
-            format="HH:mm:ss",
-            on_change=AuthState.keep_fresh,
-            display="none",
-        ),
+        rx.moment(interval=5 * 60 * 1000, format="HH:mm:ss", on_change=AuthState.keep_fresh, display="none"),
     )
 
 
-# Which tab a route belongs to. The pre-overhaul pages live under the tab
-# they will be rebuilt into: the competition pages under Home (its switcher),
-# progress and profile under You, routines under Library.
+# Which tab each route belongs to.
 ROUTE_TABS = (
-    ("/home", "home"), ("/dashboard", "home"), ("/parties", "home"),
-    ("/duels", "home"), ("/rewards", "home"), ("/quests", "home"), ("/notifications", "home"),
-    ("/u/[id]", "home"), ("/summary/[ym]", "home"),
-    ("/explore", "explore"), ("/exercise/[id]", "explore"),
-    ("/workout", "workout"),
-    ("/library", "library"), ("/routines", "library"),
-    ("/you", "you"), ("/profile", "you"), ("/progress", "you"), ("/session/[id]", "you"),
+    ("/home", "home"), ("/leaderboard", "home"), ("/notifications", "home"), ("/u/[id]", "home"),
+    ("/train", "train"), ("/train/exercises", "train"), ("/train/routine/[id]", "train"),
+    ("/train/program/[id]", "train"), ("/exercise/[id]", "train"),
+    ("/progress", "progress"), ("/progress/history", "progress"), ("/progress/measurements", "progress"),
+    ("/progress/recovery", "progress"), ("/session/[id]", "progress"), ("/summary/[ym]", "progress"),
+    ("/profile", "profile"), ("/profile/people", "profile"), ("/quests", "profile"), ("/duels", "profile"),
+    ("/parties", "profile"), ("/rewards", "profile"), ("/about/credits", "profile"),
 )
 
 
 def active_tab() -> rx.Var:
-    path = rx.State.router.page.path
-    return rx.match(path, *[(route, key) for route, key in ROUTE_TABS], "home")
+    return rx.match(rx.State.router.page.path, *[(route, key) for route, key in ROUTE_TABS], "home")
 
 
-def shell(*children: rx.Component) -> rx.Component:
-    """Standard signed-in page frame: the overhaul's five-tab shell (black
-    field, phone-width column, floating tab bar; the Start pill on Home)."""
-    tab = active_tab()
-    return chrome.shell(
-        session_keeper(),
-        *children,
-        tab=tab,
-        show_start=tab == "home",
-    )
+def shell(*children: rx.Component, pinned: rx.Component | None = None) -> rx.Component:
+    """Standard signed-in page frame."""
+    return chrome.shell(session_keeper(), timer_assets(), toast(), *children, tab=active_tab(), pinned=pinned)
 
 
 def error_banner(message: rx.Var) -> rx.Component:
-    """Inline message area. Also carries expected 409s such as 'already
-    completed for this period', which are normal states rather than faults."""
+    """What went wrong, in a sentence. Calm: danger red is for destructive
+    actions only."""
     return rx.cond(
         message != "",
-        rx.box(
-            rx.text(message, color=theme.DANGER, font_size="0.85rem"),
-            width="100%",
-            padding="0.75rem 1rem",
-            background=theme.DANGER_BG,
-            border=f"1px solid {theme.DANGER}55",
-            border_radius="10px",
-        ),
+        rx.hstack(rx.icon("circle-alert", size=20, stroke_width=1.75, color=t.TEXT_2, flex_shrink="0"),
+                  text(message, t.BODY, t.TEXT_2), spacing="2", align="start", width="100%",
+                  custom_attrs={"role": "alert"}),
     )
 
 
 def notice_banner(message: rx.Var) -> rx.Component:
     return rx.cond(
         message != "",
-        rx.box(
-            rx.text(message, color=theme.SUCCESS, font_size="0.85rem"),
-            width="100%",
-            padding="0.75rem 1rem",
-            background=theme.SUCCESS_BG,
-            border=f"1px solid {theme.SUCCESS}55",
-            border_radius="10px",
-        ),
-    )
-
-
-def section_heading(label: str, *trailing: rx.Component) -> rx.Component:
-    return rx.hstack(
-        rx.text(label, **theme.LABEL_STYLE),
-        rx.spacer(),
-        *trailing,
-        width="100%",
-        align="center",
+        rx.hstack(rx.icon("check", size=20, stroke_width=1.75, color=t.TEXT_2, flex_shrink="0"),
+                  text(message, t.BODY, t.TEXT_2), spacing="2", align="start", width="100%",
+                  custom_attrs={"role": "status"}),
     )

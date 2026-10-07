@@ -1,184 +1,154 @@
-"""Home (overhaul 7.1): the switcher (Following / Leaderboard / Duels), the
-game strip, your weekly snapshot, then the chosen view. The full quest board
-and rank detail are one tap away, at /quests."""
+"""Home: who you are in the game, this week in three numbers, the last
+workout, how you stand with friends, then their workouts. One primary:
+Start workout (or Resume, while one is live)."""
 
 import reflex as rx
 
 from metalarm import theme as t
-from metalarm.components.duel_card import dashboard_duels
 from metalarm.components.feed import feed_item
 from metalarm.components.layout import error_banner, shell
 from metalarm.state.auth import AuthState
-from metalarm.state.home import VIEWS, HomeState
-from metalarm.state.monthly import MonthlyState
+from metalarm.state.home import HomeState
 from metalarm.state.quests import QuestState
-from metalarm.ui.cards import hero_card
-from metalarm.ui.chrome import avatar, icon_button
+from metalarm.state.workout import WorkoutState
+from metalarm.ui.chrome import avatar
 from metalarm.ui.primitives import (
-    delta_pill,
+    button,
     empty_state,
-    number,
-    primary_button,
-    secondary_button,
-    section_header,
-    segmented_control,
+    icon_button,
+    link_button,
+    list_row,
+    progress_bar,
+    rows,
+    section,
     skeleton,
+    skeleton_rows,
+    stat_group,
+    stat_tile,
     text,
 )
+from metalarm.ui.rank_badge import rank_badge
 
 
 def _top() -> rx.Component:
-    return rx.box(
-        rx.hstack(
-            rx.link(avatar(AuthState.initials, HomeState.rank, size=36), href="/you", underline="none"),
-            rx.hstack(text(HomeState.view, t.TITLE_2), rx.icon("chevron-down", size=20),
-                      spacing="1", align="center", cursor="pointer", on_click=HomeState.toggle_views,
-                      custom_attrs={"role": "button", "aria-label": "Switch view"}),
-            rx.spacer(),
-            icon_button("user-plus", "Find friends", href="/explore?tab=people"),
-            rx.link(rx.hstack(rx.icon("flame", size=20, color=rx.cond(HomeState.streak_weeks > 0, t.STREAK_ORANGE,
-                                                                     t.TEXT_TERTIARY)),
-                              text(HomeState.streak_weeks, t.HEADLINE, **t.TABULAR), spacing="1", align="center"),
-                    href="/quests", underline="none", color=t.TEXT_PRIMARY),
-            icon_button("bell", "Notifications", href="/notifications", badge=HomeState.unread),
-            width="100%", align="center", spacing="2", min_height="52px",
-        ),
-        rx.cond(
-            HomeState.show_views,
-            rx.vstack(
-                *[rx.hstack(text(v, t.BODY), rx.spacer(),
-                            rx.cond(HomeState.view == v, rx.icon("check", size=18, color=t.ACCENT_BLUE)),
-                            width="100%", min_height=t.TOUCH_MIN, align="center", cursor="pointer",
-                            on_click=HomeState.set_view(v), padding=f"0 {t.space(4)}")
-                  for v in VIEWS],
-                position="absolute", top="52px", left="44px", z_index="30", min_width="220px",
-                background=t.SURFACE_2, border_radius=t.RADIUS_THUMB, spacing="0", padding_y=t.space(1),
-            ),
-        ),
-        position="relative", width="100%",
-    )
-
-
-def _game_strip() -> rx.Component:
-    return rx.link(
-        rx.hstack(
-            avatar(HomeState.rank, HomeState.rank, size=44),
-            rx.vstack(
-                rx.hstack(text(HomeState.rank_name, t.HEADLINE), text(f"· Level {HomeState.level}", t.SUBHEAD,
-                                                                      t.TEXT_SECONDARY),
-                          rx.spacer(), text(HomeState.quests_label, t.FOOTNOTE, t.TEXT_SECONDARY, white_space="nowrap"),
-                          width="100%", align="baseline", spacing="1"),
-                rx.box(rx.box(height="100%", width="100%", background=t.ACCENT_BLUE, border_radius=t.RADIUS_PILL,
-                              transform=f"scaleX({HomeState.xp_scale})", transform_origin="left center"),
-                       height="6px", width="100%", background=t.SURFACE_2, border_radius=t.RADIUS_PILL,
-                       overflow="hidden"),
-                rx.hstack(text(HomeState.points_week, t.FOOTNOTE, t.STREAK_ORANGE, white_space="nowrap",
-                               flex_shrink="0", **t.NUMERAL_GAME),
-                          rx.spacer(),
-                          text(HomeState.xp_label, t.FOOTNOTE, t.TEXT_SECONDARY, white_space="nowrap",
-                               overflow="hidden", text_overflow="ellipsis", min_width="0", **t.TABULAR),
-                          width="100%", spacing="2"),
-                spacing="1", flex="1", min_width="0",
-            ),
-            background=t.SURFACE_1, border_radius=t.RADIUS_CARD, padding=t.space(3), spacing="3",
-            width="100%", align="center",
-        ),
-        href="/quests", underline="none", width="100%", class_name="ma-game-strip",
-    )
-
-
-def _tile(tile) -> rx.Component:
+    s = HomeState
     return rx.vstack(
-        text(tile["label"], t.SUBHEAD, t.TEXT_SECONDARY),
-        number(tile["value"], tile["unit"], style=t.TITLE_2),
-        delta_pill(tile["delta"], tile["dir"]),
-        spacing="1", align="start", min_width="0", flex="1",
+        rx.hstack(
+            rx.link(rank_badge(s.rank, 48), href="/profile", underline="none", aria_label="Your rank"),
+            rx.vstack(text(f"Hi, {AuthState.display_name}", t.TITLE, overflow="hidden", text_overflow="ellipsis",
+                           white_space="nowrap", max_width="100%"),
+                      text(f"{s.rank_name} · Level {s.level}", t.CAPTION, t.TEXT_2),
+                      spacing="0", align="start", flex="1", min_width="0"),
+            icon_button("bell", "Notifications", href="/notifications", badge=s.unread),
+            width="100%", align="center", spacing="3",
+        ),
+        progress_bar(s.xp_scale, label=s.xp_label),
+        spacing="4", width="100%", padding_top=t.space(16),
     )
 
 
-def _snapshot() -> rx.Component:
-    return rx.vstack(
-        section_header("Your weekly snapshot", action="See more", href="/you"),
-        rx.cond(HomeState.tiles.length() > 0,
-                rx.hstack(rx.foreach(HomeState.tiles, _tile), width="100%", spacing="3"),
-                skeleton("72px")),
-        spacing="3", width="100%",
-    )
-
-
-def _following() -> rx.Component:
+def _week() -> rx.Component:
+    s = HomeState
     return rx.cond(
-        HomeState.feed.length() > 0,
-        rx.vstack(
-            rx.foreach(HomeState.feed, lambda c: feed_item(c, HomeState.toggle_spot(c.session_id))),
-            rx.cond(HomeState.feed_cursor != "", secondary_button("Show more", HomeState.more_feed, width="100%")),
-            spacing="0", width="100%",
-        ),
-        rx.cond(
-            HomeState.feed_loaded,
-            empty_state("Follow friends to see their workouts", "Their finished workouts show up here, and yours.",
-                        rx.link(primary_button("Find friends", icon="user-plus"), href="/explore?tab=people",
-                                underline="none")),
-            rx.vstack(skeleton("220px"), skeleton("220px"), width="100%"),
-        ),
+        s.loaded,
+        stat_group(stat_tile(s.streak_weeks, "Week streak"), stat_tile(s.workouts_week, "Workouts this week"),
+                   stat_tile(s.points_week_value, "Points this week")),
+        skeleton("64px"),
     )
 
 
-def _board_row(r) -> rx.Component:
+def _last() -> rx.Component:
+    last = HomeState.last
+    return rx.cond(
+        last.length() > 0,
+        section("Last workout",
+                rows(list_row(last["title"], f"{last['date_label']} · {last['duration']} · {last['volume']}",
+                              trailing=last["points"], chevron=True, href=f"/session/{last['id']}"))),
+    )
+
+
+def board_row(r) -> rx.Component:
+    """One line of the friends leaderboard; yours is tinted."""
     return rx.link(
         rx.hstack(
-            text(r["position"], t.HEADLINE, t.TEXT_SECONDARY, width="28px", **t.TABULAR),
-            avatar(r["initials"], r["rank"], size=36),
-            text(r["name"], t.BODY, flex="1", min_width="0", overflow="hidden", text_overflow="ellipsis",
-                 white_space="nowrap"),
-            text(r["points"], t.HEADLINE, t.STREAK_ORANGE, **t.NUMERAL_GAME),
-            width="100%", align="center", spacing="3", min_height="52px", padding=f"0 {t.space(3)}",
-            background=rx.cond(r["me"] != "", t.alpha(t.ACCENT_BLUE, 0.12), "transparent"),
-            border_radius=t.RADIUS_THUMB,
+            text(r["position"], t.LABEL, t.TEXT_2, width="24px", **t.TABULAR),
+            avatar(r["initials"], size=40),
+            rx.hstack(text(r["name"], t.BODY, overflow="hidden", text_overflow="ellipsis", white_space="nowrap",
+                           min_width="0"),
+                      rank_badge(r["rank"], 24), spacing="2", align="center", flex="1", min_width="0"),
+            text(r["points"], t.BODY, t.TEXT_2, **t.TABULAR),
+            width="100%", align="center", spacing="3", min_height=t.ROW_MIN, padding_x=t.space(8),
+            background=rx.cond(r["me"] != "", t.ACCENT_SOFT, "transparent"), border_radius=t.RADIUS,
+            class_name="ma-press",
         ),
-        href=f"/u/{r['id']}", underline="none", width="100%",
+        href=f"/u/{r['id']}", underline="none", width="100%", class_name="ma-board-row",
     )
 
 
-def _leaderboard() -> rx.Component:
-    return rx.vstack(
-        segmented_control(["This week", "All time"],
-                          rx.cond(HomeState.period == "week", "This week", "All time"), HomeState.set_period),
-        rx.vstack(rx.foreach(HomeState.board, _board_row), spacing="1", width="100%"),
-        # Your own row stays in sight when the list is long.
-        rx.cond(~HomeState.me_in_view & (HomeState.me_row.length() > 0),
-                rx.box(_board_row(HomeState.me_row), position="sticky", bottom=t.TAB_BAR_CLEARANCE,
-                       width="100%", background=t.COLOR_BG)),
-        rx.cond(HomeState.board.length() <= 1,
-                text("Follow friends to see how you stack up.", t.SUBHEAD, t.TEXT_SECONDARY)),
-        spacing="3", width="100%",
+def _board() -> rx.Component:
+    s = HomeState
+    return section(
+        "Leaderboard",
+        rx.cond(
+            s.board_loaded,
+            rx.cond(
+                s.board.length() > 1,
+                rx.vstack(rx.foreach(s.preview, board_row),
+                          rx.cond(~s.me_in_preview & (s.me_row.length() > 0), board_row(s.me_row)),
+                          spacing="1", width="100%"),
+                text("Follow friends to see how you stack up.", t.BODY, t.TEXT_2),
+            ),
+            skeleton_rows(3),
+        ),
+        action="See all", href="/leaderboard",
     )
 
 
-def _duels() -> rx.Component:
-    return rx.vstack(
-        dashboard_duels(),
-        rx.link(secondary_button("All duels and challenges", width="100%"), href="/duels", underline="none",
-                width="100%"),
-        spacing="3", width="100%",
+def _feed() -> rx.Component:
+    s = HomeState
+    return section(
+        "Friends' workouts",
+        rx.cond(
+            s.feed.length() > 0,
+            rx.vstack(
+                rx.foreach(s.feed, lambda c: feed_item(c, s.toggle_spot(c.session_id))),
+                rx.cond(s.feed_cursor != "", button("Show more", s.more_feed, variant="ghost", full=True)),
+                spacing="0", width="100%",
+            ),
+            rx.cond(
+                s.feed_loaded,
+                empty_state("users", "Follow friends to see their workouts here.",
+                            link_button("Find friends", "/profile/people", icon="user-plus")),
+                skeleton_rows(3),
+            ),
+        ),
+    )
+
+
+def _streak_notice() -> rx.Component:
+    return rx.cond(
+        QuestState.streak_saved_notice != "",
+        rx.hstack(rx.icon("snowflake", size=20, color=t.TEXT_2, stroke_width=1.75),
+                  text(QuestState.streak_saved_notice, t.BODY, t.TEXT_2, flex="1"),
+                  button("OK", QuestState.dismiss_streak_notice, variant="ghost"),
+                  width="100%", align="center", spacing="3", background=t.SURFACE, border_radius=t.RADIUS,
+                  padding=t.CARD_PADDING),
     )
 
 
 def home_page() -> rx.Component:
+    start = rx.cond(
+        HomeState.live,
+        link_button("Resume workout", "/train", variant="primary", icon="play", full=True),
+        button("Start workout", [WorkoutState.start_session(""), rx.redirect("/train")], icon="play", full=True),
+    )
     return shell(
         _top(),
         error_banner(HomeState.error),
-        rx.cond(QuestState.streak_saved_notice != "",
-                rx.hstack(rx.icon("snowflake", size=18, color=t.ACCENT_BLUE),
-                          text(QuestState.streak_saved_notice, t.SUBHEAD, flex="1"),
-                          text("OK", t.HEADLINE, t.ACCENT_BLUE, cursor="pointer", on_click=QuestState.dismiss_streak_notice),
-                          width="100%", align="center", spacing="3", background=t.SURFACE_1,
-                          border_radius=t.RADIUS_CARD, padding=t.CARD_PADDING)),
-        _game_strip(),
-        # Last month's story, in the first week of a month.
-        rx.cond(MonthlyState.hero_show,
-                hero_card(f"Your {MonthlyState.hero_title}", f"{MonthlyState.hero_workouts} workouts - see your month",
-                          on_play=rx.redirect(f"/summary/{MonthlyState.hero_month}"))),
-        _snapshot(),
-        rx.match(HomeState.view, ("Leaderboard", _leaderboard()), ("Duels", _duels()), _following()),
+        _streak_notice(),
+        _week(),
+        _last(),
+        _board(),
+        _feed(),
+        pinned=start,
     )

@@ -43,7 +43,7 @@ async function signIn(page) {
   await page.goto(UI + '/login');
   await page.locator('input').first().fill(email);
   await page.locator('input[type=password]').fill(password);
-  await page.getByText('ENTER', { exact: true }).click();
+  await page.getByRole('button', { name: 'Sign in' }).click();
   await page.waitForURL('**/dashboard', { timeout: 20000 });
 }
 
@@ -73,11 +73,11 @@ try {
 
   for (const tier of TIERS) {
     console.log(`  ${tier.rank}  ${tier.title}`);
-    await page.goto(`${UI}/dashboard?celebrate=${tier.rank}`);
+    await page.goto(`${UI}/quests?celebrate=${tier.rank}`);
     await page.locator('.lf-celebrate').waitFor({ state: 'visible', timeout: 15000 });
     // The whole sequence, then a beat on the settled card.
     await page.waitForTimeout(tier.duration + 1600);
-    await page.getByText('CONTINUE', { exact: true }).click();
+    await page.getByRole('button', { name: 'Continue' }).click();
     await page.locator('.lf-celebrate').waitFor({ state: 'detached', timeout: 10000 });
     await page.waitForTimeout(700);
   }

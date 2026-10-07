@@ -16,7 +16,7 @@ React-owned nodes. It only sets attributes React does not manage
 (`data-ma-state`, `data-ma-time`, `data-ma-clock`), and CSS renders them with
 `content: attr(...)`. Writing textContent instead broke hydration: with a rest
 still running at page load, the script updated the server-rendered timer text
-before React hydrated it, and React 19 threw mismatch error #418. Attributes
+before React hydrated it, and React 19 threw mismatch error 418. Attributes
 React never set are neither compared during hydration nor touched on
 re-render, so the script and React cannot fight.
 
@@ -29,22 +29,19 @@ from metalarm import theme
 
 _CSS = f"""
 .ma-rest {{
-  position: fixed;
-  left: 50%;
-  /* Above the floating tab bar, where the Start pill sits. */
-  bottom: calc({theme.TAB_BAR_HEIGHT} + {theme.space(6)} + env(safe-area-inset-bottom));
-  transform: translate(-50%, 160%);
-  opacity: 0;
-  pointer-events: none;
-  transition: transform 260ms cubic-bezier(0.22, 1, 0.36, 1), opacity 200ms ease;
-  z-index: 60;
+  position: fixed; left: 0; right: 0; margin: 0 auto; max-width: {theme.MAX_WIDTH};
+  bottom: calc({theme.TAB_BAR_HEIGHT} + env(safe-area-inset-bottom));
+  transform: translateY(110%); opacity: 0; pointer-events: none;
+  transition: transform {theme.BASE} {theme.EASE}, opacity {theme.BASE} {theme.EASE};
+  z-index: 45;
 }}
-.ma-rest[data-ma-state] {{ transform: translate(-50%, 0); opacity: 1; pointer-events: auto; }}
-.ma-rest-time::after {{ content: attr(data-ma-time); color: {theme.TEXT_PRIMARY}; }}
-.ma-rest[data-ma-state="done"] .ma-rest-time::after {{ color: {theme.RECOVERY_GREEN}; }}
+.ma-rest[data-ma-state] {{ transform: translateY(0); opacity: 1; pointer-events: auto; }}
+.ma-rest-line {{ transform: scaleX(var(--ma-rest-frac, 1)); transform-origin: left center;
+  transition: transform 250ms linear; }}
+.ma-rest-time::after {{ content: attr(data-ma-time); }}
 [data-ma-start]::after {{ content: attr(data-ma-clock); }}
 @media (prefers-reduced-motion: reduce) {{
-  .ma-rest, .ma-rest[data-ma-state] {{ transform: translate(-50%, 0); transition: opacity 120ms ease; }}
+  .ma-rest, .ma-rest[data-ma-state], .ma-rest-line {{ transition: none; }}
 }}
 """
 
@@ -52,6 +49,7 @@ _SCRIPT = """
 (function () {
   if (window.maRest) return;
   var KEY = 'ma_rest_end';
+  var TOTAL = 'ma_rest_total';
 
   function read() { try { return Number(localStorage.getItem(KEY) || 0); } catch (e) { return 0; } }
   function write(v) { try { v ? localStorage.setItem(KEY, String(v)) : localStorage.removeItem(KEY); } catch (e) {} }
@@ -68,10 +66,14 @@ _SCRIPT = """
     var end = read();
     if (!end) { set(bar, 'data-ma-state', null); return; }
     var left = Math.round((end - Date.now()) / 1000);
+    // The progress line: a custom property on <html>, which React never owns.
+    var total = Number(localStorage.getItem(TOTAL) || 0) || 90;
+    document.documentElement.style.setProperty('--ma-rest-frac', String(Math.max(0, Math.min(1, left / total))));
     if (left <= 0) {
-      if (bar.getAttribute('data-ma-state') !== 'done' && navigator.vibrate) navigator.vibrate([180, 80, 180]);
+      var haptics = localStorage.getItem('ma_haptics') !== 'off';
+      if (bar.getAttribute('data-ma-state') !== 'done' && haptics && navigator.vibrate) navigator.vibrate([180, 80, 180]);
       set(bar, 'data-ma-state', 'done');
-      set(time, 'data-ma-time', 'GO');
+      set(time, 'data-ma-time', '0:00');
       if (left < -10) { write(0); set(bar, 'data-ma-state', null); }
       return;
     }
@@ -90,8 +92,15 @@ _SCRIPT = """
   }
 
   window.maRest = {
-    start: function (seconds) { write(Date.now() + seconds * 1000); renderRest(); },
-    add: function (seconds) { write(Math.max(read(), Date.now()) + seconds * 1000); renderRest(); },
+    start: function (seconds) {
+      try { localStorage.setItem(TOTAL, String(seconds)); } catch (e) {}
+      write(Date.now() + seconds * 1000); renderRest();
+    },
+    add: function (seconds) {
+      var left = Math.max(0, (Math.max(read(), Date.now()) - Date.now()) / 1000) + seconds;
+      try { localStorage.setItem(TOTAL, String(Math.max(Number(localStorage.getItem(TOTAL) || 0), left))); } catch (e) {}
+      write(Date.now() + Math.max(0, left) * 1000); renderRest();
+    },
     stop: function () { write(0); renderRest(); }
   };
 
@@ -107,44 +116,26 @@ def timer_assets() -> rx.Component:
 
 
 def _bar_button(label: str, script: str) -> rx.Component:
-    return rx.el.button(
-        label,
-        on_click=rx.call_script(script),
-        background=theme.SURFACE_3,
-        color=theme.TEXT_PRIMARY,
-        border="none",
-        border_radius=theme.RADIUS_PILL,
-        padding=f"0 {theme.space(3)}",
-        min_height="36px",
-        cursor="pointer",
-        **theme.FOOTNOTE,
-    )
+    return rx.el.button(label, on_click=rx.call_script(script), background=theme.SURFACE_2, color=theme.TEXT,
+                        border="none", border_radius=theme.RADIUS_PILL, min_height=theme.TOUCH,
+                        padding=f"0 {theme.space(16)}", cursor="pointer", **theme.LABEL)
 
 
 def rest_bar() -> rx.Component:
-    """Rest: the countdown, -15 / +15 and skip. Hidden until a working set is
-    logged; the script shows it."""
-    return rx.hstack(
-        rx.icon("timer", size=18, color=theme.TEXT_SECONDARY),
-        rx.el.span(
-            id="ma-rest-time",
-            class_name="ma-rest-time",
-            min_width="4.2ch",
-            text_align="center",
-            **{**theme.TITLE_2, **theme.TABULAR},
+    """Rest: docked above the tab bar - the countdown, -15 s, +15 s, Skip,
+    and an accent line along the top that runs down with the time."""
+    return rx.box(
+        rx.box(class_name="ma-rest-line", height="2px", background=theme.ACCENT, width="100%"),
+        rx.hstack(
+            rx.el.span(id="ma-rest-time", class_name="ma-rest-time", color=theme.TEXT, flex="1",
+                       **theme.DISPLAY),
+            _bar_button("−15s", "window.maRest && window.maRest.add(-15)"),
+            _bar_button("+15s", "window.maRest && window.maRest.add(15)"),
+            _bar_button("Skip", "window.maRest && window.maRest.stop()"),
+            align="center", spacing="2", width="100%", padding=f"{theme.space(12)} {theme.GUTTER}",
         ),
-        _bar_button("−15", "window.maRest && window.maRest.add(-15)"),
-        _bar_button("+15", "window.maRest && window.maRest.add(15)"),
-        _bar_button("Skip", "window.maRest && window.maRest.stop()"),
-        id="ma-rest",
-        class_name="ma-rest",
-        align="center",
-        spacing="2",
-        padding=f"{theme.space(2)} {theme.space(3)}",
-        background=theme.TRANSLUCENT_BAR,
-        backdrop_filter=theme.BLUR,
-        border_radius=theme.RADIUS_PILL,
-        white_space="nowrap",
+        id="ma-rest", class_name="ma-rest", background=theme.SURFACE, border_top=theme.HAIRLINE,
+        custom_attrs={"role": "timer", "aria-label": "Rest"},
     )
 
 

@@ -1,6 +1,6 @@
-"""The You tab (overhaul 7.8): who you are in the game, and how your training
-is going - Overview (chart, muscles, calendar), Exercises, Measurements,
-History.
+"""The Progress tab: how your training is going - one chart (all training,
+or one exercise), current records, and the screens behind it: History,
+Measurements, the month calendar.
 
 The server computes every figure (app/core/analytics.py); this state only
 fetches, converts kg to the user's unit, and shapes rows for display.
@@ -8,6 +8,7 @@ fetches, converts kg to the user's unit, and shapes rows for display.
 
 from __future__ import annotations
 
+import dataclasses
 import datetime as dt
 from typing import Any
 
@@ -22,7 +23,10 @@ from metalarm.ui.body_map import paths_for
 from metalarm.workout_models import fmt, local_dt, to_unit
 
 TABS = ["Overview", "Exercises", "Measurements", "History"]
-RANGES = ["3M", "6M", "Year", "All"]
+# The API has no 1M range; "1Y" is its "Year".
+RANGES = ["3M", "6M", "1Y", "All"]
+API_RANGE = {"1Y": "Year"}
+FOCUS_METRICS = ["Estimated 1RM", "Max weight"]
 METRICS = ["Duration", "Volume", "Workouts", "Points"]
 
 
@@ -78,6 +82,16 @@ class YouState(rx.State):
     month_weeks: list[list[dict[str, str]]] = []
     month_count: str = ""
 
+    # --- One exercise on the chart ("" is all training) ---
+    focus_id: str = ""
+    focus_name: str = ""
+    focus_metric: str = "Estimated 1RM"
+    show_focus: bool = False
+    loaded: bool = False
+
+    # --- Current records ---
+    prs: list[dict[str, str]] = []
+
     # --- Exercises ---
     exercises: list[dict[str, str]] = []
     exercises_cursor: str = ""
@@ -92,6 +106,7 @@ class YouState(rx.State):
     measure_kind: str = "weight"
     measure_value: str = ""
     measure_label: str = ""
+    show_log: bool = False
 
     @rx.var
     def measure_groups(self) -> list[dict[str, str]]:
@@ -135,8 +150,61 @@ class YouState(rx.State):
             await self._load_muscles(token)
             await self._load_month(token, tz)
             await self._load_tab(token, tz, unit)
+            await self._load_prs(token, unit, tz)
         except ApiError as exc:
             self.error = exc.detail
+        self.loaded = True
+
+    @rx.var
+    def focus_label(self) -> str:
+        return self.focus_name or "All training"
+
+    @rx.var
+    def visible_prs(self) -> list[dict[str, str]]:
+        rows = [r for r in self.prs if not self.focus_id or r["exercise_id"] == self.focus_id]
+        return rows[:8]
+
+    async def _load_prs(self, token: str, unit: str, tz: str) -> None:
+        from metalarm.workout_models import RecordRow
+
+        raw = await wapi.records(token)
+        self.prs = [{"exercise_id": str(r.get("exercise_id") or ""), **dataclasses.asdict(RecordRow.from_api(r, unit, tz))}
+                    for r in raw]
+
+    async def open_focus(self):
+        self.show_focus = True
+        if not self.exercises:
+            token, _, unit = await self._ctx()
+            try:
+                await self._load_exercises(token, unit, "")
+            except ApiError as exc:
+                self.error = exc.detail
+
+    def close_focus(self) -> None:
+        self.show_focus = False
+
+    async def pick_focus(self, exercise_id: str, name: str):
+        self.focus_id, self.focus_name, self.show_focus = exercise_id, name, False
+        token, _, unit = await self._ctx()
+        try:
+            await self._load_series(token, unit)
+        except ApiError as exc:
+            self.error = exc.detail
+
+    async def set_focus_metric(self, value: str):
+        self.focus_metric = value
+        token, _, unit = await self._ctx()
+        try:
+            await self._load_series(token, unit)
+        except ApiError as exc:
+            self.error = exc.detail
+
+    async def load_for(self, tab: str):
+        """/progress/history and /progress/measurements: the same state, one
+        list loaded fresh."""
+        self.tab = tab
+        self.history = []
+        await self.load()
 
     async def _load_tab(self, token: str, tz: str, unit: str) -> None:
         if self.tab == "Exercises" and not self.exercises:
@@ -157,8 +225,11 @@ class YouState(rx.State):
     # --- Overview -------------------------------------------------------
 
     async def _load_series(self, token: str, unit: str) -> None:
+        if self.focus_id:
+            await self._load_focus_series(token, unit)
+            return
         metric = self.metric.lower()
-        data = await aapi.series(token, metric, self.range_)
+        data = await aapi.series(token, metric, API_RANGE.get(self.range_, self.range_))
         points = data.get("points") or []
         self.chart = [{"label": dt.date.fromisoformat(p["week_start"]).strftime("%d %b"),
                        "value": _metric_display(metric, p["value"], unit)} for p in points]
@@ -167,6 +238,25 @@ class YouState(rx.State):
         self.headline = (duration_label(last) if metric == "duration"
                          else f"{_metric_display(metric, last, unit):,.0f}")
         self.headline_label = "This week"
+        if self.chart:
+            self.chart[-1]["mark"] = self.chart[-1]["value"]
+
+    async def _load_focus_series(self, token: str, unit: str) -> None:
+        """One exercise: its best estimated 1RM or heaviest set per workout,
+        dotted where the API flagged a record."""
+        data = await aapi.exercise_stats(token, self.focus_id, API_RANGE.get(self.range_, self.range_))
+        key = "est_1rm" if self.focus_metric == "Estimated 1RM" else "best_set_weight_kg"
+        pr_days = {(s.get("started_at") or "")[:10] for s in data.get("sessions") or []
+                   if any(x.get("is_pr") for x in s.get("sets") or [])}
+        points = [p for p in data.get("series") or [] if p.get(key)]
+        self.chart = [{"label": dt.date.fromisoformat(p["date"]).strftime("%d %b"),
+                       "value": round(to_unit(p[key], unit), 1),
+                       "mark": round(to_unit(p[key], unit), 1)
+                       if p["date"] in pr_days or i == len(points) - 1 else None}
+                      for i, p in enumerate(points)]
+        self.headline = fmt(to_unit(points[-1][key], unit)) if points else "-"
+        self.headline_unit = unit
+        self.headline_label = "Latest"
 
     async def set_range(self, value: str):
         self.range_ = value
@@ -228,6 +318,7 @@ class YouState(rx.State):
                 "best": f"Best set {best}" if best else f"{e['sessions']} workouts",
                 "e1rm": f"e1RM {fmt(to_unit(e['best_est_1rm'], unit))} {unit}" if e.get("best_est_1rm") else "",
             })
+            rows[-1]["sub"] = " · ".join(b for b in (rows[-1]["best"], rows[-1]["e1rm"]) if b)
         self.exercises = (self.exercises + rows) if cursor else rows
         self.exercises_cursor = page.get("next_cursor") or ""
 
@@ -242,12 +333,16 @@ class YouState(rx.State):
         rows = history_rows(page, tz, unit)
         for row in rows:
             row["month_label"] = dt.date.fromisoformat(f"{row['month']}-01").strftime("%B %Y")
+            day = dt.date.fromisoformat(row["date"]) if row["date"] else None
+            monday = day - dt.timedelta(days=day.weekday()) if day else None
+            row["week"] = monday.isoformat() if monday else ""
+            row["week_label"] = f"Week of {monday.day} {monday.strftime('%b %Y')}" if monday else ""
         merged = (self.history + rows) if cursor else rows
-        # The month header shows on a month's first row only.
+        # A week's header shows on its first row only.
         last = ""
         for row in merged:
-            row["first_of_month"] = "1" if row["month"] != last else ""
-            last = row["month"]
+            row["first_of_week"] = "1" if row["week"] != last else ""
+            last = row["week"]
         self.history = merged
         self.history_cursor = page.get("next_cursor") or ""
 
@@ -269,6 +364,12 @@ class YouState(rx.State):
              "date": (local_dt(m.get("recorded_at"), tz) or dt.datetime.now()).strftime("%d %b")}
             for m in rows
         ]
+
+    def open_log(self) -> None:
+        self.show_log, self.error = True, ""
+
+    def close_log(self) -> None:
+        self.show_log = False
 
     def pick_measure(self, key: str) -> None:
         self.measure_key = key
@@ -303,5 +404,6 @@ class YouState(rx.State):
             return
         self.measure_value = ""
         self.error = ""
+        self.show_log = False
         self.measure_key = payload["metric"] if self.measure_kind != "custom" else f"custom:{payload['label']}"
         await self._load_measures(token)

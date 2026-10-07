@@ -68,7 +68,7 @@ class Progress:
     # evaluated server-side and shipped to the client as plain data.
 
 
-_RECURRENCE_LABELS = {"daily": "DAILY", "weekly": "WEEKLY", "none": "ONE-OFF"}
+_RECURRENCE_LABELS = {"daily": "Daily", "weekly": "Weekly", "none": "One-off"}
 
 
 @dataclasses.dataclass
@@ -230,7 +230,7 @@ class Party:
             total_party_xp=data.get("total_party_xp") or 0,
             is_active=bool(data.get("is_active", True)),
             is_owner=(role == "owner"),
-            seats_label=f"{count}/{cap} MEMBERS",
+            seats_label=f"{count} of {cap} members",
         )
 
 
@@ -322,7 +322,7 @@ class Badge:
             progress=prog,
             target=target,
             percent=data.get("percent") or 0,
-            progress_label=f"{prog} / {target}",
+            progress_label=f"{prog:,} / {target:,}",
             scale=round((data.get("percent") or 0) / 100, 4),
         )
 
@@ -341,6 +341,9 @@ class LifetimeStats:
     workouts_completed: int = 0
     workout_prs: int = 0
     volume_label: str = "0 kg"
+    # The same, split for a stat tile: the number, and its unit beside it.
+    volume_value: str = "0"
+    volume_unit: str = "kg"
     streak_label: str = "0 WEEKS"
 
     @classmethod
@@ -360,6 +363,8 @@ class LifetimeStats:
             workouts_completed=data.get("workouts_completed") or 0,
             workout_prs=data.get("workout_prs") or 0,
             volume_label=f"{round(volume):,} {unit}",
+            volume_value=f"{round(volume):,}",
+            volume_unit=unit,
             streak_label=f"{weeks} WEEK{'S' if weeks != 1 else ''}",
         )
 
@@ -443,7 +448,7 @@ class RaidView:
             hp_pct=round(100 * remaining / max_hp) if max_hp else 0,
             damage_label=f"{int(data.get('damage_dealt') or 0):,} damage dealt",
             healed_label=f"+{healed:,} healed on idle days" if healed and not defeated else "",
-            days_left_label="DEFEATED" if defeated else f"{days} day{'' if days == 1 else 's'} left",
+            days_left_label="Defeated" if defeated else f"{days} day{'' if days == 1 else 's'} left",
             defeated=defeated,
             loaded=True,
             hitters=[RaidHitterRow.from_api(h) for h in data.get("hitters") or []],
@@ -687,12 +692,12 @@ def _metric_label(score: float, metric: str) -> str:
 
 
 METRIC_TITLES = {
-    "consistency": "CONSISTENCY",
-    "progress": "PROGRESS",
-    "relative_volume": "VS. YOUR AVERAGE",
-    "volume": "VOLUME",
-    "sets": "SETS",
-    "sessions": "SESSIONS",
+    "consistency": "Consistency",
+    "progress": "Progress",
+    "relative_volume": "Vs. your average",
+    "volume": "Volume",
+    "sets": "Sets",
+    "sessions": "Sessions",
 }
 
 
@@ -739,7 +744,7 @@ def _breakdown(lines: list[dict[str, Any]] | None, metric: str) -> list[Breakdow
 class Duel:
     id: str = ""
     metric: str = "volume"
-    metric_label: str = "VOLUME"
+    metric_label: str = "Volume"
     status: str = "pending"
     challenger: DuelSide = dataclasses.field(default_factory=DuelSide)
     opponent: DuelSide = dataclasses.field(default_factory=DuelSide)
@@ -785,7 +790,7 @@ class Duel:
         return cls(
             id=str(data.get("id") or ""),
             metric=metric,
-            metric_label=METRIC_TITLES.get(metric, metric.upper()),
+            metric_label=METRIC_TITLES.get(metric, metric.capitalize()),
             status=data.get("status") or "pending",
             challenger=challenger,
             opponent=opponent,

@@ -48,7 +48,10 @@ class ExerciseDetailState(rx.State):
     @rx.var
     def chart(self) -> list[dict[str, Any]]:
         key = {"Best set": "best", "Estimated 1RM": "e1rm", "Volume": "volume", "Max reps": "reps"}[self.chart_metric]
-        return [{"label": p["label"], "value": p[key]} for p in self.series if p[key] is not None]
+        rows = [{"label": p["label"], "value": p[key], "mark": None} for p in self.series if p[key] is not None]
+        if rows:
+            rows[-1]["mark"] = rows[-1]["value"]
+        return rows
 
     async def load(self):
         auth = await self.get_state(AuthState)
@@ -138,4 +141,4 @@ class ExerciseDetailState(rx.State):
         except ApiError as exc:
             self.error = exc.detail
             return
-        return rx.redirect("/workout")
+        return rx.redirect("/train")

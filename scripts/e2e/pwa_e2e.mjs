@@ -42,7 +42,7 @@ async function signIn(page, email, password) {
   await page.goto(`${UI}/login`);
   await page.locator('input').first().fill(email);
   await page.locator('input[type=password]').fill(password);
-  await page.getByText('ENTER', { exact: true }).click();
+  await page.getByRole('button', { name: 'Sign in' }).click();
   await page.waitForURL('**/home', { timeout: 30000 });
 }
 
@@ -95,7 +95,7 @@ try {
   const routine = (await api('/routines', 'POST', { name: 'Offline day', exercises: [
     { exercise_id: bench, target_sets: 3, target_reps: 5, target_weight_kg: 80 }] }, token)).body;
   const session = (await api('/workouts/sessions', 'POST', { routine_id: routine.id }, token)).body;
-  await page.goto(`${UI}/workout`);
+  await page.goto(`${UI}/train`);
   const card = page.locator('.ma-card').first();
   await card.waitFor({ timeout: 20000 });
   await page.waitForTimeout(1500);       // let the worker cache this page
@@ -137,8 +137,8 @@ try {
   const demoToken = (await api('/auth/login', 'POST', { email: DEMO_EMAIL, password: DEMO_PASSWORD })).body.access_token;
   const summary = (await api('/analytics/monthly-summary', 'GET', null, demoToken)).body;
   check(`last month (${summary.month}) has the seeded workouts`, summary.workouts > 0, String(summary.workouts));
-  for (const width of [375, 430]) {
-    const c = await browser.newContext({ viewport: { width, height: width === 375 ? 812 : 932 }, deviceScaleFactor: 2,
+  for (const width of [360, 390, 430]) {
+    const c = await browser.newContext({ viewport: { width, height: width < 400 ? 800 : 932 }, deviceScaleFactor: 2,
       isMobile: true, hasTouch: true });
     const p = await c.newPage();
     await signIn(p, DEMO_EMAIL, DEMO_PASSWORD);
@@ -154,7 +154,7 @@ try {
       if (wider > 1) check(`${width}: slide ${i + 1} fits`, false, `${wider}px`);
       if (i < 6) await p.locator('.ma-next').click({ position: { x: 150, y: 400 } });
     }
-    if (width === 375) {
+    if (width === 360) {
       const vol = Math.round(summary.volume_kg).toLocaleString('en-US');
       check(`slide 1: ${summary.workouts} workouts`, texts[0].includes(String(summary.workouts)));
       check(`slide 2: ${vol} kg and "${summary.volume_comparison}"`,
@@ -165,7 +165,7 @@ try {
       check(`slide 6: ${summary.duels_won} of ${summary.duels_played} duels`,
         texts[5].includes(`${summary.duels_won} of ${summary.duels_played} duels won`));
       check('slide 7: the share card, with Share and Done',
-        texts[6].includes('Workouts') && (await p.getByText('Share', { exact: true }).count()) === 1);
+        texts[6].includes('Workouts') && (await p.getByRole('button', { name: 'Share' }).count()) === 1);
       // Back goes back.
       await p.locator('[aria-label="Previous"]').click({ position: { x: 40, y: 120 } });
       await p.waitForTimeout(400);
@@ -174,11 +174,12 @@ try {
     await c.close();
   }
   const hero = (await api('/analytics/monthly-summary/latest', 'GET', null, demoToken)).body;
-  const homeCtx = await browser.newContext({ viewport: { width: 375, height: 812 } });
+  const homeCtx = await browser.newContext({ viewport: { width: 390, height: 860 } });
   const home = await homeCtx.newPage();
   await signIn(home, DEMO_EMAIL, DEMO_PASSWORD);
-  const shown = await seen(home.getByRole('button', { name: 'Play' }), 8000);
-  check(`Home shows last month's card exactly when the API says (${hero.show})`, shown === hero.show);
+  await home.goto(`${UI}/progress`);
+  const shown = await seen(home.getByText(/ workouts · see your month$/), 8000);
+  check(`Progress shows last month's card exactly when the API says (${hero.show})`, shown === hero.show);
   await homeCtx.close();
 } catch (err) {
   failed.push(`aborted: ${err.message.split('\n')[0]}`);

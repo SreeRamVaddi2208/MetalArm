@@ -11,6 +11,7 @@ from __future__ import annotations
 import reflex as rx
 
 from metalarm import api
+from metalarm import analytics_api as wapi_analytics
 from metalarm import workout_api as wapi
 from metalarm.api import ApiError
 from metalarm.state.auth import AuthState
@@ -28,6 +29,8 @@ class PickerState(rx.State):
     gears: list[dict[str, str]] = []
     categories: list[str] = ["strength", "bodyweight", "cardio", "mobility"]
     results: list[dict[str, str]] = []
+    # Shown first when nothing is searched or filtered: what the user did lately.
+    recent: list[dict[str, str]] = []
     cursor: str = ""
     # Ids in the order they were picked.
     selected: list[str] = []
@@ -42,7 +45,7 @@ class PickerState(rx.State):
     @rx.var
     def add_label(self) -> str:
         n = len(self.selected)
-        return f"Add {n} exercise{'s' if n != 1 else ''}" if n else "Pick exercises to add"
+        return f"Add {n} exercise{'s' if n != 1 else ''}" if n else "Add"
 
     @rx.var
     def muscle_codes(self) -> list[str]:
@@ -77,7 +80,23 @@ class PickerState(rx.State):
                             for m in data.get("muscle_groups", []) if m["browsable"]]
             self.gears = [{"code": e["code"], "label": e["display_name"]}
                           for e in data.get("equipment", []) if e["browsable"]]
+        try:
+            mine = await wapi_analytics.my_exercises(token, limit=6)
+            self.recent = [{"id": str(e["exercise_id"]), "name": e["name"], "image": e.get("thumbnail_url") or "",
+                            "sub": " · ".join(m.replace("_", " ").capitalize() for m in e["primary_muscle_groups"][:2])}
+                           for e in mine.get("items") or []]
+        except ApiError:
+            self.recent = []
         await self._search()
+
+    @rx.var
+    def browsing(self) -> bool:
+        """Nothing searched or filtered - show what was used lately first."""
+        return not (self.query.strip() or self.muscle or self.gear)
+
+    def close(self) -> None:
+        self.is_open = False
+        self.selected = []
 
     def set_open(self, value: bool) -> None:
         self.is_open = value

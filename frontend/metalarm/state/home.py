@@ -1,6 +1,6 @@
-"""Home (overhaul 7.1): the game in one row, this week against last, and -
-switched from the title - the following feed, the friends leaderboard, or
-duels. Every number is the server's."""
+"""Home: your rank and level, this week in three numbers, the last workout,
+the friends leaderboard's top three and you, then friends' workouts. Every
+number is the server's."""
 
 from __future__ import annotations
 
@@ -10,13 +10,15 @@ import reflex as rx
 
 from metalarm import analytics_api as aapi
 from metalarm import social_api as sapi
+from metalarm import workout_api as wapi
 from metalarm.api import ApiError
 from metalarm.ranks import rank_title
 from metalarm.state.auth import AuthState
-from metalarm.state.workout_home import duration_label
+from metalarm.state.workout_home import duration_label, history_rows
 from metalarm.workout_models import FeedCard, initials_of, thousands, to_unit
 
 VIEWS = ["Following", "Leaderboard", "Duels"]
+PREVIEW = 3
 
 
 def _delta(value: float, fmt) -> tuple[str, str]:
@@ -38,6 +40,11 @@ class HomeState(rx.State):
     xp_label: str = ""
     xp_scale: str = "0"
     points_week: str = ""
+    points_week_value: str = "0"
+    workouts_week: str = "0"
+    live: bool = False
+    last: dict[str, str] = {}
+    loaded: bool = False
     quests_label: str = ""
     streak_weeks: int = 0
     unread: int = 0
@@ -55,6 +62,15 @@ class HomeState(rx.State):
     board: list[dict[str, str]] = []
     me_row: dict[str, str] = {}
     me_in_view: bool = True
+    board_loaded: bool = False
+
+    @rx.var
+    def preview(self) -> list[dict[str, str]]:
+        return self.board[:PREVIEW]
+
+    @rx.var
+    def me_in_preview(self) -> bool:
+        return any(r["me"] for r in self.board[:PREVIEW])
 
     async def _ctx(self) -> tuple[str, str]:
         auth = await self.get_state(AuthState)
@@ -69,10 +85,14 @@ class HomeState(rx.State):
             await self._load_game(token)
             await self._load_snapshot(token, unit)
             await self._load_feed(token, unit, "")
-            if self.view == "Leaderboard":
-                await self._load_board(token)
+            await self._load_board(token)
+            auth = await self.get_state(AuthState)
+            recent = history_rows(await aapi.history(token, limit=1), auth.timezone or "UTC", unit)
+            self.last = recent[0] if recent else {}
+            self.live = bool((await wapi.active_session(token)).get("session"))
         except ApiError as exc:
             self.error = exc.detail
+        self.loaded = True
 
     async def _load_game(self, token: str) -> None:
         g = await sapi.game(token)
@@ -84,12 +104,14 @@ class HomeState(rx.State):
         else:
             self.xp_label, self.xp_scale = f"{g['xp']:,} XP · top rank", "1"
         self.points_week = f"{g['points_this_week']} pts this week"
+        self.points_week_value = f"{g['points_this_week']:,}"
         self.quests_label = f"{g['quests_done']} of {g['quests_total']} quests"
         self.streak_weeks = g["streak_weeks"]
         self.unread = g["unread_notifications"]
 
     async def _load_snapshot(self, token: str, unit: str) -> None:
         s = await aapi.snapshot(token)
+        self.workouts_week = str(s["workouts"])
         w, wd = _delta(s["workouts_delta"], lambda v: str(int(v)))
         d, dd = _delta(s["duration_delta"], duration_label)
         v, vd = _delta(s["volume_delta"], lambda x: thousands(to_unit(x, unit)))
@@ -153,6 +175,17 @@ class HomeState(rx.State):
         self.board = [row(r) for r in data.get("rows") or []]
         self.me_row = row(data["me"])
         self.me_in_view = any(r["me"] for r in self.board)
+        self.board_loaded = True
+
+    async def load_board(self):
+        """/leaderboard: the board alone."""
+        token, _ = await self._ctx()
+        if not token:
+            return
+        try:
+            await self._load_board(token)
+        except ApiError as exc:
+            self.error = exc.detail
 
     async def set_period(self, label: str):
         self.period = "week" if label == "This week" else "all"

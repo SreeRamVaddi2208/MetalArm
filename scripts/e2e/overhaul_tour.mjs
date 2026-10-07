@@ -95,8 +95,8 @@ async function tap(locator, label) {
 }
 
 async function clearOverlays() {
-  for (const label of ['KEEP LIFTING', 'CONTINUE']) {
-    const b = page.getByText(label, { exact: true }).first();
+  for (const label of ['Continue']) {
+    const b = page.getByRole('button', { name: label, exact: true }).first();
     if (await b.isVisible().catch(() => false)) { await b.click().catch(() => {}); await wait(700); }
   }
 }
@@ -125,7 +125,7 @@ try {
   await page.goto(`${UI}/login`);
   await page.locator('input').first().fill(EMAIL);
   await page.locator('input[type=password]').fill(PASSWORD);
-  await page.getByText('ENTER', { exact: true }).click();
+  await page.getByRole('button', { name: 'Sign in' }).click();
   await page.waitForURL('**/home', { timeout: 30000 });
   await wait(1500);
 
@@ -141,43 +141,38 @@ try {
   });
 
   await chapter('leaderboard', async () => {
-    await glide(0);
-    await tap(page.getByRole('button', { name: 'Switch view' }), 'switch view');
-    await tap(page.getByText('Leaderboard', { exact: true }), 'leaderboard');
+    await go('/leaderboard');
     await wait(1200);
     await glide(500);
   });
 
   await chapter('quests', async () => {
-    await glide(0);
-    await tap(page.locator('.ma-game-strip'), 'game strip');
-    await page.waitForURL('**/quests', { timeout: 10000 }).catch(() => {});
+    await go('/quests');
     await wait(1200);
     await glide(700);
     await glide(1400);
   });
 
   await chapter('workout_tab', async () => {
-    await go('/workout');
+    await go('/train');
     await wait(800);
     await glide(500);
   });
 
   await chapter('recovery', async () => {
-    await tap(page.getByText('Recovery', { exact: true }), 'recovery');
+    await go('/progress/recovery');
     await wait(3000);
-    await tap(page.getByText('Done', { exact: true }), 'close recovery');
   });
 
   await chapter('explore', async () => {
-    await go('/explore');
+    await go('/train/exercises');
     await glide(600);
     await glide(1300);
     await glide(0);
   });
 
   await chapter('filter', async () => {
-    await tap(page.getByText('Chest', { exact: true }), 'chest');
+    await tap(page.getByRole('button', { name: 'Chest', exact: true }), 'chest');
     await wait(1200);
     await tap(page.getByRole('button', { name: 'Dumbbell', exact: true }), 'dumbbell');
     await wait(1500);
@@ -188,42 +183,38 @@ try {
     await page.waitForURL('**/exercise/**', { timeout: 10000 }).catch(() => {});
     await wait(1200);
     await glide(500);
-    await tap(page.getByText('Charts', { exact: true }), 'charts');
+    await tap(page.getByRole('button', { name: 'Charts', exact: true }), 'charts');
     await wait(1500);
-    await tap(page.getByText('Records', { exact: true }), 'records');
+    await tap(page.getByRole('button', { name: 'Records', exact: true }), 'records');
     await wait(1200);
   });
 
   await chapter('programs', async () => {
-    await go('/explore?tab=programs');
+    await go('/train');
     await wait(800);
     await tap(page.getByText('Upper / Lower Builder', { exact: true }), 'open program');
     await wait(1500);
-    await tap(page.getByText('Save to Library', { exact: true }), 'save program');
+    await tap(page.getByRole('button', { name: 'Save to library' }), 'save program');
     await wait(1500);
   });
 
   await chapter('library', async () => {
-    await go('/library');
-    await tap(page.getByText('Programs', { exact: true }), 'programs chip');
-    await tap(page.getByText('Upper / Lower Builder'), 'open saved program');
+    // Saving opened your copy: its routines, each one tap from its detail.
     await wait(1200);
     await tap(page.getByText('Upper A', { exact: true }), 'open routine');
     await wait(1200);
     await glide(700);
-    await tap(page.getByText('Cancel', { exact: true }), 'close editor');
   });
 
   const card = () => page.locator('.ma-card').first();
   await chapter('active', async () => {
-    await go('/library');
-    await tap(page.getByText('Routines', { exact: true }), 'routines chip');
-    await tap(page.getByText('Upper Day'), 'open Upper Day');
-    await tap(page.getByText('Start workout', { exact: true }), 'start workout');
-    await page.waitForURL('**/workout', { timeout: 15000 }).catch(() => {});
+    await go('/train');
+    await tap(page.getByText('Upper Day').first(), 'open Upper Day');
+    await tap(page.getByRole('button', { name: 'Start routine' }), 'start routine');
+    await page.waitForURL(/\/train\/?$/, { timeout: 15000 }).catch(() => {});
     await card().waitFor({ timeout: 15000 }).catch(() => missed.push('cards'));
     await wait(800);
-    await tap(card().getByRole('button', { name: 'Set type' }).last(), 'warm-up badge');
+    await tap(card().getByRole('button', { name: 'Set type' }), 'warm-up badge');
     await tap(card().getByRole('button', { name: 'Log set' }), 'log warm-up');
     await wait(900);
     await clearOverlays();
@@ -233,7 +224,7 @@ try {
   });
 
   await chapter('picker', async () => {
-    await tap(page.getByText('Add Exercise'), 'add exercise');
+    await tap(page.getByRole('button', { name: 'Add exercise' }), 'add exercise');
     await page.getByPlaceholder('Search exercises…').fill('curl').catch(() => missed.push('picker search'));
     await wait(1200);
     await tap(page.getByRole('checkbox', { name: 'EZ-Bar Curl', exact: true }), 'pick EZ-bar curl');
@@ -248,43 +239,44 @@ try {
     await card().locator('.ma-entry input').first().fill(String(Math.round(benchBest + 5))).catch(() => missed.push('weight'));
     await wait(600);
     await tap(card().getByRole('button', { name: 'Log set' }), 'log PR set');
-    await page.getByText('PERSONAL RECORD').waitFor({ timeout: 8000 }).catch(() => missed.push('PR moment'));
+    await page.locator('.ma-pr-banner').waitFor({ timeout: 8000 }).catch(() => missed.push('PR banner'));
     await wait(4200);
     await clearOverlays();
   });
 
   await chapter('summary', async () => {
     await glide(0);
-    await tap(page.getByText('Finish', { exact: true }), 'finish');
+    await tap(page.getByRole('button', { name: 'Finish', exact: true }), 'finish');
+    await tap(page.getByRole('button', { name: 'Finish workout' }), 'finish workout');
     await page.getByText('Workout complete').waitFor({ timeout: 15000 }).catch(() => missed.push('summary'));
     await wait(1500);
     await clearOverlays();
     await glide(500);
     await glide(1100);
-    await tap(page.getByText('Public', { exact: true }), 'visibility');
+    await tap(page.getByRole('button', { name: 'Public', exact: true }), 'visibility');
     await wait(1000);
-    // Done closes the summary; the Workout tab would keep showing it otherwise.
-    await tap(page.getByText('Done', { exact: true }), 'summary done');
+    // Done closes the summary; the Train tab would keep showing it otherwise.
+    await tap(page.getByRole('button', { name: 'Done', exact: true }), 'summary done');
   });
 
   await chapter('you', async () => {
-    await go('/you');
-    await tap(page.getByText('Workouts', { exact: true }), 'metric chip');
+    await go('/progress');
+    await tap(page.getByRole('button', { name: 'Workouts', exact: true }), 'metric chip');
     await wait(1200);
-    await tap(page.getByText('6M', { exact: true }), 'range');
+    await tap(page.getByRole('button', { name: '6M', exact: true }), 'range');
     await wait(1200);
     await glide(700);
     await glide(1300);
   });
 
   await chapter('people', async () => {
-    await go('/explore?tab=people');
+    await go('/profile/people');
     await wait(1500);   // the page's own load resets the box: type after it
     await page.getByPlaceholder('Search people by name').fill('Sam').catch(() => missed.push('people search'));
     await page.locator('.ma-person').filter({ hasText: 'Sam' }).first().waitFor({ timeout: 8000 })
       .catch(() => missed.push('Sam found'));
     await wait(800);
-    await tap(page.locator('.ma-person').filter({ hasText: 'Sam' }).getByText('Follow', { exact: true }), 'follow Sam');
+    await tap(page.locator('.ma-person').filter({ hasText: 'Sam' }).getByRole('button', { name: 'Follow', exact: true }), 'follow Sam');
     await wait(1200);
   });
 
@@ -311,7 +303,7 @@ try {
         await api(`/workouts/sessions/${r.body.id}/exercises`, 'POST', { exercise_id: benchId }, token);
       }
     });
-    await go('/workout');
+    await go('/train');
     await card().waitFor({ timeout: 15000 }).catch(() => missed.push('offline card'));
     await card().locator('.ma-entry input').first().fill('60').catch(() => {});
     await card().locator('.ma-entry input').nth(1).fill('8').catch(() => {});

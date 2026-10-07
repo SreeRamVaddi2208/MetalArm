@@ -1,17 +1,17 @@
-// Overhaul Gate 4: two accounts follow each other, see each other's workouts,
+// Gate 4: two accounts follow each other, see each other's workouts,
 // react, and duel - through the UI, one browser each.
 //
 //   node social_e2e.mjs [screenshot-dir]
 //
 // Against a RUNNING stack. Avery and Blake are fresh accounts:
 //   Blake finishes a followers-only workout and a private one (API);
-//   Avery finds Blake in Explore -> People and follows;
+//   Avery finds Blake in Profile -> People and follows;
 //   Avery's Home feed shows Blake's followers-only workout, never the private one,
 //   with its numbers; Avery spots it;
 //   Blake's bell shows the follow and the spot; Blake follows back from the
 //   notification;
 //   Avery challenges Blake (friends, no party) and Blake accepts;
-//   the friends leaderboard has both. Screenshots at 375 and 430.
+//   the friends leaderboard has both. Screenshots at 360, 390 and 430.
 
 import { mkdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -63,7 +63,7 @@ async function signIn(ctx, who) {
   await page.goto(`${UI}/login`);
   await page.locator('input').first().fill(who.email);
   await page.locator('input[type=password]').fill(who.password);
-  await page.getByText('ENTER', { exact: true }).click();
+  await page.getByRole('button', { name: 'Sign in' }).click();
   await page.waitForURL('**/home', { timeout: 30000 });
   return page;
 }
@@ -80,11 +80,11 @@ try {
   await workout(blake, 'Blake private', 'private');
   await workout(blake, 'Blake push day', 'followers');
 
-  for (const width of [375, 430]) {
+  for (const width of [360, 390, 430]) {
     const dir = join(OUT, String(width));
     mkdirSync(dir, { recursive: true });
     section(`Gate 4 at ${width}px`);
-    const viewport = { width, height: width === 375 ? 812 : 932 };
+    const viewport = { width, height: width < 400 ? 800 : 932 };
     const ctxA = await browser.newContext({ viewport, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
     const ctxB = await browser.newContext({ viewport, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
     const errors = [];
@@ -95,17 +95,17 @@ try {
       check(`${name}: no horizontal overflow`, wider <= 1, `${wider}px`);
     };
 
-    if (width === 375) {
+    if (width === 360) {
       // --- Find and follow ------------------------------------------------------
       check('Home: an empty feed asks you to find friends', await seen(a.getByText('Follow friends to see their workouts')));
       await a.screenshot({ path: join(dir, '01-home-empty.png'), fullPage: true });
-      await a.goto(`${UI}/explore?tab=people`);
+      await a.goto(`${UI}/profile/people`);
       await a.getByPlaceholder('Search people by name').fill(`Blake ${stamp}`);
       const row = a.locator('.ma-person').filter({ hasText: `Blake ${stamp}` });
       await row.waitFor({ timeout: 15000 });
       check('People search finds Blake', true);
-      await row.getByText('Follow', { exact: true }).click();
-      check('the button turns to Following', await seen(row.getByText('Following', { exact: true })));
+      await row.getByRole('button', { name: 'Follow', exact: true }).click();
+      check('the button turns to Following', await seen(row.getByRole('button', { name: 'Following', exact: true })));
       await a.screenshot({ path: join(dir, '02-people.png'), fullPage: true });
 
       // --- The feed ---------------------------------------------------------------
@@ -131,16 +131,16 @@ try {
       await b.screenshot({ path: join(dir, '04-notifications.png'), fullPage: true });
       await b.getByText(`Avery ${stamp} followed you`).click();
       await b.waitForURL('**/u/**', { timeout: 15000 });
-      await b.getByText('Follow back', { exact: true }).click();
-      check('following back makes them friends', await seen(b.getByText('Friends: you follow each other.')));
+      await b.getByRole('button', { name: 'Follow back', exact: true }).click();
+      check('following back makes them friends', await seen(b.getByText('You follow each other')));
       await b.screenshot({ path: join(dir, '05-profile.png'), fullPage: true });
 
       // --- Duel ---------------------------------------------------------------------
       await a.goto(`${UI}/duels`);
-      const challengeRow = a.getByText(`Blake ${stamp}`, { exact: true }).first().locator('xpath=..');
-      await challengeRow.getByRole('button', { name: 'CHALLENGE', exact: true }).click();
-      await a.getByText(`CHALLENGE BLAKE ${stamp}`.toUpperCase()).waitFor({ timeout: 15000 });
-      await a.locator('[role=button][aria-disabled=false]').filter({ hasText: /^Volume/ }).first().click();
+      await a.getByText(`Blake ${stamp}`, { exact: true }).first().click();
+      const modes = a.getByRole('dialog');
+      await modes.getByText(`Challenge Blake ${stamp}`).waitFor({ timeout: 15000 });
+      await modes.locator('[role=button][aria-disabled=false]').filter({ hasText: /^Volume/ }).first().click();
       let challenged = false;
       for (let i = 0; i < 20 && !challenged; i++) {
         await a.waitForTimeout(500);
@@ -149,7 +149,7 @@ try {
       }
       check('Avery challenged Blake - friends, no shared party', challenged);
       await b.goto(`${UI}/duels`);
-      await b.getByRole('button', { name: 'ACCEPT', exact: true }).first().click();
+      await b.getByRole('button', { name: 'Accept', exact: true }).first().click();
       await b.waitForTimeout(1500);
       const live = await api('/duels', 'GET', null, blake.token);
       check('Blake accepted - the duel is live', (live.body.active || []).length === 1);
@@ -157,15 +157,15 @@ try {
 
       // --- Leaderboard ----------------------------------------------------------------
       await a.goto(`${UI}/home`);
-      await a.getByRole('button', { name: 'Switch view' }).click();
-      await a.getByText('Leaderboard', { exact: true }).click();
+      check('Home previews the leaderboard', await seen(a.locator('.ma-board-row').filter({ hasText: `Blake ${stamp}` })));
+      await a.goto(`${UI}/leaderboard`);
       check('the friends leaderboard has both, Blake first',
         await seen(a.locator('a[href^="/u/"]').first().filter({ hasText: `Blake ${stamp}` })));
       await a.screenshot({ path: join(dir, '07-leaderboard.png'), fullPage: true });
       await b.close();
     } else {
       for (const [path, name] of [['/home', 'Home'], [`/u/${blake.id}`, 'Profile'], ['/notifications', 'Notifications'],
-        ['/explore?tab=people', 'People']]) {
+        ['/profile/people', 'People'], ['/leaderboard', 'Leaderboard']]) {
         await a.goto(UI + path);
         await a.waitForLoadState('networkidle').catch(() => {});
         await a.waitForTimeout(1200);

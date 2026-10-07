@@ -87,8 +87,8 @@ def _intensity(values: Any, path_id: str) -> Any:
 
 def _figure(paths: dict[str, str], extra_base: list[str], values: Any, size: str) -> rx.Component:
     base = [rx.el.path(d=d, fill=t.SURFACE_2) for d in BASE + extra_base]
-    regions = [rx.el.path(d=d, fill=t.SURFACE_3, id=pid) for pid, d in paths.items()]
-    lit = [rx.el.path(d=d, fill=t.MUSCLE_ACTIVE, fill_opacity=_intensity(values, pid))
+    regions = [rx.el.path(d=d, fill=t.BORDER, id=pid) for pid, d in paths.items()]
+    lit = [rx.el.path(d=d, fill=t.ACCENT, fill_opacity=_intensity(values, pid))
            for pid, d in paths.items()]
     return rx.el.svg(*base, *regions, *lit, view_box="0 0 120 250", height=size,
                      custom_attrs={"role": "img", "aria-label": "Muscles worked"})
@@ -104,7 +104,7 @@ def body_map(values: Any = None, *, views: tuple[str, ...] = ("front", "back"),
         figures.append(_figure(FRONT, list(FRONT_LEGS.values()), values, size))
     if "back" in views:
         figures.append(_figure(BACK, [], values, size))
-    return rx.hstack(*figures, spacing="5", justify="center", width="100%")
+    return rx.hstack(*figures, spacing="6", justify="center", width="100%")
 
 
 def paths_for(muscle_values: dict[str, float], svg_ids: dict[str, list[str]]) -> dict[str, float]:

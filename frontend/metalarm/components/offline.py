@@ -28,13 +28,15 @@ _CSS = f"""
 .ma-offline {{ display: none; }}
 .ma-offline[data-ma-online="0"], .ma-offline[data-ma-count]:not([data-ma-count=""]) {{
   display: block; position: sticky; top: 0; z-index: 25;
-  background: {t.SURFACE_2}; color: {t.TEXT_PRIMARY}; border-radius: {t.RADIUS_THUMB};
-  padding: {t.space(2)} {t.space(3)}; font-size: 15px; line-height: 20px;
+  background: {t.SURFACE_2}; color: {t.TEXT}; border-radius: {t.RADIUS};
+  padding: {t.space(8)} {t.space(12)}; font-size: {t.LABEL["font_size"]}; line-height: {t.LABEL["line_height"]};
+  font-weight: {t.LABEL["font_weight"]};
 }}
 .ma-offline[data-ma-online="0"]::after {{ content: "Offline - sets you log are kept and sent when you reconnect"; }}
 .ma-offline[data-ma-count]:not([data-ma-count=""])::after {{ content: attr(data-ma-count); }}
 .ma-card[data-ma-queued]::after {{
-  content: attr(data-ma-queued); color: {t.STREAK_ORANGE}; font-size: 13px; line-height: 18px;
+  content: attr(data-ma-queued); color: {t.TEXT_2}; font-size: {t.CAPTION["font_size"]};
+  line-height: {t.CAPTION["line_height"]};
 }}
 """
 

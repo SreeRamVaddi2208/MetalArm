@@ -33,7 +33,8 @@ React-owned nodes breaks hydration.
 
 import reflex as rx
 
-from metalarm import theme
+from metalarm import theme as t
+from metalarm.ui.primitives import button, text
 from metalarm.state.quests import QuestState
 
 _KEYFRAMES = f"""
@@ -150,7 +151,7 @@ _KEYFRAMES = f"""
 .lf-flash {{
   position: fixed;
   inset: 0;
-  background: {theme.TEXT};
+  background: {t.TEXT};
   pointer-events: none;
   animation: lf-flash calc(var(--lf-dur, 1800ms) * 0.3) ease-out both;
 }}
@@ -164,13 +165,13 @@ _KEYFRAMES = f"""
 }}
 .lf-badge.lf-rank {{
   animation: lf-land 820ms cubic-bezier(0.16, 1, 0.3, 1) 80ms both;
-  /* "INTERMEDIATE" is the longest tier and has to fit a 320px phone's card
-     (90vw less 2rem of padding either side) without touching the edges. */
-  font-size: 1.4rem;
+  /* "INTERMEDIATE" is the longest tier and has to fit a 360px phone's card
+     (the column less 32px of padding either side) without touching the edges. */
+  font-size: 22px;
   letter-spacing: 0.12em;
   line-height: 1.1;
   text-align: center;
-  padding: 0 0.4rem;
+  padding: 0 4px;
 }}
 /* The promotion, read at a glance: the tier left behind, then the new one. */
 .lf-ladder {{
@@ -182,12 +183,12 @@ _KEYFRAMES = f"""
   /* A few beats around the badge, then still - bounded and clipped by the
      card, so it frames the number instead of crossing the text. */
   animation: lf-ring 1100ms ease-out 120ms 3 both;
-  border: 2px solid var(--lf-glow, #9a9aa2);
+  border: 2px solid var(--lf-glow, {t.TEXT_2});
 }}
 .lf-ring.lf-shock {{
   animation: lf-shock calc(var(--lf-dur, 1800ms) * 0.4) cubic-bezier(0.1, 0.8, 0.2, 1) 40ms both;
   border-width: 3px;
-  border-color: var(--lf-base, #9a9aa2);
+  border-color: var(--lf-base, {t.TEXT_2});
 }}
 
 /* --- Particles: one rule per layer, count and spread from the tier -------- */
@@ -204,7 +205,7 @@ _KEYFRAMES = f"""
   height: 14px;
   margin: -7px 0 0 -1.5px;
   border-radius: 2px;
-  background: linear-gradient(var(--lf-base, #9a9aa2), var(--lf-glow, #9a9aa2));
+  background: linear-gradient(var(--lf-base, {t.TEXT_2}), var(--lf-glow, {t.TEXT_2}));
   animation-name: lf-spark;
   animation-duration: calc(var(--lf-dur, 1800ms) * 0.5);
   animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
@@ -222,7 +223,7 @@ _KEYFRAMES = f"""
   height: 16px;
   margin: -8px 0 0 -8px;
   border-radius: 50%;
-  background: var(--lf-glow, #9a9aa2);
+  background: var(--lf-glow, {t.TEXT_2});
   filter: blur(5px);
   animation-name: lf-glow-out;
   animation-duration: calc(var(--lf-dur, 1800ms) * 0.66);
@@ -233,7 +234,7 @@ _KEYFRAMES = f"""
   height: 4px;
   margin: -2px 0 0 -2px;
   border-radius: 50%;
-  background: var(--lf-jewel, #9a9aa2);
+  background: var(--lf-jewel, {t.TEXT_2});
   animation-name: lf-ember-out;
   animation-duration: calc(var(--lf-dur, 1800ms) * 0.9);
   animation-timing-function: cubic-bezier(0.25, 0.6, 0.3, 1);
@@ -246,7 +247,7 @@ _KEYFRAMES = f"""
   height: 3px;
   margin: 0;
   border-radius: 50%;
-  background: var(--lf-jewel, #9a9aa2);
+  background: var(--lf-jewel, {t.TEXT_2});
   animation-name: lf-ambient-out;
   animation-duration: calc(var(--lf-dur, 1800ms) * 0.75);
   animation-timing-function: linear;
@@ -262,8 +263,8 @@ _KEYFRAMES = f"""
   inset: -4px;
   border-radius: 50%;
   border: 2px solid transparent;
-  border-left-color: var(--lf-glow, #9a9aa2);
-  border-right-color: var(--lf-glow, #9a9aa2);
+  border-left-color: var(--lf-glow, {t.TEXT_2});
+  border-right-color: var(--lf-glow, {t.TEXT_2});
   opacity: 0.85;
   animation: lf-burst calc(var(--lf-dur, 1800ms) * 0.4) cubic-bezier(0.22, 1, 0.36, 1) 120ms both;
 }}
@@ -274,7 +275,7 @@ _KEYFRAMES = f"""
   width: 9px;
   height: 9px;
   margin: -4.5px 0 0 -4.5px;
-  background: var(--lf-jewel, #9a9aa2);
+  background: var(--lf-jewel, {t.TEXT_2});
   transform: rotate(var(--a)) translateY(-68px) rotate(45deg);
   animation: lf-burst calc(var(--lf-dur, 1800ms) * 0.45) cubic-bezier(0.22, 1, 0.36, 1) 200ms both;
 }}
@@ -285,7 +286,7 @@ _KEYFRAMES = f"""
   margin-left: -26px;
   width: 52px;
   height: 30px;
-  background: linear-gradient(var(--lf-base, #9a9aa2), var(--lf-glow, #9a9aa2));
+  background: linear-gradient(var(--lf-base, {t.TEXT_2}), var(--lf-glow, {t.TEXT_2}));
   clip-path: polygon(0% 100%, 12% 34%, 30% 62%, 50% 8%, 70% 62%, 88% 34%, 100% 100%);
   animation: lf-crown calc(var(--lf-dur, 1800ms) * 0.36) cubic-bezier(0.16, 1, 0.3, 1) calc(var(--lf-dur, 1800ms) * 0.22) both;
 }}
@@ -293,7 +294,7 @@ _KEYFRAMES = f"""
   position: absolute;
   inset: -18px;
   border-radius: 50%;
-  border: 1px dashed var(--lf-jewel, #9a9aa2);
+  border: 1px dashed var(--lf-jewel, {t.TEXT_2});
   opacity: 0.5;
   animation: lf-burst calc(var(--lf-dur, 1800ms) * 0.5) ease-out 260ms both;
 }}
@@ -301,7 +302,7 @@ _KEYFRAMES = f"""
 /* --- The counter ---------------------------------------------------------
    The number is written by the script into an attribute React never sets, and
    painted with content: attr(). Writing textContent into a React-owned node
-   is what caused hydration error #418 in rest_timer.py. With no script at all
+   is what caused hydration error 418 in rest_timer.py. With no script at all
    the line simply reads LEVEL with nothing after it. */
 /* The label and the number arrive together: animating only the number left
    "LEVEL" sitting there alone for two seconds. */
@@ -322,7 +323,7 @@ _KEYFRAMES = f"""
 
 /* Brushed-metal numbers and a light sweep across the heading. */
 .lf-metal {{
-  background: linear-gradient(180deg, var(--lf-base, #9a9aa2) 0%, var(--lf-glow, #9a9aa2) 45%, {theme.MUTED} 100%);
+  background: linear-gradient(180deg, var(--lf-base, {t.TEXT_2}) 0%, var(--lf-glow, {t.TEXT_2}) 45%, {t.TEXT_2} 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -341,7 +342,7 @@ _KEYFRAMES = f"""
   top: 0;
   left: 0;
   width: 250%;
-  color: {theme.TEXT};
+  color: {t.TEXT};
   animation: lf-shine-copy 1500ms ease-out 380ms 2 both;
 }}
 
@@ -463,7 +464,7 @@ def _ring(extra_class: str = "", delay: str = "120ms") -> rx.Component:
         position="absolute",
         width="128px",
         height="128px",
-        border_radius="50%",
+        border_radius=t.RADIUS_PILL,
         pointer_events="none",
         style={"animation-delay": delay},
     )
@@ -520,25 +521,17 @@ def _ornament() -> rx.Component:
 
 
 def _sound_toggle() -> rx.Component:
-    """A rank-up is the only thing in MetalArm that makes a noise, and there is
-    no global sound preference to hook into, so it carries its own - remembered
-    in the browser, off for nobody by default but one tap from silent."""
-    return rx.button(
-        rx.cond(QuestState.sound_muted, "SOUND OFF", "SOUND ON"),
-        on_click=QuestState.toggle_sound,
-        background="transparent",
-        border=f"1px solid {theme.BORDER}",
-        color=theme.MUTED,
-        border_radius="8px",
-        font_size="0.6rem",
-        font_weight="700",
-        letter_spacing="0.12em",
-        padding="0.25rem 0.5rem",
-        cursor="pointer",
-        position="absolute",
-        top="0.7rem",
-        right="0.7rem",
-        aria_label=rx.cond(QuestState.sound_muted, "Turn celebration sound on", "Turn celebration sound off"),
+    """A rank-up is the loudest thing in MetalArm, so it carries its own sound
+    switch - remembered in the browser, one tap from silent."""
+    return rx.box(
+        rx.cond(QuestState.sound_muted, rx.icon("volume-x", size=20, color=t.TEXT_2, stroke_width=1.75),
+                rx.icon("volume-2", size=20, color=t.TEXT_2, stroke_width=1.75)),
+        on_click=QuestState.toggle_sound, cursor="pointer", position="absolute", top=t.space(8), right=t.space(8),
+        width=t.ICON_HIT, height=t.ICON_HIT, display="flex", align_items="center", justify_content="center",
+        border_radius=t.RADIUS_PILL, class_name="ma-press lf-sound",
+        custom_attrs={"role": "button",
+                      "aria-label": rx.cond(QuestState.sound_muted, "Turn celebration sound on",
+                                            "Turn celebration sound off")},
     )
 
 
@@ -591,27 +584,21 @@ def level_up_overlay() -> rx.Component:
                             ),
                             class_name="lf-shine",
                         ),
-                        size="7",
-                        letter_spacing="0.2em",
                         text_align="center",
+                        margin="0",
+                        **t.TITLE_LG,
                         class_name="lf-line",
                     ),
                     rx.cond(
                         QuestState.level_up_ladder != "",
-                        rx.text(
-                            QuestState.level_up_ladder,
-                            color=theme.MUTED,
-                            font_size="0.8rem",
-                            font_weight="700",
-                            text_align="center",
-                            class_name="lf-ladder",
-                        ),
+                        text(QuestState.level_up_ladder, t.LABEL, t.TEXT_2, text_align="center",
+                             class_name="lf-ladder"),
                     ),
                     # The level counter, ticking up to where the session left
                     # it. The number is painted from a data attribute the
                     # script owns; React only supplies the two ends.
                     rx.text(
-                        "LEVEL ",
+                        "Level ",
                         rx.el.span(
                             class_name="lf-count",
                             custom_attrs={
@@ -619,44 +606,26 @@ def level_up_overlay() -> rx.Component:
                                 "data-ma-to": QuestState.level_up_level_to.to_string(),
                             },
                         ),
-                        color=theme.TEXT,
-                        font_size="0.95rem",
-                        font_weight="800",
-                        letter_spacing="0.16em",
+                        color=t.TEXT,
+                        margin="0",
                         text_align="center",
                         class_name="lf-count-line",
+                        **t.TITLE,
                     ),
-                    rx.text(
-                        QuestState.level_up_line,
-                        color=theme.MUTED,
-                        font_size="0.85rem",
-                        text_align="center",
-                        class_name="lf-line",
-                    ),
-                    rx.button(
-                        "CONTINUE",
-                        on_click=QuestState.dismiss_level_up,
-                        background=theme.ACCENT,
-                        color=theme.ON_ACCENT,
-                        border="none",
-                        border_radius="10px",
-                        font_weight="800",
-                        letter_spacing="0.14em",
-                        font_size="0.75rem",
-                        padding="0.65rem 1.4rem",
-                        cursor="pointer",
-                        class_name="lf-line lf-continue",
-                    ),
+                    text(QuestState.level_up_line, t.BODY, t.TEXT_2, text_align="center", class_name="lf-line"),
+                    button("Continue", QuestState.dismiss_level_up, full=True, class_name="lf-line lf-continue"),
                     spacing="4",
                     align="center",
                     class_name="lf-card",
                     position="relative",
-                    padding="2.5rem 2rem",
-                    background=theme.PANEL,
-                    border="1px solid var(--lf-glow, #9a9aa2)",
-                    border_radius="18px",
-                    box_shadow=theme.glow("var(--lf-glow, #9a9aa2)", "150px"),
-                    max_width="90vw",
+                    padding=f"{t.space(48)} {t.space(32)} {t.space(32)}",
+                    background=t.SURFACE,
+                    border=f"1px solid var(--lf-glow, {t.TEXT_2})",
+                    border_radius=t.RADIUS_SHEET,
+                    # A reward moment: the one place a glow is allowed.
+                    box_shadow=f"0 0 120px var(--lf-glow, {t.TEXT_2})",
+                    width=f"calc(100% - {t.space(48)})",
+                    max_width="360px",
                     overflow="hidden",
                 ),
                     class_name="lf-zoom-wrap",
@@ -695,8 +664,7 @@ def level_up_overlay() -> rx.Component:
             left="0",
             width="100vw",
             height="100vh",
-            background=theme.VEIL,
-            backdrop_filter="blur(3px)",
+            background=t.SCRIM,
             z_index="100",
             # Dismissible by clicking the veil once the sequence has played, so
             # the overlay can never trap the user if the button is off-screen.
