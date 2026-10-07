@@ -355,6 +355,16 @@ class WorkoutSession(UUIDPrimaryKey, Timestamps, Base):
         nullable=True,
         index=True,
     )
+    # Where it came from, when it was started from the Library: the workout,
+    # and the program enrollment it was a day of (app/models/library.py).
+    library_workout_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("library_workouts.id", ondelete="SET NULL"),
+        nullable=True, index=True,
+    )
+    program_enrollment_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("program_enrollments.id", ondelete="SET NULL"),
+        nullable=True, index=True,
+    )
     # Who sees it in a feed. Defaults from users.default_visibility at start.
     visibility: Mapped[str] = mapped_column(
         String(10), nullable=False, server_default=Visibility.FOLLOWERS.value

@@ -14,6 +14,13 @@ from app.models.party import (
     PartyQuestCompletion,
 )
 from app.models.league import LeagueMembership
+from app.models.library import (
+    LibraryProgram,
+    LibraryProgramDay,
+    LibraryWorkout,
+    LibraryWorkoutExercise,
+    ProgramEnrollment,
+)
 from app.models.nl_log import ExerciseAlias, ParseLog
 from app.models.program import Favorite, Program
 from app.models.push_device import PushDevice
@@ -52,6 +59,11 @@ __all__ = [
     "Duel",
     "DuelBaseline",
     "LeagueMembership",
+    "LibraryProgram",
+    "LibraryProgramDay",
+    "LibraryWorkout",
+    "LibraryWorkoutExercise",
+    "ProgramEnrollment",
     "ExerciseAlias",
     "ParseLog",
     "PushDevice",

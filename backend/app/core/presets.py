@@ -6,20 +6,19 @@ part of the image, like the exercise library - and a preset becomes real only
 when someone starts it, as a routine of their own (see start_session), which is
 what gives the session its targets, its planned order and its ghost values.
 
-Adding one is editing app/data/workout_presets.json: every exercise slug is
-checked against the library at load, so a typo fails loudly at import rather
-than serving a preset nobody can start.
+The original three now live in the Library catalog
+(app/data/library_catalog.json) as workouts with `"legacy_source": "preset"`,
+rebuilt here into exactly the shape GET /workouts/presets has always served.
+New ready-made workouts are added to the Library, not here; the catalog
+validator checks every exercise slug on import.
 """
 
-import json
 from functools import lru_cache
-from pathlib import Path
 
 from pydantic import BaseModel, Field
 
+from app.core import catalog_validator as cv
 from app.core import workout_rules as rules
-
-PRESET_FILE = Path(__file__).resolve().parents[1] / "data" / "workout_presets.json"
 
 
 class PresetExercise(BaseModel):
@@ -43,12 +42,22 @@ class Preset(BaseModel):
 
 @lru_cache(maxsize=1)
 def all_presets() -> list[Preset]:
-    """Every preset, in file order. Cached: the file ships with the image."""
-    records = json.loads(PRESET_FILE.read_text())
-    presets = [Preset.model_validate(record) for record in records]
+    """Every preset, in catalog order. Cached: the file ships with the image."""
+    presets = [
+        Preset.model_validate({
+            "slug": w["slug"], "category": w["category"], "name": w["name"], "summary": w["description"],
+            "exercises": [
+                {"slug": s["slug"], "target_sets": s["sets"], "target_reps": s["reps"][1],
+                 "rest_seconds": s["rest"]}
+                for s in w["exercises"]
+            ],
+        })
+        for w in cv.load()["workouts"]
+        if w.get("legacy_source") == "preset"
+    ]
     slugs = [preset.slug for preset in presets]
     if len(set(slugs)) != len(slugs):
-        raise ValueError("workout_presets.json has duplicate slugs")
+        raise ValueError("the library catalog has duplicate preset slugs")
     return presets
 
 

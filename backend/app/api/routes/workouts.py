@@ -43,7 +43,7 @@ from app.core import points_engine as pe
 from app.core import workout_rules as rules
 from app.core import workout_store as store
 from app.core import importer, presets, raids, rank_trials, rate_limit
-from app.core import analytics, plausibility
+from app.core import analytics, enrollments, plausibility
 from app.core import quest_board as board
 from app.core import streak_freezes as freezes
 from app.core import training_categories
@@ -55,6 +55,7 @@ from app.core.progression import (
     apply_xp,
     lock_progress,
 )
+from app.models.library import LibraryWorkout
 from app.models.user import User
 from app.models.workout import (
     Exercise,
@@ -320,6 +321,8 @@ def _session_out(db: Session, session: WorkoutSession, user: User) -> SessionOut
                     target_reps=slot.target_reps,
                     target_weight_kg=slot.target_weight_kg,
                     rest_seconds=slot.rest_seconds,
+                    target_reps_low=slot.target_reps_low,
+                    target_reps_high=slot.target_reps_high,
                 ),
             )
 
@@ -351,6 +354,8 @@ def _session_out(db: Session, session: WorkoutSession, user: User) -> SessionOut
         qualified=session.qualified,
         visibility=session.visibility,
         user_id=session.user_id,
+        library_workout_id=session.library_workout_id,
+        program_enrollment_id=session.program_enrollment_id,
         exercises=[
             SessionExerciseOut(
                 session_exercise_id=card.id,
@@ -652,8 +657,12 @@ def start_session(payload: SessionStart, current_user: CurrentUser, db: DbSessio
     (`preset_slug`, see GET /workouts/presets). 409 if one is already live -
     finish or abandon it first (GET /workouts/sessions/active returns it)."""
     routine = None
+    library_workout_id = None
     if payload.preset_slug is not None:
         routine = _routine_from_preset(db, current_user, payload.preset_slug)
+        library_workout_id = db.scalar(
+            select(LibraryWorkout.id).where(LibraryWorkout.slug == payload.preset_slug)
+        )
     elif payload.routine_id is not None:
         routine = db.execute(
             select(Routine).where(
@@ -663,13 +672,37 @@ def start_session(payload: SessionStart, current_user: CurrentUser, db: DbSessio
         if routine is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Routine not found")
 
+    session = start_session_from(
+        db, current_user, routine, name=payload.name, visibility=payload.visibility,
+        library_workout_id=library_workout_id,
+    )
+    return _session_out(db, session, current_user)
+
+
+def start_session_from(
+    db: Session,
+    user: User,
+    routine: Routine | None,
+    *,
+    name: str | None = None,
+    visibility: str | None = None,
+    library_workout_id: uuid.UUID | None = None,
+    program_enrollment_id: uuid.UUID | None = None,
+) -> WorkoutSession:
+    """A live session, its cards laid out from the routine's plan. Commits.
+
+    Shared by POST /workouts/sessions and POST /library/workouts/{slug}/start.
+    409 if one is already live - the database's one-active-session index, not
+    a Python check, is what decides."""
     session = WorkoutSession(
-        user_id=current_user.id,
+        user_id=user.id,
         routine_id=routine.id if routine else None,
-        name=payload.name or (routine.name if routine else None),
+        name=name or (routine.name if routine else None),
         started_at=_now(),
         status=SessionStatus.IN_PROGRESS.value,
-        visibility=payload.visibility or current_user.default_visibility,
+        visibility=visibility or user.default_visibility,
+        library_workout_id=library_workout_id,
+        program_enrollment_id=program_enrollment_id,
     )
     db.add(session)
     try:
@@ -687,7 +720,7 @@ def start_session(payload: SessionStart, current_user: CurrentUser, db: DbSessio
         # uq_workout_sessions_one_active: the database, not a Python check, is
         # what stops two concurrent "start" taps both succeeding.
         db.rollback()
-        active = _active_session(db, current_user)
+        active = _active_session(db, user)
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=(
@@ -698,7 +731,32 @@ def start_session(payload: SessionStart, current_user: CurrentUser, db: DbSessio
         ) from None
     db.commit()
     db.refresh(session)
-    return _session_out(db, session, current_user)
+    return session
+
+
+def routine_from_library_workout(db: Session, user: User, workout: LibraryWorkout) -> tuple[Routine, bool]:
+    """The user's own copy of a Library workout, made once and reused - the
+    same mechanism as the ready-made workouts, keyed on routines.preset_slug.
+    Returns (routine, created). Targets, never weights: the session pre-fills
+    last time's weight like any other workout."""
+    existing = db.execute(
+        select(Routine).where(Routine.user_id == user.id, Routine.preset_slug == workout.slug)
+    ).scalar_one_or_none()
+    if existing is not None:
+        return existing, False
+    routine = Routine(user_id=user.id, name=workout.name, notes=workout.description, preset_slug=workout.slug)
+    db.add(routine)
+    db.flush()
+    for slot in workout.exercises:
+        db.add(RoutineExercise(
+            routine_id=routine.id, exercise_id=slot.exercise_id, position=slot.position,
+            target_sets=slot.target_sets, target_reps=slot.rep_high,
+            target_reps_low=slot.rep_low, target_reps_high=slot.rep_high,
+            rest_seconds=slot.rest_seconds, superset_group=slot.superset_group or None, notes=slot.note,
+        ))
+    db.flush()
+    db.refresh(routine)
+    return routine, True
 
 
 @router.post("/import", response_model=WorkoutImportOut)
@@ -1366,6 +1424,10 @@ def finish_session(
             source_id=session.id,
             at=now,
         )
+
+    # A program day done moves the program on. Bookkeeping only, after every
+    # reward above is settled - it never changes what the session earned.
+    enrollments.on_session_finished(db, session)
 
     response = FinishResponse(
         session=summary,

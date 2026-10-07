@@ -3,8 +3,9 @@
 /train                 the live workout when one is running, its summary when
                        it has just finished, otherwise what to train
 /train/routine/<id>    a routine: its exercises and targets; Start; Edit
-/train/program/<id>    a program (yours, or a curated plan by its slug)
-/train/exercises       the exercise library: search, muscle, equipment
+/train/program/<id>    a program of your own (Library programs are under /library)
+/library/exercises     the exercise library: search, muscle, equipment (served
+                       from here; it belongs to the Library tab)
 """
 
 import reflex as rx
@@ -14,7 +15,6 @@ from metalarm.components.active_workout import live_view
 from metalarm.components.exercise_picker import picker_dialog
 from metalarm.components.layout import error_banner, shell
 from metalarm.components.level_up import keyframes, level_up_overlay
-from metalarm.components.presets import preset_sheet
 from metalarm.components.rest_timer import rest_bar
 from metalarm.components.workout_summary import summary_done, summary_view
 from metalarm.state.explore import ExploreState
@@ -67,24 +67,12 @@ def _landing() -> rx.Component:
                     skeleton_rows(3)),
             action="New routine", href="/train/routine/new",
         ),
-        section(
-            "Programs",
-            rows(
-                rx.foreach(s.programs, lambda p: list_row(p["name"], p["sub"], chevron=True,
-                                                          href=f"/train/program/{p['id']}")),
-                rx.foreach(s.curated, lambda p: list_row(p["name"], p["sub"], chevron=True,
-                                                         href=f"/train/program/{p['slug']}")),
-            ),
-        ),
-        section(
-            "Ready-made workouts",
-            rows(rx.foreach(WorkoutState.presets,
-                            lambda p: list_row(p.name, f"{p.category_label} · {p.exercises.length()} exercises",
-                                               chevron=True, on_click=WorkoutState.choose_preset(p.slug),
-                                               custom_attrs={"data-preset": p.slug}, class_name="ma-preset-card"))),
-        ),
-        rows(list_row("Browse exercises", "Every exercise, by muscle and equipment",
-                      leading=rx.icon("search", size=20, color=t.TEXT_2), chevron=True, href="/train/exercises")),
+        rx.cond(s.programs.length() > 0,
+                section("Your programs", rows(rx.foreach(s.programs, lambda p: list_row(
+                    p["name"], p["sub"], chevron=True, href=f"/train/program/{p['id']}"))))),
+        rows(list_row("Browse the Library", "Programs and ready-made workouts for your path",
+                      leading=rx.icon("library", size=20, color=t.TEXT_2, stroke_width=1.75), chevron=True,
+                      href="/library", class_name="ma-to-library")),
         spacing="6", width="100%",
     )
 
@@ -95,7 +83,6 @@ def train_page() -> rx.Component:
         keyframes(),
         level_up_overlay(),
         picker_dialog(),
-        preset_sheet(),
         rx.cond(live, rest_bar()),
         error_banner(WorkoutState.error),
         rx.cond(
@@ -191,28 +178,20 @@ def program_page() -> rx.Component:
             rx.vstack(
                 text(s.meta, t.CAPTION, t.TEXT_2),
                 rx.cond(s.description != "", text(s.description, t.BODY, t.TEXT_2)),
-                rx.cond(
-                    s.curated,
-                    rows(rx.foreach(s.routines, lambda r: list_row(r["name"], r["sub"]))),
-                    rows(rx.foreach(s.routines, lambda r: list_row(r["name"], r["sub"], chevron=True,
-                                                                   href=f"/train/routine/{r['id']}"))),
-                ),
-                rx.cond(~s.curated, rx.vstack(
-                    link_button("Add routine", f"/train/routine/new?program={s.key}", icon="plus", full=True),
-                    button("Delete program", s.delete, variant="danger", full=True), spacing="3", width="100%")),
+                rows(rx.foreach(s.routines, lambda r: list_row(r["name"], r["sub"], chevron=True,
+                                                               href=f"/train/routine/{r['id']}"))),
+                button("Delete program", s.delete, variant="danger", full=True),
                 spacing="4", width="100%",
             ),
             skeleton_rows(4),
         ),
-        pinned=rx.cond(s.curated & s.loaded,
-                       rx.cond(s.saved_id != "", link_button("Open in your library", f"/train/program/{s.saved_id}",
-                                                             variant="secondary", full=True),
-                               button("Save to library", s.save, icon="bookmark-plus", full=True))),
+        pinned=rx.cond(s.loaded, link_button("Add routine", f"/train/routine/new?program={s.key}",
+                                             variant="primary", icon="plus", full=True)),
     )
 
 
 # ---------------------------------------------------------------------------
-# /train/exercises
+# /library/exercises (the Library's exercise browser)
 # ---------------------------------------------------------------------------
 
 
@@ -228,7 +207,7 @@ def _exercise(row) -> rx.Component:
 def exercises_page() -> rx.Component:
     s = ExploreState
     return shell(
-        top_bar("Exercises", back="/train"),
+        top_bar("Exercises", back="/library"),
         field(s.query, s.set_query, "Search exercises", debounce=True, on_blur=s.blur_search),
         rx.cond((s.query == "") & (s.recents.length() > 0),
                 rx.hstack(text("Recent", t.CAPTION, t.TEXT_2),

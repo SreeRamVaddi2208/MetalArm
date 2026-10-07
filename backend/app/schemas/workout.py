@@ -377,6 +377,9 @@ class SessionTargetOut(BaseModel):
     target_reps: int | None
     target_weight_kg: float | None
     rest_seconds: int | None
+    # The rep range, when the plan gives one ("8-12"); target_reps is its top.
+    target_reps_low: int | None = None
+    target_reps_high: int | None = None
 
 
 class SessionExerciseIn(BaseModel):
@@ -456,6 +459,9 @@ class SessionOut(BaseModel):
     visibility: str = "followers"
     # Whose it is - a friend's workout can be read too (routes/social.py).
     user_id: uuid.UUID | None = None
+    # Started from the Library: which workout, and the program day it was.
+    library_workout_id: uuid.UUID | None = None
+    program_enrollment_id: uuid.UUID | None = None
 
 
 class ActiveSessionOut(BaseModel):

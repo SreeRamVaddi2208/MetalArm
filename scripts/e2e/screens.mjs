@@ -5,8 +5,8 @@
 //   node screens.mjs <out-dir> <email> <password> [--widths 360,390,430]
 //
 // Besides the fixed routes it captures the id-based pages (an exercise, the
-// latest workout, a friend's profile, last month's story, a routine, a curated
-// program), found through the API, and the signed-out pages.
+// latest workout, a friend's profile, last month's story, a routine), found
+// through the API, and the signed-out pages.
 //
 // Against a RUNNING stack. Writes <out-dir>/<width>/<page>.png full-page
 // captures for side-by-side review, and exits non-zero if any page overflows
@@ -24,7 +24,8 @@ const WIDTHS = widthArg > -1 ? process.argv[widthArg + 1].split(',').map(Number)
 const SIZES = WIDTHS.map((width) => ({ width, height: width < 400 ? 800 : 932 }));
 const API = process.env.METALARM_API || 'http://localhost:8000/api/v1';
 const PAGES = (process.env.SCREEN_ROUTES ||
-  '/design-system,/home,/leaderboard,/notifications,/train,/train/exercises,/train/routine/new,/progress,' +
+  '/design-system,/home,/leaderboard,/notifications,/train,/train/routine/new,/library,/library/path/powerlifter,' +
+  '/library/program/upper-lower-8wk,/library/workout/chest-and-triceps,/library/exercises,/progress,' +
   '/progress/history,/progress/measurements,/progress/recovery,/profile,/profile/people,/quests,/duels,/parties,' +
   '/rewards,/about/credits,/welcome'
 ).split(',');
@@ -49,8 +50,6 @@ async function get(path, token) {
   const routines = await get('/routines', token);
   const firstRoutine = (routines?.items || routines)?.[0];
   if (firstRoutine) PAGES.push(`/train/routine/${firstRoutine.id}`);
-  const curated = await get('/programs/curated', token);
-  if (curated?.[0]) PAGES.push(`/train/program/${curated[0].slug}`);
 }
 const SIGNED_OUT = ['/login', '/signup'];
 

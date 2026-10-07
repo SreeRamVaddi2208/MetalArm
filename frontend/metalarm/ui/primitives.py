@@ -106,10 +106,12 @@ def card(*children: rx.Component, on_click: Any = None, href: Any = "", spacing:
     """surface, 12 px radius, 16 px padding, no border, no shadow. Tappable
     cards press to surface-2."""
     tappable = on_click is not None or isinstance(href, Var) or bool(href)
+    extra = props.pop("class_name", "")
     body = rx.vstack(*children, background=t.SURFACE, border_radius=t.RADIUS, padding=t.CARD_PADDING,
                      width="100%", spacing=spacing, align="start", on_click=on_click,
                      cursor="pointer" if tappable else "default",
-                     class_name="ma-card-surface ma-press" if tappable else "ma-card-surface", **props)
+                     class_name=" ".join(c for c in ("ma-card-surface", "ma-press" if tappable else "", extra) if c),
+                     **props)
     if isinstance(href, Var) or href:
         return rx.link(body, href=href, underline="none", width="100%")
     return body
@@ -117,7 +119,8 @@ def card(*children: rx.Component, on_click: Any = None, href: Any = "", spacing:
 
 def rows(*children: rx.Component, **props) -> rx.Component:
     """A run of ListRows, separated by a hairline inset 16 px."""
-    return rx.vstack(*children, spacing="0", width="100%", class_name="ma-rows", **props)
+    extra = props.pop("class_name", "")
+    return rx.vstack(*children, spacing="0", width="100%", class_name=f"ma-rows {extra}".strip(), **props)
 
 
 def list_row(title: Any, subtitle: Any = "", *, leading: rx.Component | None = None,

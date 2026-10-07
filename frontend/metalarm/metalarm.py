@@ -3,9 +3,9 @@
 Routes, the global stylesheet and the document head. Layout lives in
 components/ and ui/, data in state/, tokens in theme.py.
 
-Four tabs - Home, Train, Progress, Profile - and everything else folded under
-one of them (components/layout.py ROUTE_TABS). The URLs of the five-tab app
-still work: each redirects to where its screen lives now.
+Five tabs - Home, Train, Library, Progress, Profile - and everything else
+folded under one of them (components/layout.py ROUTE_TABS). Old URLs still
+work: each redirects to where its screen lives now.
 """
 
 import reflex as rx
@@ -17,6 +17,12 @@ from metalarm.pages.design_system import design_system_page
 from metalarm.pages.details import exercise_page, session_page
 from metalarm.pages.duels import duels_page
 from metalarm.pages.home import home_page
+from metalarm.pages.library import (
+    library_home_page,
+    library_path_page,
+    library_program_page,
+    library_workout_page,
+)
 from metalarm.pages.leaderboard import leaderboard_page
 from metalarm.pages.login import login_page, signup_page, welcome_page
 from metalarm.pages.monthly import monthly_page
@@ -33,6 +39,7 @@ from metalarm.state.duels import DuelState
 from metalarm.state.exercise_detail import ExerciseDetailState
 from metalarm.state.explore import ExploreState
 from metalarm.state.home import HomeState
+from metalarm.state.library import LibraryProgramState, LibraryState, LibraryWorkoutState
 from metalarm.state.monthly import MonthlyState
 from metalarm.state.parties import PartyState
 from metalarm.state.people import NotificationsState, PeopleState, ProfileViewState
@@ -53,11 +60,11 @@ def landing() -> rx.Component:
     return rx.box(min_height="100vh", width="100%", background=t.BG)
 
 
-# The five-tab app's URLs, and where each screen lives now.
+# Earlier URLs, and where each screen lives now.
 REDIRECTS = {
     "/workout": "/train",
-    "/library": "/train",
     "/routines": "/train",
+    "/train/exercises": "/library/exercises",
     "/dashboard": "/home",
     "/gallery": "/design-system",
 }
@@ -76,7 +83,7 @@ class RouteState(rx.State):
         query = self.router.url.query_parameters
         tab = str(query.get("tab", "")).lower()
         if path == "/explore":
-            return rx.redirect("/profile/people" if tab == "people" else "/train/exercises")
+            return rx.redirect("/profile/people" if tab == "people" else "/library/exercises")
         if path == "/you":
             return rx.redirect({"history": "/progress/history",
                                 "measurements": "/progress/measurements"}.get(tab, "/progress"))
@@ -117,6 +124,29 @@ class RouteState(rx.State):
         if not await self._signed_in():
             return rx.redirect("/login")
         return [AuthState.refresh_me, WorkoutState.load, TrainState.load]
+
+    # --- Library ------------------------------------------------------------
+
+    async def enter_library(self):
+        if not await self._signed_in():
+            return rx.redirect("/login")
+        # Settings first: the choose-your-path sheet reads its paths.
+        return [AuthState.refresh_me, SettingsState.load, LibraryState.load]
+
+    async def enter_library_path(self):
+        if not await self._signed_in():
+            return rx.redirect("/login")
+        return [AuthState.refresh_me, LibraryState.load_path]
+
+    async def enter_library_program(self):
+        if not await self._signed_in():
+            return rx.redirect("/login")
+        return LibraryProgramState.load
+
+    async def enter_library_workout(self):
+        if not await self._signed_in():
+            return rx.redirect("/login")
+        return LibraryWorkoutState.load
 
     async def enter_exercises(self):
         if not await self._signed_in():
@@ -226,6 +256,14 @@ input::placeholder, textarea::placeholder {{ color: {t.TEXT_3}; }}
 
 /* Rows: hairlines between, none around. */
 .ma-rows > * + * {{ border-top: {t.HAIRLINE}; }}
+.ma-clamp-2 {{ display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }}
+/* A row that is a link is a block, or its hairline does not draw. */
+.ma-rows > a {{ display: block; }}
+/* A row that scrolls sideways runs to the screen edge, so it reads as
+   scrolling rather than clipped at the gutter. */
+.ma-bleed {{ margin-left: calc(-1 * {t.GUTTER}); margin-right: calc(-1 * {t.GUTTER});
+  padding-left: {t.GUTTER}; padding-right: {t.GUTTER}; width: calc(100% + 2 * {t.GUTTER}) !important;
+  scroll-padding-left: {t.GUTTER}; }}
 /* A row in a group is pressed edge to edge, so the hairline stays straight. */
 .ma-rows > .ma-press, .ma-rows > a > .ma-press {{ border-radius: 0; }}
 .ma-press {{ transition: background {t.FAST} {t.EASE}; border-radius: {t.RADIUS}; }}
@@ -308,10 +346,16 @@ page(user_page, "/u/[id]", "Profile", r.enter_user)
 
 # Train
 page(train_page, "/train", "Train", r.enter_train)
-page(exercises_page, "/train/exercises", "Exercises", r.enter_exercises)
 page(routine_page, "/train/routine/[id]", "Routine", r.enter_routine)
 page(program_page, "/train/program/[id]", "Program", r.enter_program)
 page(exercise_page, "/exercise/[id]", "Exercise", r.enter_exercise)
+
+# Library
+page(library_home_page, "/library", "Library", r.enter_library)
+page(library_path_page, "/library/path/[lib_path]", "Library", r.enter_library_path)
+page(library_program_page, "/library/program/[lib_program]", "Program", r.enter_library_program)
+page(library_workout_page, "/library/workout/[lib_workout]", "Workout", r.enter_library_workout)
+page(exercises_page, "/library/exercises", "Exercises", r.enter_exercises)
 
 # Progress
 page(progress_page, "/progress", "Progress", r.enter_progress)
@@ -333,6 +377,6 @@ page(credits_page, "/about/credits", "Credits", r.enter_credits)
 # Not in any navigation: the reference the screens are built from.
 page(design_system_page, "/design-system", "Design system")
 
-# The five-tab app's URLs.
+# Earlier URLs.
 for old in (*REDIRECTS, "/explore", "/you"):
     page(landing, old, "", r.moved)

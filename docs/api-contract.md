@@ -10,7 +10,7 @@
 
 - **API title:** MetalArm API
 - **API version:** 0.1.0
-- **Generated:** 2026-10-07 04:39 UTC
+- **Generated:** 2026-10-07 13:37 UTC
 - **Source:** `http://localhost:8000/openapi.json`
 
 ---
@@ -1002,6 +1002,193 @@ how often they have been used.
 
 ---
 
+### `GET /api/v1/library/home`
+
+**Library Home**
+
+The Library tab, built for this user: the program they follow (with its
+next workout), the programs and workouts for their training path - each
+flagged `recommended`, in `sort` order - and how much each other path
+holds. With no path, `needs_path` is true, nothing is recommended, and
+all three paths are listed.
+
+*Tags:* `library`
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+
+---
+
+### `GET /api/v1/library/programs`
+
+**List Programs**
+
+Programs, filtered. `equipment` (repeatable) keeps only what can be done
+with the equipment given. Recommended first.
+
+*Tags:* `library`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `category` | query | `string | null` | no |
+| `difficulty` | query | `string | null` | no |
+| `days_per_week` | query | `integer | null` | no |
+| `equipment` | query | `string[] | null` | no |
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `GET /api/v1/library/programs/{slug}`
+
+**Get Program**
+
+A program: its weeks and days (rest days included), the workouts in it,
+and the user's enrollment if they follow it.
+
+*Tags:* `library`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `slug` | path | `string` | yes |
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `DELETE /api/v1/library/programs/{slug}/follow`
+
+**Unfollow Program**
+
+Pause a program. Its place is kept; following it again resumes there.
+404 if the user has never followed it.
+
+*Tags:* `library`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `slug` | path | `string` | yes |
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `POST /api/v1/library/programs/{slug}/follow`
+
+**Follow Program**
+
+Follow a program: start it, or resume it where it was left. Following
+another program pauses the one before it; a completed program starts
+again from its first day.
+
+*Tags:* `library`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `slug` | path | `string` | yes |
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `GET /api/v1/library/workouts`
+
+**List Workouts**
+
+Standalone workouts, filtered. `equipment` (repeatable) keeps only what
+can be done with the equipment given. Recommended first.
+
+*Tags:* `library`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `category` | query | `string | null` | no |
+| `difficulty` | query | `string | null` | no |
+| `equipment` | query | `string[] | null` | no |
+| `max_minutes` | query | `integer | null` | no |
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `GET /api/v1/library/workouts/{slug}`
+
+**Get Workout**
+
+A workout: its exercises in order with targets - sets, a rep range and
+rest, never a weight. Program days are workouts too and open here.
+
+*Tags:* `library`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `slug` | path | `string` | yes |
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `POST /api/v1/library/workouts/{slug}/save-to-routines`
+
+**Save Workout**
+
+Copy the workout into the user's routines (201), or return the copy
+they already have (200). The copy is theirs to edit.
+
+*Tags:* `library`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `slug` | path | `string` | yes |
+
+| Status | Description |
+|---|---|
+| `201` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `POST /api/v1/library/workouts/{slug}/start`
+
+**Start Workout**
+
+Start a session pre-loaded with the workout's exercises, in order, each
+carrying its targets. If it is the next workout of the program the user
+follows, finishing it moves the program on. 409 if a workout is already in
+progress. It scores exactly like any other session.
+
+*Tags:* `library`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `slug` | path | `string` | yes |
+
+| Status | Description |
+|---|---|
+| `201` | Successful Response |
+| `422` | Validation Error |
+
+---
+
 ### `POST /api/v1/log/parse`
 
 **Parse Text**
@@ -1569,7 +1756,7 @@ training path first.
 **Curated Programs**
 
 Plans shipped with the app, the caller's training path first. A short,
-fixed list (app/data/programs.json), so it is not paged.
+fixed list (the legacy entries of app/data/library_catalog.json), so it is not paged.
 
 *Tags:* `library`
 
@@ -3068,6 +3255,18 @@ otherwise 503 with per-dependency detail.
 | `breakdown` | `BreakdownLine[]` | no |
 | `tiebreak` | `number | null` | no |
 
+#### `EnrollmentOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `id` | `string` | yes |
+| `program_slug` | `string` | yes |
+| `status` | `string` | yes |
+| `started_at` | `string` | yes |
+| `current_week` | `integer` | yes |
+| `current_day` | `integer` | yes |
+| `next_workout` | `LibraryWorkoutCard | null` | yes |
+
 #### `Equipment`
 
 | Field | Type | Required |
@@ -3406,6 +3605,17 @@ otherwise 503 with per-dependency detail.
 | `session_id` | `string | null` | yes |
 | `created_at` | `string` | yes |
 
+#### `LibraryHomeOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `path` | `string` | yes |
+| `needs_path` | `boolean` | yes |
+| `your_program` | `YourProgramOut | null` | yes |
+| `recommended_programs` | `LibraryProgramCard[]` | yes |
+| `recommended_workouts` | `LibraryWorkoutCard[]` | yes |
+| `other_paths` | `PathCountOut[]` | yes |
+
 #### `LibraryItem`
 
 | Field | Type | Required |
@@ -3426,6 +3636,92 @@ otherwise 503 with per-dependency detail.
 | `items` | `LibraryItem[]` | yes |
 | `favorite_count` | `integer` | yes |
 | `next_cursor` | `string | null` | no |
+
+#### `LibraryProgramCard`
+
+| Field | Type | Required |
+|---|---|---|
+| `slug` | `string` | yes |
+| `name` | `string` | yes |
+| `description` | `string | null` | yes |
+| `category` | `string` | yes |
+| `category_label` | `string` | yes |
+| `difficulty` | `string` | yes |
+| `weeks` | `integer` | yes |
+| `days_per_week` | `integer` | yes |
+| `equipment` | `string[]` | yes |
+| `recommended` | `boolean` | yes |
+| `sort` | `integer` | yes |
+| `following` | `boolean` | yes |
+
+#### `LibraryProgramOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `slug` | `string` | yes |
+| `name` | `string` | yes |
+| `description` | `string | null` | yes |
+| `category` | `string` | yes |
+| `category_label` | `string` | yes |
+| `difficulty` | `string` | yes |
+| `weeks` | `integer` | yes |
+| `days_per_week` | `integer` | yes |
+| `equipment` | `string[]` | yes |
+| `recommended` | `boolean` | yes |
+| `sort` | `integer` | yes |
+| `following` | `boolean` | yes |
+| `schedule` | `ScheduleWeekOut[]` | yes |
+| `workouts` | `LibraryWorkoutCard[]` | yes |
+| `enrollment` | `EnrollmentOut | null` | yes |
+
+#### `LibraryWorkoutCard`
+
+| Field | Type | Required |
+|---|---|---|
+| `slug` | `string` | yes |
+| `name` | `string` | yes |
+| `description` | `string | null` | yes |
+| `category` | `string` | yes |
+| `category_label` | `string` | yes |
+| `difficulty` | `string` | yes |
+| `duration_minutes` | `integer` | yes |
+| `exercise_count` | `integer` | yes |
+| `equipment` | `string[]` | yes |
+| `focus_tags` | `string[]` | yes |
+| `recommended` | `boolean` | yes |
+| `sort` | `integer` | yes |
+
+#### `LibraryWorkoutExerciseOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `position` | `integer` | yes |
+| `exercise` | `ExerciseOut` | yes |
+| `target_sets` | `integer` | yes |
+| `rep_low` | `integer` | yes |
+| `rep_high` | `integer` | yes |
+| `rest_seconds` | `integer` | yes |
+| `note` | `string | null` | yes |
+| `superset_group` | `integer` | yes |
+
+#### `LibraryWorkoutOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `slug` | `string` | yes |
+| `name` | `string` | yes |
+| `description` | `string | null` | yes |
+| `category` | `string` | yes |
+| `category_label` | `string` | yes |
+| `difficulty` | `string` | yes |
+| `duration_minutes` | `integer` | yes |
+| `exercise_count` | `integer` | yes |
+| `equipment` | `string[]` | yes |
+| `focus_tags` | `string[]` | yes |
+| `recommended` | `boolean` | yes |
+| `sort` | `integer` | yes |
+| `exercises` | `LibraryWorkoutExerciseOut[]` | yes |
+| `routine_id` | `string | null` | yes |
 
 #### `LifetimeStats`
 
@@ -3761,6 +4057,15 @@ otherwise 503 with per-dependency detail.
 | Field | Type | Required |
 |---|---|---|
 | `name` | `string | null` | no |
+
+#### `PathCountOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `category` | `string` | yes |
+| `label` | `string` | yes |
+| `programs` | `integer` | yes |
+| `workouts` | `integer` | yes |
 
 #### `PointsBreakdownOut`
 
@@ -4211,6 +4516,21 @@ otherwise 503 with per-dependency detail.
 | `color` | `string | null` | no |
 | `last_performed_at` | `string | null` | no |
 
+#### `ScheduleDayOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `day` | `integer` | yes |
+| `workout_slug` | `string | null` | yes |
+| `workout_name` | `string | null` | yes |
+
+#### `ScheduleWeekOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `week` | `integer` | yes |
+| `days` | `ScheduleDayOut[]` | yes |
+
 #### `SeriesOut`
 
 | Field | Type | Required |
@@ -4278,6 +4598,8 @@ otherwise 503 with per-dependency detail.
 | `exercises` | `SessionExerciseOut[]` | yes |
 | `visibility` | `string` | no |
 | `user_id` | `string | null` | no |
+| `library_workout_id` | `string | null` | no |
+| `program_enrollment_id` | `string | null` | no |
 
 #### `SessionPatch`
 
@@ -4326,6 +4648,8 @@ otherwise 503 with per-dependency detail.
 | `target_reps` | `integer | null` | yes |
 | `target_weight_kg` | `number | null` | yes |
 | `rest_seconds` | `integer | null` | yes |
+| `target_reps_low` | `integer | null` | no |
+| `target_reps_high` | `integer | null` | no |
 
 #### `SetCreate`
 
@@ -4665,6 +4989,13 @@ otherwise 503 with per-dependency detail.
 | `period` | `string` | yes |
 | `period_start` | `string | null` | yes |
 | `entries` | `WorkoutLeaderboardEntry[]` | yes |
+
+#### `YourProgramOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `program` | `LibraryProgramCard` | yes |
+| `enrollment` | `EnrollmentOut` | yes |
 
 #### `app__schemas__party__LeaderboardOut`
 

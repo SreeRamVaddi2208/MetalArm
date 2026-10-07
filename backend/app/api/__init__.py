@@ -12,6 +12,7 @@ from app.api.routes import (
     exercises,
     leagues,
     library,
+    library_catalog,
     nl_log,
     parties,
     profile,
@@ -42,6 +43,7 @@ api_router.include_router(exercises.router)
 api_router.include_router(routines.router)
 # Before workouts: /workouts/suggested.
 api_router.include_router(library.router)
+api_router.include_router(library_catalog.router)
 api_router.include_router(workouts.router)
 api_router.include_router(body.router)
 api_router.include_router(leagues.router)

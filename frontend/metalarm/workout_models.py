@@ -337,58 +337,6 @@ class ExercisePick:
 
 
 @dataclasses.dataclass
-class PresetSlot:
-    """One movement of a ready-made workout, with what it asks for."""
-
-    exercise_id: str = ""
-    name: str = ""
-    muscles_label: str = ""
-    media_url: str = ""
-    plan: str = ""
-
-    @classmethod
-    def from_api(cls, data: dict[str, Any]) -> "PresetSlot":
-        exercise = data.get("exercise") or {}
-        rest = int(data.get("rest_seconds") or 0)
-        rest_label = f"{rest // 60}:{rest % 60:02d}" if rest >= 60 else f"{rest}s"
-        return cls(
-            exercise_id=exercise.get("id") or "",
-            name=exercise.get("name") or "",
-            muscles_label=muscles_label(exercise.get("primary_muscle_groups")),
-            media_url=exercise.get("media_url") or "",
-            plan=f"{data.get('target_sets')} × {data.get('target_reps')} · rest {rest_label}",
-        )
-
-
-@dataclasses.dataclass
-class WorkoutPreset:
-    """A ready-made workout for one training style (GET /workouts/presets)."""
-
-    slug: str = ""
-    category: str = ""
-    category_label: str = ""
-    name: str = ""
-    summary: str = ""
-    length_label: str = ""
-    exercises: list[PresetSlot] = dataclasses.field(default_factory=list)
-
-    @classmethod
-    def from_api(cls, data: dict[str, Any]) -> "WorkoutPreset":
-        slots = [PresetSlot.from_api(slot) for slot in data.get("exercises") or []]
-        return cls(
-            slug=data.get("slug") or "",
-            category=data.get("category") or "",
-            # The label is what the training path is CALLED ("Athletic"), not
-            # the stored value ("athlete"); the server decides it.
-            category_label=(data.get("category_label") or data.get("category") or "").capitalize(),
-            name=data.get("name") or "",
-            summary=data.get("summary") or "",
-            length_label=f"{len(slots)} exercise" + ("" if len(slots) == 1 else "s"),
-            exercises=slots,
-        )
-
-
-@dataclasses.dataclass
 class Chip:
     value: str = ""
     label: str = ""

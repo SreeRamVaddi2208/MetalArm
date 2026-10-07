@@ -18,8 +18,9 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import CurrentUser, DbSession
 from app.api.routes.routines import last_performed
-from app.core import curated, presets, suggestions
+from app.core import curated, suggestions
 from app.core import workout_store as store
+from app.models.library import LibraryWorkout
 from app.models.program import Favorite, Program
 from app.models.user import User
 from app.models.workout import Exercise, Routine, RoutineExercise, SetEntry, WorkoutSession
@@ -155,7 +156,7 @@ def curated_programs(current_user: CurrentUser, db: DbSession,
                      category: str | None = Query(default=None, pattern="^(powerlifter|bodybuilder|athlete)$")
                      ) -> list[CuratedProgramOut]:
     """Plans shipped with the app, the caller's training path first. A short,
-    fixed list (app/data/programs.json), so it is not paged."""
+    fixed list (the legacy entries of app/data/library_catalog.json), so it is not paged."""
     programs = [p for p in curated.definitions() if category is None or p["category"] == category]
     programs.sort(key=lambda p: p["category"] != current_user.character_class)
     exercises = _library(db, curated.slugs_used())
@@ -372,10 +373,16 @@ def suggested(current_user: CurrentUser, db: DbSession) -> list[SuggestedOut]:
         .group_by(RoutineExercise.routine_id)).tuples().all())
     by_id = {r.id: r for r in routines}
 
+    # A routine copied from the Library (a ready-made workout or a program day)
+    # carries that workout's slug, and so its training path.
+    library_paths = dict(db.execute(
+        select(LibraryWorkout.slug, LibraryWorkout.category)
+        .where(LibraryWorkout.slug.in_({r.preset_slug for r in routines if r.preset_slug}))
+    ).tuples().all())
+
     def category(r: Routine) -> str | None:
-        preset = presets.by_slug(r.preset_slug) if r.preset_slug else None
-        if preset is not None:
-            return preset.category
+        if r.preset_slug in library_paths:
+            return library_paths[r.preset_slug]
         program = db.get(Program, r.program_id) if r.program_id else None
         return program.training_category if program else None
 

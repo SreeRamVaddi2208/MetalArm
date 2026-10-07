@@ -248,27 +248,20 @@ try {
   check('discarding a workout returns to the Train tab', true);
 
   // ---------------------------------------------------------------------
-  section('Ready-made workouts');
-  const presets = page.locator('.ma-preset-card');
-  await presets.first().waitFor({ timeout: 15000 });
-  check('three ready-made workouts are offered', (await presets.count()) === 3);
-  check('a row names its style', await visible(page.getByText(/^Powerlifter · /).first()));
-
-  await page.locator('.ma-preset-card[data-preset="powerlifting-heavy-day"]').click();
-  await page.locator('.ma-preset-demo').waitFor({ timeout: 15000 });
-  check('the plan opens with a demo beside it', await visible(page.locator('.ma-preset-demo')));
-  const slots = page.locator('.ma-preset-slot');
-  check('the plan lists its movements', (await slots.count()) >= 3);
-  check('a movement shows its sets and rest', await visible(page.getByText(/× 5 · rest/).first()));
-  await page.waitForTimeout(500);
-  await page.screenshot({ path: `${OUT}/06-ready-made-workout.png` });
-  await page.locator('.ma-preset-slot[data-slot="Deadlift"]').click();
-  await page.waitForTimeout(600);
-  check('the demo follows the picked movement',
-    await visible(page.locator('.ma-preset-demo').getByText('Deadlift', { exact: true })));
-  await page.locator('.ma-preset-start').click();
+  section('Library workouts');
+  await page.goto(UI + '/library/path/powerlifter');
+  const rows = page.locator('.ma-workout-card');
+  await rows.first().waitFor({ timeout: 15000 });
+  check('four ready-made powerlifting workouts', (await rows.count()) === 4);
+  await page.locator('.ma-workout-card[data-workout="squat-day"]').click();
+  await page.waitForURL('**/library/workout/squat-day', { timeout: 15000 });
+  await page.locator('.ma-library-exercise').first().waitFor({ timeout: 15000 });
+  check('the workout lists its movements', (await page.locator('.ma-library-exercise').count()) === 5);
+  check('a movement shows its sets, reps and rest', await visible(page.getByText(/5 × 3–5 · 240s rest/).first()));
+  await page.screenshot({ path: `${OUT}/06-library-workout.png`, fullPage: true });
+  await page.getByRole('button', { name: 'Start workout' }).click();
   await page.locator('.ma-card').first().waitFor({ timeout: 20000 });
-  check('starting a ready-made workout loads its plan', await visible(page.getByText('Back Squat', { exact: true })));
+  check('starting it loads its plan', await visible(page.getByText('Back Squat', { exact: true })));
   check('its targets come with it', (await page.locator('.ma-entry input').nth(1).inputValue()) !== '');
   await discardWorkout(page);
 
@@ -351,7 +344,7 @@ try {
 
   // ---------------------------------------------------------------------
   section('Every page, phone and desktop');
-  const routes = ['/home', '/train', '/train/exercises', '/progress', '/progress/history', '/profile', '/parties',
+  const routes = ['/home', '/train', '/library', '/library/exercises', '/progress', '/progress/history', '/profile', '/parties',
     '/duels', '/rewards', '/quests', '/leaderboard'];
   for (const [label, viewport] of [['phone', { width: 360, height: 800 }], ['desktop', { width: 1280, height: 900 }]]) {
     const sweep = await browser.newContext({ viewport });
@@ -373,7 +366,8 @@ try {
   }
 
   // The five-tab app's URLs still land somewhere.
-  for (const [from, to] of [['/workout', '/train'], ['/library', '/train'], ['/explore', '/train/exercises'],
+  for (const [from, to] of [['/workout', '/train'], ['/train/exercises', '/library/exercises'],
+    ['/explore', '/library/exercises'],
     ['/you', '/progress'], ['/dashboard', '/home'], ['/gallery', '/design-system']]) {
     await page.goto(UI + from);
     check(`${from} redirects to ${to}`, await ok(page.waitForURL(new RegExp(`${to}/?$`), { timeout: 15000 })),

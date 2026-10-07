@@ -28,6 +28,7 @@ from app.core.config import get_settings
 from app.db.session import Base, get_db
 from app.main import app
 from scripts.import_exercises import DEFAULT_FILE, import_exercises, read_file
+from scripts.import_library import DEFAULT_FILE as LIBRARY_FILE, import_library, read_catalog
 
 settings = get_settings()
 TEST_DB_NAME = f"{settings.postgres_db}_test"
@@ -70,6 +71,7 @@ def engine() -> Generator[Engine, None, None]:
         import_exercises(seed, read_file(DEFAULT_FILE))
         exercise_aliases.seed(seed)
         training_categories.seed(seed)
+        import_library(seed, read_catalog(LIBRARY_FILE))
         quest_templates.seed(seed)
         seed.commit()
 
