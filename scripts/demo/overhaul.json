@@ -1,0 +1,129 @@
+{
+ "labels": {
+  "web": "WHAT'S NEW"
+ },
+ "cards": {
+  "title": {
+   "eyebrow": "WHAT'S NEW",
+   "headline": "METALARM",
+   "line": "Logging \u00b7 Analytics \u00b7 Explore \u00b7 Friends \u00b7 Your month"
+  },
+  "end": {
+   "eyebrow": "THANKS FOR WATCHING",
+   "headline": "METALARM",
+   "line": "Lift. Level. Repeat."
+  }
+ },
+ "web": [
+  {
+   "id": "intro",
+   "caption": "What's new in MetalArm",
+   "voice": "This is what changed in MetalArm: a new design, deeper logging, real analytics, a full exercise library, friends, and a monthly recap. Here it is, screen by screen."
+  },
+  {
+   "id": "home",
+   "caption": "Home: game strip, weekly snapshot, feed",
+   "voice": "Home is rebuilt. Your rank, the XP to the next one, points and quests sit in one row. Below it, this week against last week, then the feed of your workouts and your friends'."
+  },
+  {
+   "id": "feed",
+   "caption": "The feed - spot a friend's workout",
+   "voice": "Every finished workout shows its duration, volume, records and points, and the exercises done. Tap the hand to spot it - your friend gets a notification."
+  },
+  {
+   "id": "leaderboard",
+   "caption": "Leaderboard: you and the people you follow",
+   "voice": "Switch Home to the leaderboard to see you and the people you follow, ranked by points this week or all time."
+  },
+  {
+   "id": "quests",
+   "caption": "Rank and quests, one tap from the strip",
+   "voice": "The game strip opens your rank and the full quest board - daily and weekly quests, the streak and its freezes."
+  },
+  {
+   "id": "workout_tab",
+   "caption": "Workout tab: week strip and insights",
+   "voice": "The Workout tab opens on this week. Today's workouts, suggested routines, and four insights: recovery, streak, quests and your next rank."
+  },
+  {
+   "id": "recovery",
+   "caption": "Recovery - an estimate, muscle by muscle",
+   "voice": "Recovery is estimated from your recent training volume, muscle by muscle, and it says plainly that it is an estimate."
+  },
+  {
+   "id": "explore",
+   "caption": "Explore: muscles and equipment",
+   "voice": "Explore is new. Browse by muscle group or by equipment, across a library that grew from ninety-one exercises to almost two hundred, every one illustrated and credited."
+  },
+  {
+   "id": "filter",
+   "caption": "Combine a muscle with equipment",
+   "voice": "Pick chest, then dumbbells, and the list narrows to exactly those exercises."
+  },
+  {
+   "id": "exercise",
+   "caption": "Exercise detail: muscles, history, charts, records",
+   "voice": "Each exercise has its own page: the muscles it works, how to do it, your history, charts of your best set and estimated one-rep max, and your records."
+  },
+  {
+   "id": "programs",
+   "caption": "Curated programs, saved in one tap",
+   "voice": "Programs offers two plans for each training path, yours first. Save one, and its routines land in your library."
+  },
+  {
+   "id": "library",
+   "caption": "Library: programs, routines, favourites",
+   "voice": "The Library holds your programs and routines. The routine editor takes rep ranges, supersets and notes."
+  },
+  {
+   "id": "active",
+   "caption": "Active workout: one tap per set",
+   "voice": "Start a routine and every exercise becomes a card. Targets are filled in, so most sets take one tap on the check. Tap the set number for a warm-up, drop or failure set."
+  },
+  {
+   "id": "picker",
+   "caption": "Add several exercises at once",
+   "voice": "Add exercises by picking several at once, filtered by muscle and equipment."
+  },
+  {
+   "id": "pr",
+   "caption": "A personal record, as it happens",
+   "voice": "Beat a record and the moment says what you beat, and the bonus you earned."
+  },
+  {
+   "id": "summary",
+   "caption": "Workout summary: muscles worked, who can see it",
+   "voice": "Finish, and the summary shows your numbers, the muscles you worked, and who can see this workout: everyone, followers, or only you. Save it as a routine in one tap."
+  },
+  {
+   "id": "you",
+   "caption": "You: chart, muscles, calendar",
+   "voice": "The You tab charts duration, volume, workouts or points over three months, six, a year, or all time - with this week's muscles and a training calendar."
+  },
+  {
+   "id": "people",
+   "caption": "Find friends, follow, get notified",
+   "voice": "Find people by name. Follow them, and once you follow each other you are friends - and friends can duel."
+  },
+  {
+   "id": "notifications",
+   "caption": "Notifications",
+   "voice": "Notifications collect follows, spots, duel challenges, friends' records, and quests you complete."
+  },
+  {
+   "id": "monthly",
+   "caption": "Your month, as a story",
+   "voice": "At the start of each month, your last one plays as a story: workouts, volume, your most trained muscle, records, points, quests and duels - and a card to share."
+  },
+  {
+   "id": "offline",
+   "caption": "No signal? Sets still log",
+   "voice": "MetalArm installs like an app now. And with no signal in the gym, a set you log is kept, then sent when the connection is back - exactly once."
+  },
+  {
+   "id": "end",
+   "caption": "MetalArm",
+   "voice": "That's what's new in MetalArm."
+  }
+ ]
+}

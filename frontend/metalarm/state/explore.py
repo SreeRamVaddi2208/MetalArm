@@ -100,6 +100,8 @@ class ExploreState(rx.State):
         token = await self._token()
         if not token:
             return
+        # A program sheet left open on the last visit must not cover this one.
+        self.program_slug = ""
         wanted = str(self.router.url.query_parameters.get("tab", "")).capitalize()
         if wanted in ("Programs", "Exercises", "People"):
             self.tab = wanted
