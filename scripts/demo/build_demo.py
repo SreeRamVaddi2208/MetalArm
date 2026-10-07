@@ -145,10 +145,14 @@ def main() -> int:
     ap.add_argument("--web-dir", type=Path, required=True)
     ap.add_argument("--ios-dir", type=Path)
     ap.add_argument("--out", type=Path, required=True)
+    ap.add_argument("--narration", type=Path, default=Path(__file__).parent / "narration.json",
+                    help="The script the assets were rendered from.")
+    ap.add_argument("--name", default="metalarm-demo", help="File name of the finished film, without .mp4.")
     args = ap.parse_args()
     args.out.mkdir(parents=True, exist_ok=True)
-    narration = json.loads((Path(__file__).parent / "narration.json").read_text())
-    titles = {part: {c["id"]: c["caption"] for c in narration[part]} for part in narration}
+    narration = json.loads(args.narration.read_text())
+    titles = {part: {c["id"]: c["caption"] for c in narration[part]} for part in narration
+              if isinstance(narration[part], list)}
 
     with tempfile.TemporaryDirectory() as tmp:
         work = Path(tmp)
@@ -173,7 +177,7 @@ def main() -> int:
 
         listing = work / "concat.txt"
         listing.write_text("".join(f"file '{p}'\n" for _, p, _ in pieces))
-        film = args.out / "metalarm-demo.mp4"
+        film = args.out / f"{args.name}.mp4"
         run(["-f", "concat", "-safe", "0", "-i", str(listing), "-c", "copy",
              "-movflags", "+faststart", str(film)])
 
