@@ -9,7 +9,9 @@ from metalarm.components.layout import error_banner, shell
 from metalarm.components.workout_home import session_row
 from metalarm.ranks import rank_title_var
 from metalarm.state.auth import AuthState
+from metalarm.state.monthly import MonthlyState
 from metalarm.state.you import METRICS, RANGES, TABS, YouState
+from metalarm.ui.cards import hero_card
 from metalarm.ui.body_map import body_map
 from metalarm.ui.calendar import month_calendar
 from metalarm.ui.chart import area_chart
@@ -64,6 +66,9 @@ def _header() -> rx.Component:
 
 def _overview() -> rx.Component:
     return rx.vstack(
+        rx.cond(MonthlyState.hero_workouts > 0,
+                hero_card(f"Your {MonthlyState.hero_title}", "Your month, in a story",
+                          on_play=rx.redirect(f"/summary/{MonthlyState.hero_month}"))),
         segmented_control(RANGES, YouState.range_, YouState.set_range),
         rx.vstack(
             text(YouState.headline_label, t.SUBHEAD, t.TEXT_SECONDARY),

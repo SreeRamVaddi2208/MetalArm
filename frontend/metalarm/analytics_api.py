@@ -37,3 +37,11 @@ async def my_exercises(token: str, cursor: str = "", limit: int = 30) -> dict:
 
 async def exercise_stats(token: str, exercise_id: str, range_: str = "All") -> dict:
     return await request("GET", _q(f"/exercises/{exercise_id}/stats", range=range_), token=token)
+
+
+async def monthly_summary(token: str, month: str = "") -> dict:
+    return await request("GET", _q("/analytics/monthly-summary", month=month), token=token)
+
+
+async def monthly_hero(token: str) -> dict:
+    return await request("GET", "/analytics/monthly-summary/latest", token=token)

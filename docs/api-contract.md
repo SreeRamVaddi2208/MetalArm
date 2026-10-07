@@ -10,7 +10,7 @@
 
 - **API title:** MetalArm API
 - **API version:** 0.1.0
-- **Generated:** 2026-10-07 04:07 UTC
+- **Generated:** 2026-10-07 04:39 UTC
 - **Source:** `http://localhost:8000/openapi.json`
 
 ---
@@ -46,6 +46,41 @@ training days.
 |---|---|
 | `200` | Successful Response |
 | `422` | Validation Error |
+
+---
+
+### `GET /api/v1/analytics/monthly-summary`
+
+**Monthly Summary**
+
+Every slide: workouts and time, volume with a comparison, the muscles,
+the records, points and rank, quests and duels - for one local month.
+
+*Tags:* `analytics`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `month` | query | `string | null` | no |
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `GET /api/v1/analytics/monthly-summary/latest`
+
+**Monthly Hero**
+
+Whether Home shows last month's summary card: in the first days of a
+month, when last month had a workout.
+
+*Tags:* `analytics`
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
 
 ---
 
@@ -3477,6 +3512,46 @@ otherwise 503 with per-dependency detail.
 | `level` | `integer` | yes |
 | `rank` | `string` | yes |
 | `party_xp` | `integer` | yes |
+
+#### `MonthlyHeroOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `month` | `string` | yes |
+| `show` | `boolean` | yes |
+| `workouts` | `integer` | yes |
+
+#### `MonthlyRecordOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `exercise_name` | `string` | yes |
+| `record_type` | `string` | yes |
+| `value` | `number` | yes |
+| `achieved_at` | `string` | yes |
+
+#### `MonthlySummaryOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `month` | `string` | yes |
+| `workouts` | `integer` | yes |
+| `duration_seconds` | `integer` | yes |
+| `active_days` | `integer` | yes |
+| `best_week_workouts` | `integer` | yes |
+| `volume_kg` | `number` | yes |
+| `working_sets` | `integer` | yes |
+| `volume_comparison` | `string` | yes |
+| `muscles` | `MuscleVolumeOut[]` | yes |
+| `records` | `MonthlyRecordOut[]` | yes |
+| `record_count` | `integer` | yes |
+| `points` | `integer` | yes |
+| `rank` | `string` | yes |
+| `level` | `integer` | yes |
+| `rank_ups` | `string[]` | yes |
+| `quests_completed` | `integer` | yes |
+| `duels_played` | `integer` | yes |
+| `duels_won` | `integer` | yes |
 
 #### `MuscleGroup`
 

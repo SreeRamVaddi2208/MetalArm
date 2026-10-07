@@ -49,9 +49,14 @@ ENV HOME=/app
 ARG REFLEX_API_URL=http://localhost:3000
 ARG REFLEX_FRONTEND_PORT=3000
 ARG REFLEX_BACKEND_PORT=3000
+# The API as the BROWSER reaches it - offline-queued sets go straight there
+# (metalarm/components/offline.py). Must be in the backend's CORS_ORIGINS'
+# reach, like REFLEX_API_URL.
+ARG METALARM_PUBLIC_API_URL=http://localhost:8000
 ENV REFLEX_API_URL=${REFLEX_API_URL} \
     REFLEX_FRONTEND_PORT=${REFLEX_FRONTEND_PORT} \
-    REFLEX_BACKEND_PORT=${REFLEX_BACKEND_PORT}
+    REFLEX_BACKEND_PORT=${REFLEX_BACKEND_PORT} \
+    METALARM_PUBLIC_API_URL=${METALARM_PUBLIC_API_URL}
 
 # Compile the frontend at build time so container start is fast and any
 # compile error fails the BUILD rather than surfacing as a broken runtime.

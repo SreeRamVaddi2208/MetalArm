@@ -177,6 +177,8 @@ services:
         # Baked into the JS bundle: the browser reaches Reflex's state server
         # here. Changing DOMAIN needs a rebuild, not just a restart.
         REFLEX_API_URL: https://${DOMAIN}
+        # The API as the browser reaches it, for sets queued offline.
+        METALARM_PUBLIC_API_URL: https://api.${DOMAIN}
     image: metalarm-frontend:prod
     restart: unless-stopped
     environment:

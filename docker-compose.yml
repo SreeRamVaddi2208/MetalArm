@@ -219,6 +219,7 @@ services:
       args:
         # Browser-reachable, and baked into the JS bundle at build time.
         REFLEX_API_URL: ${REFLEX_API_URL:-http://localhost:3000}
+        METALARM_PUBLIC_API_URL: ${METALARM_PUBLIC_API_URL:-http://localhost:8000}
     container_name: metalarm-frontend
     restart: unless-stopped
     environment:

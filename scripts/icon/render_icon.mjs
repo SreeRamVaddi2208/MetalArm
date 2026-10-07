@@ -3,6 +3,7 @@
 //
 //   node scripts/icon/render_icon.mjs              # write the icons into the repo
 //   node scripts/icon/render_icon.mjs --preview D  # write them plus a preview sheet to D
+//   node scripts/icon/render_icon.mjs --pwa        # only the web app manifest's icons
 //
 // Renders go through JPEG and are converted with sips, so every PNG is opaque:
 // App Store Connect rejects an app icon with an alpha channel.
@@ -27,7 +28,13 @@ const outputs = [
   { file: 'AppIcon-tinted-1024.png', dir: appIconDir, size: 1024, tinted: true },
   { file: 'apple-touch-icon.png', dir: webAssets, size: 180 },
   { file: 'favicon.png', dir: webAssets, size: 64 },
+  // The web app manifest (frontend/assets/manifest.webmanifest).
+  { file: 'icon-192.png', dir: webAssets, size: 192, pwa: true },
+  { file: 'icon-512.png', dir: webAssets, size: 512, pwa: true },
+  // Maskable: the mark inside the 80% safe zone, so any launcher shape keeps it.
+  { file: 'icon-maskable-512.png', dir: webAssets, size: 512, pwa: true, maskable: true },
 ];
+const pwaOnly = process.argv.includes('--pwa');
 
 // The page is rendered from a string (no file origin), so Chrome would refuse the
 // SVG's relative font URL; inline the bundled TTF instead.
@@ -38,12 +45,13 @@ const svg = readFileSync(join(here, 'metalarm-icon.svg'), 'utf8').replace(
 );
 
 // The tinted (iOS 18) variant: grayscale artwork on black, no coloured glow.
-function page(tinted) {
+function page(tinted, maskable = false) {
   return `<!doctype html><html><head><base href="${pathToFileURL(here + '/').href}">
 <style>
   html, body { margin: 0; background: #000; }
   svg { display: block; width: 100vw; height: 100vh; }
   ${tinted ? '#glowLayer { display: none; } #bg { fill: #000; } svg { filter: grayscale(1) contrast(1.15); }' : ''}
+  ${maskable ? 'svg { width: 80vw; height: 80vh; margin: 10vh 10vw; }' : ''}
 </style></head><body>${svg}</body></html>`;
 }
 
@@ -54,12 +62,12 @@ const browser = await chromium.launch(launchOptions);
 
 try {
   const written = [];
-  for (const output of outputs) {
+  for (const output of outputs.filter((o) => !pwaOnly || o.pwa)) {
     const dir = previewDir ?? output.dir;
     mkdirSync(dir, { recursive: true });
     const context = await browser.newContext({ viewport: { width: output.size, height: output.size }, deviceScaleFactor: 1 });
     const tab = await context.newPage();
-    await tab.setContent(page(output.tinted), { waitUntil: 'load' });
+    await tab.setContent(page(output.tinted, output.maskable), { waitUntil: 'load' });
     await tab.evaluate(() => document.fonts.ready);
     if (!(await tab.evaluate(() => document.fonts.check('600px SpaceGroteskIcon')))) {
       throw new Error('Space Grotesk did not load - check the @font-face path in metalarm-icon.svg');

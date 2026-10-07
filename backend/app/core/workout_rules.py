@@ -98,6 +98,19 @@ RECOVERY_THRESHOLD = {"small": 6.0, "large": 10.0}
 # weighted by how much each was trained.
 RECOVERY_OVERALL_DAYS = 7
 
+# --- Monthly Summary ------------------------------------------------------------
+# "That's about 3 small cars": a month's volume against everyday weights, kg.
+# Rounded, commonly quoted figures - an illustration, not a measurement.
+VOLUME_COMPARISONS = (
+    ("a grand piano", "grand pianos", 450),
+    ("a small car", "small cars", 1_200),
+    ("an African elephant", "African elephants", 6_000),
+    ("a loaded semi-truck", "loaded semi-trucks", 36_000),
+    ("a blue whale", "blue whales", 150_000),
+)
+# The hero card on Home: the first days of a month, for the month before.
+MONTHLY_HERO_DAYS = 7
+
 # --- Plausibility (app/core/plausibility.py) ---------------------------------
 # A set that trips one of these is still logged and still scores for its owner,
 # but stays out of duels and leaderboards. Generous on purpose: the cost of a

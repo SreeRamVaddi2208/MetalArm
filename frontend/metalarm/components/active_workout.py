@@ -14,6 +14,7 @@ until they get a table of their own.
 import reflex as rx
 
 from metalarm import theme as t
+from metalarm.components.offline import offline_assets
 from metalarm.components.rest_timer import elapsed_clock
 from metalarm.components.voice_log import voice_bar
 from metalarm.components.workout import _edit_row, exercise_card, quest_moment
@@ -184,7 +185,7 @@ def active_card(card: ExerciseCard, index) -> rx.Component:
                      font_weight="600")),
         set_header(rpe=True),
         rx.foreach(card.sets, lambda entry: _logged(entry, card, index)),
-        set_row(
+        rx.box(set_row(
             card.sets.length() + 1,
             set_type=card.entry_type,
             previous=card.entry_previous,
@@ -200,6 +201,11 @@ def active_card(card: ExerciseCard, index) -> rx.Component:
             on_check=WorkoutState.log_set(index),
             points=card.last_points,
         ),
+            # Read by components/offline.py to queue a set with no connection.
+            class_name="ma-entry", width="100%",
+            custom_attrs={"data-ma-session": WorkoutState.session_id, "data-ma-exercise": card.exercise_id,
+                          "data-ma-card": card.session_exercise_id, "data-ma-type": card.entry_type,
+                          "data-ma-unit": WorkoutState.unit}),
         spacing="2",
         width="100%",
         background=t.SURFACE_1,
@@ -213,6 +219,7 @@ def active_card(card: ExerciseCard, index) -> rx.Component:
 
 def live_view() -> rx.Component:
     return rx.vstack(
+        offline_assets(),
         workout_header(),
         rx.cond(
             WorkoutState.has_cards,

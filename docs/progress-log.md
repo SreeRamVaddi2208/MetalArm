@@ -14,6 +14,74 @@ Entry format:
 
 ---
 
+## 2026-10-07 (47) - Opus - overhaul phase 5: Monthly Summary, installable PWA, offline sets, celebrations
+
+**Changed**
+- **Monthly Summary** - `GET /analytics/monthly-summary?month=` (default last
+  month, the user's local month): workouts, time, active days, best week,
+  volume with a relatable comparison (`analytics.volume_comparison`, against
+  rounded everyday weights in `workout_rules.VOLUME_COMPARISONS` - "That's
+  about 3.3 small cars"), muscles most-trained first, the month's records,
+  ledger points, current rank and the month's rank-ups (from the RANK_UP
+  activity rows), quests completed, duels played and won (duels count once
+  settled - they are judged on read). `GET /analytics/monthly-summary/latest`
+  says whether Home shows last month's card (first 7 days, last month had a
+  workout).
+- **Story** at `/summary/<YYYY-MM>`: seven full-screen slides with progress
+  bars - tap right for next, left for back - ending in a summary card with
+  Share (the existing story-card renderer) and Done. The hero card sits on
+  Home in the first week of a month, and on You -> Overview.
+- **Installable**: `assets/manifest.json` (standalone, start /home, 192 /
+  512 / maskable icons rendered from the existing mark by
+  `scripts/icon/render_icon.mjs --pwa`), theme colour, `assets/sw.js`
+  (hashed build files, exercise images and icons cache-first; pages
+  network-first with the last copy and `offline.html` as fallbacks; the API
+  and Reflex's socket never cached).
+- **Offline set logging** (`components/offline.py`): with no connection, a tap
+  on "Log set" is caught before React, the row's shown values (pre-filled
+  from the routine or last time) are kept in localStorage with their own
+  `client_set_id`, the card says "N queued" and a banner says so; when the
+  connection is back they are posted to the API oldest first (the id makes a
+  retry log nothing twice) and the workout reloads. The browser-facing API
+  URL is a frontend build arg, `METALARM_PUBLIC_API_URL` (dev
+  `http://localhost:8000`, prod `https://api.${DOMAIN}`, already in CORS).
+- **Celebrations**: the PR moment rebuilt on the tokens (record gold, scrim,
+  same entrance, reduced motion a fade, tap anywhere to dismiss) and taken
+  off the token-lint legacy list. Tiers: "+N" on a set < the quest chip <
+  the PR card < the rank-up takeover (which keeps its royal palette).
+
+**Verified**
+- `tests/test_monthly.py` (4): comparisons read naturally; month totals by
+  hand; a seeded month (three workouts placed in last month, one either side)
+  summarises exactly - 3 workouts, 8,100 s, 3,915 kg, 8 sets, "about 3.3 small
+  cars", chest first, only that month's records and points; an empty month;
+  the hero flag; a month boundary in the user's time zone. Full backend
+  suite passes (exit 0, the two dev-DB health tests deselected); `alembic
+  check` clean (rebuilt image) - no migration this phase.
+- `scripts/e2e/pwa_e2e.mjs` (new, Gate 5): manifest and every icon served;
+  the service worker active; Chrome's own installability check
+  (`Page.getInstallabilityErrors`, which Lighthouse's PWA audit ran on before
+  Lighthouse 12 dropped the category) reports nothing, in a real
+  (non-incognito) profile; offline - the banner, two taps queue two sets, the
+  card shows them, an app page opens from the cache; online again - exactly
+  two 80 kg x 5 sets logged and shown, the queue empty, nothing doubled on the
+  next flush; the demo account's last month on all seven slides matching the
+  API at 375 and 430 with no overflow, back-tap, and the Home card shown
+  exactly when the API says - ALL PASSED (26).
+- All other suites pass: workout 104, logging 36, analytics 53, explore 36,
+  social 21, duels 12, rank-up 51; `web_tour.mjs` full take, no misses.
+- `docs/api-contract.md` regenerated.
+- iOS `scripts/dev.sh ios`: ** TEST SUCCEEDED ** - XCTest 25 executed, 0 failures (live tour skipped); Swift Testing 94 passed. The API change is additive.
+
+**Blocked:** nothing.
+
+**Other agent needs to know:** offline logging covers the tap-to-log loop on
+an open workout (values as shown); typing new numbers needs the connection,
+since inputs are server state. A page never opened before cannot load
+offline - it gets `offline.html`.
+
+---
+
 ## 2026-10-07 (46) - Opus - overhaul phase 4: follows, feed, reactions, notifications, Home
 
 **Changed**

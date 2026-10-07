@@ -182,3 +182,57 @@ def muscle_sets(sets: Iterable[tuple[Sequence[str], Sequence[str]]]) -> tuple[di
     top = max(load.values(), default=0.0)
     intensity = {k: round(v / top, 3) for k, v in sorted(load.items())} if top > 0 else {}
     return load, intensity
+
+
+# ---------------------------------------------------------------------------
+# Monthly Summary
+# ---------------------------------------------------------------------------
+
+
+def month_bounds(month: dt.date) -> tuple[dt.date, dt.date]:
+    """(first day, first day of the next month)."""
+    first = month.replace(day=1)
+    return first, (first + dt.timedelta(days=32)).replace(day=1)
+
+
+def volume_comparison(kg: float) -> str:
+    """"That's about 3 small cars" - the largest everyday weight it reaches at
+    least once; nothing for a month with no volume."""
+    if kg <= 0:
+        return ""
+    reached = [c for c in rules.VOLUME_COMPARISONS if kg >= c[2]]
+    if not reached:
+        one, _, weight = rules.VOLUME_COMPARISONS[0]
+        return f"That's {round(kg / weight * 100)}% of {one}"
+    one, many, weight = reached[-1]
+    count = kg / weight
+    if count < 1.5:
+        return f"That's about {one}"
+    shown = f"{count:.1f}".rstrip("0").rstrip(".") if count < 10 else f"{round(count):,}"
+    return f"That's about {shown} {many}"
+
+
+@dataclasses.dataclass(frozen=True)
+class MonthTotals:
+    workouts: int
+    duration_seconds: int
+    volume_kg: float
+    working_sets: int
+    active_days: int
+    best_week_workouts: int
+
+
+def month_totals(facts: Sequence[SessionFact], month: dt.date) -> MonthTotals:
+    first, nxt = month_bounds(month)
+    inside = [f for f in facts if first <= f.day < nxt]
+    weeks: dict[dt.date, int] = {}
+    for f in inside:
+        weeks[monday(f.day)] = weeks.get(monday(f.day), 0) + 1
+    return MonthTotals(
+        workouts=len(inside),
+        duration_seconds=sum(f.duration_seconds for f in inside),
+        volume_kg=round(float(sum((f.volume_kg for f in inside), Decimal(0))), 1),
+        working_sets=sum(f.working_sets for f in inside),
+        active_days=len({f.day for f in inside}),
+        best_week_workouts=max(weeks.values(), default=0),
+    )

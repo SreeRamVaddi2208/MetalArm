@@ -92,6 +92,8 @@ def _type(size: int, line: int, weight: int, **extra) -> dict:
 
 LARGE_TITLE = _type(34, 41, 700, letter_spacing="-0.01em")
 DISPLAY_NUMBER = _type(40, 44, 700, **TABULAR)
+# The Monthly Summary's one big number per slide.
+DISPLAY_HERO = _type(64, 68, 700, **TABULAR)
 TITLE_1 = _type(28, 34, 700)
 TITLE_2 = _type(22, 28, 700)
 HEADLINE = _type(17, 22, 600)

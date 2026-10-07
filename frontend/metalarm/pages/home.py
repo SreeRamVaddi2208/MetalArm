@@ -10,7 +10,9 @@ from metalarm.components.feed import feed_item
 from metalarm.components.layout import error_banner, shell
 from metalarm.state.auth import AuthState
 from metalarm.state.home import VIEWS, HomeState
+from metalarm.state.monthly import MonthlyState
 from metalarm.state.quests import QuestState
+from metalarm.ui.cards import hero_card
 from metalarm.ui.chrome import avatar, icon_button
 from metalarm.ui.primitives import (
     delta_pill,
@@ -172,6 +174,10 @@ def home_page() -> rx.Component:
                           width="100%", align="center", spacing="3", background=t.SURFACE_1,
                           border_radius=t.RADIUS_CARD, padding=t.CARD_PADDING)),
         _game_strip(),
+        # Last month's story, in the first week of a month.
+        rx.cond(MonthlyState.hero_show,
+                hero_card(f"Your {MonthlyState.hero_title}", f"{MonthlyState.hero_workouts} workouts - see your month",
+                          on_play=rx.redirect(f"/summary/{MonthlyState.hero_month}"))),
         _snapshot(),
         rx.match(HomeState.view, ("Leaderboard", _leaderboard()), ("Duels", _duels()), _following()),
     )

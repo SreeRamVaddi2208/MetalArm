@@ -9,8 +9,10 @@ import reflex as rx
 
 from metalarm import theme
 from metalarm.pages.credits import credits_page
+from metalarm.components.offline import PUBLIC_API
 from metalarm.pages.dashboard import dashboard_page
 from metalarm.pages.home import home_page
+from metalarm.pages.monthly import monthly_page
 from metalarm.pages.people import notifications_page, user_page
 from metalarm.pages.explore import explore_page
 from metalarm.pages.gallery import gallery_page
@@ -35,6 +37,7 @@ from metalarm.state.quests import QuestState
 from metalarm.state.rewards import RewardState
 from metalarm.state.home import HomeState
 from metalarm.state.library import LibraryState
+from metalarm.state.monthly import MonthlyState
 from metalarm.state.people import NotificationsState, PeopleState, ProfileViewState
 from metalarm.state.exercise_detail import ExerciseDetailState
 from metalarm.state.session_detail import SessionDetailState
@@ -131,7 +134,14 @@ class RouteState(rx.State):
         auth = await self.get_state(AuthState)
         if not auth.token:
             return rx.redirect("/login")
-        return [AuthState.refresh_me, HomeState.load, QuestState.load, DuelState.load_summary]
+        return [AuthState.refresh_me, HomeState.load, QuestState.load, DuelState.load_summary,
+                MonthlyState.load_hero]
+
+    async def enter_monthly(self):
+        auth = await self.get_state(AuthState)
+        if not auth.token:
+            return rx.redirect("/login")
+        return MonthlyState.load
 
     async def enter_user(self):
         auth = await self.get_state(AuthState)
@@ -149,7 +159,7 @@ class RouteState(rx.State):
         auth = await self.get_state(AuthState)
         if not auth.token:
             return rx.redirect("/login")
-        return [AuthState.refresh_me, YouState.load]
+        return [AuthState.refresh_me, YouState.load, MonthlyState.load_hero]
 
     async def enter_exercise(self):
         auth = await self.get_state(AuthState)
@@ -212,6 +222,14 @@ app = rx.App(
         rx.el.link(rel="icon", type="image/png", href="/favicon.png"),
         rx.el.link(rel="apple-touch-icon", href="/apple-touch-icon.png"),
         rx.el.meta(name="viewport", content="width=device-width, initial-scale=1, viewport-fit=cover"),
+        # Installable (phase 5): the manifest, the bar colour, the service worker.
+        rx.el.link(rel="manifest", href="/manifest.json"),
+        rx.el.meta(name="theme-color", content=theme.COLOR_BG),
+        rx.el.meta(name="apple-mobile-web-app-capable", content="yes"),
+        rx.el.meta(name="apple-mobile-web-app-status-bar-style", content="black"),
+        rx.el.meta(name="ma-api", content=PUBLIC_API),
+        rx.script("if ('serviceWorker' in navigator) { window.addEventListener('load', function () {"
+                  " navigator.serviceWorker.register('/sw.js').catch(function () {}); }); }"),
         rx.el.style(GLOBAL_CSS),
     ],
     # Inter for the interface, Space Grotesk for the game's numerals.
@@ -242,6 +260,8 @@ app.add_page(home_page, route="/home", title="Home - MetalArm", on_load=RouteSta
 # The old dashboard: the full quest board and rank detail, behind the game strip.
 app.add_page(dashboard_page, route="/quests", title="Rank & Quests - MetalArm",
              on_load=RouteState.enter_dashboard)
+app.add_page(monthly_page, route="/summary/[ym]", title="Your month - MetalArm",
+             on_load=RouteState.enter_monthly)
 app.add_page(user_page, route="/u/[id]", title="Profile - MetalArm", on_load=RouteState.enter_user)
 app.add_page(notifications_page, route="/notifications", title="Notifications - MetalArm",
              on_load=RouteState.enter_notifications)

@@ -158,3 +158,41 @@ class ExerciseStatsOut(BaseModel):
     # Newest first; at most the last 20 sessions in the range.
     sessions: list[StatsSession]
     records: list[StatsRecord]
+
+
+class MonthlyRecordOut(BaseModel):
+    exercise_name: str
+    record_type: str
+    value: float
+    achieved_at: dt.datetime
+
+
+class MonthlySummaryOut(BaseModel):
+    """Every slide of the Monthly Summary."""
+
+    month: str                      # "2026-09"
+    workouts: int
+    duration_seconds: int
+    active_days: int
+    best_week_workouts: int
+    volume_kg: float
+    working_sets: int
+    volume_comparison: str
+    # Most-trained first; the body map's input.
+    muscles: list[MuscleVolumeOut]
+    records: list[MonthlyRecordOut]
+    record_count: int
+    points: int
+    rank: str
+    level: int
+    # Promotions in the month, as they read ("Reached Novice").
+    rank_ups: list[str]
+    quests_completed: int
+    duels_played: int
+    duels_won: int
+
+
+class MonthlyHeroOut(BaseModel):
+    month: str
+    show: bool
+    workouts: int

@@ -1,37 +1,30 @@
-"""The PR moment - the emotional payoff of the whole workout feature.
+"""The PR moment - the third of four celebration tiers (set logged < quest
+complete < PR < rank-up). Not a toast: a card over the workout, in record
+gold, with what was beaten and the bonus paid.
 
-Deliberately NOT a toast: the brief asks for "a distinct, satisfying UI
-moment". It is a sibling of the level-up reveal (components/level_up.py) and
-reuses its keyframes (lf-veil / lf-card / lf-line / lf-ring), so it follows
-the same rules: transform and opacity only, pinned to the viewport rather than
-hijacking scroll, and reduced-motion collapses it to a fade. Include
-level_up.keyframes() on any page that renders it.
+Shares the level-up reveal's keyframes (components/level_up.py: lf-veil,
+lf-card, lf-line), so the same rules hold: transform and opacity only,
+reduced motion collapses it to a fade. Include level_up.keyframes() on any
+page that renders it. Tap anywhere to dismiss - it never traps a lifter
+mid-set.
 
-Its colour is the A-rank orange - distinct from the blue level-up and the gold
-rank-up, so each of the three beats is recognisable at a glance.
-
-It only ever shows what the API said: the record the PR bonus was paid for
-(`bonus_awarded`), what it beat, and the points the API awarded.
+It shows only what the API said: the record the bonus was paid for, what it
+beat, and the points awarded.
 """
 
 import reflex as rx
 
-from metalarm import theme
+from metalarm import theme as t
 from metalarm.state.workout import WorkoutState
 from metalarm.workout_models import PrView
 
-PR_COLOR = theme.RANK_COLORS["A"]
-
-# The PR card's own ring. The level-up ring (scale x2.4, infinite) swept
-# through the exercise name and delta pill on this taller card; this one stays
-# within the headline, pulses three times and stops, and the card clips it.
 _CSS = f"""
 @keyframes ma-pr-ring {{
   0%   {{ opacity: 0.7; transform: scale(0.75); }}
   100% {{ opacity: 0;   transform: scale(1.35); }}
 }}
 .ma-pr-ring {{
-  border: 2px solid {PR_COLOR};
+  border: 2px solid {t.PR_GOLD};
   animation: ma-pr-ring 1300ms ease-out 120ms 3 both;
 }}
 @media (prefers-reduced-motion: reduce) {{
@@ -42,10 +35,9 @@ _CSS = f"""
 
 def _other_record(view: PrView) -> rx.Component:
     return rx.hstack(
-        rx.text(view.record_label, **{**theme.LABEL_STYLE, "font_size": "0.62rem"}),
-        rx.text(view.headline, color=theme.TEXT, font_size="0.8rem", font_weight="700"),
-        spacing="2",
-        align="center",
+        rx.text(view.record_label, color=t.TEXT_SECONDARY, **t.FOOTNOTE),
+        rx.text(view.headline, color=t.TEXT_PRIMARY, **{**t.FOOTNOTE, **t.TABULAR}),
+        spacing="2", align="center",
     )
 
 
@@ -54,138 +46,63 @@ def pr_overlay() -> rx.Component:
     return rx.cond(
         WorkoutState.show_pr,
         rx.box(
+            rx.el.style(_CSS),
             rx.center(
                 rx.vstack(
-                    rx.text(
-                        "PERSONAL RECORD",
-                        **{**theme.LABEL_STYLE, "color": PR_COLOR, "letter_spacing": "0.3em"},
-                        class_name="lf-line",
-                    ),
+                    rx.hstack(rx.icon("medal", size=18, color=t.PR_GOLD),
+                              rx.text("PERSONAL RECORD", color=t.PR_GOLD, **t.CAPTION),
+                              spacing="2", align="center", class_name="lf-line"),
                     rx.box(
-                        rx.el.style(_CSS),
-                        rx.box(
-                            class_name="ma-pr-ring",
-                            position="absolute",
-                            width="150px",
-                            height="150px",
-                            border_radius="50%",
-                            pointer_events="none",
-                        ),
+                        rx.box(class_name="ma-pr-ring", position="absolute", width="150px", height="150px",
+                               border_radius=t.RADIUS_PILL, pointer_events="none"),
                         rx.vstack(
-                            rx.heading(
-                                pr.headline,
-                                size="8",
-                                color=PR_COLOR,
-                                font_weight="900",
-                                line_height="1",
-                                text_align="center",
-                            ),
-                            rx.text(pr.record_label, **theme.LABEL_STYLE),
-                            spacing="2",
-                            align="center",
+                            rx.text(pr.headline, color=t.PR_GOLD, text_align="center",
+                                    **{**t.DISPLAY_NUMBER, **t.NUMERAL_GAME}),
+                            rx.text(pr.record_label, color=t.TEXT_SECONDARY, **t.FOOTNOTE),
+                            spacing="1", align="center",
                         ),
-                        position="relative",
-                        display="flex",
-                        align_items="center",
-                        justify_content="center",
-                        min_width="150px",
-                        min_height="150px",
+                        position="relative", display="flex", align_items="center", justify_content="center",
+                        min_width="150px", min_height="150px",
                     ),
-                    rx.heading(
-                        pr.exercise_name,
-                        size="5",
-                        color=theme.TEXT,
-                        text_align="center",
-                        class_name="lf-line",
-                    ),
+                    rx.text(pr.exercise_name, color=t.TEXT_PRIMARY, text_align="center", class_name="lf-line",
+                            **t.TITLE_2),
                     # The line that follows the record - the same words the
                     # iPhone app shows for this set.
-                    rx.text(
-                        pr.motivation,
-                        color=theme.MUTED,
-                        font_size="0.85rem",
-                        font_weight="600",
-                        text_align="center",
-                        padding="0 1.2rem",
-                        class_name="lf-line",
-                    ),
+                    rx.text(pr.motivation, color=t.TEXT_SECONDARY, text_align="center", class_name="lf-line",
+                            **t.SUBHEAD),
                     rx.cond(
                         pr.delta != "",
-                        rx.box(
-                            rx.text(
-                                pr.delta,
-                                color=PR_COLOR,
-                                font_weight="800",
-                                font_size="0.85rem",
-                                letter_spacing="0.1em",
-                            ),
-                            padding="0.3rem 0.8rem",
-                            border=f"1px solid {PR_COLOR}66",
-                            border_radius="999px",
-                            background=f"{PR_COLOR}14",
-                            class_name="lf-line",
-                        ),
+                        rx.box(rx.text(pr.delta, color=t.PR_GOLD, **{**t.HEADLINE, **t.TABULAR}),
+                               padding=f"{t.space(1)} {t.space(3)}", border_radius=t.RADIUS_PILL,
+                               background=t.alpha(t.PR_GOLD, 0.14), class_name="lf-line"),
                     ),
                     rx.cond(
                         WorkoutState.has_pr_others,
-                        rx.vstack(
-                            rx.text("ALSO BROKEN", **{**theme.LABEL_STYLE, "font_size": "0.6rem"}),
-                            rx.foreach(WorkoutState.pr_others, _other_record),
-                            spacing="1",
-                            align="center",
-                            class_name="lf-line",
-                        ),
+                        rx.vstack(rx.text("Also broken", color=t.TEXT_SECONDARY, **t.CAPTION),
+                                  rx.foreach(WorkoutState.pr_others, _other_record),
+                                  spacing="1", align="center", class_name="lf-line"),
                     ),
                     rx.cond(
                         WorkoutState.pr_points > 0,
-                        rx.text(
-                            f"+{WorkoutState.pr_points} PR BONUS",
-                            color=theme.WARNING,
-                            font_weight="900",
-                            letter_spacing="0.16em",
-                            font_size="0.85rem",
-                            class_name="lf-line",
-                        ),
+                        rx.text(f"+{WorkoutState.pr_points} PR BONUS", color=t.STREAK_ORANGE, class_name="lf-line",
+                                **{**t.HEADLINE, **t.NUMERAL_GAME}),
                     ),
-                    rx.button(
+                    rx.el.button(
                         "KEEP LIFTING",
                         on_click=WorkoutState.dismiss_pr,
-                        background=PR_COLOR,
-                        color=theme.ON_ACCENT,
-                        border="none",
-                        border_radius="12px",
-                        font_weight="900",
-                        letter_spacing="0.14em",
-                        font_size="0.8rem",
-                        padding="0.8rem 1.6rem",
-                        height="48px",
-                        cursor="pointer",
-                        class_name="lf-line",
+                        background=t.PR_GOLD, color=t.ON_LIGHT, border="none", border_radius=t.RADIUS_PILL,
+                        min_height=t.TOUCH_MIN, padding=f"0 {t.space(6)}", cursor="pointer", class_name="lf-line",
+                        **t.HEADLINE,
                     ),
-                    spacing="4",
-                    align="center",
-                    class_name="lf-card",
-                    padding="2.25rem 1.75rem",
-                    background=theme.PANEL,
-                    border=f"1px solid {PR_COLOR}66",
-                    border_radius="20px",
-                    box_shadow=theme.glow(PR_COLOR, "110px"),
-                    max_width="92vw",
-                    overflow="hidden",
+                    spacing="4", align="center", class_name="lf-card",
+                    padding=f"{t.space(8)} {t.space(6)}", background=t.SURFACE_1,
+                    border_radius=t.RADIUS_CARD, max_width="92vw", overflow="hidden",
                 ),
-                width="100%",
-                height="100%",
+                width="100%", height="100%",
             ),
             class_name="lf-veil",
-            position="fixed",
-            top="0",
-            left="0",
-            width="100vw",
-            height="100vh",
-            background=theme.VEIL,
-            backdrop_filter="blur(3px)",
-            z_index="110",
-            # Tap anywhere to dismiss: it must never trap a lifter mid-set.
+            position="fixed", top="0", left="0", width="100vw", height="100vh",
+            background=t.SCRIM, backdrop_filter=t.BLUR, z_index="110",
             on_click=WorkoutState.dismiss_pr,
         ),
     )

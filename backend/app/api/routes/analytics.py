@@ -21,7 +21,7 @@ from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import Session
 
 from app.api.deps import CurrentUser, DbSession
-from app.core import analytics, recovery
+from app.core import analytics, recovery, social
 from app.core import personal_records as prs
 from app.core import taxonomy
 from app.core import workout_store as store
@@ -36,7 +36,13 @@ from app.models.workout import (
     WorkoutSession,
 )
 from app.models.workout_enums import RecordType, SessionStatus
+from app.models.duel import ActivityEvent, ActivityType, Duel
+from app.models.quest import QuestCompletion
+from app.models.quest_board import QuestAssignment
 from app.schemas.analytics import (
+    MonthlyHeroOut,
+    MonthlyRecordOut,
+    MonthlySummaryOut,
     CalendarDayOut,
     CalendarOut,
     CalendarRunOut,
@@ -393,3 +399,78 @@ def exercise_stats(exercise_id: uuid.UUID, current_user: CurrentUser, db: DbSess
                            achieved_at=r.achieved_at) for r in best.values()]
     return ExerciseStatsOut(exercise_id=exercise.id, range=range_, series=series,
                             sessions=sessions, records=records)
+
+
+# ---------------------------------------------------------------------------
+# Monthly Summary
+# ---------------------------------------------------------------------------
+
+
+def _month_param(month: str | None, user: User) -> dt.date:
+    if month:
+        return dt.date.fromisoformat(f"{month}-01")
+    first = _today(user).replace(day=1)
+    return (first - dt.timedelta(days=1)).replace(day=1)       # last month
+
+
+@router.get("/analytics/monthly-summary", response_model=MonthlySummaryOut)
+def monthly_summary(current_user: CurrentUser, db: DbSession,
+                    month: str | None = Query(default=None, pattern=r"^\d{4}-\d{2}$",
+                                              description="Default: last month.")) -> MonthlySummaryOut:
+    """Every slide: workouts and time, volume with a comparison, the muscles,
+    the records, points and rank, quests and duels - for one local month."""
+    first, nxt = analytics.month_bounds(_month_param(month, current_user))
+    tz = current_user.timezone
+    start, end = _instant(first, tz), _instant(nxt, tz)
+    totals = analytics.month_totals(_facts(db, current_user, first), first)
+
+    rows = _working_sets(db, current_user, start, end)
+    load, intensity = analytics.muscle_sets((p or [], s or []) for _, p, s in rows)
+    info = {m.code: m for m in taxonomy.muscles(db)}
+    muscles = [MuscleVolumeOut(code=c, display_name=info[c].display_name if c in info else c, sets=load[c],
+                               intensity=intensity[c], svg_path_ids=list(info[c].svg_path_ids) if c in info else [])
+               for c in sorted(load, key=lambda c: (-load[c], c))]
+
+    prs = db.execute(
+        select(PersonalRecord, Exercise.name).join(Exercise, Exercise.id == PersonalRecord.exercise_id)
+        .where(PersonalRecord.user_id == current_user.id, PersonalRecord.is_baseline.is_(False),
+               PersonalRecord.achieved_at >= start, PersonalRecord.achieved_at < end)
+        .order_by(PersonalRecord.achieved_at)).all()
+    points = db.scalar(select(func.coalesce(func.sum(PointsLedgerEntry.points), 0)).where(
+        PointsLedgerEntry.user_id == current_user.id,
+        PointsLedgerEntry.created_at >= start, PointsLedgerEntry.created_at < end)) or 0
+    rank_ups = list(db.scalars(select(ActivityEvent.headline).where(
+        ActivityEvent.user_id == current_user.id, ActivityEvent.party_id.is_(None),
+        ActivityEvent.event_type == ActivityType.RANK_UP.value,
+        ActivityEvent.created_at >= start, ActivityEvent.created_at < end).order_by(ActivityEvent.created_at)))
+    quests = (db.scalar(select(func.count(QuestAssignment.id)).where(
+        QuestAssignment.user_id == current_user.id, QuestAssignment.completed_at >= start,
+        QuestAssignment.completed_at < end)) or 0) + (db.scalar(select(func.count(QuestCompletion.id)).where(
+            QuestCompletion.user_id == current_user.id, QuestCompletion.completed_at >= start,
+            QuestCompletion.completed_at < end)) or 0)
+    duels = list(db.scalars(select(Duel).where(
+        or_(Duel.challenger_id == current_user.id, Duel.opponent_id == current_user.id),
+        Duel.resolved_at >= start, Duel.resolved_at < end)))
+    rank, level = social.ranks(db, [current_user])[current_user.id]
+    return MonthlySummaryOut(
+        month=first.strftime("%Y-%m"), workouts=totals.workouts, duration_seconds=totals.duration_seconds,
+        active_days=totals.active_days, best_week_workouts=totals.best_week_workouts,
+        volume_kg=totals.volume_kg, working_sets=totals.working_sets,
+        volume_comparison=analytics.volume_comparison(totals.volume_kg), muscles=muscles,
+        records=[MonthlyRecordOut(exercise_name=name, record_type=r.record_type, value=float(r.value),
+                                  achieved_at=r.achieved_at) for r, name in prs[-5:]],
+        record_count=len(prs), points=int(points), rank=rank, level=level, rank_ups=rank_ups,
+        quests_completed=quests, duels_played=len(duels),
+        duels_won=sum(1 for d in duels if d.winner_id == current_user.id),
+    )
+
+
+@router.get("/analytics/monthly-summary/latest", response_model=MonthlyHeroOut)
+def monthly_hero(current_user: CurrentUser, db: DbSession) -> MonthlyHeroOut:
+    """Whether Home shows last month's summary card: in the first days of a
+    month, when last month had a workout."""
+    today = _today(current_user)
+    last = (today.replace(day=1) - dt.timedelta(days=1)).replace(day=1)
+    totals = analytics.month_totals(_facts(db, current_user, last), last)
+    return MonthlyHeroOut(month=last.strftime("%Y-%m"), workouts=totals.workouts,
+                          show=today.day <= analytics.rules.MONTHLY_HERO_DAYS and totals.workouts > 0)
