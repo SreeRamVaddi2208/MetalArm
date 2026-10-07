@@ -10,7 +10,6 @@ Keep in step with ios/MetalARM/API/Rank.swift.
 
 import reflex as rx
 
-from metalarm import theme
 
 # Ascending.
 RANK_TITLES = {
@@ -36,15 +35,6 @@ def rank_title_var(rank: rx.Var) -> rx.Var:
         rank,
         *[(letter, title) for letter, title in RANK_TITLES.items()],
         rank,
-    )
-
-
-def rank_color_var(rank: rx.Var) -> rx.Var:
-    """The per-rank colour, still keyed by the letter."""
-    return rx.match(
-        rank,
-        *[(letter, color) for letter, color in theme.RANK_COLORS.items()],
-        theme.MUTED,
     )
 
 

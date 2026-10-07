@@ -1,5 +1,6 @@
-"""The area chart: a line, a gradient fill, hollow points, the axis on the
-right, and a scrub marker on the selected point (recharts)."""
+"""One line chart for the whole app: the user's series in accent, no fill, a
+dot only on the points that matter (the latest and the records). Gridlines in
+border; axes in text-2. One series - so no legend."""
 
 from __future__ import annotations
 
@@ -10,37 +11,27 @@ import reflex as rx
 from metalarm import theme as t
 
 
-def area_chart(data: Any, *, x_key: str = "label", y_key: str = "value",
-               height: int = 220) -> rx.Component:
-    gradient_id = f"ma-area-{y_key}"
-    return rx.recharts.area_chart(
-        rx.el.defs(
-            rx.el.linear_gradient(
-                rx.el.stop(offset="0%", stop_color=t.CHART_LINE, stop_opacity="0.35"),
-                rx.el.stop(offset="100%", stop_color=t.CHART_LINE, stop_opacity="0"),
-                id=gradient_id, x1="0", y1="0", x2="0", y2="1",
-            )
-        ),
-        rx.recharts.cartesian_grid(vertical=False, stroke=t.SEPARATOR),
-        rx.recharts.x_axis(data_key=x_key, tick_line=False, axis_line=False,
-                           tick={"fill": t.TEXT_SECONDARY, "fontSize": 11}),
-        rx.recharts.y_axis(orientation="right", tick_line=False, axis_line=False, width=48,
-                           tick={"fill": t.TEXT_SECONDARY, "fontSize": 11}),
+def line_chart(data: Any, *, x_key: str = "label", y_key: str = "value", mark_key: str = "mark",
+               height: int = 220, from_zero: bool = True) -> rx.Component:
+    """`data`: rows of {label, value, mark}. `mark` is the value again on the
+    points to dot (the latest, a record) and null elsewhere. Totals start the
+    axis at zero; a level like body weight (`from_zero=False`) fits its range."""
+    tick = {"fill": t.TEXT_2, "fontSize": 12}
+    return rx.recharts.line_chart(
+        rx.recharts.cartesian_grid(vertical=False, stroke=t.BORDER),
+        rx.recharts.x_axis(data_key=x_key, tick_line=False, axis_line=False, tick=tick, min_tick_gap=24),
+        rx.recharts.y_axis(orientation="right", tick_line=False, axis_line=False, width=44, tick=tick,
+                           domain=[0, "auto"] if from_zero else ["dataMin - 2", "dataMax + 2"]),
         rx.recharts.tooltip(
-            cursor={"stroke": t.TEXT_SECONDARY, "strokeWidth": 1},
-            content_style={"background": t.SURFACE_2, "border": "none",
-                           "borderRadius": t.RADIUS_THUMB, "color": t.TEXT_PRIMARY},
-            label_style={"color": t.TEXT_SECONDARY},
+            cursor={"stroke": t.BORDER, "strokeWidth": 1},
+            content_style={"background": t.SURFACE_2, "border": "none", "borderRadius": t.RADIUS,
+                           "color": t.TEXT},
+            label_style={"color": t.TEXT_2},
         ),
-        rx.recharts.area(
-            data_key=y_key, type_="monotone", stroke=t.CHART_LINE, stroke_width=2.5,
-            fill=f"url(#{gradient_id})",
-            dot={"r": 3.5, "fill": t.COLOR_BG, "stroke": t.CHART_LINE, "strokeWidth": 2},
-            active_dot={"r": 5, "fill": t.CHART_LINE},
-            is_animation_active=False,
-        ),
-        data=data,
-        height=height,
-        width="100%",
-        margin={"top": 8, "right": 0, "bottom": 0, "left": 0},
+        rx.recharts.line(data_key=y_key, type_="monotone", stroke=t.ACCENT, stroke_width=2,
+                         dot=False, active_dot={"r": 4, "fill": t.ACCENT}, is_animation_active=False),
+        rx.recharts.line(data_key=mark_key, stroke="none", dot={"r": 4, "fill": t.ACCENT, "stroke": t.BG,
+                                                                "strokeWidth": 2},
+                         is_animation_active=False, legend_type="none", tooltip_type="none"),
+        data=data, height=height, width="100%", margin={"top": 8, "right": 0, "bottom": 0, "left": 0},
     )

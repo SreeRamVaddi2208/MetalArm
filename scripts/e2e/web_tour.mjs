@@ -63,8 +63,8 @@ async function tap(locator, label) {
 
 /** Close whatever celebration a set raised (PR card, level-up), if any. */
 async function clearOverlays() {
-  for (const label of ['KEEP LIFTING', 'CONTINUE']) {
-    const button = page.getByText(label, { exact: true }).first();
+  for (const label of ['Continue']) {
+    const button = page.getByRole('button', { name: label, exact: true }).first();
     if (await button.isVisible().catch(() => false)) {
       await button.click().catch(() => {});
       await wait(700);
@@ -74,7 +74,7 @@ async function clearOverlays() {
 
 // The first exercise card of the active workout, and its entry row.
 const firstCard = () => page.locator('.ma-card').first();
-const entry = (i) => firstCard().locator('input').nth(i);
+const entry = (i) => firstCard().locator('.ma-entry input').nth(i);
 
 async function logSet(label) {
   await tap(firstCard().getByRole('button', { name: 'Log set' }), label);
@@ -112,13 +112,13 @@ try {
     await page.locator('input').first().pressSequentially(EMAIL, { delay: 35 });
     await page.locator('input[type=password]').pressSequentially(PASSWORD, { delay: 25 });
     await wait(300);
-    await text('ENTER').click();
+    await page.getByRole('button', { name: 'Sign in' }).click();
     await page.waitForURL('**/home', { timeout: 30000 });
     await wait(1800);
   });
 
   await chapter('dashboard', async () => {
-    // Home is the feed now; the quest board and rank detail sit behind the game strip.
+    // Home is the feed now; the quest board sits under Profile.
     await wait(1200);
     await go('/quests');
     await wait(600);
@@ -131,7 +131,7 @@ try {
   });
 
   await chapter('quests', async () => {
-    const today = text('TODAY');
+    const today = text('Today');
     await today.scrollIntoViewIfNeeded().catch(() => {});
     await wait(1600);
     await tap(page.getByRole('button', { name: /Reroll/ }).first(), 'reroll');
@@ -141,31 +141,31 @@ try {
   await chapter('custom', async () => {
     // Acknowledge the notice first so it does not sit over the board.
     await tap(page.getByRole('button', { name: 'OK', exact: true }), 'notice OK');
-    await text('YOUR QUESTS').scrollIntoViewIfNeeded().catch(() => {});
+    await text('Your quests').scrollIntoViewIfNeeded().catch(() => {});
     await wait(800);
-    await tap(page.getByRole('button', { name: 'COMPLETE', exact: true }).first(), 'complete quest');
+    await tap(page.getByRole('button', { name: 'Complete', exact: true }).first(), 'complete quest');
     // The level-up overlay, if this crossed a level.
     await wait(3500);
     await clearOverlays();
   });
 
   await chapter('duel_bars', async () => {
-    await glide(0);
+    await go('/duels');
     await wait(1500);
   });
 
   // --- The workout ---------------------------------------------------------
   await chapter('workout', async () => {
-    await go('/workout');
+    await go('/train');
     await wait(1200);
     await glide(500);
     await glide(0);
   });
 
   await chapter('preset', async () => {
-    await tap(page.getByText('Powerlifter', { exact: false }).first(), 'open a preset');
+    await tap(page.locator('.ma-preset-card').first(), 'open a preset');
     await wait(1500);
-    await tap(page.getByText('START THIS WORKOUT', { exact: true }), 'start preset');
+    await tap(page.locator('.ma-preset-start'), 'start preset');
     await firstCard().waitFor({ timeout: 15000 });
     await wait(1500);
   });
@@ -188,7 +188,7 @@ try {
     await entry(0).fill(String(kg + 5)).catch(() => missed.push('weight field'));
     await wait(500);
     await tap(firstCard().getByRole('button', { name: 'Log set' }), 'log PR set');
-    await page.getByText('PERSONAL RECORD', { exact: true }).waitFor({ timeout: 8000 }).catch(() => missed.push('pr card'));
+    await page.locator('.ma-pr-banner').waitFor({ timeout: 8000 }).catch(() => missed.push('pr banner'));
     await wait(4200);
     await clearOverlays();
   });
@@ -207,12 +207,12 @@ try {
     const box = page.getByPlaceholder(/Type a set/);
     await box.click().catch(() => missed.push('typed box'));
     await box.pressSequentially('bench 82.5 for 5 rpe 8', { delay: 70 }).catch(() => {});
-    await tap(page.getByRole('button', { name: 'PARSE', exact: true }), 'parse');
-    await page.getByText('HEARD', { exact: true }).waitFor({ timeout: 10000 }).catch(() => missed.push('proposal card'));
+    await tap(page.getByRole('button', { name: 'Parse', exact: true }), 'parse');
+    await page.getByText(/^Heard/).first().waitFor({ timeout: 10000 }).catch(() => missed.push('proposal card'));
     await wait(1500);
-    await tap(page.getByRole('button', { name: '+', exact: true }).last(), 'sets +');
+    await tap(page.getByRole('button', { name: 'More sets' }), 'sets +');
     await wait(800);
-    await tap(page.getByRole('button', { name: /LOG 2 SETS|LOG IT/ }), 'log it');
+    await tap(page.getByRole('button', { name: /Log 2 sets|Log it/ }), 'log it');
     await wait(2500);
     await clearOverlays();
   });
@@ -221,9 +221,9 @@ try {
     const box = page.getByPlaceholder(/Type a set/);
     await box.click().catch(() => {});
     await box.pressSequentially('same again', { delay: 70 }).catch(() => {});
-    await tap(page.getByRole('button', { name: 'PARSE', exact: true }), 'parse same again');
+    await tap(page.getByRole('button', { name: 'Parse', exact: true }), 'parse same again');
     await wait(1800);
-    await tap(page.getByRole('button', { name: /LOG IT/ }), 'log same again');
+    await tap(page.getByRole('button', { name: /Log it/ }), 'log same again');
     await wait(1500);
     await clearOverlays();
     await tap(page.getByRole('button', { name: /Undo/ }), 'undo');
@@ -235,12 +235,13 @@ try {
     await wait(800);
     await tap(firstCard().getByRole('button', { name: 'Edit set' }).first(), 'edit a set');
     await wait(1800);
-    await tap(page.getByRole('button', { name: 'CANCEL', exact: true }).first(), 'cancel edit');
+    await tap(page.getByRole('dialog').getByRole('button', { name: 'Close' }), 'close edit');
     await wait(800);
   });
 
   await chapter('finish', async () => {
-    await tap(text('Finish'), 'finish');
+    await tap(page.getByRole('button', { name: 'Finish', exact: true }), 'finish');
+    await tap(page.getByRole('button', { name: 'Finish workout' }), 'finish workout');
     await page.getByText('Workout complete', { exact: true }).waitFor({ timeout: 15000 }).catch(() => missed.push('summary'));
     await wait(1500);
     await clearOverlays();
@@ -268,7 +269,7 @@ try {
     await go('/parties');
     await tap(page.getByText('Iron Syndicate', { exact: false }).first(), 'open party');
     await wait(1500);
-    await tap(page.getByRole('button', { name: 'ALL TIME', exact: true }), 'board all time');
+    await tap(page.getByRole('button', { name: 'All time', exact: true }), 'board all time');
     await glide(700);
     await glide(1400);
     await glide(0);
@@ -278,7 +279,7 @@ try {
     await go('/duels');
     // The ended duel is judged by this read: its result screen opens.
     await wait(1500);
-    await tap(page.getByText('CONTINUE', { exact: true }), 'dismiss result early');
+    await tap(page.getByRole('button', { name: 'Continue', exact: true }), 'dismiss result early');
     await glide(450);
     await tap(page.getByRole('button', { name: 'Details' }).first(), 'duel details');
     await wait(1800);
@@ -289,13 +290,12 @@ try {
     // Sam joined this week with no history: the fair modes that need a
     // baseline come back disabled, each saying why.
     // Sam's own row: the name and its button are siblings.
-    const sam = page.getByText('Sam', { exact: true }).first().locator('xpath=..')
-      .getByRole('button', { name: 'CHALLENGE', exact: true });
-    await tap(sam, 'challenge Sam');
-    await page.getByText('CHALLENGE SAM', { exact: false }).waitFor({ timeout: 8000 }).catch(() => missed.push('mode picker'));
+    // Sam's own row opens the mode sheet.
+    await tap(page.getByText('Sam', { exact: true }).first(), 'challenge Sam');
+    await page.getByText('Challenge Sam', { exact: false }).waitFor({ timeout: 8000 }).catch(() => missed.push('mode sheet'));
     await wait(3500);
-    await tap(page.getByRole('button', { name: 'Cancel', exact: true }), 'close picker');
-    await tap(page.getByRole('button', { name: 'ACCEPT', exact: true }), 'accept challenge');
+    await tap(page.getByRole('dialog').getByRole('button', { name: 'Close' }), 'close modes');
+    await tap(page.getByRole('button', { name: 'Accept', exact: true }), 'accept challenge');
     await wait(1500);
   });
 
@@ -303,26 +303,26 @@ try {
     // Bring the settled duel's result back for the camera.
     await page.evaluate(() => localStorage.removeItem('ma_duel_results_seen'));
     await go('/duels');
-    await page.getByText(/GOOD FIGHT|DUEL WON|DUEL DRAWN/).waitFor({ timeout: 10000 }).catch(() => missed.push('result screen'));
+    await page.getByText(/Good fight|Duel won|Duel drawn/).waitFor({ timeout: 10000 }).catch(() => missed.push('result screen'));
     await wait(4200);
-    await tap(page.getByText('CONTINUE', { exact: true }), 'result continue');
+    await tap(page.getByRole('button', { name: 'Continue', exact: true }), 'result continue');
   });
 
   await chapter('feed', async () => {
-    await text('ACTIVITY').scrollIntoViewIfNeeded().catch(() => {});
+    await text('Activity').scrollIntoViewIfNeeded().catch(() => {});
     await wait(2500);
   });
 
   await chapter('rewards', async () => {
     await go('/rewards');
     await wait(1200);
-    await tap(page.getByRole('button', { name: /REDEEM/ }).first(), 'redeem');
+    await tap(page.getByRole('button', { name: 'Redeem' }).first(), 'redeem');
     await wait(1800);
     await glide(600);
   });
 
   await chapter('routines', async () => {
-    await go('/library');
+    await go('/train');
     await wait(1500);
     await glide(500);
   });
@@ -342,7 +342,7 @@ try {
   });
 
   await chapter('end', async () => {
-    await tap(page.getByText('CONTINUE', { exact: true }), 'rank-up continue');
+    await tap(page.getByRole('button', { name: 'Continue', exact: true }), 'rank-up continue');
     await wait(1000);
   });
 } finally {

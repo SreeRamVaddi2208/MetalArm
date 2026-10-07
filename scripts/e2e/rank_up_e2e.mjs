@@ -58,7 +58,7 @@ async function signIn(page) {
   await page.goto(UI + '/login');
   await page.locator('input').first().fill(email);
   await page.locator('input[type=password]').fill(password);
-  await page.getByText('ENTER', { exact: true }).click();
+  await page.getByRole('button', { name: 'Sign in' }).click();
   await page.waitForURL('**/home', { timeout: 20000 });
 }
 
@@ -114,9 +114,9 @@ try {
     const counted = (await page.locator('.lf-count').getAttribute('data-ma-count')) || '';
     check(`${tier.rank}: the level counter ticked to its end`, counted === '15', counted);
 
-    await page.getByText('CONTINUE', { exact: true }).click();
+    await page.getByRole('button', { name: 'Continue' }).click();
     await veil.waitFor({ state: 'detached', timeout: 10000 });
-    check(`${tier.rank}: CONTINUE dismisses it`, (await page.locator('.lf-celebrate').count()) === 0);
+    check(`${tier.rank}: Continue dismisses it`, (await page.locator('.lf-celebrate').count()) === 0);
   }
 
   section('Reduce Motion');

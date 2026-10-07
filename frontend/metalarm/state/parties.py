@@ -150,6 +150,9 @@ class PartyState(rx.State):
         data = await wapi.party_workout_leaderboard(token, self.selected.id, self.workout_period)
         self.workout_board = [WorkoutBoardRow.from_api(e) for e in data.get("entries", [])]
 
+    async def set_workout_label(self, label: str):
+        return PartyState.set_workout_period("week" if label == "This week" else "all")
+
     async def set_workout_period(self, period: str):
         if period == self.workout_period or not self.selected.id:
             return

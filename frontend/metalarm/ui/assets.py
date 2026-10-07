@@ -24,13 +24,6 @@ EQUIPMENT_ICONS: dict[str, str] = {
     "other": "shapes",
 }
 
-TAB_ICONS: dict[str, str] = {
-    "home": "house",
-    "explore": "compass",
-    "workout": "dumbbell",
-    "library": "library",
-    "you": "user-round",
-}
 
 
 def equipment_icon(code: str) -> str:

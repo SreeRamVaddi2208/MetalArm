@@ -82,6 +82,13 @@ class DuelState(rx.State):
     def set_challenge_days(self, value: str) -> None:
         self.challenge_days = value
 
+    def bump_days(self, delta: int) -> None:
+        try:
+            days = int(self.challenge_days)
+        except ValueError:
+            days = 7
+        self.challenge_days = str(max(1, min(28, days + delta)))
+
     def set_challenge_opponent(self, value: str) -> None:
         self.challenge_opponent = value
 

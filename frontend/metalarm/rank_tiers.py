@@ -10,7 +10,7 @@ settle - and differs only in the numbers below. Adding a sixth tier is a row
 here, not a new animation. Nothing in this module imports Reflex, so the
 budgets can be tested without building the frontend.
 
-The palette stays inside MetalArm's steel-to-white identity (theme.RANK_COLORS)
+The palette stays inside MetalArm's steel-to-white identity (theme.TIER_COLORS)
 rather than a bronze-to-jewel ladder: warm gold and a single jewel tone are
 held back for Elite and World Class, which is what makes them read as rarer.
 """

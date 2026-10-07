@@ -22,9 +22,8 @@ import os
 
 import reflex as rx
 
-# Placeholder dark theme. Frontend Agent (Sonnet) owns the real palette -
-# original work only, inspired by the hunter-rank aesthetic, never copying
-# Solo Leveling assets, logos, or text.
+# Dark, one accent. The Radix scales are mapped onto the theme.py tokens in
+# metalarm.py GLOBAL_CSS, so a Radix control and a MetalArm one look alike.
 config = rx.Config(
     app_name="metalarm",
     backend_port=int(os.getenv("REFLEX_BACKEND_PORT", "8001")),
@@ -39,7 +38,7 @@ config = rx.Config(
     show_built_with_reflex=False,
     plugins=[
         rx.plugins.RadixThemesPlugin(
-            theme=rx.theme(appearance="dark", accent_color="blue", radius="large"),
+            theme=rx.theme(appearance="dark", accent_color="orange", gray_color="gray", radius="large"),
         ),
         rx.plugins.SitemapPlugin(),
     ],

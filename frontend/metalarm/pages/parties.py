@@ -1,560 +1,132 @@
-"""Party page: selector, shared quest board, and leaderboard."""
+"""/parties: your parties as chips; the chosen one's invite code, shared
+quests, league, raid, and boards. Creating and joining happen in sheets."""
 
 import reflex as rx
 
-from metalarm import theme
-from metalarm.components.layout import (
-    error_banner,
-    notice_banner,
-    section_heading,
-    shell,
-)
-from metalarm.components.party_card import (
-    invite_panel,
-    leaderboard_row,
-    party_quest_row,
-    party_tab,
-    rank_letter,
-)
-from metalarm.components.scroll_reveal import reveal, reveal_assets
+from metalarm import theme as t
+from metalarm.components.layout import error_banner, notice_banner, shell
+from metalarm.components.party_card import invite_panel, leaderboard_row, party_quest_row, party_tab, ranked_row
 from metalarm.models import LeagueEntryRow, RaidHitterRow, WorkoutBoardRow
 from metalarm.state.parties import PartyState
+from metalarm.ui.chrome import top_bar
+from metalarm.ui.primitives import (
+    button,
+    chip,
+    chips,
+    empty_state,
+    field,
+    icon_button,
+    list_row,
+    progress_bar,
+    rows,
+    section,
+    segmented,
+    sheet,
+    stat_group,
+    stat_tile,
+    text,
+)
 
 
-def text_input(placeholder: str, on_change, value=None, accent=theme.ACCENT):
-    return rx.input(
-        placeholder=placeholder,
-        on_change=on_change,
-        value=value,
-        width="100%",
-        background=theme.FIELD,
-        border=f"1px solid {theme.BORDER}",
-        border_radius="9px",
-        color=theme.TEXT,
-        padding="0.6rem 0.75rem",
-        font_size="0.88rem",
-        _focus={"border_color": accent, "outline": "none"},
+def _sheets() -> rx.Component:
+    s = PartyState
+    return rx.fragment(
+        sheet(s.show_create, s.toggle_create, field(s.new_name, s.set_new_name, "Party name"),
+              title="Create a party", action=button("Create party", s.create, full=True)),
+        sheet(s.show_join, s.toggle_join, field(s.join_code, s.set_join_code, "Invite code, e.g. K7M2QXPA"),
+              text("Codes are case-insensitive and dashes are ignored.", t.CAPTION, t.TEXT_2),
+              title="Join a party", action=button("Join party", s.join, full=True)),
+        sheet(s.show_quest_form, s.toggle_quest_form,
+              field(s.quest_title, s.set_quest_title, "Shared quest title"),
+              field(s.quest_xp, s.set_quest_xp, "XP, e.g. 25", mode="numeric"),
+              chips(*[chip(label, selected=s.quest_recurrence == value, on_click=s.set_quest_recurrence(value))
+                      for label, value in (("Daily", "daily"), ("Weekly", "weekly"), ("Once", "none"))]),
+              title="Shared quest", action=button("Add to board", s.add_quest, full=True)),
     )
 
 
-def action_button(label, on_click, color=theme.ACCENT, fg=theme.ON_ACCENT):
-    return rx.button(
-        label,
-        on_click=on_click,
-        background=color,
-        color=fg,
-        border="none",
-        border_radius="9px",
-        font_weight="800",
-        letter_spacing="0.12em",
-        font_size="0.72rem",
-        padding="0.6rem 1rem",
-        cursor="pointer",
-        width="100%",
+def _league_row(entry: LeagueEntryRow) -> rx.Component:
+    return list_row(entry.display_name, rx.cond(entry.promoting, f"Level {entry.level} · moving up", f"Level {entry.level}"),
+                    leading=text(entry.position, t.LABEL, t.TEXT_2, width="24px", **t.TABULAR),
+                    trailing=text(entry.points, t.BODY, t.TEXT_2, **t.TABULAR),
+                    background=rx.cond(entry.is_me, t.ACCENT_SOFT, "transparent"), border_radius=t.RADIUS)
+
+
+def _league() -> rx.Component:
+    lg = PartyState.league
+    return section(
+        "League",
+        text(f"{lg.division_label} · {lg.days_left_label}", t.CAPTION, t.TEXT_2),
+        rx.cond(lg.standing_label != "", text(lg.standing_label, t.BODY)),
+        rows(rx.foreach(lg.rows, _league_row)),
+        text(f"Top {lg.promote_cutoff} move up at the end of the week.", t.CAPTION, t.TEXT_2),
     )
 
 
-def ghost_button(label, on_click, hover=theme.DANGER):
-    return rx.button(
-        label,
-        on_click=on_click,
-        background="transparent",
-        color=theme.FAINT,
-        border=f"1px solid {theme.BORDER}",
-        border_radius="8px",
-        font_size="0.68rem",
-        letter_spacing="0.12em",
-        padding="0.45rem 0.7rem",
-        cursor="pointer",
-        _hover={"color": hover, "border_color": hover},
-    )
+def _hitter(h: RaidHitterRow) -> rx.Component:
+    return list_row(rx.cond(h.is_me, f"{h.display_name} (you)", h.display_name), h.hits_label,
+                    trailing=text(h.damage_label, t.BODY, **t.TABULAR))
 
 
-def create_join_forms() -> rx.Component:
-    return rx.vstack(
-        rx.cond(
-            PartyState.show_create,
-            rx.vstack(
-                text_input("Party name", PartyState.set_new_name, PartyState.new_name),
-                action_button("CREATE PARTY", PartyState.create),
-                spacing="3",
-                **theme.panel(),
-            ),
-        ),
-        rx.cond(
-            PartyState.show_join,
-            rx.vstack(
-                text_input(
-                    "Invite code, e.g. K7M2QXPA",
-                    PartyState.set_join_code,
-                    PartyState.join_code,
-                ),
-                rx.text(
-                    "Codes are case-insensitive and dashes are ignored.",
-                    color=theme.FAINT,
-                    font_size="0.72rem",
-                ),
-                action_button("JOIN PARTY", PartyState.join),
-                spacing="3",
-                **theme.panel(),
-            ),
-        ),
-        spacing="3",
-        width="100%",
-    )
-
-
-def empty_state() -> rx.Component:
-    return rx.box(
-        rx.vstack(
-            rx.text("NO PARTIES YET", **theme.LABEL_STYLE),
-            rx.text(
-                "Create a party and share its invite code, or join one with a "
-                "code a friend sent you.",
-                color=theme.FAINT,
-                font_size="0.85rem",
-                text_align="center",
-                max_width="380px",
-            ),
-            spacing="2",
-            align="center",
-        ),
-        width="100%",
-        padding="2.5rem 1rem",
-        border=f"1px dashed {theme.BORDER}",
-        border_radius="12px",
-    )
-
-
-def revealed_party_quest(quest) -> rx.Component:
-    return reveal(party_quest_row(quest))
-
-
-def party_detail() -> rx.Component:
-    return rx.vstack(
-        rx.vstack(
-            rx.hstack(
-                rx.vstack(
-                    rx.text("PARTY", **theme.LABEL_STYLE),
-                    rx.heading(PartyState.selected.name, size="6", color=theme.TEXT),
-                    rx.text(
-                        PartyState.selected.seats_label,
-                        color=theme.FAINT,
-                        font_size="0.72rem",
-                        letter_spacing="0.12em",
-                    ),
-                    spacing="1",
-                    align="start",
-                ),
-                rx.spacer(),
-                rx.vstack(
-                    rx.text("PARTY XP", **theme.LABEL_STYLE),
-                    rx.heading(
-                        PartyState.selected.total_party_xp.to_string(),
-                        size="7",
-                        color=theme.WARNING,
-                    ),
-                    spacing="1",
-                    align="end",
-                ),
-                width="100%",
-                align="center",
-                flex_wrap="wrap",
-                spacing="4",
-            ),
-            rx.divider(border_color=theme.BORDER),
-            invite_panel(),
-            rx.hstack(
-                rx.spacer(),
-                rx.cond(
-                    PartyState.selected.is_owner,
-                    ghost_button("DISSOLVE PARTY", PartyState.dissolve),
-                    ghost_button("LEAVE PARTY", PartyState.leave),
-                ),
-                width="100%",
-            ),
-            spacing="3",
-            **theme.panel(box_shadow=theme.glow(theme.ACCENT, "55px")),
-        ),
-        # --- shared board ---
-        rx.vstack(
-            section_heading(
-                "SHARED QUEST BOARD",
-                rx.button(
-                    rx.cond(PartyState.show_quest_form, "CLOSE", "+ ADD QUEST"),
-                    on_click=PartyState.toggle_quest_form,
-                    background="transparent",
-                    color=theme.ACCENT,
-                    border=f"1px solid {theme.ACCENT}55",
-                    border_radius="8px",
-                    font_size="0.7rem",
-                    letter_spacing="0.12em",
-                    font_weight="700",
-                    padding="0.45rem 0.8rem",
-                    cursor="pointer",
-                ),
-            ),
-            rx.cond(
-                PartyState.show_quest_form,
-                rx.vstack(
-                    text_input(
-                        "Shared quest title",
-                        PartyState.set_quest_title,
-                        PartyState.quest_title,
-                    ),
-                    rx.hstack(
-                        rx.vstack(
-                            rx.text("XP", **theme.LABEL_STYLE),
-                            text_input("25", PartyState.set_quest_xp, PartyState.quest_xp),
-                            spacing="1",
-                            width="100%",
-                        ),
-                        rx.vstack(
-                            rx.text("REPEATS", **theme.LABEL_STYLE),
-                            rx.select(
-                                ["daily", "weekly", "none"],
-                                value=PartyState.quest_recurrence,
-                                on_change=PartyState.set_quest_recurrence,
-                                width="100%",
-                            ),
-                            spacing="1",
-                            width="100%",
-                        ),
-                        spacing="3",
-                        width="100%",
-                        flex_wrap="wrap",
-                    ),
-                    action_button("ADD TO BOARD", PartyState.add_quest),
-                    spacing="3",
-                    **theme.panel(),
-                ),
-            ),
-            rx.cond(
-                PartyState.has_quests,
-                rx.vstack(
-                    rx.foreach(PartyState.quests, revealed_party_quest),
-                    spacing="3",
-                    width="100%",
-                ),
-                rx.box(
-                    rx.text(
-                        "No shared quests yet. Anyone in the party can add one.",
-                        color=theme.FAINT,
-                        font_size="0.85rem",
-                        text_align="center",
-                    ),
-                    width="100%",
-                    padding="1.75rem 1rem",
-                    border=f"1px dashed {theme.BORDER}",
-                    border_radius="12px",
-                ),
-            ),
-            spacing="3",
-            width="100%",
-        ),
-        rx.cond(PartyState.league.loaded, league_panel()),
-        rx.cond(PartyState.raid.loaded, raid_panel()),
-        # --- leaderboard ---
-        rx.vstack(
-            section_heading("LEADERBOARD"),
-            rx.box(
-                rx.foreach(PartyState.board, leaderboard_row),
-                **theme.panel(),
-            ),
-            rx.text(
-                "Ranked by XP contributed to this party. Personal quests count "
-                "toward your own level, not the party's.",
-                color=theme.FAINT,
-                font_size="0.72rem",
-                line_height="1.5",
-            ),
-            spacing="3",
-            width="100%",
-        ),
-        # --- workout leaderboard ---
-        rx.vstack(
-            section_heading(
-                "WORKOUT BOARD",
-                rx.hstack(
-                    _period_button("WEEK", "week"),
-                    _period_button("ALL TIME", "all"),
-                    spacing="2",
-                    flex_shrink="0",
-                ),
-            ),
-            rx.box(
-                rx.foreach(PartyState.workout_board, workout_board_row),
-                **theme.panel(),
-            ),
-            rx.text(
-                "Ranked by workout points - every set logged, PR and finished "
-                "workout. Compared over the same window for everyone.",
-                color=theme.FAINT,
-                font_size="0.72rem",
-                line_height="1.5",
-            ),
-            spacing="3",
-            width="100%",
-        ),
-        spacing="5",
-        width="100%",
-    )
-
-
-def raid_hitter_row(hitter: RaidHitterRow) -> rx.Component:
-    return rx.hstack(
-        rx.text(
-            hitter.display_name,
-            color=theme.TEXT,
-            font_weight=rx.cond(hitter.is_me, "800", "600"),
-            font_size="0.85rem",
-        ),
-        rx.cond(hitter.is_me, rx.text("(you)", color=theme.MUTED, font_size="0.8rem")),
-        rx.spacer(),
-        rx.text(hitter.hits_label, color=theme.FAINT, font_size="0.72rem"),
-        rx.text(hitter.damage_label, color=theme.TEXT, font_weight="800", font_size="0.85rem"),
-        width="100%",
-        align="center",
-        spacing="2",
-        padding_block="0.35rem",
-    )
-
-
-def league_entry_row(entry: LeagueEntryRow) -> rx.Component:
-    return rx.hstack(
-        rx.text(
-            entry.position.to_string(),
-            color=rx.cond(entry.promoting, theme.ACCENT, theme.FAINT),
-            font_weight="800",
-            font_size="0.8rem",
-            width="1.5rem",
-        ),
-        rx.text(
-            entry.display_name,
-            color=rx.cond(entry.is_me, theme.ACCENT, theme.TEXT),
-            font_weight=rx.cond(entry.is_me, "800", "500"),
-            font_size="0.85rem",
-        ),
-        rx.spacer(),
-        rx.text(f"LV {entry.level}", color=theme.FAINT, font_size="0.72rem"),
-        rx.text(entry.points.to_string(), color=theme.TEXT, font_weight="700", font_size="0.85rem"),
-        width="100%",
-        align="center",
-        spacing="3",
-    )
-
-
-def league_panel() -> rx.Component:
-    return rx.vstack(
-        rx.hstack(
-            rx.text("LEAGUE", **theme.LABEL_STYLE),
-            rx.spacer(),
-            rx.text(PartyState.league.days_left_label, color=theme.FAINT, font_size="0.72rem"),
-            width="100%",
-            align="center",
-        ),
-        rx.text(
-            PartyState.league.division_label,
-            color=theme.TEXT,
-            font_weight="800",
-            font_size="1.05rem",
-        ),
-        rx.cond(
-            PartyState.league.standing_label != "",
-            rx.text(
-                PartyState.league.standing_label,
-                color=theme.ACCENT,
-                font_size="0.8rem",
-                font_weight="600",
-            ),
-        ),
-        rx.divider(border_color=theme.BORDER),
-        rx.foreach(PartyState.league.rows, league_entry_row),
-        rx.text(
-            f"Top {PartyState.league.promote_cutoff} move up at the end of the week.",
-            color=theme.MUTED,
-            font_size="0.72rem",
-        ),
-        spacing="3",
-        **theme.panel(),
-    )
-
-
-def raid_panel() -> rx.Component:
+def _raid() -> rx.Component:
     """This week's party boss (backend core/raids.py)."""
     raid = PartyState.raid
+    return section(
+        "Party raid",
+        rx.hstack(text(raid.name, t.TITLE), rx.spacer(), text(raid.days_left_label, t.CAPTION, t.TEXT_2),
+                  width="100%", align="center"),
+        progress_bar(raid.hp_pct / 100, label=f"{raid.hp_label} · {raid.damage_label} · {raid.healed_label}"),
+        rx.cond(raid.hitters.length() > 0, rows(rx.foreach(raid.hitters, _hitter)),
+                text("No hits yet. Finish a workout to strike first.", t.BODY, t.TEXT_2)),
+        text("Every finished workout hits the boss for the weight you lifted. On days nobody trains, it heals. "
+             "A new boss arrives every Monday.", t.CAPTION, t.TEXT_2),
+    )
+
+
+def _workout_row(e: WorkoutBoardRow) -> rx.Component:
+    return ranked_row(e.position, e.rank, e.display_name, f"Level {e.level} · {e.workouts_label}",
+                      f"{e.points} pts", e.is_me)
+
+
+def _detail() -> rx.Component:
+    s = PartyState
     return rx.vstack(
-        section_heading(
-            "PARTY RAID",
-            rx.text(
-                raid.days_left_label,
-                color=rx.cond(raid.defeated, theme.ACCENT, theme.MUTED),
-                font_size="0.72rem",
-                font_weight="800",
-                letter_spacing="0.14em",
-            ),
-        ),
-        rx.vstack(
-            rx.hstack(
-                rx.heading(raid.name, size="5", color=theme.TEXT),
-                rx.spacer(),
-                rx.text(raid.hp_label, color=theme.MUTED, font_size="0.8rem", font_weight="700"),
-                width="100%",
-                align="center",
-            ),
-            rx.box(
-                rx.box(
-                    width=f"{raid.hp_pct}%",
-                    height="100%",
-                    border_radius="999px",
-                    background=f"linear-gradient(90deg, #ffffff, {theme.ACCENT_DIM})",
-                    transition="width 600ms ease",
-                ),
-                width="100%",
-                height="10px",
-                border_radius="999px",
-                background=theme.FIELD,
-                overflow="hidden",
-            ),
-            rx.hstack(
-                rx.text(raid.damage_label, color=theme.MUTED, font_size="0.75rem"),
-                rx.spacer(),
-                rx.text(raid.healed_label, color=theme.FAINT, font_size="0.75rem"),
-                width="100%",
-            ),
-            rx.cond(
-                raid.hitters.length() > 0,
-                rx.vstack(rx.foreach(raid.hitters, raid_hitter_row), spacing="0", width="100%"),
-                rx.text("No hits yet. Finish a workout to strike first.", color=theme.FAINT, font_size="0.8rem"),
-            ),
-            spacing="3",
-            **theme.panel(),
-        ),
-        rx.text(
-            "Every finished workout hits the boss for the weight you lifted. On days nobody "
-            "trains, it heals. A new boss arrives every Monday.",
-            color=theme.FAINT,
-            font_size="0.72rem",
-            line_height="1.5",
-        ),
-        spacing="3",
-        width="100%",
-    )
-
-
-def _period_button(label: str, period: str) -> rx.Component:
-    active = PartyState.workout_period == period
-    return rx.button(
-        label,
-        on_click=PartyState.set_workout_period(period),
-        background=rx.cond(active, f"{theme.ACCENT}22", "transparent"),
-        color=rx.cond(active, theme.ACCENT, theme.FAINT),
-        border=rx.cond(active, f"1px solid {theme.ACCENT}", f"1px solid {theme.BORDER}"),
-        border_radius="8px",
-        font_size="0.62rem",
-        font_weight="800",
-        letter_spacing="0.1em",
-        padding="0.35rem 0.6rem",
-        cursor="pointer",
-    )
-
-
-def workout_board_row(entry: WorkoutBoardRow) -> rx.Component:
-    return rx.hstack(
-        rx.text(
-            entry.position.to_string(),
-            color=theme.FAINT,
-            font_size="0.8rem",
-            font_weight="800",
-            min_width="22px",
-        ),
-        rank_letter(entry.rank),
-        rx.vstack(
-            rx.text(
-                entry.display_name,
-                color=rx.cond(entry.is_me, theme.ACCENT, theme.TEXT),
-                font_weight=rx.cond(entry.is_me, "800", "600"),
-                font_size="0.86rem",
-            ),
-            rx.text(
-                f"Level {entry.level} · {entry.workouts_label}",
-                color=theme.FAINT,
-                font_size="0.68rem",
-            ),
-            spacing="0",
-            align="start",
-            flex="1",
-            min_width="0",
-        ),
-        rx.text(
-            f"{entry.points} PTS",
-            color=theme.ACCENT,
-            font_weight="700",
-            font_size="0.85rem",
-            white_space="nowrap",
-        ),
-        width="100%",
-        align="center",
-        spacing="3",
-        padding_block="0.55rem",
-        border_bottom=f"1px solid {theme.BORDER}",
+        rx.vstack(text(s.selected.name, t.TITLE_LG), text(s.selected.seats_label, t.CAPTION, t.TEXT_2),
+                  spacing="1", align="start", width="100%"),
+        stat_group(stat_tile(s.selected.total_party_xp, "Party XP")),
+        invite_panel(),
+        section("Shared quests",
+                rx.cond(s.has_quests, rx.vstack(rx.foreach(s.quests, party_quest_row), spacing="0", width="100%"),
+                        text("No shared quests yet. Anyone in the party can add one.", t.BODY, t.TEXT_2)),
+                action="Add", on_action=s.toggle_quest_form),
+        rx.cond(s.league.loaded, _league()),
+        rx.cond(s.raid.loaded, _raid()),
+        section("Leaderboard", rx.vstack(rx.foreach(s.board, leaderboard_row), spacing="1", width="100%"),
+                text("Ranked by XP contributed to this party. Personal quests count toward your own level, not "
+                     "the party's.", t.CAPTION, t.TEXT_2)),
+        section("Workout board",
+                segmented(["This week", "All time"], rx.cond(s.workout_period == "week", "This week", "All time"),
+                          s.set_workout_label),
+                rx.vstack(rx.foreach(s.workout_board, _workout_row), spacing="1", width="100%"),
+                text("Ranked by workout points, over the same window for everyone.", t.CAPTION, t.TEXT_2)),
+        rx.cond(s.selected.is_owner, button("Dissolve party", s.dissolve, variant="danger", full=True),
+                button("Leave party", s.leave, variant="danger", full=True)),
+        spacing="6", width="100%",
     )
 
 
 def parties_page() -> rx.Component:
+    s = PartyState
     return shell(
-        reveal_assets(),
-        error_banner(PartyState.error),
-        notice_banner(PartyState.notice),
-        rx.hstack(
-            rx.cond(
-                PartyState.has_parties,
-                rx.hstack(
-                    rx.foreach(PartyState.parties, party_tab),
-                    spacing="2",
-                    overflow_x="auto",
-                    flex="1",
-                    min_width="0",
-                    padding_bottom="0.25rem",
-                ),
-                rx.spacer(),
-            ),
-            rx.hstack(
-                rx.button(
-                    "+ CREATE",
-                    on_click=PartyState.toggle_create,
-                    background="transparent",
-                    color=theme.ACCENT,
-                    border=f"1px solid {theme.ACCENT}55",
-                    border_radius="8px",
-                    font_size="0.68rem",
-                    letter_spacing="0.1em",
-                    font_weight="700",
-                    padding="0.45rem 0.7rem",
-                    cursor="pointer",
-                    white_space="nowrap",
-                ),
-                rx.button(
-                    "JOIN",
-                    on_click=PartyState.toggle_join,
-                    background="transparent",
-                    color=theme.MUTED,
-                    border=f"1px solid {theme.BORDER}",
-                    border_radius="8px",
-                    font_size="0.68rem",
-                    letter_spacing="0.1em",
-                    font_weight="700",
-                    padding="0.45rem 0.7rem",
-                    cursor="pointer",
-                    white_space="nowrap",
-                ),
-                spacing="2",
-            ),
-            width="100%",
-            align="center",
-            spacing="3",
-            flex_wrap="wrap",
-        ),
-        create_join_forms(),
-        rx.cond(PartyState.has_selection, party_detail(), empty_state()),
+        top_bar("Parties", back="/profile", trailing=icon_button("plus", "Create a party", on_click=s.toggle_create)),
+        error_banner(s.error),
+        notice_banner(s.notice),
+        rx.hstack(rx.cond(s.has_parties, chips(rx.foreach(s.parties, party_tab))), rx.spacer(),
+                  button("Join", s.toggle_join, variant="ghost", class_name="ma-join"),
+                  width="100%", align="center"),
+        rx.cond(s.has_selection, _detail(),
+                empty_state("users-round", "Create a party and share its invite code, or join one with a code a "
+                                           "friend sent you.",
+                            button("Create a party", s.toggle_create, variant="secondary"))),
+        _sheets(),
     )

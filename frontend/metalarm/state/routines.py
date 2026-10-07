@@ -229,17 +229,45 @@ class RoutineState(rx.State):
         }
         try:
             if self.edit_id:
-                await wapi.replace_routine(token, self.edit_id, payload)
+                saved = await wapi.replace_routine(token, self.edit_id, payload)
             else:
-                await wapi.create_routine(token, payload)
+                saved = await wapi.create_routine(token, payload)
         except ApiError as exc:
             self.error = exc.detail
             return
+        created = not self.edit_id
+        routine = RoutineItem.from_api(saved, unit)
+        self.routines = [r for r in self.routines if r.id != routine.id] + [routine]
+        self.edit_id = routine.id
+        self.slots = [dataclasses.replace(s) for s in routine.slots]
         self.editing = False
-        self.notice = f"Saved {payload['name']}."
-        from metalarm.state.library import LibraryState
+        self.notice = ""
+        if created:
+            return rx.redirect(f"/train/routine/{routine.id}")
 
-        return [RoutineState.load, LibraryState.refresh]
+    # --- the routine detail screen (/train/routine/<id> or /new) ---------
+
+    @rx.var
+    def viewing(self) -> RoutineItem:
+        return next((r for r in self.routines if r.id == self.edit_id), RoutineItem())
+
+    async def load_detail(self):
+        parts = [p for p in str(self.router.url.path).split("/") if p]
+        key = parts[-1] if len(parts) >= 3 else ""
+        if key == "new":
+            self.new_routine(str(self.router.url.query_parameters.get("program", "")))
+            return
+        await self.open_routine(key)
+        self.editing = False
+
+    def start_editing(self) -> None:
+        self.edit(self.edit_id)
+
+    def cancel_editing(self):
+        if not self.edit_id:
+            return rx.redirect("/train")
+        self.edit(self.edit_id)
+        self.editing = False
 
     async def delete(self, routine_id: str):
         token, _ = await self._ctx()
@@ -250,9 +278,7 @@ class RoutineState(rx.State):
             return
         if self.edit_id == routine_id:
             self.editing = False
-        from metalarm.state.library import LibraryState
-
-        return [RoutineState.load, LibraryState.refresh]
+        return rx.redirect("/train")
 
     def start(self, routine_id: str):
         self.editing = False

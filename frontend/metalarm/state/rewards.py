@@ -16,6 +16,11 @@ class RewardState(rx.State):
     earned: int = 0
     spent: int = 0
 
+    @rx.var
+    def figures(self) -> dict[str, str]:
+        """The wallet, formatted once: 1,050 not 1050."""
+        return {"balance": f"{self.balance:,}", "earned": f"{self.earned:,}", "spent": f"{self.spent:,}"}
+
     loading: bool = False
     error: str = ""
     notice: str = ""

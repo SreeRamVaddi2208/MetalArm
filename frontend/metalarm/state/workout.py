@@ -17,7 +17,6 @@ come from API responses - the brief's hard rule against client-side scoring.
 from __future__ import annotations
 
 import dataclasses
-import json
 import uuid
 from typing import Any
 
@@ -29,6 +28,7 @@ from metalarm import workout_api as wapi
 from metalarm.api import ApiError
 from metalarm.share_card import share_card_script
 from metalarm.ui.body_map import paths_for
+from metalarm.ui.toast import ToastState
 from metalarm.state.auth import AuthState
 from metalarm.state.quests import QuestState
 from metalarm.workout_models import (
@@ -106,12 +106,15 @@ def build_card(
         superset_group=int(m.get("superset_group") or 0),
         notes=m.get("notes") or "",
         entry_previous=prev[len(rows)].summary if len(rows) < len(prev) else "-",
+        ghost_weight=prev[len(rows)].weight if len(rows) < len(prev) else "",
+        ghost_reps=prev[len(rows)].reps if len(rows) < len(prev) else "",
         name=exercise.get("name") or "",
         muscles_label=muscles_label(exercise.get("primary_muscle_groups")),
         media_url=exercise.get("media_url") or "",
         thumbnail_url=exercise.get("thumbnail_url") or "",
         is_cardio=exercise.get("category") == "cardio",
         target_label=" ".join(bits),
+        target_count=int(t.get("target_sets") or 0),
         rest_seconds=int(m.get("rest_seconds") or t.get("rest_seconds") or DEFAULT_REST_SECONDS),
         sets=rows,
         previous=prev,
@@ -269,6 +272,19 @@ class WorkoutState(rx.State):
 
     # The PR moment.
     show_pr: bool = False
+    # Bumped per record so the in-workout banner replays for each one.
+    pr_serial: int = 0
+    # The open sheets: an exercise's options (its index, -1 for none) and
+    # the Finish confirmation.
+    options_index: int = -1
+    # The options card's id and its notes as the server has them, so a typed
+    # note is saved before anything that re-reads the session can drop it.
+    options_card_id: str = ""
+    options_notes_saved: str = ""
+    confirm_finish: bool = False
+    # The card being worked on: the only one showing the steppers and the
+    # accent Log set (one accent action per screen).
+    focus_index: int = 0
     pr: PrView = PrView()
     pr_others: list[PrView] = []
     pr_points: int = 0
@@ -443,6 +459,7 @@ class WorkoutState(rx.State):
             self.streak = StreakView.from_api((await wapi.points(auth.token)).get("streak") or {})
             if active:
                 self._apply_session(active)
+                self._refocus()
             else:
                 self._clear_session()
                 self.routines = [
@@ -478,9 +495,9 @@ class WorkoutState(rx.State):
             return
         auth.weight_unit = data.get("weight_unit") or unit
         self.unit = auth.weight_unit
-        from metalarm.state.workout_home import WorkoutHomeState
+        from metalarm.state.train import TrainState
 
-        return [WorkoutState.load, WorkoutHomeState.load]
+        return [WorkoutState.load, TrainState.load]
 
     # --- starting ---------------------------------------------------------
 
@@ -542,8 +559,9 @@ class WorkoutState(rx.State):
             # 409: a workout is already live. Show it rather than a dead end.
             return WorkoutState.load if exc.status == 409 else None
         self.cards = []
+        self.focus_index = 0
         self._apply_session(data)
-        return rx.redirect("/workout")
+        return rx.redirect("/train")
 
     async def add_exercise(self, exercise_id: str):
         """A new card at the end of the workout - on the server, so it is there
@@ -555,6 +573,7 @@ class WorkoutState(rx.State):
             self.error = exc.detail
             return
         self._apply_session(session)
+        self.focus_index = len(self.cards) - 1
 
     async def remove_card(self, index: int):
         """Take a card out. With sets on it, those sets go too and their
@@ -722,13 +741,94 @@ class WorkoutState(rx.State):
         self._apply_session(session)
         self.undo_set_ids = []
         if not result.get("is_duplicate"):
+            self._advance(index)
             self._show_quests(result)
             await self._show_outcome(card.exercise_id, result)
             if not card.warmup:
                 yield rx.call_script(
                     f"window.maRest && window.maRest.start({int(card.rest_seconds)})"
                 )
+            if self.show_pr:
+                # A light tap for a record, where the device and the setting allow.
+                yield rx.call_script("localStorage.getItem('ma_haptics') !== 'off' && navigator.vibrate"
+                                     " && navigator.vibrate(30)")
+            if self.quest_done.id:
+                yield ToastState.show(f"Quest complete · {self.quest_done.title}", "scroll-text")
         yield AuthState.refresh_me
+
+    def focus(self, index: int) -> None:
+        self.focus_index = index
+
+    @staticmethod
+    def _working(card: ExerciseCard) -> int:
+        return sum(1 for r in card.sets if r.set_type != "warmup")
+
+    def _short(self, card: ExerciseCard) -> bool:
+        """Still owes sets: under its plan, or untouched when it has none."""
+        return self._working(card) < card.target_count if card.target_count else not card.sets
+
+    def _refocus(self) -> None:
+        """After a reload: stay on the card in focus if it still owes sets,
+        otherwise the first that does."""
+        if 0 <= self.focus_index < len(self.cards) and self._short(self.cards[self.focus_index]):
+            return
+        nxt = next((i for i, c in enumerate(self.cards) if self._short(c)), None)
+        if nxt is not None:
+            self.focus_index = nxt
+        elif not 0 <= self.focus_index < len(self.cards):
+            self.focus_index = max(0, len(self.cards) - 1)
+
+    def _advance(self, index: int) -> None:
+        """Move the entry panel on once this card has done its part, so the
+        next set is one tap away: within a superset to the partner that is
+        behind, otherwise to the next exercise still short of its plan."""
+        working, short = self._working, self._short
+        card = self.cards[index]
+        if card.superset_group:
+            group = [i for i, c in enumerate(self.cards) if c.superset_group == card.superset_group]
+            partners = group[group.index(index) + 1:] + group[:group.index(index) + 1]
+            nxt = next((i for i in partners if short(self.cards[i]) and working(self.cards[i]) <= working(card)),
+                       None)
+            if nxt is not None:
+                self.focus_index = nxt
+                return
+        if card.target_count and working(card) < card.target_count:
+            return
+        nxt = next((i for i in range(index + 1, len(self.cards)) if short(self.cards[i])), None)
+        if nxt is not None:
+            self.focus_index = nxt
+
+    def set_entry_type(self, index: int, kind: str) -> None:
+        if 0 <= index < len(self.cards) and kind in ("normal", "warmup", "drop", "failure"):
+            self._update(index, entry_type=kind, warmup=kind == "warmup")
+
+    def open_options(self, index: int) -> None:
+        self.options_index = index
+        if 0 <= index < len(self.cards):
+            self.options_card_id = self.cards[index].session_exercise_id
+            self.options_notes_saved = self.cards[index].notes
+
+    async def flush_notes(self):
+        """Save the options card's note if it was edited and not yet saved."""
+        card = next((c for c in self.cards if c.session_exercise_id == self.options_card_id), None)
+        if card is not None and card.notes != self.options_notes_saved:
+            self.options_notes_saved = card.notes
+            await self.save_notes(card.session_exercise_id, card.notes)
+
+    async def close_options(self):
+        await self.flush_notes()
+        self.options_index = -1
+        self.options_card_id = ""
+
+    def ask_finish(self) -> None:
+        self.confirm_finish = True
+
+    def cancel_finish(self) -> None:
+        self.confirm_finish = False
+
+    @rx.var
+    def options_card(self) -> ExerciseCard:
+        return self.cards[self.options_index] if 0 <= self.options_index < len(self.cards) else ExerciseCard()
 
     def _show_quests(self, result: dict[str, Any]) -> None:
         """The chip follows whichever quest this set moved; a quest it
@@ -933,6 +1033,7 @@ class WorkoutState(rx.State):
         classification is the API's (bonus_awarded / is_baseline), not ours.
         """
         unit = self.unit
+        self.show_pr = False
         events = result.get("pr_events") or []
         paid = next((e for e in events if e.get("bonus_awarded")), None)
         real = [e for e in events if not e.get("is_baseline")]
@@ -947,22 +1048,21 @@ class WorkoutState(rx.State):
                 if a.get("source_type") == "pr_achieved"
             )
             self.show_pr = True
+            self.pr_serial += 1
             kind, label = "pr", f"PR · {self.pr.headline}"
         elif real:
             kind, label = "record", f"NEW RECORD · {PrView.from_api(real[0], unit).headline}"
         elif events:
-            kind, label = "first", "BASELINE SET"
+            kind, label = "first", "Baseline set"
 
         index = self._index_of(exercise_id)
         if index >= 0:
             self._update(index, flash_kind=kind, flash_label=label)
 
+        # The PR is a banner now - it never blocks - so a level-up plays at once.
         beat = level_beat(result.get("progression") or {})
         if beat.kind:
-            if self.show_pr:
-                self._pending_beat = beat
-            else:
-                await self._raise_level_up(beat)
+            await self._raise_level_up(beat)
 
     async def dismiss_pr(self):
         self.show_pr = False
@@ -1107,6 +1207,7 @@ class WorkoutState(rx.State):
     # --- finishing --------------------------------------------------------
 
     async def finish(self):
+        self.confirm_finish = False
         if self.busy or not self.session_id:
             return
         auth = await self._auth()
@@ -1192,13 +1293,13 @@ class WorkoutState(rx.State):
         self._clear_session()
         yield rx.call_script(_STOP_REST)
         yield WorkoutState.load
-        from metalarm.state.workout_home import WorkoutHomeState
+        from metalarm.state.train import TrainState
 
-        yield WorkoutHomeState.load
+        yield TrainState.load
         yield AuthState.refresh_me
 
     def close_summary(self):
         self.show_summary = False
-        from metalarm.state.workout_home import WorkoutHomeState
+        from metalarm.state.train import TrainState
 
-        return [WorkoutState.load, WorkoutHomeState.load]
+        return [WorkoutState.load, TrainState.load]

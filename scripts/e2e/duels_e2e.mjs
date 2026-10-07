@@ -54,7 +54,7 @@ async function signIn(page, email) {
   await page.goto(UI + '/login');
   await page.locator('input').first().fill(email);
   await page.locator('input[type=password]').fill(password);
-  await page.getByText('ENTER', { exact: true }).click();
+  await page.getByRole('button', { name: 'Sign in' }).click();
   await page.waitForURL('**/home', { timeout: 20000 });
 }
 
@@ -80,18 +80,17 @@ try {
   section('Challenging a party member');
   await signIn(page, alice);
   await page.goto(UI + '/duels');
-  await page.getByText('CHALLENGE YOUR RIVAL').waitFor({ timeout: 20000 });
+  await page.getByRole('button', { name: 'Challenge your rival' }).waitFor({ timeout: 20000 });
   check('the rival is described as your own pace',
         (await page.getByText('comes from your own recent weeks').count()) > 0);
-  // Wait for it: the panel's heading is static, while the member list arrives
-  // with the state delta a moment later.
-  await page.getByText('OR CHALLENGE A FRIEND OR PARTY MEMBER').waitFor({ timeout: 20000 });
-  await page.getByText('Bob', { exact: false }).first().waitFor({ timeout: 20000 });
-  check('party members are offered', true);
+  // The member list arrives with the state delta a moment after the page.
+  const member = page.getByText('Friend or party member').first();
+  await member.waitFor({ timeout: 20000 });
+  check('party members are offered', await page.getByText('Bob', { exact: false }).first().isVisible());
 
-  await page.getByRole('button', { name: 'CHALLENGE', exact: true }).first().click();
-  // Challenging opens the mode picker (fair duels); raw volume is always open.
-  await page.locator('[role=button][aria-disabled=false]').filter({ hasText: /^Volume/ }).first().click();
+  await member.click();
+  // Challenging opens the mode sheet (fair duels); raw volume is always open.
+  await page.getByRole('dialog').locator('[role=button][aria-disabled=false]').filter({ hasText: /^Volume/ }).first().click();
   await page.getByText('Waiting for Bob').waitFor({ timeout: 20000 });
   check('the challenge is waiting on the other lifter', true);
   await page.screenshot({ path: `${OUT}/duel-pending.png`, fullPage: true });
@@ -104,17 +103,17 @@ try {
   await bobPage.goto(UI + '/duels');
   await bobPage.getByText('Alice challenged you').waitFor({ timeout: 20000 });
   check('the challenge reaches the other lifter', true);
-  await bobPage.getByRole('button', { name: 'ACCEPT' }).click();
-  await bobPage.getByText('RUNNING').waitFor({ timeout: 20000 });
+  await bobPage.getByRole('button', { name: 'Accept' }).click();
+  await bobPage.getByText('Running', { exact: true }).waitFor({ timeout: 20000 });
   check('accepting starts it', true);
   await bobPage.screenshot({ path: `${OUT}/duel-running.png`, fullPage: true });
 
   section('The rival');
   await page.goto(UI + '/duels');
-  await page.getByText('CHALLENGE YOUR RIVAL').click();
-  await page.getByText('YOUR RIVAL').first().waitFor({ timeout: 20000 });
+  await page.getByRole('button', { name: 'Challenge your rival' }).click();
+  await page.getByText('Your rival', { exact: true }).first().waitFor({ timeout: 20000 });
   check('a rival duel starts immediately', true);
-  check('the rival has no account', (await page.getByText('YOUR RIVAL').count()) > 0);
+  check('the rival has no account', (await page.getByText('Your rival', { exact: true }).count()) > 0);
   await page.screenshot({ path: `${OUT}/duel-rival.png`, fullPage: true });
 
   section('The feed');
@@ -129,7 +128,7 @@ try {
   check('workout finished', finished.status === 200, JSON.stringify(finished.body).slice(0, 120));
 
   await page.goto(UI + '/duels');
-  await page.getByText('ACTIVITY').waitFor({ timeout: 20000 });
+  await page.getByText('Activity', { exact: true }).waitFor({ timeout: 20000 });
   await page.waitForTimeout(1200);
   const feedText = await page.locator('body').innerText();
   check("a party member's workout reaches the feed", /Bob/.test(feedText), feedText.slice(0, 200));

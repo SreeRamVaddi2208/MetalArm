@@ -124,8 +124,9 @@ class ExploreState(rx.State):
         ]
         self._set_programs(curated)
         self.loaded = True
-        if self.listing:
-            await self._search()
+        # /train/exercises lists the whole library until something narrows it.
+        self.tab = "Exercises"
+        await self._search()
 
     def _set_programs(self, curated: list[dict]) -> None:
         self.programs = [
@@ -194,7 +195,7 @@ class ExploreState(rx.State):
     async def clear_filters(self):
         self.muscle = self.muscle_label = self.gear = self.gear_label = ""
         self.query = ""
-        self.results = []
+        await self._search()
 
     async def more(self):
         if self.cursor:

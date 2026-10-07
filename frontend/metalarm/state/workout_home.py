@@ -13,7 +13,6 @@ import reflex as rx
 
 from metalarm import analytics_api as aapi
 from metalarm import api
-from metalarm import theme as t
 from metalarm import workout_api as wapi
 from metalarm.api import ApiError
 from metalarm.state.auth import AuthState
@@ -126,9 +125,7 @@ class WorkoutHomeState(rx.State):
             ]
             self.recent = history_rows(await aapi.history(auth.token, limit=30), tz, unit)
             self.suggested = [
-                {"id": str(s["routine_id"]), "name": s["name"], "abbr": s["abbreviation"],
-                 "color": s.get("color") or t.tile_color(s["name"]),
-                 "last": last_done_label(s.get("days_since"))}
+                {"id": str(s["routine_id"]), "name": s["name"], "last": last_done_label(s.get("days_since"))}
                 for s in await wapi.suggested(auth.token)
             ]
             rec = await aapi.recovery(auth.token)

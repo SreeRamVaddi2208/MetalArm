@@ -22,10 +22,10 @@ from metalarm import motivation, ranks
 LB_PER_KG = 1 / 0.45359237
 
 _RECORD_LABELS = {
-    "max_weight": "HEAVIEST",
-    "max_reps_at_weight": "REP PR",
-    "est_1rm": "EST. 1RM",
-    "max_volume": "VOLUME",
+    "max_weight": "Heaviest",
+    "max_reps_at_weight": "Rep record",
+    "est_1rm": "Est. 1RM",
+    "max_volume": "Volume",
 }
 
 
@@ -55,7 +55,7 @@ def thousands(value: float) -> str:
 
 
 def muscles_label(groups: list[str] | None) -> str:
-    return " · ".join(g.replace("_", " ").upper() for g in groups or [])
+    return " · ".join(g.replace("_", " ").capitalize() for g in groups or [])
 
 
 def clock(seconds: int | float | None) -> str:
@@ -204,6 +204,9 @@ class ExerciseCard:
     entry_type: str = "normal"
     # PREVIOUS for the next set: last session's set at that position.
     entry_previous: str = "-"
+    # Last time's weight and reps for the next set, as the steppers' ghosts.
+    ghost_weight: str = ""
+    ghost_reps: str = ""
     menu_open: bool = False
     # "+N" for the set just logged on this card, faded out by CSS.
     last_points: str = ""
@@ -215,6 +218,8 @@ class ExerciseCard:
     thumbnail_url: str = ""
     is_cardio: bool = False
     target_label: str = ""
+    # The plan's working sets for this exercise; 0 when it has none.
+    target_count: int = 0
     rest_seconds: int = 90
     sets: list[SetRow] = dataclasses.field(default_factory=list)
     previous: list[SetRow] = dataclasses.field(default_factory=list)
@@ -286,9 +291,9 @@ class PrView:
         baseline = bool(data.get("is_baseline"))
         return cls(
             exercise_name=data.get("exercise_name") or "",
-            record_label=_RECORD_LABELS.get(kind, kind.upper()),
+            record_label=_RECORD_LABELS.get(kind, kind.replace("_", " ").capitalize()),
             headline=headline,
-            delta="FIRST LOG" if baseline else delta,
+            delta="First log" if baseline else delta,
             bonus_awarded=bool(data.get("bonus_awarded")),
             is_baseline=baseline,
             motivation=motivation.line_for(
@@ -319,7 +324,7 @@ class ExercisePick:
             id=data.get("id") or "",
             name=data.get("name") or "",
             muscles_label=muscles_label(data.get("primary_muscle_groups")),
-            meta_label=("CUSTOM · " if data.get("is_custom") else "") + equipment.upper(),
+            meta_label=("Custom · " if data.get("is_custom") else "") + equipment.capitalize(),
             is_custom=bool(data.get("is_custom")),
             media_url=data.get("media_url") or "",
         )
@@ -369,7 +374,7 @@ class WorkoutPreset:
             category=data.get("category") or "",
             # The label is what the training path is CALLED ("Athletic"), not
             # the stored value ("athlete"); the server decides it.
-            category_label=(data.get("category_label") or data.get("category") or "").upper(),
+            category_label=(data.get("category_label") or data.get("category") or "").capitalize(),
             name=data.get("name") or "",
             summary=data.get("summary") or "",
             length_label=f"{len(slots)} exercise" + ("" if len(slots) == 1 else "s"),
@@ -384,7 +389,7 @@ class Chip:
 
     @classmethod
     def of(cls, value: str) -> "Chip":
-        return cls(value=value, label=value.replace("_", " ").upper())
+        return cls(value=value, label=value.replace("_", " ").capitalize())
 
 
 @dataclasses.dataclass
@@ -499,7 +504,7 @@ class StreakView:
     this_week: int = 0
     target: int = 3
     done: bool = False
-    label: str = "NO STREAK YET"
+    label: str = "No streak yet"
     sub: str = ""
     # One entry per freeze slot, True where a freeze is held - rendered as
     # icons, so a list rather than a count.
@@ -524,7 +529,7 @@ class StreakView:
             this_week=this_week,
             target=target,
             done=done,
-            label=f"{weeks}-WEEK STREAK" if weeks else "NO STREAK YET",
+            label=f"{weeks}-week streak" if weeks else "No streak yet",
             sub=sub,
             freeze_slots=[i < held for i in range(FREEZE_SLOTS)],
         )
@@ -613,7 +618,7 @@ class QuestLine:
         return cls(
             id=str(data.get("assignment_id") or ""),
             title=data.get("title") or "",
-            progress_label=f"{data.get('progress') or 0}/{data.get('target') or 0}",
+            progress_label=f"{data.get('progress') or 0:,} / {data.get('target') or 0:,}",
             done=bool(data.get("completed")),
             reward_label=f"+{data.get('reward_points') or 0}",
         )
@@ -743,7 +748,7 @@ class RecordRow:
         )
 
 
-_METRIC_LABELS = {"weight": "BODY WEIGHT", "body_fat": "BODY FAT"}
+_METRIC_LABELS = {"weight": "Body weight", "body_fat": "Body fat"}
 _UNIT_LABELS = {"percent": "%"}
 
 
@@ -761,7 +766,7 @@ class BodyRow:
         unit_label = _UNIT_LABELS.get(unit, f" {unit}")
         return cls(
             id=data.get("id") or "",
-            metric_label=(data.get("label") or "").upper() or _METRIC_LABELS.get(metric, metric.upper()),
+            metric_label=(data.get("label") or "").capitalize() or _METRIC_LABELS.get(metric, metric.capitalize()),
             value_label=f"{fmt(_num(data.get('value')))}{unit_label}",
             date_label=day_label(data.get("recorded_at"), tz),
         )
@@ -813,6 +818,8 @@ class FeedCard:
     spotted_by_me: bool = False
     more: int = 0
     exercises: list[dict[str, str]] = dataclasses.field(default_factory=list)
+    # "3 × Bench press · 3 × Row  +2 more", for one caption line.
+    exercise_line: str = ""
 
     @classmethod
     def from_api(cls, item: dict[str, Any], unit: str) -> "FeedCard":
@@ -830,4 +837,6 @@ class FeedCard:
             more=item.get("more_exercises") or 0,
             exercises=[{"caption": f"{e['sets']} × {e['name']}", "image": e.get("thumbnail_url") or ""}
                        for e in item.get("exercises") or []],
+            exercise_line=" · ".join(f"{e['sets']} × {e['name']}" for e in item.get("exercises") or [])
+            + (f"  +{item['more_exercises']} more" if item.get("more_exercises") else ""),
         )

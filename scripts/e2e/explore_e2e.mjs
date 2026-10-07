@@ -1,16 +1,17 @@
-// Overhaul Gate 3: Explore - and every library exercise has an illustration.
+// Gate 3: the exercise library and programs on the Train tab - and every
+// library exercise has an illustration.
 //
 //   node explore_e2e.mjs [screenshot-dir]
 //
 // Against a RUNNING stack. A fresh bodybuilder:
 //   - every library exercise's artwork is actually served (all of them, not a sample);
 //   - search finds by alias ("rdl"), remembers recent searches;
-//   - a muscle tile, then an equipment chip, list exactly what the API counts;
+//   - a muscle chip, then an equipment chip, list exactly what the API counts;
 //   - Exercise Detail shows the picture;
-//   - curated programs: two per path, the user's first; one saved into the
-//     Library, with its routines;
+//   - curated programs: two per path, the user's first; one saved, with its
+//     routines;
 //   - the workout picker adds two exercises in one go.
-// Screenshots at 375 and 430, no sideways scroll, no uncaught errors.
+// Screenshots at 360, 390 and 430, no sideways scroll, no uncaught errors.
 
 import { mkdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -72,11 +73,11 @@ try {
   const uncredited = all.filter((e) => !(e.media_author && e.media_license)).map((e) => e.name);
   check('every image carries its credit', uncredited.length === 0, uncredited.slice(0, 5).join(', '));
 
-  for (const width of [375, 430]) {
+  for (const width of [360, 390, 430]) {
     const dir = join(OUT, String(width));
     mkdirSync(dir, { recursive: true });
     section(`Gate 3 at ${width}px`);
-    const ctx = await browser.newContext({ viewport: { width, height: width === 375 ? 812 : 932 },
+    const ctx = await browser.newContext({ viewport: { width, height: width < 400 ? 800 : 932 },
       deviceScaleFactor: 2, isMobile: true, hasTouch: true });
     const page = await ctx.newPage();
     const errors = [];
@@ -88,18 +89,20 @@ try {
     await page.goto(`${UI}/login`);
     await page.locator('input').first().fill(email);
     await page.locator('input[type=password]').fill(password);
-    await page.getByText('ENTER', { exact: true }).click();
+    await page.getByRole('button', { name: 'Sign in' }).click();
     await page.waitForURL('**/home', { timeout: 30000 });
 
     // --- Search -------------------------------------------------------------
-    await page.goto(`${UI}/explore`);
-    await page.getByText('Muscle Groups').waitFor({ timeout: 20000 });
-    await page.screenshot({ path: join(dir, '01-explore.png'), fullPage: true });
-    await overflow('Explore');
-    const box = page.getByPlaceholder('Search exercises and programs');
+    await page.goto(`${UI}/train/exercises`);
+    const total = (await api('/exercises/browse?limit=1', 'GET', null, token)).body.total;
+    check(`the library opens on all ${total} exercises`, await seen(page.getByText(`${total} exercises`, { exact: true }), 20000));
+    await page.screenshot({ path: join(dir, '01-exercises.png'), fullPage: true });
+    await overflow('Exercises');
+    const box = page.getByPlaceholder('Search exercises');
     await box.fill('rdl');
     check('search finds Romanian Deadlift by "rdl"', await seen(page.getByText('Romanian Deadlift', { exact: true })));
     await page.screenshot({ path: join(dir, '02-search.png'), fullPage: true });
+    await box.blur();
     await page.getByText('Romanian Deadlift', { exact: true }).first().click();
     await page.waitForURL('**/exercise/**', { timeout: 15000 });
     const img = page.locator('img[alt="Romanian Deadlift"]');
@@ -109,51 +112,49 @@ try {
     await page.goBack();
     await box.waitFor({ timeout: 15000 });
     await box.fill('');
-    await box.focus();
-    check('a recent search is offered on focus', await seen(page.getByText('rdl', { exact: true }), 5000));
-    await box.blur();
+    check('a recent search is offered', await seen(page.locator('.ma-recents').getByText('rdl', { exact: true }), 8000));
 
     // --- Muscle, then equipment ---------------------------------------------
-    await page.getByText('Chest', { exact: true }).first().click();
+    await page.getByRole('button', { name: 'Chest', exact: true }).click();
     const chest = (await api('/exercises/browse?muscle=chest&limit=1', 'GET', null, token)).body.total;
     check(`Chest lists ${chest} exercises, as the API counts`, await seen(page.getByText(`${chest} exercises`, { exact: true })));
     await page.getByRole('button', { name: 'Dumbbell', exact: true }).click();
     const chestDb = (await api('/exercises/browse?muscle=chest&equipment=dumbbell&limit=1', 'GET', null, token)).body.total;
     check(`Chest + Dumbbell lists ${chestDb}`, await seen(page.getByText(`${chestDb} exercise${chestDb === 1 ? '' : 's'}`, { exact: true })));
+    await page.waitForTimeout(500);
     const subs = await page.locator('a[href^="/exercise/"]').allInnerTexts();
     check('every listed exercise is a dumbbell chest exercise',
-      subs.length === chestDb && subs.every((s) => /Chest/.test(s) && /Dumbbell/.test(s)), `${subs.length}`);
+      subs.length === chestDb && subs.every((x) => /Chest/.test(x) && /Dumbbell/.test(x)), `${subs.length}`);
     await page.screenshot({ path: join(dir, '03-filtered.png'), fullPage: true });
     await overflow('Filtered list');
-    await page.getByText('Clear', { exact: true }).click();
+    await page.getByRole('button', { name: 'Clear', exact: true }).click();
+    check('Clear goes back to the whole library', await seen(page.getByText(`${total} exercises`, { exact: true })));
 
     // --- Programs --------------------------------------------------------------
-    await page.getByText('Programs', { exact: true }).first().click();
-    const cards = page.locator('.ma-program-card');
-    await cards.first().waitFor({ timeout: 15000 });
-    check('six curated programs', (await cards.count()) === 6);
-    const firstTwo = [await cards.nth(0).innerText(), await cards.nth(1).innerText()];
-    check('the bodybuilder plans come first', firstTwo.every((x) => x.includes('Bodybuilder')));
-    await page.screenshot({ path: join(dir, '04-programs.png'), fullPage: true });
-    await overflow('Programs');
-    if (width === 375) {
+    await page.goto(`${UI}/train`);
+    const curated = page.locator('a[href^="/train/program/"]');
+    await curated.first().waitFor({ timeout: 15000 });
+    const count = await curated.count();
+    // Six curated plans; once one is saved (at 360) your copy takes its place.
+    check('six programs on the Train tab', count === 6, String(count));
+    const firstTwo = [await curated.nth(0).innerText(), await curated.nth(1).innerText()];
+    check('the bodybuilder plans come first',
+      width !== 360 || firstTwo.every((x) => x.includes('Bodybuilder')), firstTwo.join(' | '));
+    await page.screenshot({ path: join(dir, '04-train-programs.png'), fullPage: true });
+    await overflow('Train');
+    if (width === 360) {
       await page.getByText('Upper / Lower Builder', { exact: true }).click();
-      check('the program sheet lists its routines', await seen(page.getByText('Lower B', { exact: true })));
-      await page.getByText('Save to Library', { exact: true }).click();
-      check('saving says it is in your Library', await seen(page.getByText('In your Library - open it')));
-      await page.screenshot({ path: join(dir, '05-program-saved.png') });
-      await page.goto(`${UI}/library`);
-      await page.getByText('Programs', { exact: true }).first().click();
-      await page.getByText('Upper / Lower Builder').first().click();
-      check('the Library has it, with four routines',
+      check('a program lists its routines', await seen(page.getByText('Lower B', { exact: true })));
+      await page.getByRole('button', { name: 'Save to library' }).click();
+      check('saving opens your copy', await seen(page.getByRole('button', { name: 'Delete program' })));
+      check('your copy has its four routines',
         (await seen(page.getByText('Upper A', { exact: true }))) && (await seen(page.getByText('Lower B', { exact: true }))));
-      await page.screenshot({ path: join(dir, '06-library-program.png'), fullPage: true });
+      await page.screenshot({ path: join(dir, '05-program-saved.png'), fullPage: true });
 
       // --- Picker multi-select -------------------------------------------------
-      await page.goto(`${UI}/workout`);
-      await page.getByText('Start New Workout', { exact: true }).first().click();
-      await page.getByText('Add Exercise').waitFor({ timeout: 15000 });
-      await page.getByText('Add Exercise').click();
+      await page.goto(`${UI}/train`);
+      await page.getByRole('button', { name: 'Start empty workout' }).click();
+      await page.getByRole('button', { name: 'Add exercise' }).click();
       await page.getByPlaceholder('Search exercises…').fill('curl');
       await page.getByRole('checkbox', { name: 'Hammer Curl', exact: true }).click();
       await page.getByRole('checkbox', { name: 'EZ-Bar Curl', exact: true }).click();
@@ -163,8 +164,10 @@ try {
         && (await seen(page.locator('.ma-card').getByText('EZ-Bar Curl', { exact: true })));
       check('the picker adds two exercises at once, in order',
         added && (await page.locator('.ma-card').first().innerText()).includes('Hammer Curl'));
+      await page.getByRole('button', { name: 'Finish', exact: true }).click();
       await page.getByRole('button', { name: 'Discard workout' }).click();
-      await page.getByText('Discard', { exact: true }).click();
+      await page.getByRole('button', { name: 'Discard', exact: true }).click();
+      await page.getByRole('button', { name: 'Start empty workout' }).waitFor({ timeout: 15000 });
     }
 
     // --- Credits ----------------------------------------------------------------

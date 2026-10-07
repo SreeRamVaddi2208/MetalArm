@@ -261,7 +261,7 @@ class AuthState(rx.State):
             self.loading = False
 
         if ok:
-            yield rx.redirect("/home")
+            yield rx.redirect("/welcome")
 
     async def do_logout(self):
         # End this browser's session on the server too, with the refresh token

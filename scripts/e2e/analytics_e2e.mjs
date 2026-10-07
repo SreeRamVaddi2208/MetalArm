@@ -7,9 +7,9 @@
 //   bench warm-up 60x5, bench 3 x 100x5, squat 2 x 140x3
 //   -> 5 working sets, 3 x 500 + 2 x 420 = 2,340 kg,
 //      bench best set 100 kg x 5, e1RM 100 x 35/30 = 116.7 kg.
-// Then the Workout tab, You (Overview, Exercises, History, Measurements),
-// Exercise Detail and Session Detail must show exactly those numbers, at 375
-// and 430 wide, with no sideways scroll.
+// Then Home, Progress (the chart, the exercise sheet, History, Measurements,
+// Recovery), Exercise Detail and Session Detail must show exactly those
+// numbers, at 360, 390 and 430 wide, with no sideways scroll.
 
 import { mkdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -66,11 +66,11 @@ try {
   check('the seed workout finished', fin && fin.session, JSON.stringify(fin).slice(0, 200));
   const recovery = (await api('/analytics/recovery', 'GET', null, token)).body;
 
-  for (const width of [375, 430]) {
+  for (const width of [360, 390, 430]) {
     const dir = join(OUT, String(width));
     mkdirSync(dir, { recursive: true });
     section(`Gate 2 at ${width}px`);
-    const ctx = await browser.newContext({ viewport: { width, height: width === 375 ? 812 : 932 },
+    const ctx = await browser.newContext({ viewport: { width, height: width < 400 ? 800 : 932 },
       deviceScaleFactor: 2, isMobile: true, hasTouch: true });
     const page = await ctx.newPage();
     const errors = [];
@@ -83,65 +83,69 @@ try {
     await page.goto(`${UI}/login`);
     await page.locator('input').first().fill(email);
     await page.locator('input[type=password]').fill(password);
-    await page.getByText('ENTER', { exact: true }).click();
+    await page.getByRole('button', { name: 'Sign in' }).click();
     await page.waitForURL('**/home', { timeout: 30000 });
 
-    // --- Workout tab -------------------------------------------------------
-    await page.goto(`${UI}/workout`);
-    check('Workout tab: today lists the workout', await seen(page.getByText('Gate day')));
-    check('Workout tab: its volume is 2,340 kg', await seen(page.getByText('2,340 kg')));
-    check(`Workout tab: recovery ring shows ${recovery.overall}% (the API's)`,
-      await seen(page.getByText(String(recovery.overall), { exact: true })));
-    check('Workout tab: the streak and quests cards are there',
-      (await seen(page.getByText('Streak', { exact: true }))) && (await seen(page.getByText('Quests', { exact: true }))));
-    await page.screenshot({ path: join(dir, '01-workout-tab.png'), fullPage: true });
-    await overflow('Workout tab');
-    await page.getByText('Recovery', { exact: true }).first().click();
-    check('the recovery sheet opens with its note', await seen(page.getByText(/estimate from your recent training/)));
-    await page.screenshot({ path: join(dir, '02-recovery.png') });
-    await page.getByText('Done', { exact: true }).click();
+    // --- Home ---------------------------------------------------------------
+    await page.goto(`${UI}/home`);
+    check('Home: the last workout is Gate day, 2,340 kg',
+      (await seen(page.getByText('Gate day'))) && (await seen(page.getByText(/· 2,340 kg$/))));
+    check('Home: one workout this week', await seen(page.getByText('Workouts this week')));
+    await page.screenshot({ path: join(dir, '01-home.png'), fullPage: true });
+    await overflow('Home');
 
-    // --- You: Overview -----------------------------------------------------
-    await page.goto(`${UI}/you`);
-    check('Overview: this week\'s volume is 2,340', await seen(page.getByText('2,340', { exact: true })));
-    check('Overview: the muscles worked include chest and quads',
-      await seen(page.getByText(/Chest.*Quad|Quad.*Chest/)));
-    check('Overview: the month shows 1 workout', await seen(page.getByText('1 workout', { exact: true })));
-    await page.getByText('Workouts', { exact: true }).click();
-    check('Overview: the Workouts chip reads 1', await seen(page.getByText('1', { exact: true })));
-    await page.screenshot({ path: join(dir, '03-you-overview.png'), fullPage: true });
-    await overflow('Overview');
+    // --- Progress: the chart ------------------------------------------------
+    await page.goto(`${UI}/progress`);
+    check('Progress: this week\'s volume is 2,340', await seen(page.getByText('2,340', { exact: true })));
+    await page.getByRole('button', { name: 'Workouts', exact: true }).click();
+    check('Progress: the Workouts chip reads 1', await seen(page.getByText('1', { exact: true })));
+    await page.screenshot({ path: join(dir, '02-progress.png'), fullPage: true });
+    await overflow('Progress');
 
-    // --- You: Exercises, History, Measurements -----------------------------
-    await page.getByText('Exercises', { exact: true }).click();
+    // --- Progress: every exercise, in the chart's sheet ----------------------
+    await page.locator('.ma-focus-row').click();
+    const sheet = page.getByRole('dialog');
     check('Exercises: bench best set 100 kg × 5, e1RM 116.7 kg',
-      await seen(page.getByText('Best set 100 kg × 5  e1RM 116.7 kg')));
-    check('Exercises: squat e1RM 154 kg', await seen(page.getByText(/e1RM 154 kg/)));
-    await page.screenshot({ path: join(dir, '04-you-exercises.png'), fullPage: true });
-    await page.getByText('History', { exact: true }).click();
-    check('History: the month header and the workout',
-      (await seen(page.getByText(/^[A-Z][a-z]+ \d{4}$/))) && (await seen(page.getByText('Gate day'))));
+      await seen(sheet.getByText('Best set 100 kg × 5 · e1RM 116.7 kg')));
+    check('Exercises: squat e1RM 154 kg', await seen(sheet.getByText(/e1RM 154 kg/)));
+    await page.screenshot({ path: join(dir, '03-exercises.png') });
+    await sheet.getByRole('button', { name: 'Close' }).click();
+
+    // --- History, Measurements, Recovery -----------------------------------
+    await page.goto(`${UI}/progress/history`);
+    check('History: the month shows 1 workout', await seen(page.getByText('1 workout', { exact: true })));
+    check('History: the week header and the workout',
+      (await seen(page.getByText(/^Week of \d+ [A-Z][a-z]{2} \d{4}$/))) && (await seen(page.getByText('Gate day'))));
     check(`History: points +${fin.points_credited}`, await seen(page.getByText(`+${fin.points_credited}`, { exact: true })));
-    await page.screenshot({ path: join(dir, '05-you-history.png'), fullPage: true });
-    await page.getByText('Measurements', { exact: true }).click();
+    await page.screenshot({ path: join(dir, '04-history.png'), fullPage: true });
+    await overflow('History');
+    await page.goto(`${UI}/progress/measurements`);
+    await page.getByRole('button', { name: 'Log measurement' }).click();
     await page.getByPlaceholder('Value (kg)').fill('80.5');
-    await page.getByRole('button', { name: 'Add', exact: true }).click();
+    await page.getByRole('button', { name: 'Save', exact: true }).click();
     check('Measurements: body weight 80.5 kg logged and shown', await seen(page.getByText('80.5 kg')));
-    await page.screenshot({ path: join(dir, '06-you-measurements.png'), fullPage: true });
+    await page.screenshot({ path: join(dir, '05-measurements.png'), fullPage: true });
     await overflow('Measurements');
+    await page.goto(`${UI}/progress/recovery`);
+    check(`Recovery: ${recovery.overall}% (the API's)`, await seen(page.getByText(`${recovery.overall}%`, { exact: true })));
+    check('Recovery: the note says it is an estimate', await seen(page.getByText(/estimate from your recent training/)));
+    check('Recovery: the muscles worked include chest and quads', await seen(page.getByText(/Chest.*Quad|Quad.*Chest/)));
+    await page.screenshot({ path: join(dir, '06-recovery.png'), fullPage: true });
+    await overflow('Recovery');
 
     // --- Exercise Detail ---------------------------------------------------
     await page.goto(`${UI}/exercise/${bench}`);
     check('Exercise Detail: name and Add to workout',
-      (await seen(page.getByText('Barbell Bench Press', { exact: true }))) && (await seen(page.getByText('Add to workout'))));
+      (await seen(page.getByText('Barbell Bench Press', { exact: true }))) &&
+      (await seen(page.getByRole('button', { name: 'Add to workout' }))));
     await page.screenshot({ path: join(dir, '07-exercise-about.png'), fullPage: true });
-    await page.getByText('Records', { exact: true }).click();
+    await page.getByRole('button', { name: 'Records', exact: true }).click();
     check('Records: heaviest 100 kg, e1RM 116.7 kg',
       (await seen(page.getByText('100 kg', { exact: true }))) && (await seen(page.getByText('116.7 kg', { exact: true }))));
-    await page.getByText('History', { exact: true }).click();
+    await page.getByRole('button', { name: 'History', exact: true }).click();
     check('History: the warm-up badge and three 100 kg × 5 sets',
       (await seen(page.getByText('W', { exact: true }))) && (await page.getByText('100 kg × 5', { exact: true }).count()) === 3);
-    await page.getByText('Charts', { exact: true }).click();
+    await page.getByRole('button', { name: 'Charts', exact: true }).click();
     check('Charts: a chart renders', await seen(page.locator('.recharts-surface')));
     await page.screenshot({ path: join(dir, '08-exercise-charts.png'), fullPage: true });
     await overflow('Exercise Detail');

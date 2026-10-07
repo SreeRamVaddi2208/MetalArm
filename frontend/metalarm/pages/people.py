@@ -1,4 +1,5 @@
-"""Someone's profile (/u/<id>), notifications, and the People tab's rows."""
+"""People: find and follow (/profile/people), someone's profile (/u/<id>),
+and notifications."""
 
 import reflex as rx
 
@@ -8,132 +9,115 @@ from metalarm.components.layout import error_banner, shell
 from metalarm.state.people import NotificationsState, PeopleState, ProfileViewState
 from metalarm.ui.chrome import avatar, top_bar
 from metalarm.ui.primitives import (
+    button,
     empty_state,
-    primary_button,
-    secondary_button,
-    section_header,
+    field,
+    link_button,
+    list_row,
+    rows,
+    section,
     skeleton,
+    skeleton_rows,
+    stat_group,
+    stat_tile,
     text,
 )
-
-
-def _back() -> rx.Component:
-    return rx.box(
-        rx.hstack(rx.icon("chevron-left", size=22, color=t.ACCENT_BLUE), text("Back", t.BODY, t.ACCENT_BLUE),
-                  spacing="0", align="center"),
-        on_click=rx.call_script("window.history.length > 1 ? window.history.back() : window.location.assign('/home')"),
-        cursor="pointer", min_height=t.TOUCH_MIN, display="flex", align_items="center",
-        custom_attrs={"role": "button"},
-    )
+from metalarm.ui.rank_badge import rank_badge
 
 
 def follow_button(following, on_click) -> rx.Component:
-    return rx.cond(
-        following != "",
-        secondary_button("Following", on_click),
-        primary_button("Follow", on_click),
-    )
+    """Secondary either way: a list of people has no primary action."""
+    return rx.cond(following != "", button("Following", on_click, variant="ghost", class_name="ma-follow"),
+                   button("Follow", on_click, variant="secondary", class_name="ma-follow"))
 
 
 def person_row(p) -> rx.Component:
-    """A person in a list: frame, name, why, and Follow."""
+    """A person in a list: initials, name and rank, why, and Follow."""
     return rx.hstack(
-        rx.link(rx.hstack(avatar(p["initials"], p["rank"], size=44),
-                          rx.vstack(text(p["name"], t.HEADLINE, overflow="hidden", text_overflow="ellipsis",
-                                         white_space="nowrap", max_width="100%"),
-                                    text(rx.cond(p["follows_you"] != "", "Follows you", p["sub"]), t.FOOTNOTE,
-                                         t.TEXT_SECONDARY),
+        rx.link(rx.hstack(avatar(p["initials"], size=40),
+                          rx.vstack(rx.hstack(text(p["name"], t.BODY, overflow="hidden", text_overflow="ellipsis",
+                                                   white_space="nowrap", min_width="0"),
+                                              rank_badge(p["rank"], 24), spacing="2", align="center",
+                                              min_width="0"),
+                                    text(rx.cond(p["follows_you"] != "", "Follows you", p["sub"]), t.CAPTION,
+                                         t.TEXT_2),
                                     spacing="0", align="start", min_width="0"),
                           spacing="3", align="center", min_width="0"),
                 href=f"/u/{p['id']}", underline="none", flex="1", min_width="0"),
         follow_button(p["following"], PeopleState.toggle_follow(p["id"], p["following"])),
-        width="100%", align="center", spacing="3", min_height="56px",
-        class_name="ma-person",
+        width="100%", align="center", spacing="3", min_height=t.ROW_MIN, class_name="ma-person",
     )
 
 
-def people_tab() -> rx.Component:
-    return rx.vstack(
-        rx.input(value=PeopleState.query, on_change=PeopleState.set_query, debounce_timeout=250,
-                 placeholder="Search people by name", size="3", variant="soft", radius="full", width="100%"),
-        error_banner(PeopleState.error),
+def people_page() -> rx.Component:
+    s = PeopleState
+    return shell(
+        top_bar("People", back="/profile"),
+        field(s.query, s.set_query, "Search people by name", debounce=True),
+        error_banner(s.error),
         rx.cond(
-            PeopleState.query != "",
-            rx.cond(PeopleState.results.length() > 0,
-                    rx.vstack(rx.foreach(PeopleState.results, person_row), spacing="2", width="100%"),
-                    empty_state("Nobody by that name", "Check the spelling, or ask for their username.")),
-            rx.vstack(
-                section_header("People you may know"),
-                rx.cond(PeopleState.suggested.length() > 0,
-                        rx.vstack(rx.foreach(PeopleState.suggested, person_row), spacing="2", width="100%"),
-                        text("Follow a friend and their friends show up here. Search for someone above.",
-                             t.SUBHEAD, t.TEXT_SECONDARY)),
-                spacing="3", width="100%",
-            ),
+            s.query != "",
+            rx.cond(s.results.length() > 0, rx.vstack(rx.foreach(s.results, person_row), spacing="1", width="100%"),
+                    empty_state("search", "Nobody by that name. Check the spelling, or ask for their username.")),
+            section("People you may know",
+                    rx.cond(s.suggested.length() > 0,
+                            rx.vstack(rx.foreach(s.suggested, person_row), spacing="1", width="100%"),
+                            text("Follow a friend and their friends show up here.", t.BODY, t.TEXT_2))),
         ),
-        spacing="3", width="100%",
     )
-
-
-def _count(value, label: str) -> rx.Component:
-    return rx.vstack(text(value, t.HEADLINE, **t.TABULAR), text(label, t.FOOTNOTE, t.TEXT_SECONDARY),
-                     spacing="0", align="center", flex="1")
 
 
 def user_page() -> rx.Component:
     s = ProfileViewState
+    follow = rx.cond(s.you_follow, button("Following", s.toggle_follow, variant="secondary", full=True),
+                     button(rx.cond(s.follows_you, "Follow back", "Follow"), s.toggle_follow, full=True))
     return shell(
-        _back(),
+        top_bar("", back="history"),
         error_banner(s.error),
         rx.cond(
             s.loaded,
             rx.vstack(
                 rx.hstack(
-                    avatar(s.initials, s.rank, size=72),
-                    rx.vstack(text(s.name, t.TITLE_2), text(s.rank_line, t.SUBHEAD, t.TEXT_SECONDARY),
-                              rx.cond(s.category != "", text(s.category, t.FOOTNOTE, t.TEXT_SECONDARY)),
-                              spacing="0", align="start", min_width="0"),
+                    avatar(s.initials, size=96),
+                    rx.vstack(text(s.name, t.TITLE), text(s.rank_line, t.CAPTION, t.TEXT_2),
+                              rx.cond(s.category != "", text(s.category, t.CAPTION, t.TEXT_2)),
+                              spacing="1", align="start", flex="1", min_width="0"),
+                    rank_badge(s.rank, 48),
                     width="100%", align="center", spacing="4",
                 ),
-                rx.cond(s.bio != "", text(s.bio, t.BODY)),
-                rx.hstack(_count(s.workouts, "Workouts"), _count(s.followers, "Followers"),
-                          _count(s.following, "Following"), width="100%"),
-                rx.cond(
-                    ~s.is_me,
-                    rx.hstack(
-                        rx.cond(s.you_follow, secondary_button("Following", s.toggle_follow, flex="1"),
-                                primary_button(rx.cond(s.follows_you, "Follow back", "Follow"), s.toggle_follow,
-                                               flex="1")),
-                        rx.cond(s.is_friend, rx.link(secondary_button("Challenge", icon="swords"), href="/duels",
-                                                     underline="none")),
-                        width="100%", spacing="2",
-                    ),
-                ),
-                rx.cond(s.is_friend, text("Friends: you follow each other.", t.FOOTNOTE, t.TEXT_SECONDARY)),
-                section_header("Workouts"),
-                rx.cond(s.sessions.length() > 0,
-                        rx.vstack(rx.foreach(s.sessions, lambda c: feed_item(c, s.toggle_spot(c.session_id))),
-                                  spacing="0", width="100%"),
-                        empty_state("No workouts to show", "Theirs appear here as their visibility allows.")),
-                rx.cond(s.cursor != "", secondary_button("Show more", s.more, width="100%")),
-                spacing="4", width="100%",
+                rx.cond(s.bio != "", text(s.bio, t.BODY, t.TEXT_2)),
+                stat_group(stat_tile(s.workouts, "Workouts"), stat_tile(s.followers, "Followers"),
+                           stat_tile(s.following, "Following")),
+                rx.cond(s.is_friend & ~s.is_me,
+                        rows(list_row("Challenge to a duel", "You follow each other", chevron=True, href="/duels",
+                                      leading=rx.icon("swords", size=20, color=t.TEXT_2, stroke_width=1.75)))),
+                section("Workouts",
+                        rx.cond(s.sessions.length() > 0,
+                                rx.vstack(rx.foreach(s.sessions, lambda c: feed_item(c, s.toggle_spot(c.session_id))),
+                                          spacing="0", width="100%"),
+                                empty_state("dumbbell", "Their workouts appear here as their visibility allows.")),
+                        rx.cond(s.cursor != "", button("Show more", s.more, variant="ghost", full=True))),
+                spacing="6", width="100%",
             ),
-            rx.vstack(skeleton("72px"), skeleton("44px"), skeleton("220px"), width="100%"),
+            rx.vstack(skeleton("96px"), skeleton("64px"), skeleton_rows(3), spacing="4", width="100%"),
         ),
+        pinned=rx.cond(s.loaded & ~s.is_me, follow),
     )
 
 
 def _note(n) -> rx.Component:
     return rx.link(
         rx.hstack(
-            rx.cond(n["has_actor"] != "", avatar(n["initials"], n["rank"], size=40),
-                    rx.center(rx.icon("scroll-text", size=20, color=t.STREAK_ORANGE),
+            rx.cond(n["has_actor"] != "", avatar(n["initials"], size=40),
+                    rx.center(rx.icon("scroll-text", size=20, color=t.TEXT_2, stroke_width=1.75),
                               width="40px", height="40px", background=t.SURFACE_2, border_radius=t.RADIUS_PILL)),
-            rx.vstack(text(n["line"], t.BODY), text(n["when"], t.FOOTNOTE, t.TEXT_SECONDARY),
+            rx.vstack(text(n["line"], t.BODY), text(n["when"], t.CAPTION, t.TEXT_2),
                       spacing="0", align="start", flex="1", min_width="0"),
             rx.cond(n["unread"] != "", rx.box(width="8px", height="8px", border_radius=t.RADIUS_PILL,
-                                              background=t.ACCENT_BLUE, flex_shrink="0")),
-            width="100%", align="center", spacing="3", min_height="56px",
+                                              background=t.ACCENT, flex_shrink="0",
+                                              aria_label="Unread")),
+            width="100%", align="center", spacing="3", min_height=t.ROW_MIN, padding_y=t.space(8),
+            class_name="ma-press",
         ),
         href=n["href"], underline="none", width="100%", class_name="ma-note",
     )
@@ -142,10 +126,11 @@ def _note(n) -> rx.Component:
 def notifications_page() -> rx.Component:
     s = NotificationsState
     return shell(
-        top_bar("Notifications"),
+        top_bar("Notifications", back="/home"),
         error_banner(s.error),
         rx.cond(s.items.length() > 0,
-                rx.vstack(rx.foreach(s.items, _note), spacing="2", width="100%"),
-                empty_state("Nothing yet", "Follows, spots, challenges and your friends' records show up here.")),
-        rx.cond(s.cursor != "", secondary_button("Show more", s.more, width="100%")),
+                rows(rx.foreach(s.items, _note)),
+                empty_state("bell", "Follows, spots, challenges and your friends' records show up here.",
+                            link_button("Find friends", "/profile/people", icon="user-plus"))),
+        rx.cond(s.cursor != "", button("Show more", s.more, variant="ghost", full=True)),
     )
