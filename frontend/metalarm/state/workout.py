@@ -310,6 +310,7 @@ class WorkoutState(rx.State):
     summary_muscles: dict[str, float] = {}
     summary_muscle_names: list[str] = []
     summary_saved: str = ""
+    summary_visibility: str = "followers"
     confirm_abandon: bool = False
 
     @rx.var
@@ -1122,6 +1123,7 @@ class WorkoutState(rx.State):
         self.summary = FinishSummary.from_api(result, self.session_name, self.unit)
         self.summary_session_id = self.session_id
         self.summary_saved = ""
+        self.summary_visibility = (result.get("session") or {}).get("visibility") or "followers"
         await self._summary_muscles(auth.token, result.get("muscles_worked") or {})
         self.show_summary = True
         self._clear_session()
@@ -1148,6 +1150,19 @@ class WorkoutState(rx.State):
             groups[c]["display_name"] for c, _ in sorted(worked.items(), key=lambda kv: -kv[1])
             if c in groups
         ][:6]
+
+    async def set_summary_visibility(self, label: str):
+        """Who sees the workout just finished - in friends' feeds or not."""
+        from metalarm import social_api
+
+        value = {"Public": "public", "Followers": "followers", "Only me": "private"}[label]
+        auth = await self._auth()
+        try:
+            await social_api.set_visibility(auth.token, self.summary_session_id, value)
+        except ApiError as exc:
+            self.error = exc.detail
+            return
+        self.summary_visibility = value
 
     async def save_as_routine(self):
         if not self.summary_session_id or self.summary_saved:

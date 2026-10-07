@@ -40,7 +40,8 @@ def session_keeper() -> rx.Component:
 # progress and profile under You, routines under Library.
 ROUTE_TABS = (
     ("/home", "home"), ("/dashboard", "home"), ("/parties", "home"),
-    ("/duels", "home"), ("/rewards", "home"),
+    ("/duels", "home"), ("/rewards", "home"), ("/quests", "home"), ("/notifications", "home"),
+    ("/u/[id]", "home"),
     ("/explore", "explore"), ("/exercise/[id]", "explore"),
     ("/workout", "workout"),
     ("/library", "library"), ("/routines", "library"),

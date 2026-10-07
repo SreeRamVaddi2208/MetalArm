@@ -11,7 +11,7 @@ import reflex as rx
 from metalarm import theme as t
 from metalarm.state.workout import WorkoutState
 from metalarm.ui.body_map import body_map
-from metalarm.ui.primitives import card, primary_button, secondary_button, section_header, text
+from metalarm.ui.primitives import card, primary_button, secondary_button, section_header, segmented_control, text
 from metalarm.workout_models import AwardLine, PrView, QuestLine
 
 
@@ -106,6 +106,14 @@ def summary_view() -> rx.Component:
                           spacing="0", align="start"),
                 spacing="3", align="center",
             ),
+        ),
+        rx.vstack(
+            text("Who can see this", t.FOOTNOTE, t.TEXT_SECONDARY),
+            segmented_control(["Public", "Followers", "Only me"],
+                              rx.match(WorkoutState.summary_visibility, ("public", "Public"),
+                                       ("private", "Only me"), "Followers"),
+                              WorkoutState.set_summary_visibility),
+            spacing="1", width="100%",
         ),
         rx.vstack(
             secondary_button(

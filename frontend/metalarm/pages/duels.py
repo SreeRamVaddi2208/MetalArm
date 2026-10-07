@@ -87,7 +87,7 @@ def challenge_panel() -> rx.Component:
             DuelState.opponents.length() > 0,
             rx.vstack(
                 rx.text(
-                    "OR CHALLENGE SOMEONE IN YOUR PARTY",
+                    "OR CHALLENGE A FRIEND OR PARTY MEMBER",
                     color=theme.MUTED,
                     font_size="0.68rem",
                     letter_spacing="0.14em",

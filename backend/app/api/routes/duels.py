@@ -16,7 +16,9 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.api.deps import CurrentUser, DbSession
-from app.core import activity, duels as engine
+from app.api.routes import social as social_routes
+from app.core import activity, social
+from app.core import duels as engine
 from app.core import workout_streaks as streaks
 from app.core.periods import resolve_timezone
 from app.core.progression import apply_completion, lock_progress
@@ -32,6 +34,7 @@ from app.models.party import PartyMembership
 from app.models.user import User
 from app.models.workout import PointsLedgerEntry
 from app.models.workout_enums import LedgerSource
+from app.schemas.social import UserCard
 from app.schemas.duel import (
     ActivityOut,
     BreakdownLine,
@@ -287,13 +290,28 @@ def _render(
     )
 
 
+def _opponent_ids(db: Session, user_id: uuid.UUID) -> set[uuid.UUID]:
+    """Who may be challenged: friends (mutual follows) and party mates."""
+    return social.friend_ids(db, user_id) | social.party_mates(db, user_id)
+
+
+@router.get("/duels/opponents", response_model=list[UserCard])
+def duel_opponents(current_user: CurrentUser, db: DbSession) -> list[UserCard]:
+    """Everyone the caller can challenge, by name. A short list (friends and
+    party mates), so not paged."""
+    ids = _opponent_ids(db, current_user.id)
+    users = list(db.scalars(select(User).where(User.id.in_(ids), User.is_active.is_(True))
+                            .order_by(User.display_name))) if ids else []
+    return social_routes.cards(db, current_user, users)
+
+
 @router.post("/duels", response_model=DuelOut, status_code=status.HTTP_201_CREATED)
 def create_duel(payload: DuelCreate, current_user: CurrentUser, db: DbSession) -> DuelOut:
-    """Challenge a party member, or the rival.
+    """Challenge a friend (a mutual follow), a party member, or the rival.
 
-    Only people you share a party with: an open challenge to any account would
-    be a way to find out whether an account exists, and a stranger's challenge
-    is noise rather than a game.
+    Only people you know: an open challenge to any account would be a way to
+    find out whether an account exists, and a stranger's challenge is noise
+    rather than a game.
     """
     now = dt.datetime.now(dt.timezone.utc)
     length = dt.timedelta(days=payload.days)
@@ -327,18 +345,10 @@ def create_duel(payload: DuelCreate, current_user: CurrentUser, db: DbSession) -
     else:
         if payload.opponent_id == current_user.id:
             raise HTTPException(status_code=422, detail="You cannot duel yourself")
-        mine = set(activity.parties_of(db, current_user.id))
-        theirs = set(
-            db.scalars(
-                select(PartyMembership.party_id).where(
-                    PartyMembership.user_id == payload.opponent_id
-                )
-            )
-        )
-        if not mine & theirs:
+        if payload.opponent_id not in _opponent_ids(db, current_user.id):
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="You can only challenge someone in your party",
+                detail="You can only challenge a friend (you follow each other) or a party member",
             )
         opponent = _user(db, payload.opponent_id)  # type: ignore[arg-type]
         for side in (current_user, opponent):
@@ -357,6 +367,10 @@ def create_duel(payload: DuelCreate, current_user: CurrentUser, db: DbSession) -
             status=DuelStatus.PENDING.value,
         )
     db.add(duel)
+    db.flush()
+    if duel.opponent_id is not None:
+        social.notify(db, duel.opponent_id, "duel_challenge", actor_id=current_user.id,
+                      target_type="duel", target_id=duel.id, detail=MODES[metric][0])
     db.commit()
     db.refresh(duel)
     return _render(db, duel, now)

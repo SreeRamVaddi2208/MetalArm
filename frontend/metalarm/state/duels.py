@@ -223,15 +223,13 @@ class DuelState(rx.State):
         yield AuthState.refresh_me
 
     async def _load_opponents(self, token: str, me: str) -> None:
-        """Party members, deduplicated across parties and minus yourself."""
-        seen: dict[str, LeaderboardRow] = {}
-        for party in await api.list_parties(token):
-            board = await api.party_leaderboard(token, party["id"])
-            for entry in board.get("entries", []):
-                row = LeaderboardRow.from_api(entry)
-                if row.user_id and row.user_id != me:
-                    seen[row.user_id] = row
-        self.opponents = list(seen.values())
+        """Friends (mutual follows) and party members - the server decides."""
+        from metalarm import social_api
+
+        self.opponents = [
+            LeaderboardRow(user_id=str(u["id"]), display_name=u["display_name"], level=u["level"], rank=u["rank"])
+            for u in await social_api.duel_opponents(token)
+        ]
 
     async def challenge_rival(self):
         auth = await self.get_state(AuthState)

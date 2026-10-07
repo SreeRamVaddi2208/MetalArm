@@ -36,7 +36,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.api.deps import CurrentUser, DbSession
-from app.core import activity
+from app.core import activity, social
 from app.core import personal_records as prs
 from app.core import progression_hints as hints
 from app.core import points_engine as pe
@@ -67,7 +67,7 @@ from app.models.workout import (
     WorkoutSession,
 )
 from app.models.duel import ActivityType
-from app.models.workout_enums import LedgerSource, RecordType, SessionStatus, SetType, WeightUnit
+from app.models.workout_enums import LedgerSource, RecordType, SessionStatus, SetType, Visibility, WeightUnit
 from app.schemas.quest import ProgressionDeltaOut
 from app.schemas.quest_board import QuestProgressOut
 from app.schemas.workout import (
@@ -91,6 +91,7 @@ from app.schemas.workout import (
     RecordOut,
     SessionExerciseOut,
     SessionOut,
+    SessionPatch,
     SessionStart,
     SessionSummaryOut,
     SessionTargetOut,
@@ -348,6 +349,8 @@ def _session_out(db: Session, session: WorkoutSession, user: User) -> SessionOut
         points_total=store.session_ledger(db, session.id).total,
         points_credited=session.points_credited,
         qualified=session.qualified,
+        visibility=session.visibility,
+        user_id=session.user_id,
         exercises=[
             SessionExerciseOut(
                 session_exercise_id=card.id,
@@ -422,6 +425,7 @@ def _summaries(db: Session, sessions: list[WorkoutSession]) -> list[SessionSumma
                 total_volume_kg=_volume(sets),
                 points_total=points.get(s.id, 0),
                 pr_count=prs_count.get(s.id, 0),
+                visibility=s.visibility,
             )
         )
     return out
@@ -665,7 +669,7 @@ def start_session(payload: SessionStart, current_user: CurrentUser, db: DbSessio
         name=payload.name or (routine.name if routine else None),
         started_at=_now(),
         status=SessionStatus.IN_PROGRESS.value,
-        visibility=current_user.default_visibility,
+        visibility=payload.visibility or current_user.default_visibility,
     )
     db.add(session)
     try:
@@ -765,7 +769,24 @@ def list_sessions(
 
 @router.get("/sessions/{session_id}", response_model=SessionOut)
 def read_session(session_id: uuid.UUID, current_user: CurrentUser, db: DbSession) -> SessionOut:
+    """Your own workout - or someone else's finished one that its visibility
+    lets you see (app/core/social.py), rendered as its owner sees it."""
+    session = db.get(WorkoutSession, session_id)
+    if session is not None and session.user_id != current_user.id and social.can_see(db, current_user.id, session):
+        return _session_out(db, session, db.get(User, session.user_id))
     return _session_out(db, _get_owned_session(db, session_id, current_user), current_user)
+
+
+@router.patch("/sessions/{session_id}", response_model=SessionOut)
+def update_session(session_id: uuid.UUID, payload: SessionPatch, current_user: CurrentUser,
+                   db: DbSession) -> SessionOut:
+    session = _get_owned_session(db, session_id, current_user)
+    if payload.name is not None:
+        session.name = payload.name.strip()
+    if payload.visibility is not None:
+        session.visibility = payload.visibility
+    db.commit()
+    return _session_out(db, session, current_user)
 
 
 @router.post(
@@ -1290,6 +1311,14 @@ def finish_session(
         for e in db.scalars(select(Exercise).where(Exercise.id.in_(list(by_exercise))))
     } if by_exercise else {}
     session.total_prs = sum(1 for r in records if not r.is_baseline)
+    # Friends hear about a real record - if they may see the workout.
+    real = [r for r in records if not r.is_baseline]
+    if real and session.visibility != Visibility.PRIVATE.value:
+        top = real[0]
+        line = f"{names.get(top.exercise_id, 'A lift')}: new {top.record_type.replace('_', ' ')}"
+        for friend in social.friend_ids(db, current_user.id):
+            social.notify(db, friend, "friend_pr", actor_id=current_user.id, target_type="session",
+                          target_id=session.id, detail=line, now=now)
     summary = _summaries(db, [session])[0]
     muscles = {
         e.id: (e.primary_muscle_groups, e.secondary_muscle_groups)

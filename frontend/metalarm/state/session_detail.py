@@ -15,6 +15,15 @@ TYPE_BADGE = {"warmup": "W", "drop": "D", "failure": "F"}
 
 
 class SessionDetailState(rx.State):
+    session_id: str = ""
+    mine: bool = True
+    owner_id: str = ""
+    owner_name: str = ""
+    owner_initials: str = ""
+    owner_rank: str = "E"
+    visibility: str = "followers"
+    spotted: int = 0
+    spotted_by_me: bool = False
     title: str = ""
     when: str = ""
     stats: list[dict[str, str]] = []
@@ -34,6 +43,23 @@ class SessionDetailState(rx.State):
         except ApiError as exc:
             self.error = exc.detail
             return
+        self.session_id = str(s["id"])
+        self.visibility = s.get("visibility") or "followers"
+        self.owner_id = str(s.get("user_id") or auth.user_id)
+        self.mine = self.owner_id == auth.user_id
+        if not self.mine:
+            from metalarm import social_api
+            from metalarm.workout_models import initials_of
+
+            try:
+                owner = (await social_api.profile(auth.token, self.owner_id))["user"]
+                r = await social_api.reactions(auth.token, self.session_id)
+            except ApiError as exc:
+                self.error = exc.detail
+                return
+            self.owner_name, self.owner_rank = owner["display_name"], owner["rank"]
+            self.owner_initials = initials_of(owner["display_name"])
+            self.spotted, self.spotted_by_me = r["spotted"], r["spotted_by_me"]
         moment = local_dt(s.get("started_at"), tz)
         self.title = session_title(s.get("name"), s.get("started_at"), tz)
         self.when = moment.strftime("%A %d %B %Y, %H:%M") if moment else ""
@@ -60,3 +86,26 @@ class SessionDetailState(rx.State):
                              "pr": "1" if x.get("is_pr") else ""})
         self.rows = rows
         self.loaded = True
+
+    async def toggle_spot(self):
+        from metalarm import social_api
+
+        auth = await self.get_state(AuthState)
+        try:
+            r = await social_api.spot(auth.token, self.session_id, not self.spotted_by_me)
+        except ApiError as exc:
+            self.error = exc.detail
+            return
+        self.spotted, self.spotted_by_me = r["spotted"], r["spotted_by_me"]
+
+    async def set_visibility(self, label: str):
+        from metalarm import social_api
+
+        value = {"Public": "public", "Followers": "followers", "Only me": "private"}[label]
+        auth = await self.get_state(AuthState)
+        try:
+            await social_api.set_visibility(auth.token, self.session_id, value)
+        except ApiError as exc:
+            self.error = exc.detail
+            return
+        self.visibility = value

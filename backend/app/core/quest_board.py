@@ -36,7 +36,7 @@ from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
-from app.core import activity
+from app.core import activity, social
 from app.core import points_engine as pe
 from app.core import quest_engine as engine
 from app.core import workout_rules as rules
@@ -527,5 +527,7 @@ def refresh(
                 source_id=update.assignment.id,
                 at=now,
             )
+            social.notify(db, user.id, "quest_complete", target_type="quest",
+                          target_id=update.assignment.id, detail=update.assignment.title, now=now)
     return Refresh(tuple(updates), xp, points_now)
 

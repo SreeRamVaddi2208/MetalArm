@@ -8,7 +8,9 @@ from metalarm.state.exercise_detail import CHARTS, TABS, ExerciseDetailState
 from metalarm.state.session_detail import SessionDetailState
 from metalarm.ui.body_map import body_map
 from metalarm.ui.chart import area_chart
+from metalarm.ui.chrome import avatar
 from metalarm.ui.primitives import (
+    segmented_control,
     card,
     empty_state,
     metric_chips,
@@ -156,8 +158,30 @@ def session_page() -> rx.Component:
         rx.cond(
             s.loaded,
             rx.vstack(
+                rx.cond(~s.mine,
+                        rx.link(rx.hstack(avatar(s.owner_initials, s.owner_rank, size=36),
+                                          text(s.owner_name, t.HEADLINE), spacing="2", align="center"),
+                                href=f"/u/{s.owner_id}", underline="none")),
                 text(s.title, t.TITLE_1),
                 text(s.when, t.SUBHEAD, t.TEXT_SECONDARY),
+                rx.cond(
+                    s.mine,
+                    rx.vstack(text("Who can see this", t.FOOTNOTE, t.TEXT_SECONDARY),
+                              segmented_control(["Public", "Followers", "Only me"],
+                                                rx.match(s.visibility, ("public", "Public"), ("private", "Only me"),
+                                                         "Followers"),
+                                                s.set_visibility),
+                              spacing="1", width="100%"),
+                    rx.hstack(rx.spacer(),
+                              rx.hstack(rx.icon("hand-metal", size=20,
+                                                color=rx.cond(s.spotted_by_me, t.STREAK_ORANGE, t.TEXT_SECONDARY)),
+                                        text(rx.cond(s.spotted > 0, s.spotted.to_string(), "Spot"), t.SUBHEAD,
+                                             rx.cond(s.spotted_by_me, t.STREAK_ORANGE, t.TEXT_SECONDARY)),
+                                        spacing="1", align="center", cursor="pointer", min_height=t.TOUCH_MIN,
+                                        on_click=s.toggle_spot,
+                                        custom_attrs={"role": "button", "aria-label": "Spotted"}),
+                              width="100%"),
+                ),
                 rx.grid(rx.foreach(s.stats, _stat), columns="3", gap=t.space(3), width="100%",
                         background=t.SURFACE_1, border_radius=t.RADIUS_CARD, padding=t.CARD_PADDING),
                 rx.vstack(rx.foreach(s.rows, _set_row), spacing="1", width="100%"),

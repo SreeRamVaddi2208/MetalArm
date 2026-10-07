@@ -175,9 +175,7 @@ def feed_card(name: Any, initials: Any, rank: Any, when_label: Any, workout: Any
                          spacing="1", width="100%", min_width="0")
     return rx.vstack(
         rx.hstack(avatar(initials, rank, size=40),
-                  rx.vstack(rx.hstack(text(name, t.HEADLINE),
-                                      rx.icon("badge-check", size=15, color=t.ACCENT_BLUE),
-                                      spacing="1", align="center"),
+                  rx.vstack(text(name, t.HEADLINE),
                             text(when_label, t.FOOTNOTE, t.TEXT_SECONDARY),
                             spacing="0", align="start", flex="1", min_width="0"),
                   rx.icon("ellipsis", size=20, color=t.TEXT_SECONDARY),

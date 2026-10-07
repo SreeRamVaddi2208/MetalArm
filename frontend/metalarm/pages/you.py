@@ -41,6 +41,8 @@ def _header() -> rx.Component:
                 text(f"· Level {p.current_level}", t.SUBHEAD, t.TEXT_SECONDARY),
                 spacing="1",
             ),
+            text(f"{YouState.followers} followers · {YouState.following} following", t.FOOTNOTE,
+                 t.TEXT_SECONDARY),
             rx.hstack(
                 text(f"{p.points_balance} pts", t.FOOTNOTE, t.STREAK_ORANGE, **t.NUMERAL_GAME),
                 rx.cond(AuthState.character_class != "",

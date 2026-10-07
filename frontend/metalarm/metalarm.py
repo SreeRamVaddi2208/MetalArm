@@ -10,6 +10,8 @@ import reflex as rx
 from metalarm import theme
 from metalarm.pages.credits import credits_page
 from metalarm.pages.dashboard import dashboard_page
+from metalarm.pages.home import home_page
+from metalarm.pages.people import notifications_page, user_page
 from metalarm.pages.explore import explore_page
 from metalarm.pages.gallery import gallery_page
 from metalarm.pages.login import login_page, signup_page
@@ -31,7 +33,9 @@ from metalarm.state.progress import ProgressState
 from metalarm.state.duels import DuelState
 from metalarm.state.quests import QuestState
 from metalarm.state.rewards import RewardState
+from metalarm.state.home import HomeState
 from metalarm.state.library import LibraryState
+from metalarm.state.people import NotificationsState, PeopleState, ProfileViewState
 from metalarm.state.exercise_detail import ExerciseDetailState
 from metalarm.state.session_detail import SessionDetailState
 from metalarm.state.workout_home import WorkoutHomeState
@@ -64,7 +68,7 @@ class RouteState(rx.State):
         auth = await self.get_state(AuthState)
         if not auth.token:
             return rx.redirect("/login")
-        return [AuthState.refresh_me, ExploreState.load]
+        return [AuthState.refresh_me, ExploreState.load, PeopleState.load]
 
     async def enter_credits(self):
         auth = await self.get_state(AuthState)
@@ -122,6 +126,24 @@ class RouteState(rx.State):
         if not auth.token:
             return rx.redirect("/login")
         return [AuthState.refresh_me, RoutineState.load]
+
+    async def enter_home(self):
+        auth = await self.get_state(AuthState)
+        if not auth.token:
+            return rx.redirect("/login")
+        return [AuthState.refresh_me, HomeState.load, QuestState.load, DuelState.load_summary]
+
+    async def enter_user(self):
+        auth = await self.get_state(AuthState)
+        if not auth.token:
+            return rx.redirect("/login")
+        return ProfileViewState.load
+
+    async def enter_notifications(self):
+        auth = await self.get_state(AuthState)
+        if not auth.token:
+            return rx.redirect("/login")
+        return NotificationsState.load
 
     async def enter_you(self):
         auth = await self.get_state(AuthState)
@@ -216,12 +238,13 @@ app.add_page(
     title="Create account - MetalArm",
     on_load=RouteState.bounce_if_signed_in,
 )
-app.add_page(
-    dashboard_page,
-    route="/home",
-    title="Home - MetalArm",
-    on_load=RouteState.enter_dashboard,
-)
+app.add_page(home_page, route="/home", title="Home - MetalArm", on_load=RouteState.enter_home)
+# The old dashboard: the full quest board and rank detail, behind the game strip.
+app.add_page(dashboard_page, route="/quests", title="Rank & Quests - MetalArm",
+             on_load=RouteState.enter_dashboard)
+app.add_page(user_page, route="/u/[id]", title="Profile - MetalArm", on_load=RouteState.enter_user)
+app.add_page(notifications_page, route="/notifications", title="Notifications - MetalArm",
+             on_load=RouteState.enter_notifications)
 app.add_page(landing, route="/dashboard", title="MetalArm", on_load=RouteState.to_home)
 app.add_page(explore_page, route="/explore", title="Explore - MetalArm",
              on_load=RouteState.enter_explore)

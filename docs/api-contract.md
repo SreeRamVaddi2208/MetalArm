@@ -10,7 +10,7 @@
 
 - **API title:** MetalArm API
 - **API version:** 0.1.0
-- **Generated:** 2026-10-06 20:45 UTC
+- **Generated:** 2026-10-07 04:07 UTC
 - **Source:** `http://localhost:8000/openapi.json`
 
 ---
@@ -410,11 +410,11 @@ Every duel the caller is in, judging any whose window has closed.
 
 **Create Duel**
 
-Challenge a party member, or the rival.
+Challenge a friend (a mutual follow), a party member, or the rival.
 
-Only people you share a party with: an open challenge to any account would
-be a way to find out whether an account exists, and a stranger's challenge
-is noise rather than a game.
+Only people you know: an open challenge to any account would be a way to
+find out whether an account exists, and a stranger's challenge is noise
+rather than a game.
 
 *Tags:* `duels`
 
@@ -444,6 +444,21 @@ why not. Only fair modes need history; the rest are always open.
 |---|---|
 | `200` | Successful Response |
 | `422` | Validation Error |
+
+---
+
+### `GET /api/v1/duels/opponents`
+
+**Duel Opponents**
+
+Everyone the caller can challenge, by name. A short list (friends and
+party mates), so not paged.
+
+*Tags:* `duels`
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
 
 ---
 
@@ -812,6 +827,63 @@ What the caller and their parties have been up to, newest first.
 
 ---
 
+### `GET /api/v1/feed/following`
+
+**Following Feed**
+
+Finished workouts by you and the people you follow, newest first, each
+as its owner's visibility allows.
+
+*Tags:* `social`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `cursor` | query | `string | null` | no |
+| `limit` | query | `integer` | no |
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `DELETE /api/v1/follows/{user_id}`
+
+**Unfollow**
+
+*Tags:* `social`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `user_id` | path | `string` | yes |
+
+| Status | Description |
+|---|---|
+| `204` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `POST /api/v1/follows/{user_id}`
+
+**Follow**
+
+Follow someone. Following them again is not an error.
+
+*Tags:* `social`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `user_id` | path | `string` | yes |
+
+| Status | Description |
+|---|---|
+| `204` | Successful Response |
+| `422` | Validation Error |
+
+---
+
 ### `GET /api/v1/history`
 
 **History**
@@ -824,6 +896,27 @@ done in. Totals are the ones written at finish.
 | Param | In | Type | Required |
 |---|---|---|---|
 | `cursor` | query | `string | null` | no |
+| `limit` | query | `integer` | no |
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `GET /api/v1/leaderboard/friends`
+
+**Friends Leaderboard**
+
+You and the people you follow, by workout points - this week (your
+week) or all time. Ties share a position.
+
+*Tags:* `social`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `period` | query | `string` | no |
 | `limit` | query | `integer` | no |
 
 | Status | Description |
@@ -928,6 +1021,56 @@ recently done first, with the best set and estimated 1RM on record.
 |---|---|---|---|
 | `cursor` | query | `string | null` | no |
 | `limit` | query | `integer` | no |
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `GET /api/v1/me/game`
+
+**Game**
+
+Home's game strip: rank and the XP to the next one, points this week,
+quests done, the weekly streak, unread notifications.
+
+*Tags:* `social`
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+
+---
+
+### `GET /api/v1/notifications`
+
+**Notifications**
+
+*Tags:* `social`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `cursor` | query | `string | null` | no |
+| `limit` | query | `integer` | no |
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `POST /api/v1/notifications/read`
+
+**Mark Read**
+
+Mark the given notifications read - or all of them.
+
+*Tags:* `social`
+
+*Request body* (`application/json`): `ReadIn`
 
 | Status | Description |
 |---|---|
@@ -1976,6 +2119,117 @@ The three paths, in the order they are offered.
 
 ---
 
+### `GET /api/v1/users/search`
+
+**Search Users**
+
+By display name or username. Never yourself; never by email - finding
+out whether an address has an account is not a feature.
+
+*Tags:* `social`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `q` | query | `string` | yes |
+| `cursor` | query | `string | null` | no |
+| `limit` | query | `integer` | no |
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `GET /api/v1/users/suggested`
+
+**Suggested Users**
+
+People you may know: followed by people you follow, then your party
+mates - never someone you already follow.
+
+*Tags:* `social`
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+
+---
+
+### `GET /api/v1/users/{user_id}`
+
+**Profile**
+
+*Tags:* `social`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `user_id` | path | `string` | yes |
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `GET /api/v1/users/{user_id}/followers`
+
+**Followers**
+
+*Tags:* `social`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `user_id` | path | `string` | yes |
+| `cursor` | query | `string | null` | no |
+| `limit` | query | `integer` | no |
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `GET /api/v1/users/{user_id}/following`
+
+**Following**
+
+*Tags:* `social`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `user_id` | path | `string` | yes |
+| `cursor` | query | `string | null` | no |
+| `limit` | query | `integer` | no |
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `GET /api/v1/users/{user_id}/sessions`
+
+**User Sessions**
+
+*Tags:* `social`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `user_id` | path | `string` | yes |
+| `cursor` | query | `string | null` | no |
+| `limit` | query | `integer` | no |
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
 ### `POST /api/v1/workouts/import`
 
 **Import Workouts**
@@ -2129,11 +2383,33 @@ to rehydrate a workout after a refresh.
 
 **Read Session**
 
+Your own workout - or someone else's finished one that its visibility
+lets you see (app/core/social.py), rendered as its owner sees it.
+
 *Tags:* `workouts`
 
 | Param | In | Type | Required |
 |---|---|---|---|
 | `session_id` | path | `string` | yes |
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `PATCH /api/v1/workouts/sessions/{session_id}`
+
+**Update Session**
+
+*Tags:* `workouts`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `session_id` | path | `string` | yes |
+
+*Request body* (`application/json`): `SessionPatch`
 
 | Status | Description |
 |---|---|
@@ -2285,6 +2561,59 @@ The PREVIOUS column: the last finished session's sets on this exercise
 |---|---|---|---|
 | `session_id` | path | `string` | yes |
 | `exercise_id` | query | `string` | yes |
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `DELETE /api/v1/workouts/sessions/{session_id}/reactions`
+
+**Unspot**
+
+*Tags:* `social`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `session_id` | path | `string` | yes |
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `GET /api/v1/workouts/sessions/{session_id}/reactions`
+
+**Reactions**
+
+*Tags:* `social`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `session_id` | path | `string` | yes |
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `POST /api/v1/workouts/sessions/{session_id}/reactions`
+
+**Spot**
+
+"Spotted": a nod to a workout you can see. Once per person.
+
+*Tags:* `social`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `session_id` | path | `string` | yes |
 
 | Status | Description |
 |---|---|
@@ -2843,12 +3172,47 @@ otherwise 503 with per-dependency detail.
 | `target_type` | `string` | yes |
 | `target_id` | `string` | yes |
 
+#### `FeedExercise`
+
+| Field | Type | Required |
+|---|---|---|
+| `name` | `string` | yes |
+| `thumbnail_url` | `string | null` | yes |
+| `sets` | `integer` | yes |
+
+#### `FeedItem`
+
+| Field | Type | Required |
+|---|---|---|
+| `session_id` | `string` | yes |
+| `user` | `UserCard` | yes |
+| `name` | `string | null` | yes |
+| `started_at` | `string` | yes |
+| `ended_at` | `string` | yes |
+| `visibility` | `string` | yes |
+| `duration_seconds` | `integer` | yes |
+| `volume_kg` | `number` | yes |
+| `working_sets` | `integer` | yes |
+| `records` | `integer` | yes |
+| `points` | `integer` | yes |
+| `exercises` | `FeedExercise[]` | yes |
+| `more_exercises` | `integer` | yes |
+| `spotted` | `integer` | yes |
+| `spotted_by_me` | `boolean` | yes |
+
 #### `FeedOut`
 
 | Field | Type | Required |
 |---|---|---|
 | `entries` | `ActivityOut[]` | yes |
 | `next_before` | `string | null` | no |
+
+#### `FeedPage`
+
+| Field | Type | Required |
+|---|---|---|
+| `items` | `FeedItem[]` | yes |
+| `next_cursor` | `string | null` | no |
 
 #### `FinishResponse`
 
@@ -2873,6 +3237,21 @@ otherwise 503 with per-dependency detail.
 | Field | Type | Required |
 |---|---|---|
 | `name` | `string | null` | no |
+
+#### `GameOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `rank` | `string` | yes |
+| `level` | `integer` | yes |
+| `next_rank` | `string | null` | yes |
+| `xp` | `integer` | yes |
+| `xp_next_rank` | `integer | null` | yes |
+| `points_this_week` | `integer` | yes |
+| `quests_done` | `integer` | yes |
+| `quests_total` | `integer` | yes |
+| `streak_weeks` | `integer` | yes |
+| `unread_notifications` | `integer` | yes |
 
 #### `HTTPValidationError`
 
@@ -2945,13 +3324,14 @@ otherwise 503 with per-dependency detail.
 | `rank` | `string` | yes |
 | `is_me` | `boolean` | yes |
 
-#### `LeaderboardOut`
+#### `LeaderboardRow`
 
 | Field | Type | Required |
 |---|---|---|
-| `party_id` | `string` | yes |
-| `total_party_xp` | `integer` | yes |
-| `entries` | `LeaderboardEntry[]` | yes |
+| `position` | `integer` | yes |
+| `user` | `UserCard` | yes |
+| `points` | `integer` | yes |
+| `is_me` | `boolean` | yes |
 
 #### `LeagueEntryOut`
 
@@ -3165,6 +3545,27 @@ otherwise 503 with per-dependency detail.
 | `items` | `MyExerciseOut[]` | yes |
 | `next_cursor` | `string | null` | no |
 
+#### `NotificationOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `id` | `string` | yes |
+| `type` | `string` | yes |
+| `actor` | `UserCard | null` | yes |
+| `target_type` | `string | null` | yes |
+| `target_id` | `string | null` | yes |
+| `detail` | `string | null` | yes |
+| `read` | `boolean` | yes |
+| `created_at` | `string` | yes |
+
+#### `NotificationPage`
+
+| Field | Type | Required |
+|---|---|---|
+| `items` | `NotificationOut[]` | yes |
+| `unread` | `integer` | yes |
+| `next_cursor` | `string | null` | no |
+
 #### `ParseFeedback`
 
 | Field | Type | Required |
@@ -3360,17 +3761,6 @@ otherwise 503 with per-dependency detail.
 | `reps` | `integer | null` | yes |
 | `set_type` | `string` | yes |
 | `rpe` | `number | null` | yes |
-
-#### `ProfileOut`
-
-| Field | Type | Required |
-|---|---|---|
-| `user` | `UserOut` | yes |
-| `progress` | `ProgressOut` | yes |
-| `stats` | `LifetimeStats` | yes |
-| `badges` | `BadgeOut[]` | yes |
-| `badges_earned` | `integer` | yes |
-| `badges_total` | `integer` | yes |
 
 #### `ProgramIn`
 
@@ -3579,6 +3969,25 @@ otherwise 503 with per-dependency detail.
 | `defeated_at` | `string | null` | yes |
 | `ends_at` | `string` | yes |
 | `hitters` | `RaidHitterOut[]` | yes |
+
+#### `ReactionOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `spotted` | `integer` | yes |
+| `spotted_by_me` | `boolean` | yes |
+
+#### `ReadIn`
+
+| Field | Type | Required |
+|---|---|---|
+| `ids` | `string[]` | no |
+
+#### `ReadOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `unread` | `integer` | yes |
 
 #### `RecordOut`
 
@@ -3792,6 +4201,15 @@ otherwise 503 with per-dependency detail.
 | `points_credited` | `integer` | yes |
 | `qualified` | `boolean | null` | yes |
 | `exercises` | `SessionExerciseOut[]` | yes |
+| `visibility` | `string` | no |
+| `user_id` | `string | null` | no |
+
+#### `SessionPatch`
+
+| Field | Type | Required |
+|---|---|---|
+| `name` | `string | null` | no |
+| `visibility` | `string | null` | no |
 
 #### `SessionStart`
 
@@ -3800,6 +4218,7 @@ otherwise 503 with per-dependency detail.
 | `routine_id` | `string | null` | no |
 | `preset_slug` | `string | null` | no |
 | `name` | `string | null` | no |
+| `visibility` | `string | null` | no |
 
 #### `SessionStatus`
 
@@ -3822,6 +4241,7 @@ otherwise 503 with per-dependency detail.
 | `total_volume_kg` | `number` | yes |
 | `points_total` | `integer` | yes |
 | `pr_count` | `integer` | yes |
+| `visibility` | `string` | no |
 
 #### `SessionTargetOut`
 
@@ -4064,6 +4484,21 @@ otherwise 503 with per-dependency detail.
 | `best_kg` | `number | null` | yes |
 | `passed` | `boolean` | yes |
 
+#### `UserCard`
+
+| Field | Type | Required |
+|---|---|---|
+| `id` | `string` | yes |
+| `display_name` | `string` | yes |
+| `username` | `string | null` | yes |
+| `avatar_url` | `string | null` | yes |
+| `rank` | `string` | yes |
+| `level` | `integer` | yes |
+| `training_category` | `string | null` | yes |
+| `you_follow` | `boolean` | yes |
+| `follows_you` | `boolean` | yes |
+| `reason` | `string | null` | no |
+
 #### `UserOut`
 
 | Field | Type | Required |
@@ -4081,6 +4516,13 @@ otherwise 503 with per-dependency detail.
 | `bio` | `string | null` | no |
 | `default_rest_seconds` | `integer` | no |
 | `default_visibility` | `string` | no |
+
+#### `UserPage`
+
+| Field | Type | Required |
+|---|---|---|
+| `items` | `UserCard[]` | yes |
+| `next_cursor` | `string | null` | no |
 
 #### `ValidationError`
 
@@ -4148,3 +4590,42 @@ otherwise 503 with per-dependency detail.
 | `period` | `string` | yes |
 | `period_start` | `string | null` | yes |
 | `entries` | `WorkoutLeaderboardEntry[]` | yes |
+
+#### `app__schemas__party__LeaderboardOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `party_id` | `string` | yes |
+| `total_party_xp` | `integer` | yes |
+| `entries` | `LeaderboardEntry[]` | yes |
+
+#### `app__schemas__profile__ProfileOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `user` | `UserOut` | yes |
+| `progress` | `ProgressOut` | yes |
+| `stats` | `LifetimeStats` | yes |
+| `badges` | `BadgeOut[]` | yes |
+| `badges_earned` | `integer` | yes |
+| `badges_total` | `integer` | yes |
+
+#### `app__schemas__social__LeaderboardOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `period` | `string` | yes |
+| `rows` | `LeaderboardRow[]` | yes |
+| `me` | `LeaderboardRow` | yes |
+
+#### `app__schemas__social__ProfileOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `user` | `UserCard` | yes |
+| `bio` | `string | null` | yes |
+| `followers` | `integer` | yes |
+| `following` | `integer` | yes |
+| `workouts` | `integer` | yes |
+| `is_friend` | `boolean` | yes |
+| `is_me` | `boolean` | yes |

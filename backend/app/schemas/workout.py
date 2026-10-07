@@ -12,6 +12,7 @@ Two rules shape everything here:
 
 import datetime as dt
 import uuid
+from typing import Literal
 from decimal import ROUND_HALF_UP, Decimal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -328,12 +329,21 @@ class SessionStart(BaseModel):
     # routine_id: two plans for one session has no meaning.
     preset_slug: str | None = Field(default=None, min_length=1, max_length=60)
     name: str | None = Field(default=None, min_length=1, max_length=80)
+    # Who sees it once finished; the account default when left out.
+    visibility: Literal["public", "followers", "private"] | None = None
 
     @model_validator(mode="after")
     def _one_plan_only(self) -> "SessionStart":
         if self.routine_id is not None and self.preset_slug is not None:
             raise ValueError("send routine_id or preset_slug, not both")
         return self
+
+
+class SessionPatch(BaseModel):
+    """Rename a workout, or change who sees it - live or finished."""
+
+    name: str | None = Field(default=None, min_length=1, max_length=80)
+    visibility: Literal["public", "followers", "private"] | None = None
 
 
 class PresetExerciseOut(BaseModel):
@@ -443,6 +453,9 @@ class SessionOut(BaseModel):
     points_credited: int
     qualified: bool | None
     exercises: list[SessionExerciseOut]
+    visibility: str = "followers"
+    # Whose it is - a friend's workout can be read too (routes/social.py).
+    user_id: uuid.UUID | None = None
 
 
 class ActiveSessionOut(BaseModel):
@@ -464,6 +477,7 @@ class SessionSummaryOut(BaseModel):
     total_volume_kg: float
     points_total: int
     pr_count: int
+    visibility: str = "followers"
 
 
 class StreakOut(BaseModel):

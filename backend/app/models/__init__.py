@@ -28,6 +28,7 @@ from app.models.taxonomy import EquipmentInfo, MuscleGroupInfo
 from app.models.training_category import TrainingCategoryProfile
 from app.models.raid import RaidBoss, RaidHit
 from app.models.reward import RewardItem, RewardRedemption
+from app.models.social import Follow, Notification, Reaction
 from app.models.user import LevelProgress, User
 from app.models.workout import (
     BodyMeasurement,
@@ -43,6 +44,9 @@ from app.models.workout import (
 )
 
 __all__ = [
+    "Follow",
+    "Notification",
+    "Reaction",
     "ActivityEvent",
     "AuthSession",
     "Duel",

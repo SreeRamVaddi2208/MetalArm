@@ -59,7 +59,7 @@ async function signIn(page) {
   await page.locator('input').first().fill(email);
   await page.locator('input[type=password]').fill(password);
   await page.getByText('ENTER', { exact: true }).click();
-  await page.waitForURL('**/dashboard', { timeout: 20000 });
+  await page.waitForURL('**/home', { timeout: 20000 });
 }
 
 const launchOptions = process.env.CHROME_PATH
@@ -80,7 +80,7 @@ try {
 
   for (const tier of TIERS) {
     section(`Promotion into ${tier.title}`);
-    await page.goto(`${UI}/dashboard?celebrate=${tier.rank}`);
+    await page.goto(`${UI}/quests?celebrate=${tier.rank}`);
     const veil = page.locator('.lf-celebrate');
     await veil.waitFor({ state: 'visible', timeout: 15000 });
 
@@ -124,7 +124,7 @@ try {
   const calmPage = await calm.newPage();
   calmPage.on('pageerror', (e) => errors.push(e.message));
   await signIn(calmPage);
-  await calmPage.goto(`${UI}/dashboard?celebrate=S`);
+  await calmPage.goto(`${UI}/quests?celebrate=S`);
   const calmVeil = calmPage.locator('.lf-celebrate');
   await calmVeil.waitFor({ state: 'visible', timeout: 15000 });
   // The particles are in the DOM but display:none, and nothing waits.

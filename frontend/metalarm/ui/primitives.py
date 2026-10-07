@@ -42,10 +42,11 @@ def number(value: Any, unit: Any = "", *, style: dict = t.DISPLAY_NUMBER,
 
 def delta_pill(value: Any, direction: Any = "down") -> rx.Component:
     """▲ in recovery green when up; ▼ in neutral grey when down - a lighter
-    week is not a failure."""
+    week is not a failure; "=" when nothing changed."""
     up = direction == "up"
+    flat = direction == "flat"
     return rx.el.span(
-        when(up, "▲ ", "▼ "),
+        when(flat, "= ", when(up, "▲ ", "▼ ")),
         value,
         background=t.SURFACE_2,
         color=when(up, t.RECOVERY_GREEN, t.TEXT_SECONDARY),

@@ -7,6 +7,7 @@ import reflex as rx
 
 from metalarm import theme as t
 from metalarm.components.layout import error_banner, shell
+from metalarm.pages.people import people_tab
 from metalarm.state.explore import ExploreState
 from metalarm.ui.body_map import body_map
 from metalarm.ui.cards import equipment_circle, muscle_tile
@@ -212,7 +213,7 @@ def explore_page() -> rx.Component:
         rx.match(
             ExploreState.tab,
             ("Programs", _programs()),
-            ("People", empty_state("People", "Finding and following friends arrives with the feed.")),
+            ("People", people_tab()),
             rx.cond(ExploreState.listing, _listing(), _grids()),
         ),
         program_sheet(),

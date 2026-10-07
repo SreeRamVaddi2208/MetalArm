@@ -765,3 +765,69 @@ class BodyRow:
             value_label=f"{fmt(_num(data.get('value')))}{unit_label}",
             date_label=day_label(data.get("recorded_at"), tz),
         )
+
+
+# ---------------------------------------------------------------------------
+# The social feed (overhaul phase 4)
+# ---------------------------------------------------------------------------
+
+
+def initials_of(name: str) -> str:
+    return "".join(w[0] for w in (name or "").split()[:2]).upper() or "?"
+
+
+def ago(iso: str | None) -> str:
+    """'just now', '3h ago', 'Yesterday', 'Mon 6 Oct'."""
+    if not iso:
+        return ""
+    try:
+        moment = dt.datetime.fromisoformat(iso.replace("Z", "+00:00"))
+    except ValueError:
+        return ""
+    seconds = (dt.datetime.now(dt.timezone.utc) - moment).total_seconds()
+    if seconds < 60:
+        return "just now"
+    if seconds < 3600:
+        return f"{int(seconds // 60)}m ago"
+    if seconds < 86400:
+        return f"{int(seconds // 3600)}h ago"
+    if seconds < 2 * 86400:
+        return "Yesterday"
+    return moment.strftime("%a %-d %b")
+
+
+@dataclasses.dataclass
+class FeedCard:
+    session_id: str = ""
+    user_id: str = ""
+    name: str = ""
+    initials: str = ""
+    rank: str = "E"
+    when: str = ""
+    title: str = ""
+    duration: str = ""
+    volume: str = ""
+    records: int = 0
+    points: str = ""
+    spotted: int = 0
+    spotted_by_me: bool = False
+    more: int = 0
+    exercises: list[dict[str, str]] = dataclasses.field(default_factory=list)
+
+    @classmethod
+    def from_api(cls, item: dict[str, Any], unit: str) -> "FeedCard":
+        user = item.get("user") or {}
+        minutes = int(item.get("duration_seconds") or 0) // 60
+        return cls(
+            session_id=str(item["session_id"]), user_id=str(user.get("id") or ""),
+            name=user.get("display_name") or "", initials=initials_of(user.get("display_name") or ""),
+            rank=user.get("rank") or "E", when=ago(item.get("ended_at")),
+            title=item.get("name") or "Workout",
+            duration=f"{minutes // 60}h {minutes % 60}m" if minutes >= 60 else f"{minutes}m",
+            volume=f"{thousands(to_unit(item.get('volume_kg'), unit))} {unit}",
+            records=item.get("records") or 0, points=f"+{item.get('points') or 0}",
+            spotted=item.get("spotted") or 0, spotted_by_me=bool(item.get("spotted_by_me")),
+            more=item.get("more_exercises") or 0,
+            exercises=[{"caption": f"{e['sets']} × {e['name']}", "image": e.get("thumbnail_url") or ""}
+                       for e in item.get("exercises") or []],
+        )

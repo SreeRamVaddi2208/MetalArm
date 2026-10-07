@@ -14,6 +14,85 @@ Entry format:
 
 ---
 
+## 2026-10-07 (46) - Opus - overhaul phase 4: follows, feed, reactions, notifications, Home
+
+**Changed**
+- **Social graph** (migration `9c2d4e6f8a10`: `follows`, `reactions`,
+  `notifications`; models in `app/models/social.py`). Friends = mutual
+  follows. Every rule about who sees what is in `app/core/social.py`:
+  a finished workout is public (anyone), followers (its owner's followers) or
+  private (owner); in-progress and abandoned are owner-only.
+- **Endpoints** (`routes/social.py`): `POST/DELETE /follows/{id}`;
+  `GET /users/search?q=` (name or username, never email, never yourself),
+  `/users/suggested` (followed by people you follow, then party mates, with
+  the reason), `/users/{id}`, `/users/{id}/followers|following|sessions`;
+  `GET /feed/following` (you + people you follow, as visibility allows, from
+  the finish totals, up to six exercises per card); `GET/POST/DELETE
+  /workouts/sessions/{id}/reactions` ("spotted", once each);
+  `GET /notifications`, `POST /notifications/read`; `GET /me/game` (rank,
+  XP to the next rank's level, points this week, quests done, weekly streak,
+  unread); `GET /leaderboard/friends?period=week|all` (you + people you
+  follow, by ledger points, ties share a place, your own row always
+  returned). The existing `/feed` (party activity) is untouched.
+- Notifications: a follow, a spot, a duel challenge, a friend's record (to
+  mutual friends, never for a private workout), a quest completing (in
+  `quest_board.refresh`, so set logging counts too). An unread repeat is not
+  stacked; nobody is told about their own action.
+- **Workouts**: `visibility` on start (defaults to the account's),
+  `PATCH /workouts/sessions/{id}` (name, visibility - also after finish),
+  `visibility` and `user_id` on `SessionOut`, `visibility` on summaries.
+  `GET /workouts/sessions/{id}` reads a friend's finished workout when its
+  visibility allows.
+- **Duels**: a mutual follow now makes someone challengeable, as well as a
+  shared party (kept, so existing party duels still work);
+  `GET /duels/opponents` lists them; the challenged get a notification.
+- **Home** rebuilt (`pages/home.py`): avatar, the Following / Leaderboard /
+  Duels switcher, find friends, streak flame, bell with unread badge; the game
+  strip (-> `/quests`); weekly snapshot with deltas; the feed (spot from the
+  card, "Show more"), the friends leaderboard (week / all time, your row kept
+  in sight), duels. The old dashboard (quest board, rank detail, the
+  `?celebrate=` preview) now lives at `/quests`.
+- **People**: Explore -> People (search, people you may know, Follow /
+  Following); profiles at `/u/<id>` (rank frame, counts, Follow back,
+  Challenge for friends, their visible workouts); `/notifications`.
+  Session Detail shows whose workout it is and lets you spot it, or - your
+  own - choose who can see it; the workout summary has the same control.
+  You shows follower counts.
+- Gallery feed card: the decorative "verified" tick removed - nobody is
+  verified. Delta pills say "=" when nothing changed rather than "▼ 0".
+
+**Verified**
+- `tests/test_social.py` (12): follows and friends, notification de-dupe,
+  the three visibility rules in the feed / profile / session read, feed
+  totals and paging, spotting (and 404 when you cannot see it), friend PR
+  and quest notifications, mark read, people search (no email, not self),
+  friends-of-friends suggestions, duels for friends only (one-way is not
+  enough), the leaderboard with shared places, `/me/game` against `/auth/me`.
+  Full backend suite passes (exit 0, the two dev-DB health tests
+  deselected); migration up / down / up and `alembic check` clean on a
+  scratch DB with a REBUILT image (the first check ran an old image - caught
+  it; it also found the id server defaults and an unindexed FK, both fixed).
+- `scripts/e2e/social_e2e.mjs` (new, Gate 4): two browsers - search, follow,
+  the followers-only workout in the feed (never the private one) with its
+  numbers, spot, the other side's notifications, follow back from one,
+  challenge and accept a duel with no shared party, the leaderboard -
+  375 and 430: ALL PASSED (21).
+- Also passing: `workout_e2e` 104, `logging_e2e` 36, `analytics_e2e` 53,
+  `explore_e2e` 36, `duels_e2e` 12 and `rank_up_e2e` 51 (both were stale
+  since phase 0's /dashboard -> /home and the fair-duel mode picker; fixed),
+  `web_tour.mjs` full take with no missed controls.
+- Social reads on the demo account: <= 11 ms each.
+- `docs/api-contract.md` regenerated (108 paths).
+- iOS `scripts/dev.sh ios`: ** TEST SUCCEEDED ** - XCTest 25 executed, 0 failures (live tour skipped); Swift Testing 94 passed. API changes are additive.
+
+**Blocked:** nothing.
+
+**Other agent needs to know:** "Friendship" in the next-slice duel spec is
+now mutual follows; parties still count for duels. The Monthly Summary hero
+card on Home is phase 5.
+
+---
+
 ## 2026-10-07 (45) - Opus - overhaul phase 3: Explore, the full wger import, curated programs
 
 **Changed**

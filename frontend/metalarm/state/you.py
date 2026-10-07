@@ -61,6 +61,8 @@ def month_grid(first: dt.date, trained: set[dt.date], today: dt.date) -> list[li
 class YouState(rx.State):
     tab: str = "Overview"
     error: str = ""
+    followers: int = 0
+    following: int = 0
 
     # --- Overview ---
     range_: str = "3M"
@@ -125,6 +127,10 @@ class YouState(rx.State):
         self.month = today.strftime("%Y-%m")
         self.error = ""
         try:
+            from metalarm import social_api
+
+            me = await social_api.profile(token, (await self.get_state(AuthState)).user_id)
+            self.followers, self.following = me["followers"], me["following"]
             await self._load_series(token, unit)
             await self._load_muscles(token)
             await self._load_month(token, tz)

@@ -3,6 +3,7 @@
 from fastapi import APIRouter
 
 from app.api.routes import (
+    social,
     analytics,
     auth,
     body,
@@ -49,3 +50,4 @@ api_router.include_router(devices.router)
 api_router.include_router(training_paths.router)
 api_router.include_router(taxonomy.router)
 api_router.include_router(analytics.router)
+api_router.include_router(social.router)

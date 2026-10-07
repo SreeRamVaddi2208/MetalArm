@@ -117,7 +117,12 @@ try {
     await wait(1800);
   });
 
-  await chapter('dashboard', async () => { await wait(1200); });
+  await chapter('dashboard', async () => {
+    // Home is the feed now; the quest board and rank detail sit behind the game strip.
+    await wait(1200);
+    await go('/quests');
+    await wait(600);
+  });
 
   await chapter('freeze', async () => {
     await page.getByText('Your streak was saved', { exact: false }).first()
@@ -331,7 +336,7 @@ try {
   });
 
   await chapter('rankup', async () => {
-    await go('/home?celebrate=S');
+    await go('/quests?celebrate=S');
     await page.locator('.lf-celebrate').waitFor({ state: 'visible', timeout: 15000 }).catch(() => missed.push('rank-up'));
     await wait(5800);
   });
