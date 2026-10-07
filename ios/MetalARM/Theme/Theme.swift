@@ -2,184 +2,109 @@
 //  Theme.swift
 //  MetalARM
 //
-//  Design tokens: MetalArm's grey, machined-steel identity. Near-black ground,
-//  graphite surfaces, white and silver as the only accents; red is kept for
-//  errors and destructive actions. The same values as frontend/metalarm/theme.py.
+//  Design tokens: the minimal design system, the same values as the web app's
+//  frontend/metalarm/theme.py (see frontend/DESIGN_SYSTEM.md). Near-black
+//  neutrals and ONE accent, Forge orange; danger red for destructive actions
+//  only; rank-tier colours only inside RankBadge and the rank-up overlay.
+//
+//  Views use these tokens and the primitives in Components.swift - never a
+//  raw colour, size or radius (scripts/check_ios_tokens.py enforces it).
 //
 
 import SwiftUI
 
-private extension Color {
-    init(hex: UInt32) {
+extension Color {
+    init(hex: UInt32, opacity: Double = 1) {
         self.init(
             red: Double((hex >> 16) & 0xFF) / 255,
             green: Double((hex >> 8) & 0xFF) / 255,
-            blue: Double(hex & 0xFF) / 255)
+            blue: Double(hex & 0xFF) / 255,
+            opacity: opacity)
     }
 }
 
 enum Theme {
-    static let bg = Color(hex: 0x0B0B0C)
-    static let bg2 = Color(hex: 0x121214)
-    static let card = Color(hex: 0x1A1A1D)
-    static let cardBorder = Color(hex: 0x2A2A2E)
-    static let borderStrong = Color(hex: 0x3A3A40)
-    static let text = Color(hex: 0xF2F2F4)
-    static let dim = Color(hex: 0xA8A8B0)
-    static let faint = Color(hex: 0x7C7C84)
-    /// Primary actions, highlights and the XP bar's bright end.
-    static let accent = Color(hex: 0xFFFFFF)
-    static let accentDeep = Color(hex: 0x9A9AA2)
-    /// Metal surfaces: badges, trophies, secondary highlights.
-    static let silver = Color(hex: 0xC0C0C8)
-    static let silverDeep = Color(hex: 0x6A6A72)
-    static let success = Color(hex: 0xB8B8BF)
-    /// The one colour left: errors and destructive actions.
-    static let danger = Color(hex: 0xE5484D)
+    // MARK: Colour
 
-    // The design's typefaces, bundled under Fonts/ (SIL Open Font License) and
-    // registered through UIAppFonts: Space Grotesk for headings and numbers,
-    // Manrope for everything else - the same pair the web app uses.
+    static let bg = Color(hex: 0x0E0E10)
+    static let surface = Color(hex: 0x17171A)
+    static let surface2 = Color(hex: 0x202024)
+    /// 1 pt hairlines and input outlines only.
+    static let border = Color(hex: 0x2A2A2F)
+    static let text = Color(hex: 0xF4F4F2)
+    static let text2 = Color(hex: 0xA1A1A8)
+    /// Placeholders, "last time" ghosts, disabled.
+    static let text3 = Color(hex: 0x6E6E76)
+    /// The one accent: the primary button, the active tab, progress fills,
+    /// the PR highlight, selected chips.
+    static let accent = Color(hex: 0xFF6B2C)
+    static let accentSoft = Color(hex: 0xFF6B2C, opacity: 0.14)
+    static let onAccent = Color(hex: 0x0E0E10)
+    static let danger = Color(hex: 0xE5484D)
+    static let scrim = Color(hex: 0x000000, opacity: 0.6)
+
+    /// Rank tiers, E to S. Read only by RankBadge and LevelUpView.
+    static let tierColors: [String: Color] = [
+        "E": Color(hex: 0x8A6B4E), "D": Color(hex: 0x9AA4AE), "C": Color(hex: 0xD4A93C),
+        "B": Color(hex: 0x3FB6B0), "A": Color(hex: 0x5BA8FF), "S": Color(hex: 0xC77DFF),
+    ]
+
+    static func tier(_ rank: String) -> Color {
+        tierColors[rank.uppercased()] ?? text2
+    }
+
+    // MARK: Type
+
+    // Bundled under Fonts/ (SIL Open Font License) and registered through
+    // UIAppFonts: Space Grotesk for titles and numbers, Manrope for the rest.
     static let fontNames = [
         "SpaceGrotesk-Regular", "SpaceGrotesk-Medium", "SpaceGrotesk-SemiBold", "SpaceGrotesk-Bold",
         "Manrope-Regular", "Manrope-Medium", "Manrope-SemiBold", "Manrope-Bold",
     ]
 
-    /// Headings, numbers and buttons (Space Grotesk).
-    static func display(_ size: CGFloat, _ weight: Font.Weight = .bold) -> Font {
-        .custom(face("SpaceGrotesk", weight), fixedSize: size)
+    /// The hero number: the timer, the set being entered, the points total.
+    static let display = Font.custom("SpaceGrotesk-SemiBold", size: 48, relativeTo: .largeTitle).monospacedDigit()
+    /// A screen's title.
+    static let titleLG = Font.custom("SpaceGrotesk-SemiBold", size: 28, relativeTo: .title).monospacedDigit()
+    /// Section and card titles.
+    static let title = Font.custom("SpaceGrotesk-SemiBold", size: 20, relativeTo: .title3).monospacedDigit()
+    static let body = Font.custom("Manrope-Medium", size: 16, relativeTo: .body).monospacedDigit()
+    /// Buttons and row labels.
+    static let label = Font.custom("Manrope-SemiBold", size: 14, relativeTo: .subheadline).monospacedDigit()
+    /// Meta, units, timestamps.
+    static let caption = Font.custom("Manrope-Medium", size: 12, relativeTo: .caption).monospacedDigit()
+
+    /// Reward moments only (the rank-up overlay): a size outside the scale.
+    static func hero(_ size: CGFloat) -> Font {
+        .custom("SpaceGrotesk-Bold", size: size, relativeTo: .largeTitle)
     }
 
-    /// Body text, labels and captions (Manrope).
-    static func body(_ size: CGFloat, _ weight: Font.Weight = .regular) -> Font {
-        .custom(face("Manrope", weight), fixedSize: size)
+    // MARK: Space, size, shape, motion
+
+    enum Space {
+        static let s4: CGFloat = 4
+        static let s8: CGFloat = 8
+        static let s12: CGFloat = 12
+        static let s16: CGFloat = 16
+        static let s24: CGFloat = 24
+        static let s32: CGFloat = 32
+        static let s48: CGFloat = 48
     }
 
-    /// The bundled static weights are 400-700, so heavier requests use Bold.
-    private static func face(_ family: String, _ weight: Font.Weight) -> String {
-        switch weight {
-        case .bold, .heavy, .black: "\(family)-Bold"
-        case .semibold: "\(family)-SemiBold"
-        case .medium: "\(family)-Medium"
-        default: "\(family)-Regular"
-        }
-    }
-}
+    /// Screen side padding.
+    static let gutter: CGFloat = 20
+    static let cardPadding: CGFloat = 16
+    /// Minimum tap target; an icon button is 44.
+    static let touch: CGFloat = 48
+    static let iconHit: CGFloat = 44
+    static let rowMin: CGFloat = 56
+    static let buttonHeight: CGFloat = 52
 
-struct PrimaryButtonStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .font(Theme.display(16))
-            .foregroundStyle(Theme.bg)
-            .frame(maxWidth: .infinity)
-            .padding(15)
-            .background(Theme.accent.opacity(configuration.isPressed ? 0.8 : 1), in: RoundedRectangle(cornerRadius: 14))
-    }
-}
+    /// Cards and inputs.
+    static let radius: CGFloat = 12
+    /// Sheets (top corners).
+    static let radiusSheet: CGFloat = 16
 
-struct SecondaryButtonStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .font(Theme.body(15, .semibold))
-            .foregroundStyle(Theme.text.opacity(configuration.isPressed ? 0.7 : 1))
-            .frame(maxWidth: .infinity)
-            .padding(16)
-            .overlay(RoundedRectangle(cornerRadius: 16).stroke(Theme.cardBorder))
-            .contentShape(RoundedRectangle(cornerRadius: 16))
-    }
-}
-
-extension View {
-    /// The web app's CARD_STYLE: card fill with a 1px border.
-    func cardStyle(cornerRadius: CGFloat = 20) -> some View {
-        background(Theme.card, in: RoundedRectangle(cornerRadius: cornerRadius))
-            .overlay(RoundedRectangle(cornerRadius: cornerRadius).stroke(Theme.cardBorder))
-    }
-}
-
-/// White-to-silver XP progress bar.
-struct XPBar: View {
-    let progress: Double
-    var track: Color = Theme.bg
-
-    var body: some View {
-        GeometryReader { geometry in
-            ZStack(alignment: .leading) {
-                Capsule().fill(track)
-                Capsule()
-                    .fill(LinearGradient(colors: [Theme.accent, Theme.accentDeep], startPoint: .leading, endPoint: .trailing))
-                    .frame(width: geometry.size.width * max(0, min(1, progress)))
-            }
-        }
-        .frame(height: 8)
-        .accessibilityElement()
-        .accessibilityLabel("Experience")
-        .accessibilityValue("\(Int((progress * 100).rounded())) percent")
-    }
-}
-
-struct StatTile: View {
-    let value: String
-    let label: String
-    var unit: String = ""
-
-    var body: some View {
-        VStack(spacing: 2) {
-            HStack(alignment: .firstTextBaseline, spacing: 3) {
-                Text(value)
-                    .font(Theme.display(20, .heavy))
-                    .foregroundStyle(Theme.text)
-                if !unit.isEmpty {
-                    Text(unit)
-                        .font(Theme.body(12))
-                        .foregroundStyle(Theme.dim)
-                }
-            }
-            Text(label)
-                .font(Theme.body(11))
-                .foregroundStyle(Theme.dim)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 14)
-        .padding(.horizontal, 8)
-        .cardStyle(cornerRadius: 16)
-    }
-}
-
-struct AvatarBadge: View {
-    let initials: String
-    let size: CGFloat
-    let cornerRadius: CGFloat
-    let fontSize: CGFloat
-    var bordered = false
-
-    var body: some View {
-        Text(initials)
-            .font(Theme.display(fontSize, .heavy))
-            .foregroundStyle(Theme.text)
-            .frame(width: size, height: size)
-            .background(
-                // Dark silver, so the white initials keep their contrast.
-                LinearGradient(colors: [Theme.silverDeep, Theme.borderStrong], startPoint: .topLeading, endPoint: .bottomTrailing),
-                in: RoundedRectangle(cornerRadius: cornerRadius))
-            .overlay {
-                if bordered {
-                    RoundedRectangle(cornerRadius: cornerRadius).stroke(Theme.accent, lineWidth: 3)
-                }
-            }
-    }
-}
-
-/// Backend errors, shown inline the way the web pages do.
-struct ErrorText: View {
-    let message: String
-
-    var body: some View {
-        if !message.isEmpty {
-            Text(message)
-                .font(Theme.body(12))
-                .foregroundStyle(Theme.danger)
-                .frame(maxWidth: .infinity, alignment: .leading)
-        }
-    }
+    static let fast: Double = 0.15
+    static let base: Double = 0.25
 }

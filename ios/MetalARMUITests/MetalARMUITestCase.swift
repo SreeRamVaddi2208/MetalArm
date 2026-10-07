@@ -53,6 +53,24 @@ class MetalARMUITestCase: XCTestCase {
         }
     }
 
+    /// The leaderboard lives behind Home's "See all".
+    @MainActor
+    func openLeaderboard(_ app: XCUIApplication) {
+        openTab(app, "Home")
+        let link = app.buttons["homeLeaderboardLink"]
+        XCTAssertTrue(link.waitForExistence(timeout: reacts), "Home has no leaderboard link")
+        scrollUntilHittable(link, in: app)
+        link.tap()
+        XCTAssertTrue(app.navigationBars["Leaderboard"].waitForExistence(timeout: reacts), "See all did not open the leaderboard")
+    }
+
+    /// The workout header's count: "1 set · 52 pts", "2 sets · 54 pts".
+    @MainActor
+    func setsLogged(_ app: XCUIApplication, _ count: Int) -> XCUIElement {
+        let words = "\(count) \(count == 1 ? "set" : "sets") ·"
+        return app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", words)).firstMatch
+    }
+
     @MainActor
     func element(_ app: XCUIApplication, _ identifier: String) -> XCUIElement {
         app.descendants(matching: .any)[identifier]

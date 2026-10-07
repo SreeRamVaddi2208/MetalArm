@@ -17,11 +17,12 @@ struct ProfileView: View {
     @State private var showingImporter = false
     @State private var showingPath = false
 
-    private let badgeColumns = Array(repeating: GridItem(.flexible(), spacing: 12), count: 4)
+    private let badgeColumns = Array(repeating: GridItem(.flexible(), spacing: Theme.Space.s12), count: 4)
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 0) {
+            VStack(alignment: .leading, spacing: Theme.Space.s32) {
+                ScreenTitle("Profile")
                 if let profile = model.profile {
                     header(profile)
                     stats(profile.stats)
@@ -35,9 +36,8 @@ struct ProfileView: View {
                 }
                 settings
                 ErrorText(message: model.errorMessage)
-                    .padding(.top, 12)
             }
-            .padding(20)
+            .screen()
         }
         .background(Theme.bg)
         .task { await model.loadProfile() }
@@ -75,7 +75,7 @@ struct ProfileView: View {
             Text(model.importSummary)
         }
         .confirmationDialog("Sign out of every device?", isPresented: $confirmingSignOutEverywhere, titleVisibility: .visible) {
-            Button("Sign Out Everywhere", role: .destructive) {
+            Button("Sign out everywhere", role: .destructive) {
                 Task { await model.signOutEverywhere() }
             }
         } message: {
@@ -84,141 +84,84 @@ struct ProfileView: View {
     }
 
     private func header(_ profile: Profile) -> some View {
-        VStack(spacing: 0) {
-            AvatarBadge(initials: initials(of: profile.user.displayName), size: 84, cornerRadius: 24, fontSize: 28, bordered: true)
-            Text(profile.user.displayName)
-                .font(Theme.display(22))
-                .foregroundStyle(Theme.text)
-                .padding(.top, 12)
-            Text("Level \(profile.progress.currentLevel) · \(RankTitle.of(profile.progress.rank))")
-                .font(Theme.body(12.5, .bold))
-                .foregroundStyle(Theme.accent)
-                .padding(.top, 5)
-            XPBar(progress: profile.progress.xpProgress, track: Theme.card)
-                .padding(.top, 16)
-            Text("\(profile.progress.xpIntoLevel) / \(profile.progress.xpForNextLevel) XP to next level")
-                .font(Theme.body(11))
-                .foregroundStyle(Theme.dim)
-                .padding(.top, 6)
+        VStack(alignment: .leading, spacing: Theme.Space.s16) {
+            HStack {
+                Avatar(initials: initials(of: profile.user.displayName), size: 96)
+                Spacer()
+                RankBadge(rank: profile.progress.rank, size: 96)
+            }
+            VStack(alignment: .leading, spacing: 0) {
+                Text(profile.user.displayName).font(Theme.titleLG).foregroundStyle(Theme.text)
+                Text("\(RankTitle.of(profile.progress.rank)) · Level \(profile.progress.currentLevel)")
+                    .font(Theme.body).foregroundStyle(Theme.text2)
+            }
+            ProgressBar(progress: profile.progress.xpProgress,
+                        label: "\(profile.progress.xpIntoLevel) / \(profile.progress.xpForNextLevel) XP to the next level")
         }
     }
 
     private func stats(_ stats: LifetimeStats) -> some View {
-        HStack(spacing: 12) {
+        HStack(spacing: Theme.Space.s16) {
             StatTile(value: "\(stats.workoutsCompleted)", label: "Workouts")
-            StatTile(value: "\(stats.workoutPrs)", label: "Workout PRs")
+            StatTile(value: "\(stats.workoutPrs)", label: "Records")
             StatTile(value: "\(stats.longestWorkoutStreak)", label: "Best streak", unit: "wk")
         }
-        .padding(.top, 22)
     }
 
-    /// Three stats from real training, plus the cosmetic class that highlights them.
+    /// Three stats from real training, plus the path that highlights them.
     private func character(_ sheet: CharacterSheet) -> some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack {
-                Text("Character")
-                    .font(Theme.display(16))
-                    .foregroundStyle(Theme.text)
-                Spacer()
-                if !sheet.classLabel.isEmpty {
-                    Text(sheet.classLabel)
-                        .font(Theme.body(12, .bold))
-                        .foregroundStyle(Theme.accent)
-                }
-            }
-            ForEach(sheet.stats) { stat in
-                VStack(alignment: .leading, spacing: 6) {
-                    HStack {
-                        Text(stat.label)
-                            .font(Theme.body(12.5, .semibold))
-                            .foregroundStyle(stat.highlighted ? Theme.accent : Theme.text)
-                        Spacer()
-                        Text("\(stat.value)")
-                            .font(Theme.display(13))
-                            .foregroundStyle(Theme.text)
+        SectionBlock(title: "Character") {
+            VStack(spacing: Theme.Space.s16) {
+                ForEach(sheet.stats) { stat in
+                    VStack(alignment: .leading, spacing: Theme.Space.s8) {
+                        HStack {
+                            Text(stat.label).font(Theme.body).foregroundStyle(stat.highlighted ? Theme.text : Theme.text2)
+                            Spacer()
+                            Text("\(stat.value)").font(Theme.body).foregroundStyle(Theme.text)
+                        }
+                        ProgressBar(progress: stat.fraction, label: stat.detail)
                     }
-                    XPBar(progress: stat.fraction, track: Theme.bg)
-                    Text(stat.detail)
-                        .font(Theme.body(10.5))
-                        .foregroundStyle(Theme.dim)
+                    .accessibilityElement(children: .combine)
                 }
-                .accessibilityElement(children: .combine)
             }
-            Text("Your training path highlights the stats you care about and decides what MetalArm suggests. It never changes a score.")
-                .font(Theme.body(10.5))
-                .foregroundStyle(Theme.dim)
             // One way to choose a path, here and at onboarding: the same cards.
-            Button {
-                showingPath = true
-            } label: {
-                HStack(spacing: 8) {
-                    Text(sheet.classLabel.isEmpty ? "Choose a training path" : sheet.classLabel)
-                        .font(Theme.body(12, .bold))
-                        .foregroundStyle(sheet.classLabel.isEmpty ? Theme.text : Theme.bg)
-                    Image(systemName: "chevron.right")
-                        .font(Theme.body(10, .semibold))
-                        .foregroundStyle(sheet.classLabel.isEmpty ? Theme.dim : Theme.bg)
+            Button { showingPath = true } label: {
+                ListRow(title: "Training path", subtitle: sheet.classLabel.isEmpty ? "Not chosen yet" : sheet.classLabel,
+                        chevron: true) {
+                    Image(systemName: "point.topleft.down.to.point.bottomright.curvepath").foregroundStyle(Theme.text2)
                 }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
-                .background(sheet.classLabel.isEmpty ? Theme.bg : Theme.accent, in: RoundedRectangle(cornerRadius: 9))
-                .overlay(RoundedRectangle(cornerRadius: 9).stroke(Theme.cardBorder))
             }
+            .buttonStyle(.plain)
             .accessibilityIdentifier("trainingPathButton")
+            Text("Your path highlights the stats you care about and decides what MetalArm suggests. It never changes a score.")
+                .font(Theme.caption).foregroundStyle(Theme.text2)
         }
-        .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .cardStyle(cornerRadius: 16)
-        .padding(.top, 22)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("characterCard")
     }
 
     /// The strength trials that gate ranks B, A and S, with progress to each.
     private func trials(_ trials: [RankTrial]) -> some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Text("Rank trials")
-                .font(Theme.display(16))
-                .foregroundStyle(Theme.text)
+        SectionBlock(title: "Rank trials") {
             Text("\(RankTitle.list(["B", "A", "S"])) also need a lift at a multiple of your bodyweight.")
-                .font(Theme.body(11))
-                .foregroundStyle(Theme.dim)
-            ForEach(trials) { trial in
-                trialRow(trial)
-            }
-        }
-        .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .cardStyle(cornerRadius: 16)
-        .padding(.top, 22)
-        .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("rankTrialsCard")
-    }
-
-    private func trialRow(_ trial: RankTrial) -> some View {
-        VStack(alignment: .leading, spacing: 7) {
-            HStack(spacing: 10) {
-                Text(trial.rank)
-                    .font(Theme.display(14))
-                    .foregroundStyle(trial.passed ? Theme.bg : Theme.text)
-                    .frame(width: 28, height: 28)
-                    .background(trial.passed ? Theme.accent : Theme.bg, in: RoundedRectangle(cornerRadius: 8))
-                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(Theme.cardBorder))
-                Text(trial.description)
-                    .font(Theme.body(12.5, .semibold))
-                    .foregroundStyle(Theme.text)
-                Spacer(minLength: 0)
-                if trial.passed {
-                    Image(systemName: "checkmark.seal.fill")
-                        .foregroundStyle(Theme.success)
+                .font(Theme.caption).foregroundStyle(Theme.text2)
+            VStack(spacing: Theme.Space.s16) {
+                ForEach(trials) { trial in
+                    VStack(alignment: .leading, spacing: Theme.Space.s8) {
+                        HStack(spacing: Theme.Space.s12) {
+                            RankBadge(rank: trial.rank, size: 24)
+                            Text(trial.description).font(Theme.body).foregroundStyle(Theme.text)
+                            Spacer(minLength: 0)
+                            if trial.passed { Image(systemName: "checkmark").foregroundStyle(Theme.accent) }
+                        }
+                        ProgressBar(progress: trial.fraction, label: trialProgress(trial))
+                    }
+                    .accessibilityElement(children: .combine)
                 }
             }
-            XPBar(progress: trial.fraction, track: Theme.bg)
-            Text(trialProgress(trial))
-                .font(Theme.body(10.5))
-                .foregroundStyle(Theme.dim)
         }
-        .accessibilityElement(children: .combine)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("rankTrialsCard")
     }
 
     private func trialProgress(_ trial: RankTrial) -> String {
@@ -230,51 +173,32 @@ struct ProfileView: View {
     }
 
     private func badges(_ profile: Profile) -> some View {
-        VStack(spacing: 10) {
+        VStack(alignment: .leading, spacing: Theme.Space.s12) {
             HStack {
-                Text("Badges")
-                    .font(Theme.display(16))
-                    .foregroundStyle(Theme.text)
+                Text("Badges").font(Theme.title).foregroundStyle(Theme.text)
                 Spacer()
-                Text("\(profile.badgesEarned) / \(profile.badgesTotal)")
-                    .font(Theme.body(12))
-                    .foregroundStyle(Theme.accent)
+                Text("\(profile.badgesEarned) of \(profile.badgesTotal)").font(Theme.caption).foregroundStyle(Theme.text2)
             }
-            LazyVGrid(columns: badgeColumns, spacing: 12) {
+            LazyVGrid(columns: badgeColumns, spacing: Theme.Space.s12) {
                 ForEach(profile.badges) { badge in
                     badgeTile(badge)
                 }
             }
         }
-        .padding(.top, 22)
     }
 
     private func badgeTile(_ badge: Badge) -> some View {
-        VStack(spacing: 5) {
-            ZStack {
-                if badge.earned {
-                    RoundedRectangle(cornerRadius: 14)
-                        .fill(LinearGradient(colors: [Theme.silver, Theme.silverDeep], startPoint: .topLeading, endPoint: .bottomTrailing))
-                } else {
-                    RoundedRectangle(cornerRadius: 14)
-                        .fill(Theme.card)
-                    RoundedRectangle(cornerRadius: 14)
-                        .strokeBorder(Theme.cardBorder, style: StrokeStyle(lineWidth: 1, dash: [4]))
-                }
-                badgeIcon(badge.icon)
-                    .font(Theme.body(20))
-                    .foregroundStyle(badge.earned ? Theme.bg : Theme.faint)
-            }
-            .aspectRatio(1, contentMode: .fit)
-            Text(badge.name)
-                .font(Theme.body(10))
-                .foregroundStyle(Theme.dim)
-                .multilineTextAlignment(.center)
-                .lineLimit(2)
+        VStack(spacing: Theme.Space.s4) {
+            badgeIcon(badge.icon)
+                .font(.system(.title3))
+                .foregroundStyle(badge.earned ? Theme.accent : Theme.text3)
+                .frame(maxWidth: .infinity)
+                .aspectRatio(1, contentMode: .fit)
+                .background(badge.earned ? Theme.accentSoft : Theme.surface, in: RoundedRectangle(cornerRadius: Theme.radius))
+            Text(badge.name).font(Theme.caption).foregroundStyle(Theme.text2)
+                .multilineTextAlignment(.center).lineLimit(2)
             if !badge.earned {
-                Text("\(badge.percent)%")
-                    .font(Theme.body(9, .semibold))
-                    .foregroundStyle(Theme.faint)
+                Text("\(badge.percent)%").font(Theme.caption).foregroundStyle(Theme.text3)
             }
         }
         .accessibilityElement(children: .ignore)
@@ -295,114 +219,95 @@ struct ProfileView: View {
     }
 
     private var settings: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("SETTINGS")
-                .font(Theme.body(12))
-                .kerning(0.4)
-                .foregroundStyle(Theme.dim)
-            VStack(spacing: 0) {
-                HStack {
-                    Image(systemName: "scalemass")
-                        .frame(width: 22)
-                    Text("Weight unit")
-                    Spacer()
-                    Picker("Weight unit", selection: Binding(
-                        get: { model.weightUnit },
-                        set: { unit in Task { await model.setWeightUnit(unit) } }
-                    )) {
-                        ForEach(WeightUnit.allCases) { unit in
-                            Text(unit.rawValue).tag(unit)
+        VStack(alignment: .leading, spacing: Theme.Space.s32) {
+            SectionBlock(title: "Training") {
+                RowGroup {
+                    HStack {
+                        settingsLabel("Weight unit", icon: "scalemass", chevron: false)
+                        Picker("Weight unit", selection: Binding(
+                            get: { model.weightUnit },
+                            set: { unit in Task { await model.setWeightUnit(unit) } }
+                        )) {
+                            ForEach(WeightUnit.allCases) { unit in
+                                Text(unit.rawValue).tag(unit)
+                            }
+                        }
+                        .pickerStyle(.segmented)
+                        .frame(width: 110)
+                        .accessibilityIdentifier("weightUnitPicker")
+                    }
+                    Button { showingImporter = true } label: {
+                        settingsLabel("Import from Strong or Hevy", icon: "square.and.arrow.down")
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("importWorkoutsButton")
+                }
+            }
+            SectionBlock(title: "App") {
+                RowGroup {
+                    VStack(alignment: .leading, spacing: 0) {
+                        toggle("Save to Apple Health", icon: "heart", isOn: model.healthSettings.enabled) { on in
+                            Task { await model.setHealthSync(on) }
+                        }
+                        .accessibilityIdentifier("healthSyncToggle")
+                        if !model.healthStatus.isEmpty {
+                            Text(model.healthStatus).font(Theme.caption).foregroundStyle(Theme.text2)
+                                .padding(.bottom, Theme.Space.s8)
+                                .accessibilityIdentifier("healthStatusText")
                         }
                     }
-                    .pickerStyle(.segmented)
-                    .frame(width: 110)
-                    .accessibilityIdentifier("weightUnitPicker")
+                    toggle("Rest timer alerts", icon: "bell", isOn: model.notificationSettings.restAlerts) { on in
+                        Task { await model.setRestAlerts(on) }
+                    }
+                    .accessibilityIdentifier("restAlertsToggle")
+                    toggle("Streak reminders", icon: "flame", isOn: model.notificationSettings.streakReminders) { on in
+                        Task { await model.setStreakReminders(on) }
+                    }
+                    .accessibilityIdentifier("streakRemindersToggle")
                 }
-                .font(Theme.body(15))
-                .foregroundStyle(Theme.text)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 10)
-                divider
-                Toggle(isOn: Binding(
-                    get: { model.healthSettings.enabled },
-                    set: { on in Task { await model.setHealthSync(on) } }
-                )) {
-                    settingsLabel("Save to Apple Health", icon: "heart", chevron: false)
-                }
-                .padding(.trailing, 16)
-                .accessibilityIdentifier("healthSyncToggle")
-                if !model.healthStatus.isEmpty {
-                    Text(model.healthStatus)
-                        .font(Theme.body(10.5))
-                        .foregroundStyle(Theme.dim)
-                        .padding(.horizontal, 16)
-                        .padding(.bottom, 8)
-                        .accessibilityIdentifier("healthStatusText")
-                }
-                divider
-                Toggle(isOn: Binding(
-                    get: { model.notificationSettings.restAlerts },
-                    set: { on in Task { await model.setRestAlerts(on) } }
-                )) {
-                    settingsLabel("Rest timer alerts", icon: "bell", chevron: false)
-                }
-                .padding(.trailing, 16)
-                .accessibilityIdentifier("restAlertsToggle")
-                divider
-                Toggle(isOn: Binding(
-                    get: { model.notificationSettings.streakReminders },
-                    set: { on in Task { await model.setStreakReminders(on) } }
-                )) {
-                    settingsLabel("Streak reminders", icon: "flame", chevron: false)
-                }
-                .padding(.trailing, 16)
-                .accessibilityIdentifier("streakRemindersToggle")
-                divider
-                Button { showingImporter = true } label: { settingsLabel("Import from Strong or Hevy", icon: "square.and.arrow.down") }
-                    .accessibilityIdentifier("importWorkoutsButton")
-                divider
-                Link(destination: AppConfig.privacyPolicyURL) { settingsLabel("Privacy Policy", icon: "hand.raised") }
-                divider
-                Link(destination: AppConfig.supportURL) { settingsLabel("Support", icon: "questionmark.circle") }
-                divider
-                Button { Task { await model.signOut() } } label: { settingsLabel("Sign Out", icon: "rectangle.portrait.and.arrow.right") }
-                    .accessibilityIdentifier("signOutButton")
-                divider
-                Button { confirmingSignOutEverywhere = true } label: { settingsLabel("Sign Out of All Devices", icon: "iphone.slash") }
-                divider
-                Button { showingDelete = true } label: { settingsLabel("Delete Account", icon: "trash", destructive: true) }
-                    .accessibilityIdentifier("deleteAccountButton")
             }
-            .cardStyle(cornerRadius: 16)
+            SectionBlock(title: "Account") {
+                RowGroup {
+                    Link(destination: AppConfig.privacyPolicyURL) { settingsLabel("Privacy policy", icon: "hand.raised") }
+                    Link(destination: AppConfig.supportURL) { settingsLabel("Support", icon: "questionmark.circle") }
+                    Button { Task { await model.signOut() } } label: {
+                        settingsLabel("Sign out", icon: "rectangle.portrait.and.arrow.right")
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("signOutButton")
+                    Button { confirmingSignOutEverywhere = true } label: {
+                        settingsLabel("Sign out of all devices", icon: "iphone.slash")
+                    }
+                    .buttonStyle(.plain)
+                    Button { showingDelete = true } label: {
+                        settingsLabel("Delete account", icon: "trash", destructive: true)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("deleteAccountButton")
+                }
+            }
         }
-        .padding(.top, 26)
     }
 
-    private var divider: some View {
-        Rectangle()
-            .fill(Theme.cardBorder)
-            .frame(height: 1)
-            .padding(.leading, 50)
+    private func toggle(_ title: String, icon: String, isOn: Bool, set: @escaping (Bool) -> Void) -> some View {
+        Toggle(isOn: Binding(get: { isOn }, set: set)) {
+            settingsLabel(title, icon: icon, chevron: false)
+        }
+        .tint(Theme.accent)
     }
 
     /// `chevron: false` for a Toggle's label: a chevron says "opens something",
     /// and beside a switch it only made the row look like a link.
     private func settingsLabel(_ title: String, icon: String, destructive: Bool = false, chevron: Bool = true) -> some View {
-        HStack {
-            Image(systemName: icon)
-                .frame(width: 22)
-            Text(title)
+        HStack(spacing: Theme.Space.s12) {
+            Image(systemName: icon).foregroundStyle(destructive ? Theme.danger : Theme.text2).frame(width: Theme.Space.s24)
+            Text(title).font(Theme.body).foregroundStyle(destructive ? Theme.danger : Theme.text)
             Spacer()
             if chevron {
-                Image(systemName: "chevron.right")
-                    .font(Theme.body(12, .semibold))
-                    .foregroundStyle(Theme.faint)
+                Image(systemName: "chevron.right").font(.system(.footnote, weight: .semibold)).foregroundStyle(Theme.text3)
             }
         }
-        .font(Theme.body(15))
-        .foregroundStyle(destructive ? Theme.danger : Theme.text)
-        .padding(.horizontal, 16)
-        .padding(.vertical, 14)
+        .frame(minHeight: Theme.rowMin)
         .contentShape(Rectangle())
     }
 }
@@ -414,11 +319,11 @@ struct DeleteAccountSheet: View {
 
     var body: some View {
         NavigationStack {
-            VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: Theme.Space.s16) {
                 Text("This permanently deletes your account and everything you've logged: workouts, records, points, quests and rewards. A party you own passes to its longest-standing member. This can't be undone.")
-                    .font(Theme.body(14))
-                    .foregroundStyle(Theme.dim)
-                SecureField("", text: $password, prompt: Text("Confirm your password").foregroundStyle(Theme.faint))
+                    .font(Theme.body)
+                    .foregroundStyle(Theme.text2)
+                SecureField("", text: $password, prompt: Text("Confirm your password").foregroundStyle(Theme.text3))
                     .textContentType(.password)
                     .modifier(FieldStyle())
                     .accessibilityIdentifier("deletePasswordField")
@@ -428,21 +333,17 @@ struct DeleteAccountSheet: View {
                         if await model.deleteAccount(password: password) { dismiss() }
                     }
                 } label: {
-                    Text("Delete My Account")
-                        .font(Theme.display(16))
-                        .foregroundStyle(Theme.text)
-                        .frame(maxWidth: .infinity)
-                        .padding(15)
-                        .background(Theme.danger.opacity(password.isEmpty ? 0.35 : 0.85), in: RoundedRectangle(cornerRadius: 14))
+                    Text("Delete my account")
                 }
+                .buttonStyle(.danger)
                 .disabled(password.isEmpty || model.isBusy)
                 .accessibilityIdentifier("confirmDeleteButton")
                 Spacer()
             }
-            .padding(20)
+            .screen()
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             .background(Theme.bg)
-            .navigationTitle("Delete Account")
+            .navigationTitle("Delete account")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -451,13 +352,14 @@ struct DeleteAccountSheet: View {
             }
         }
         .presentationDetents([.medium, .large])
+        .presentationBackground(Theme.bg)
         .preferredColorScheme(.dark)
         .onAppear { model.errorMessage = "" }
     }
 }
 
 #Preview {
-    ProfileView()
+    NavigationStack { ProfileView() }
         .environment(AppModel(api: MockAPIClient()))
         .preferredColorScheme(.dark)
 }

@@ -7,7 +7,7 @@ import SwiftUI
 
 struct RootView: View {
     enum AppTab: Hashable {
-        case home, workout, progress, ranks, profile
+        case home, train, library, progress, profile
     }
 
     @Environment(AppModel.self) private var model
@@ -39,20 +39,21 @@ struct RootView: View {
     private var tabs: some View {
         @Bindable var model = model
         return TabView(selection: $selectedTab) {
+            // Each tab keeps its own stack: a list pushes its detail.
             Tab("Home", systemImage: "house", value: AppTab.home) {
-                HomeView { selectedTab = .workout }
+                NavigationStack { HomeView { selectedTab = .train }.statusBarBackdrop() }
             }
-            Tab("Workout", systemImage: "dumbbell", value: AppTab.workout) {
-                WorkoutView()
+            Tab("Train", systemImage: "dumbbell", value: AppTab.train) {
+                NavigationStack { WorkoutView { selectedTab = .library }.statusBarBackdrop() }
+            }
+            Tab("Library", systemImage: "books.vertical", value: AppTab.library) {
+                LibraryHomeView { selectedTab = .train }
             }
             Tab("Progress", systemImage: "chart.line.uptrend.xyaxis", value: AppTab.progress) {
-                ProgressScreen()
-            }
-            Tab("Ranks", systemImage: "trophy", value: AppTab.ranks) {
-                LeaderboardView()
+                NavigationStack { ProgressScreen().statusBarBackdrop() }
             }
             Tab("Profile", systemImage: "person.crop.circle", value: AppTab.profile) {
-                ProfileView()
+                NavigationStack { ProfileView().statusBarBackdrop() }
             }
         }
         .tint(Theme.accent)

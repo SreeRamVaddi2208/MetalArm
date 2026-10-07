@@ -22,8 +22,11 @@ struct LevelUpView: View {
 
     private var isRankUp: Bool { progression.rankedUp }
     private var levelsGained: Int { max(1, progression.levelAfter - progression.levelBefore) }
-    private var badge: String { isRankUp ? RankTitle.shout(progression.rankAfter) : "\(progression.levelAfter)" }
-    private var title: String { isRankUp ? "RANK UP" : "LEVEL UP" }
+    private var badge: String { isRankUp ? RankTitle.of(progression.rankAfter) : "\(progression.levelAfter)" }
+    private var title: String { isRankUp ? "Rank up" : "Level up" }
+    /// A rank-up wears its new tier's colour; a level-up, the accent. This
+    /// overlay and RankBadge are the only places a tier colour appears.
+    private var glow: Color { isRankUp ? Theme.tier(progression.rankAfter) : Theme.accent }
 
     private var subtitle: String {
         if isRankUp { return "You're now \(RankTitle.of(progression.rankAfter)) at level \(progression.levelAfter)." }
@@ -38,20 +41,21 @@ struct LevelUpView: View {
     var body: some View {
         ZStack {
             // Nearly opaque: the summary behind must not compete with the number.
-            Color.black.opacity(0.94)
+            Theme.bg.opacity(0.96)
                 .ignoresSafeArea()
-            RadialGradient(colors: [Theme.silver.opacity(isRankUp ? 0.34 : 0.24), .clear], center: .center, startRadius: 0, endRadius: 380)
+            // A reward moment: the one place a glow is allowed.
+            RadialGradient(colors: [glow.opacity(isRankUp ? 0.3 : 0.2), .clear], center: .center, startRadius: 0, endRadius: 380)
                 .ignoresSafeArea()
                 .opacity(appeared ? 1 : 0)
                 .animation(.easeOut(duration: 0.4), value: appeared)
 
-            VStack(spacing: 18) {
+            VStack(spacing: Theme.Space.s16) {
                 ZStack {
                     if !reduceMotion {
                         ForEach(0..<(isRankUp ? 5 : 3), id: \.self) { ring in
                             Circle()
                                 .stroke(
-                                    LinearGradient(colors: [Theme.accent, Theme.silverDeep], startPoint: .top, endPoint: .bottom),
+                                    glow,
                                     lineWidth: 3)
                                 .frame(width: 150, height: 150)
                                 .scaleEffect(burst ? 2.1 + Double(ring) * 0.35 : 0.6)
@@ -59,20 +63,19 @@ struct LevelUpView: View {
                                 .animation(.easeOut(duration: 1.1).delay(0.15 + Double(ring) * 0.18), value: burst)
                         }
                         ForEach(0..<24, id: \.self) { index in
-                            Spark(index: index, burst: burst, asPlate: isRankUp)
+                            Spark(index: index, burst: burst, asPlate: isRankUp, tint: glow)
                         }
                     }
                     // A rank is a word, not a digit: it starts wide and slightly
                     // large, then settles as the rings go out - a heavier landing
                     // than the level number's quick spring.
                     Text(badge)
-                        .font(Theme.display(isRankUp ? 54 : 120, .bold))
+                        .font(Theme.hero(isRankUp ? 54 : 120))
                         .tracking(isRankUp ? (appeared || reduceMotion ? 4 : 18) : 0)
                         .minimumScaleFactor(0.5)
                         .lineLimit(1)
-                        .foregroundStyle(
-                            LinearGradient(colors: [Theme.accent, Theme.silver, Theme.silverDeep], startPoint: .top, endPoint: .bottom))
-                        .shadow(color: Theme.accent.opacity(0.45), radius: 24)
+                        .foregroundStyle(glow)
+                        .shadow(color: glow.opacity(0.45), radius: 24)
                         .scaleEffect(appeared || reduceMotion ? 1 : (isRankUp ? 1.25 : 0.4))
                         .opacity(appeared ? 1 : 0)
                         .padding(.horizontal, 20)
@@ -90,11 +93,11 @@ struct LevelUpView: View {
                 if isRankUp {
                     HStack(spacing: 10) {
                         Text(RankTitle.of(progression.rankBefore))
-                            .foregroundStyle(Theme.faint)
+                            .foregroundStyle(Theme.text3)
                             .opacity(appeared ? 0.55 : 1)
                             .scaleEffect(appeared || reduceMotion ? 0.94 : 1)
                         Image(systemName: "arrow.right")
-                            .foregroundStyle(Theme.dim)
+                            .foregroundStyle(Theme.text2)
                             .offset(x: appeared || reduceMotion ? 0 : -10)
                             .opacity(appeared ? 1 : 0)
                         Text(RankTitle.of(progression.rankAfter))
@@ -102,19 +105,18 @@ struct LevelUpView: View {
                             .scaleEffect(appeared || reduceMotion ? 1 : 0.9)
                             .opacity(appeared ? 1 : 0)
                     }
-                    .font(Theme.display(14, .semibold))
+                    .font(Theme.label)
                     .animation(reduceMotion ? .easeOut(duration: 0.2) : .easeOut(duration: 0.5).delay(0.35), value: appeared)
                     .accessibilityHidden(true)
                 }
 
                 VStack(spacing: 8) {
                     Text(title)
-                        .font(Theme.display(30, .bold))
-                        .tracking(6)
-                        .foregroundStyle(Theme.accent)
+                        .font(Theme.titleLG)
+                        .foregroundStyle(Theme.text)
                     Text(subtitle)
-                        .font(Theme.body(15))
-                        .foregroundStyle(Theme.dim)
+                        .font(Theme.body)
+                        .foregroundStyle(Theme.text2)
                         .multilineTextAlignment(.center)
                 }
                 .offset(y: appeared || reduceMotion ? 0 : 24)
@@ -122,26 +124,26 @@ struct LevelUpView: View {
                 .animation(.easeOut(duration: 0.45).delay(reduceMotion ? 0 : 0.25), value: appeared)
 
                 Button("Continue", action: onContinue)
-                    .buttonStyle(PrimaryButtonStyle())
+                    .buttonStyle(.primary)
                     .accessibilityIdentifier("levelUpContinueButton")
-                    .padding(.horizontal, 56)
-                    .padding(.top, 18)
+                    .padding(.horizontal, Theme.Space.s32)
+                    .padding(.top, Theme.Space.s16)
                     .opacity(appeared ? 1 : 0)
                     .animation(.easeOut(duration: 0.3).delay(reduceMotion ? 0 : 0.5), value: appeared)
 
                 if let shareCard {
                     ShareLink(item: shareCard, preview: SharePreview("MetalArm", image: shareCard)) {
                         Label("Share", systemImage: "square.and.arrow.up")
-                            .font(Theme.body(14, .semibold))
-                            .foregroundStyle(Theme.dim)
-                            .padding(8)
+                            .font(Theme.label)
+                            .foregroundStyle(Theme.text2)
+                            .frame(minHeight: Theme.touch)
                     }
                     .accessibilityIdentifier("levelUpShareButton")
                     .opacity(appeared ? 1 : 0)
                     .animation(.easeOut(duration: 0.3).delay(reduceMotion ? 0 : 0.6), value: appeared)
                 }
             }
-            .padding(.horizontal, 24)
+            .padding(.horizontal, Theme.Space.s24)
         }
         .contentShape(Rectangle())
         .onTapGesture(perform: onContinue)
@@ -171,13 +173,14 @@ private struct Spark: View {
     let index: Int
     let burst: Bool
     var asPlate = false
+    var tint: Color = Theme.accent
 
     var body: some View {
         let angle = Double(index) / 24 * 2 * .pi + (index.isMultiple(of: 2) ? 0.12 : -0.1)
         let distance = CGFloat((asPlate ? 185 : 150) + (index * 37) % 70)
         let spin = Double((index % 3) + 1) * (index.isMultiple(of: 2) ? 1 : -1) * .pi / 2
         RoundedRectangle(cornerRadius: asPlate ? 2 : 1.5)
-            .fill(index.isMultiple(of: 3) ? Theme.accent : Theme.silver)
+            .fill(index.isMultiple(of: 3) ? tint : Theme.text2)
             .frame(
                 width: asPlate ? CGFloat(8 + (index % 3) * 3) : 3,
                 height: asPlate ? CGFloat(3 + (index % 2) * 2) : CGFloat(14 + (index % 4) * 4))

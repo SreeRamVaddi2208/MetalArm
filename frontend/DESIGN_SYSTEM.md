@@ -119,3 +119,49 @@ Signed out, there are `/login` and `/signup`; a new account then goes to `/welco
    - `pytest frontend/tests` covers tokens and contrast;
    - `node scripts/e2e/screens.mjs <out> <email> <pw> --widths 360,390,430` checks for horizontal overflow;
    - look at the captures against the ten rules.
+
+## iOS
+
+The iPhone app (`ios/MetalARM`) runs on the same system, with the same tokens and rules, rebuilt in SwiftUI.
+
+- **Tokens:** `Theme/Theme.swift`, value for value with `theme.py`:
+  - `Theme.bg`, `surface`, `surface2`, `border`, `text`, `text2`, `text3`, `accent`, `accentSoft`, `onAccent`, `danger`;
+  - `Theme.tier(_:)`, the rank tiers;
+  - fonts `display`, `titleLG`, `title`, `body`, `label`, `caption`, which scale with Dynamic Type through `relativeTo:`;
+  - spacing `Theme.Space.s4…s48`, `gutter`, `touch` (48), `iconHit` (44), `radius` (12) and `radiusSheet` (16).
+- **Primitives:** `Theme/Components.swift`, the twins of `ui/`:
+
+  | Web (`ui/`) | iOS |
+  |---|---|
+  | `button(variant=…)` | `.buttonStyle(.primary / .secondary / .ghost / .danger)` |
+  | `icon_button` | `IconButton` |
+  | `card` | `.card()` |
+  | `list_row`, `rows` | `ListRow`, `RowGroup` |
+  | `section` | `SectionBlock` |
+  | `chip` | `Chip` |
+  | `segmented` | `Segmented` |
+  | `stat_tile` | `StatTile` |
+  | `progress_bar` | `ProgressBar` |
+  | `pill` | `Pill` |
+  | `rank_badge` | `RankBadge` |
+  | `avatar` | `Avatar` |
+  | `empty_state`, `error_state` | `EmptyState`, `ErrorState` |
+  | `skeleton` | `Skeleton` |
+  | `shell(pinned=…)` | `.pinnedPrimary { }` |
+
+- **Enforcement:** `scripts/check_ios_tokens.py`, which runs as `tests/test_ios_tokens.py` in this suite. It fails on any of these outside `Theme/`:
+  - a raw colour or hex value;
+  - a fixed font size or a system text style;
+  - a numeric corner radius;
+  - an old token name;
+  - a tier colour outside `RankBadge` and `LevelUpView`;
+  - a `Theme.swift` colour that differs from `theme.py`.
+
+  `ShareCard.swift` is exempt, because it renders a fixed-size image. A single line can opt out with `// token-exempt: <why>`.
+- **Tabs:** Home, Train, Library, Progress and Profile, each in its own `NavigationStack`, so a list pushes its detail. The leaderboard is reached from Home's "See all".
+
+**To add an iOS screen:**
+1. Build it from `Components.swift`, with `.screen()` for the frame and `.pinnedPrimary` for the one primary.
+2. Give each list a `Skeleton`, an `EmptyState` and an `ErrorState`.
+3. Give its controls `accessibilityIdentifier`s for `MetalARMUITests`.
+4. Run `python scripts/check_ios_tokens.py`.

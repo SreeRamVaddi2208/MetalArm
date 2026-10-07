@@ -159,32 +159,29 @@ final class DemoTour: XCTestCase {
         app.swipeDown()
         pause()
 
-        // --- Ready-made workouts, and a demo of each movement -------------
+        // --- The Library: a ready-made workout for the chosen path --------
         mark("presets")
-        openTab(app, "Workout")
-        let heavyDay = app.buttons["preset-powerlifting-heavy-day"]
-        XCTAssertTrue(heavyDay.waitForExistence(timeout: 10), "The ready-made workouts never appeared")
+        openTab(app, "Library")
+        let circuit = app.buttons["library-workout-athletic-circuit"]
+        XCTAssertTrue(circuit.waitForExistence(timeout: 10), "The Library's recommendations never appeared")
         pause(2)
-        heavyDay.tap()
+        circuit.tap()
         pause(2.5)
 
-        // The demo sits beside the plan; tapping a movement moves it.
+        // Its plan: targets per movement, never a weight.
         mark("demo")
-        app.buttons["presetSlot-Barbell Bench Press"].tap()
-        pause(2)
-        // The mock library's name for it; the live library says "Deadlift".
-        app.buttons["presetSlot-Conventional Deadlift"].tap()
-        pause(2)
-        app.buttons["startPresetButton"].tap()
-        XCTAssertTrue(app.buttons["logSetButton"].waitForExistence(timeout: 15), "The ready-made workout never started")
+        app.swipeUp()
+        pause(1.5)
+        app.buttons["libraryStartButton"].tap()
+        XCTAssertTrue(app.buttons["logSetButton"].waitForExistence(timeout: 15), "The Library workout never started")
         pause(2.5)
 
         // Put it back, so the hand-built workout below starts from nothing.
         app.buttons["Workout options"].tap()
         pause(0.5)
-        app.buttons["Discard Workout"].tap()
+        app.buttons["Discard workout"].tap()
         pause(0.5)
-        app.buttons["Discard Workout"].firstMatch.tap()
+        app.buttons["Discard workout"].firstMatch.tap()
         _ = app.buttons["workoutStartButton"].waitForExistence(timeout: 10)
         openTab(app, "Home")
 
@@ -261,9 +258,15 @@ final class DemoTour: XCTestCase {
         app.swipeUp()
         pause(1.5)
 
-        // --- Ranks: this week's league, then the party raid ---------------
+        // --- Leaderboard (Home -> See all): the league, then the raid -----
         mark("ranks")
-        openTab(app, "Ranks")
+        openTab(app, "Home")
+        let seeAll = app.buttons["homeLeaderboardLink"]
+        if seeAll.waitForExistence(timeout: 10) {
+            reveal(seeAll, in: app)
+            seeAll.tap()
+            pause()
+        }
         let league = element(app, "leagueCard")
         if league.waitForExistence(timeout: 10) { pause(2.5) }
         let raid = element(app, "raidCard")

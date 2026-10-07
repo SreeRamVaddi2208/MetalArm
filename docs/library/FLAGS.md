@@ -70,3 +70,39 @@ A reviewer sub-agent read the new screens at 360, 390 and 430 px against the des
 - The type scale follows the redesign's reading (`docs/redesign/FLAGS.md` #8).
 - Exercise names stay as the library writes them.
 - The thumbnail styles are the exercise library's and are out of scope here.
+
+## iOS
+
+The iPhone app has the Library too, with the same endpoints and the same behaviour. There are no backend changes for iOS.
+
+- **Screens** (`ios/MetalARM/Views/Library/`):
+  - `LibraryHomeView`: your program, recommended programs and workouts, other paths, and Exercises.
+  - `LibraryPathView`, with its filter sheet.
+  - `LibraryProgramView`: schedule grid; Follow, which becomes Start next.
+  - `LibraryWorkoutView`: targets, Save to routines, and Start pinned at the bottom.
+- **State:** `State/AppModel+Library.swift`. Starting a workout makes it the live session and switches to Train. If a workout is already running, it shows "Finish or discard the workout you have going first." and changes nothing.
+- **Train:** keeps one exercise in focus, and focus moves on when the plan's sets are done, alternating within a superset. This is the same rule as `state/workout.py`.
+- **Ready-made workouts:** the old cards on the Workout tab (`PresetPicker`) are gone. They live in the Library now.
+- **Routines:** iOS has no routines editor. Save to routines works, and the routine appears on the web.
+- **Tests:**
+  - The decoding tests read real payloads captured from the backend (`API/LibraryFixtures.swift`).
+  - The mock backend has a small catalog: two workouts and one program per path.
+  - `LibraryUITests` drives the whole flow.
+- **App Store screenshots:** `ios/AppStore/screenshots` still shows the old design and needs retaking before the next submission. They have not been overwritten.
+
+### iOS independent review
+
+A reviewer sub-agent read before/after sheets of every iOS screen against the ten rules.
+
+**Fixed:**
+- **Log set:** it is now the Train screen's pinned primary button. It had been inside the scrolling card, where it slid under the tab bar.
+- **Status bar:** the tab root screens have a backdrop behind the status bar, so a scrolled section title ("Training" on Profile) no longer runs into the clock.
+- **Delete account sheet:** it is one surface. A lighter band used to show below the content.
+- **Rank-up overlay:** the rank word is in sentence case ("Advanced", not "ADVANCED"). The share card image keeps its capitals.
+- **Exercise placeholder:** an exercise with no demo shows a dumbbell, not a "play.slash" glyph that looked broken.
+- **Plurals:** "1 program", "1 exercise".
+
+**Kept:**
+- **Schedule grid:** it scrolls sideways inside its own row, exactly as on the web (rule 10 is about the page itself scrolling sideways).
+- **Descriptions:** the mock catalog's descriptions just repeat the title. The real catalog has written ones.
+- **Not acted on:** the reviewer's nitpicks (truncated record titles, "240s rest" instead of minutes, the board's "+" button). Each is a candidate for later.

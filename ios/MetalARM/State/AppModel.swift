@@ -82,6 +82,16 @@ final class AppModel {
     /// The last Strong or Hevy import's result, shown once then cleared.
     var importSummary = ""
 
+    // Library: the tab's home, the open path's lists, and the open detail.
+    // Recommendations and order are always the server's.
+    var libraryHome: LibraryHome?
+    var libraryPrograms: [LibraryProgramCard] = []
+    var libraryWorkouts: [LibraryWorkoutCard] = []
+    var libraryFilters = LibraryFilters()
+    var libraryProgram: LibraryProgram?
+    var libraryWorkout: LibraryWorkout?
+    var libraryNotice = ""
+
     var errorMessage = ""
     var isBusy = false
 
@@ -226,6 +236,13 @@ final class AppModel {
         partyBoard = nil
         partyRaid = nil
         league = nil
+        libraryHome = nil
+        libraryPrograms = []
+        libraryWorkouts = []
+        libraryFilters = LibraryFilters()
+        libraryProgram = nil
+        libraryWorkout = nil
+        libraryNotice = ""
         Task { [notifier] in
             await notifier.cancel([NotificationID.restDone, NotificationID.streakAtRisk])
         }
@@ -298,23 +315,73 @@ final class AppModel {
         prefillInputs()
     }
 
-    private func selectDefaultExercise() {
-        if let id = session?.exercises.last?.exercise.id ?? pendingExercises.last?.id {
+    /// The first exercise still owed sets, so a workout started from the
+    /// Library opens on its first movement; else the latest one added.
+    func selectDefaultExercise() {
+        if let owed = session?.exercises.first(where: owesSets) {
+            select(owed.exercise.id)
+        } else if let id = session?.exercises.last?.exercise.id ?? pendingExercises.last?.id {
             select(id)
         } else {
             selectedExerciseID = nil
         }
     }
 
-    /// This session's last set on the exercise, else last time's, else blank.
+    private func workingSets(_ card: SessionExercise) -> Int {
+        card.sets.filter { !$0.isWarmup }.count
+    }
+
+    /// Under its plan, or untouched when it has none.
+    private func owesSets(_ card: SessionExercise) -> Bool {
+        if let planned = card.target?.targetSets, planned > 0 { return workingSets(card) < planned }
+        return card.sets.isEmpty
+    }
+
+    /// After a set: within a superset, on to the partner that is behind;
+    /// once an exercise has done its plan, on to the next one still owed sets.
+    /// The same rule as the web app (state/workout.py `_advance`).
+    private func advanceFocus(from exerciseID: String) {
+        guard let cards = session?.exercises,
+              let index = cards.firstIndex(where: { $0.exercise.id == exerciseID }) else { return }
+        let card = cards[index]
+        if let group = card.supersetGroup, group > 0 {
+            let members = cards.indices.filter { cards[$0].supersetGroup == group }
+            if let at = members.firstIndex(of: index) {
+                let rotated = Array(members[(at + 1)...]) + Array(members[...at])
+                if let next = rotated.first(where: { owesSets(cards[$0]) && workingSets(cards[$0]) <= workingSets(card) }) {
+                    select(cards[next].exercise.id)
+                    return
+                }
+            }
+        }
+        if let planned = card.target?.targetSets, planned > 0, workingSets(card) < planned { return }
+        if let next = cards[(index + 1)...].first(where: owesSets) {
+            select(next.exercise.id)
+        }
+    }
+
+    /// This session's last set on the exercise, else last time's, else the
+    /// plan's reps with no weight (a Library workout carries no weights).
     private func prefillInputs() {
         guard let reference = selectedSessionExercise?.sets.last ?? selectedPreviousSets.first else {
             weightInput = ""
-            repsInput = ""
+            let target = selectedSessionExercise?.target
+            repsInput = (target?.targetRepsLow ?? target?.targetReps).map(String.init) ?? ""
             return
         }
         weightInput = formatNumber(weightUnit.fromKilograms(reference.weightKg))
         repsInput = reference.reps.map(String.init) ?? ""
+    }
+
+    /// The steppers: weight by the unit's plate step, reps by one.
+    func bumpWeight(_ direction: Int) {
+        let step = weightUnit == .kg ? 2.5 : 5
+        let current = Double(weightInput.trimmed.replacingOccurrences(of: ",", with: ".")) ?? 0
+        weightInput = formatNumber(max(0, current + step * Double(direction)))
+    }
+
+    func bumpReps(_ direction: Int) {
+        repsInput = String(max(1, (Int(repsInput.trimmed) ?? 0) + direction))
     }
 
     func logSet() async {
@@ -353,6 +420,7 @@ final class AppModel {
             pendingExercises.removeAll { $0.id == exercise.id }
             errorMessage = ""
             startRestTimer(seconds: selectedSessionExercise?.target?.restSeconds ?? rest)
+            advanceFocus(from: exercise.id)
         } catch let error where error.isConnectivityFailure {
             // No answer from the server: keep the set and send it when the network is back.
             // If it did arrive and only the answer was lost, the resend is ignored.
@@ -827,7 +895,7 @@ final class AppModel {
 
     // MARK: - Errors
 
-    private func run(_ context: String, _ work: () async throws -> Void) async {
+    func run(_ context: String, _ work: () async throws -> Void) async {
         isBusy = true
         defer { isBusy = false }
         do {
