@@ -10,7 +10,7 @@
 
 - **API title:** MetalArm API
 - **API version:** 0.1.0
-- **Generated:** 2026-09-25 19:02 UTC
+- **Generated:** 2026-10-07 04:39 UTC
 - **Source:** `http://localhost:8000/openapi.json`
 
 ---
@@ -26,6 +26,136 @@
 | Status | Description |
 |---|---|
 | `200` | Successful Response |
+
+---
+
+### `GET /api/v1/analytics/calendar`
+
+**Calendar**
+
+Days with a completed workout in a month, and the runs of consecutive
+training days.
+
+*Tags:* `analytics`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `month` | query | `string | null` | no |
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `GET /api/v1/analytics/monthly-summary`
+
+**Monthly Summary**
+
+Every slide: workouts and time, volume with a comparison, the muscles,
+the records, points and rank, quests and duels - for one local month.
+
+*Tags:* `analytics`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `month` | query | `string | null` | no |
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `GET /api/v1/analytics/monthly-summary/latest`
+
+**Monthly Hero**
+
+Whether Home shows last month's summary card: in the first days of a
+month, when last month had a workout.
+
+*Tags:* `analytics`
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+
+---
+
+### `GET /api/v1/analytics/muscles`
+
+**Muscles**
+
+Working sets per muscle group between two local dates (inclusive;
+default this week), with a 0-1 intensity for the body map.
+
+*Tags:* `analytics`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `from` | query | `string | null` | no |
+| `to` | query | `string | null` | no |
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `GET /api/v1/analytics/recovery`
+
+**Recovery View**
+
+Overall and per-muscle recovery, estimated from recent working sets.
+
+*Tags:* `analytics`
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+
+---
+
+### `GET /api/v1/analytics/series`
+
+**Series**
+
+One value per week over the range, oldest first, empty weeks as 0.
+
+*Tags:* `analytics`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `metric` | query | `string` | no |
+| `range` | query | `string` | no |
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `GET /api/v1/analytics/snapshot`
+
+**Snapshot**
+
+Workouts, duration and volume for a week, with the change since the
+week before.
+
+*Tags:* `analytics`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `week` | query | `string | null` | no |
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
 
 ---
 
@@ -122,8 +252,9 @@ The signed-in user plus progression - what the Stat Panel renders.
 
 **Update Me**
 
-Update account preferences: the workout weight unit and the cosmetic
-character class.
+Update the profile and preferences: name, username, avatar, bio, the
+weight unit, default rest and workout visibility, and the training path.
+409 when the username is taken.
 
 Stored on the account rather than in the browser, so the choice follows
 the user across devices.
@@ -314,11 +445,11 @@ Every duel the caller is in, judging any whose window has closed.
 
 **Create Duel**
 
-Challenge a party member, or the rival.
+Challenge a friend (a mutual follow), a party member, or the rival.
 
-Only people you share a party with: an open challenge to any account would
-be a way to find out whether an account exists, and a stranger's challenge
-is noise rather than a game.
+Only people you know: an open challenge to any account would be a way to
+find out whether an account exists, and a stranger's challenge is noise
+rather than a game.
 
 *Tags:* `duels`
 
@@ -328,6 +459,41 @@ is noise rather than a game.
 |---|---|
 | `201` | Successful Response |
 | `422` | Validation Error |
+
+---
+
+### `GET /api/v1/duels/modes`
+
+**Duel Modes**
+
+Every mode, with whether a duel against `opponent_id` could use it and
+why not. Only fair modes need history; the rest are always open.
+
+*Tags:* `duels`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `opponent_id` | query | `string | null` | no |
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `GET /api/v1/duels/opponents`
+
+**Duel Opponents**
+
+Everyone the caller can challenge, by name. A short list (friends and
+party mates), so not paged.
+
+*Tags:* `duels`
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
 
 ---
 
@@ -356,6 +522,25 @@ Take up a challenge. The window starts NOW, not when it was sent.
 
 Otherwise a challenge left sitting for six days would hand the challenger
 almost the whole window to themselves.
+
+*Tags:* `duels`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `duel_id` | path | `string` | yes |
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `POST /api/v1/duels/{duel_id}/cancel`
+
+**Cancel Duel**
+
+Withdraw a challenge you sent, before it is accepted.
 
 *Tags:* `duels`
 
@@ -426,6 +611,64 @@ Search the library plus the caller's own exercises, by name.
 | Status | Description |
 |---|---|
 | `201` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `GET /api/v1/exercises/aliases`
+
+**List Aliases**
+
+Every alias the parser will use for this user: the shipped ones and
+their own (which win on a clash).
+
+*Tags:* `natural-language logging`
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+
+---
+
+### `POST /api/v1/exercises/aliases`
+
+**Create Alias**
+
+A personal alias: "flat bb" means Barbell Bench Press, for this user.
+
+*Tags:* `natural-language logging`
+
+*Request body* (`application/json`): `AliasCreate`
+
+| Status | Description |
+|---|---|
+| `201` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `GET /api/v1/exercises/browse`
+
+**Browse Exercises**
+
+Explore's exercise list: the library plus the caller's own, filtered
+by any mix of search, muscle, equipment and category, A-Z, cursor-paged.
+`total` counts every match, for "142 exercises".
+
+*Tags:* `exercises`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `q` | query | `string | null` | no |
+| `muscle` | query | `MuscleGroup | null` | no |
+| `equipment` | query | `Equipment | null` | no |
+| `category` | query | `ExerciseCategory | null` | no |
+| `cursor` | query | `string | null` | no |
+| `limit` | query | `integer` | no |
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
 | `422` | Validation Error |
 
 ---
@@ -541,6 +784,63 @@ added mid-workout. Empty `sets` when it has never been done.
 
 ---
 
+### `GET /api/v1/exercises/{exercise_id}/stats`
+
+**Exercise Stats**
+
+Exercise Detail's History, Charts and Records: per completed session
+in the range, the best set, estimated 1RM, volume and max reps; the last
+20 sessions' sets; and the current records.
+
+*Tags:* `analytics`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `exercise_id` | path | `string` | yes |
+| `range` | query | `string` | no |
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `POST /api/v1/favorites`
+
+**Add Favorite**
+
+Star something. Starring it again is not an error.
+
+*Tags:* `library`
+
+*Request body* (`application/json`): `FavoriteIn`
+
+| Status | Description |
+|---|---|
+| `204` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `DELETE /api/v1/favorites/{target_type}/{target_id}`
+
+**Remove Favorite**
+
+*Tags:* `library`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `target_type` | path | `string` | yes |
+| `target_id` | path | `string` | yes |
+
+| Status | Description |
+|---|---|
+| `204` | Successful Response |
+| `422` | Validation Error |
+
+---
+
 ### `GET /api/v1/feed`
 
 **Get Feed**
@@ -554,6 +854,105 @@ What the caller and their parties have been up to, newest first.
 | `party_id` | query | `string | null` | no |
 | `limit` | query | `integer` | no |
 | `before` | query | `string | null` | no |
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `GET /api/v1/feed/following`
+
+**Following Feed**
+
+Finished workouts by you and the people you follow, newest first, each
+as its owner's visibility allows.
+
+*Tags:* `social`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `cursor` | query | `string | null` | no |
+| `limit` | query | `integer` | no |
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `DELETE /api/v1/follows/{user_id}`
+
+**Unfollow**
+
+*Tags:* `social`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `user_id` | path | `string` | yes |
+
+| Status | Description |
+|---|---|
+| `204` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `POST /api/v1/follows/{user_id}`
+
+**Follow**
+
+Follow someone. Following them again is not an error.
+
+*Tags:* `social`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `user_id` | path | `string` | yes |
+
+| Status | Description |
+|---|---|
+| `204` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `GET /api/v1/history`
+
+**History**
+
+Completed workouts, newest first, grouped by the local month they were
+done in. Totals are the ones written at finish.
+
+*Tags:* `analytics`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `cursor` | query | `string | null` | no |
+| `limit` | query | `integer` | no |
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `GET /api/v1/leaderboard/friends`
+
+**Friends Leaderboard**
+
+You and the people you follow, by workout points - this week (your
+week) or all time. Ties share a position.
+
+*Tags:* `social`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `period` | query | `string` | no |
+| `limit` | query | `integer` | no |
 
 | Status | Description |
 |---|---|
@@ -576,6 +975,142 @@ week in UTC, never a stored score.
 | Status | Description |
 |---|---|
 | `200` | Successful Response |
+
+---
+
+### `GET /api/v1/library`
+
+**Library**
+
+One list for the Library tab. Programs and routines are the caller's;
+exercises are the ones they have logged. Sorted by recent use, name, or
+how often they have been used.
+
+*Tags:* `library`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `filter` | query | `string` | no |
+| `sort` | query | `string` | no |
+| `cursor` | query | `string | null` | no |
+| `limit` | query | `integer` | no |
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `POST /api/v1/log/parse`
+
+**Parse Text**
+
+Turn "bench 80 for 8" into proposed sets. Side-effect free apart from
+the parse log. `problem` is set, and `proposed_sets` empty, when nothing
+could be understood - a normal answer, not an error.
+
+*Tags:* `natural-language logging`
+
+*Request body* (`application/json`): `ParseRequest`
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `POST /api/v1/log/parse/{parse_id}/feedback`
+
+**Parse Feedback**
+
+Whether the proposal was logged as-is or edited first. Edits teach:
+a phrase corrected to the same exercise twice becomes the user's alias.
+
+*Tags:* `natural-language logging`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `parse_id` | path | `string` | yes |
+
+*Request body* (`application/json`): `ParseFeedback`
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `GET /api/v1/me/exercises`
+
+**My Exercises**
+
+Every exercise the user has logged in a completed workout, most
+recently done first, with the best set and estimated 1RM on record.
+
+*Tags:* `analytics`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `cursor` | query | `string | null` | no |
+| `limit` | query | `integer` | no |
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `GET /api/v1/me/game`
+
+**Game**
+
+Home's game strip: rank and the XP to the next one, points this week,
+quests done, the weekly streak, unread notifications.
+
+*Tags:* `social`
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+
+---
+
+### `GET /api/v1/notifications`
+
+**Notifications**
+
+*Tags:* `social`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `cursor` | query | `string | null` | no |
+| `limit` | query | `integer` | no |
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `POST /api/v1/notifications/read`
+
+**Mark Read**
+
+Mark the given notifications read - or all of them.
+
+*Tags:* `social`
+
+*Request body* (`application/json`): `ReadIn`
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
 
 ---
 
@@ -994,6 +1529,136 @@ the user's latest bodyweight, their best so far, and whether it is passed
 
 ---
 
+### `GET /api/v1/programs`
+
+**List Programs**
+
+The caller's programs, or (mine=false) the curated ones - the user's
+training path first.
+
+*Tags:* `library`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `mine` | query | `boolean` | no |
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `POST /api/v1/programs`
+
+**Create Program**
+
+*Tags:* `library`
+
+*Request body* (`application/json`): `ProgramIn`
+
+| Status | Description |
+|---|---|
+| `201` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `GET /api/v1/programs/curated`
+
+**Curated Programs**
+
+Plans shipped with the app, the caller's training path first. A short,
+fixed list (app/data/programs.json), so it is not paged.
+
+*Tags:* `library`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `category` | query | `string | null` | no |
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `POST /api/v1/programs/curated/{slug}/save`
+
+**Save Curated**
+
+Copy a curated program into the caller's Library: a program they own,
+its routines in order. Once only - a second save is a 409.
+
+*Tags:* `library`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `slug` | path | `string` | yes |
+
+| Status | Description |
+|---|---|
+| `201` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `DELETE /api/v1/programs/{program_id}`
+
+**Delete Program**
+
+Its routines stay, as standalone routines (program_id is SET NULL).
+
+*Tags:* `library`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `program_id` | path | `string` | yes |
+
+| Status | Description |
+|---|---|
+| `204` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `GET /api/v1/programs/{program_id}`
+
+**Read Program**
+
+*Tags:* `library`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `program_id` | path | `string` | yes |
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `PUT /api/v1/programs/{program_id}`
+
+**Update Program**
+
+*Tags:* `library`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `program_id` | path | `string` | yes |
+
+*Request body* (`application/json`): `ProgramIn`
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
 ### `GET /api/v1/quests`
 
 **List Quests**
@@ -1025,6 +1690,41 @@ The caller's quest board, newest first.
 |---|---|
 | `201` | Successful Response |
 | `422` | Validation Error |
+
+---
+
+### `POST /api/v1/quests/assignments/{assignment_id}/reroll`
+
+**Reroll Quest**
+
+Swap one of today's active daily quests for another. 409 when none are
+left today, the quest is already done, or it is not a daily quest.
+
+*Tags:* `quest board`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `assignment_id` | path | `string` | yes |
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `GET /api/v1/quests/current`
+
+**Current Quests**
+
+Today's daily quests and this week's weekly quests, with progress.
+Generated on the first read of a period, the same ones on every read.
+
+*Tags:* `quest board`
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
 
 ---
 
@@ -1314,6 +2014,30 @@ Same transaction shape as completing a quest, and for the same reason:
 
 ---
 
+### `POST /api/v1/routines/from-session/{session_id}`
+
+**Routine From Session**
+
+"Save as routine" on the workout summary: the session's cards, in
+order, with their supersets, notes and rest. Each slot's target is what
+was done - the working-set count and the top working set's reps and
+weight - so the routine starts where this workout left off.
+
+*Tags:* `routines`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `session_id` | path | `string` | yes |
+
+*Request body* (`application/json`): `FromSessionIn`
+
+| Status | Description |
+|---|---|
+| `201` | Successful Response |
+| `422` | Validation Error |
+
+---
+
 ### `DELETE /api/v1/routines/{routine_id}`
 
 **Delete Routine**
@@ -1371,6 +2095,51 @@ Full replace. The ordered exercise list is swapped as a whole.
 
 ---
 
+### `GET /api/v1/streak`
+
+**Read Streak**
+
+The weekly workout streak with its freezes. Weeks that closed since the
+last read are settled first: a short week is covered automatically if a
+freeze is held, and freezes earned are added.
+
+*Tags:* `quest board`
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+
+---
+
+### `POST /api/v1/streak/seen`
+
+**Acknowledge Streak**
+
+The user has seen the "your streak was saved" notice; stop sending
+those weeks in `freezes_used_unseen`.
+
+*Tags:* `quest board`
+
+| Status | Description |
+|---|---|
+| `204` | Successful Response |
+
+---
+
+### `GET /api/v1/taxonomy`
+
+**Read Taxonomy**
+
+Every muscle group and piece of equipment, in display order.
+
+*Tags:* `taxonomy`
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+
+---
+
 ### `GET /api/v1/training-categories`
 
 **List Training Categories**
@@ -1382,6 +2151,117 @@ The three paths, in the order they are offered.
 | Status | Description |
 |---|---|
 | `200` | Successful Response |
+
+---
+
+### `GET /api/v1/users/search`
+
+**Search Users**
+
+By display name or username. Never yourself; never by email - finding
+out whether an address has an account is not a feature.
+
+*Tags:* `social`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `q` | query | `string` | yes |
+| `cursor` | query | `string | null` | no |
+| `limit` | query | `integer` | no |
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `GET /api/v1/users/suggested`
+
+**Suggested Users**
+
+People you may know: followed by people you follow, then your party
+mates - never someone you already follow.
+
+*Tags:* `social`
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+
+---
+
+### `GET /api/v1/users/{user_id}`
+
+**Profile**
+
+*Tags:* `social`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `user_id` | path | `string` | yes |
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `GET /api/v1/users/{user_id}/followers`
+
+**Followers**
+
+*Tags:* `social`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `user_id` | path | `string` | yes |
+| `cursor` | query | `string | null` | no |
+| `limit` | query | `integer` | no |
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `GET /api/v1/users/{user_id}/following`
+
+**Following**
+
+*Tags:* `social`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `user_id` | path | `string` | yes |
+| `cursor` | query | `string | null` | no |
+| `limit` | query | `integer` | no |
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `GET /api/v1/users/{user_id}/sessions`
+
+**User Sessions**
+
+*Tags:* `social`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `user_id` | path | `string` | yes |
+| `cursor` | query | `string | null` | no |
+| `limit` | query | `integer` | no |
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
 
 ---
 
@@ -1538,11 +2418,33 @@ to rehydrate a workout after a refresh.
 
 **Read Session**
 
+Your own workout - or someone else's finished one that its visibility
+lets you see (app/core/social.py), rendered as its owner sees it.
+
 *Tags:* `workouts`
 
 | Param | In | Type | Required |
 |---|---|---|---|
 | `session_id` | path | `string` | yes |
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `PATCH /api/v1/workouts/sessions/{session_id}`
+
+**Update Session**
+
+*Tags:* `workouts`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `session_id` | path | `string` | yes |
+
+*Request body* (`application/json`): `SessionPatch`
 
 | Status | Description |
 |---|---|
@@ -1572,6 +2474,95 @@ bank XP without ever finishing a workout.
 
 ---
 
+### `POST /api/v1/workouts/sessions/{session_id}/exercises`
+
+**Add Session Exercise**
+
+Add an exercise card at the end of a live workout. The same exercise
+may be added twice (a back-off block later in the session).
+
+*Tags:* `workouts`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `session_id` | path | `string` | yes |
+
+*Request body* (`application/json`): `SessionExerciseIn`
+
+| Status | Description |
+|---|---|
+| `201` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `POST /api/v1/workouts/sessions/{session_id}/exercises/reorder`
+
+**Reorder Session Exercises**
+
+Put the cards in a new order: every card id of the session, once.
+
+*Tags:* `workouts`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `session_id` | path | `string` | yes |
+
+*Request body* (`application/json`): `ReorderIn`
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `DELETE /api/v1/workouts/sessions/{session_id}/exercises/{card_id}`
+
+**Remove Session Exercise**
+
+Take a card out of a live workout. With sets on it, 409 unless
+`force` - then its sets go too and every award they earned is reversed,
+exactly as deleting them one by one would.
+
+*Tags:* `workouts`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `session_id` | path | `string` | yes |
+| `card_id` | path | `string` | yes |
+| `force` | query | `boolean` | no |
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `PATCH /api/v1/workouts/sessions/{session_id}/exercises/{card_id}`
+
+**Update Session Exercise**
+
+Notes, rest, superset grouping - and swapping the exercise, while the
+card has no sets yet.
+
+*Tags:* `workouts`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `session_id` | path | `string` | yes |
+| `card_id` | path | `string` | yes |
+
+*Request body* (`application/json`): `SessionExercisePatch`
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
 ### `POST /api/v1/workouts/sessions/{session_id}/finish`
 
 **Finish Session**
@@ -1580,6 +2571,80 @@ Finish a workout: judge session-volume records, pay the session and
 streak bonuses, and credit the session's points to the wallet.
 
 *Tags:* `workouts`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `session_id` | path | `string` | yes |
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `GET /api/v1/workouts/sessions/{session_id}/previous`
+
+**Previous Performance**
+
+The PREVIOUS column: the last finished session's sets on this exercise
+(other than this one), by set number.
+
+*Tags:* `workouts`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `session_id` | path | `string` | yes |
+| `exercise_id` | query | `string` | yes |
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `DELETE /api/v1/workouts/sessions/{session_id}/reactions`
+
+**Unspot**
+
+*Tags:* `social`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `session_id` | path | `string` | yes |
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `GET /api/v1/workouts/sessions/{session_id}/reactions`
+
+**Reactions**
+
+*Tags:* `social`
+
+| Param | In | Type | Required |
+|---|---|---|---|
+| `session_id` | path | `string` | yes |
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+| `422` | Validation Error |
+
+---
+
+### `POST /api/v1/workouts/sessions/{session_id}/reactions`
+
+**Spot**
+
+"Spotted": a nod to a workout you can see. Once per person.
+
+*Tags:* `social`
 
 | Param | In | Type | Required |
 |---|---|---|---|
@@ -1661,6 +2726,21 @@ set is judged afresh. Other sets' awards are not revisited.
 
 ---
 
+### `GET /api/v1/workouts/suggested`
+
+**Suggested**
+
+The caller's routines, longest left alone first, nudged toward their
+training path.
+
+*Tags:* `library`
+
+| Status | Description |
+|---|---|
+| `200` | Successful Response |
+
+---
+
 ### `GET /health`
 
 **Health**
@@ -1706,6 +2786,49 @@ otherwise 503 with per-dependency detail.
 | `party_id` | `string | null` | yes |
 | `source_id` | `string | null` | yes |
 | `created_at` | `string` | yes |
+
+#### `AliasCreate`
+
+| Field | Type | Required |
+|---|---|---|
+| `alias` | `string` | yes |
+| `exercise_id` | `string` | yes |
+
+#### `AliasOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `id` | `string` | yes |
+| `alias` | `string` | yes |
+| `exercise_id` | `string` | yes |
+| `exercise_name` | `string` | yes |
+| `source` | `string` | yes |
+
+#### `AlternativeOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `exercise_id` | `string` | yes |
+| `name` | `string` | yes |
+| `confidence` | `number` | yes |
+
+#### `AssignmentOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `id` | `string` | yes |
+| `template_code` | `string` | yes |
+| `title` | `string` | yes |
+| `description` | `string` | yes |
+| `period` | `string` | yes |
+| `objective_type` | `string` | yes |
+| `progress` | `integer` | yes |
+| `target` | `integer` | yes |
+| `reward_points` | `integer` | yes |
+| `status` | `string` | yes |
+| `completed_at` | `string | null` | yes |
+| `ends_at` | `string` | yes |
+| `can_reroll` | `boolean` | yes |
 
 #### `AwardOut`
 
@@ -1760,6 +2883,36 @@ otherwise 503 with per-dependency detail.
 | `client_id` | `string | null` | no |
 | `client_secret` | `string | null` | no |
 
+#### `BreakdownLine`
+
+| Field | Type | Required |
+|---|---|---|
+| `label` | `string` | yes |
+| `value` | `number` | yes |
+
+#### `CalendarDayOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `date` | `string` | yes |
+| `workouts` | `integer` | yes |
+
+#### `CalendarOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `month` | `string` | yes |
+| `days` | `CalendarDayOut[]` | yes |
+| `runs` | `CalendarRunOut[]` | yes |
+
+#### `CalendarRunOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `start` | `string` | yes |
+| `end` | `string` | yes |
+| `days` | `integer` | yes |
+
 #### `CharacterClass`
 
 | Field | Type | Required |
@@ -1792,6 +2945,52 @@ otherwise 503 with per-dependency detail.
 | `xp_awarded` | `integer` | yes |
 | `points_awarded` | `integer` | yes |
 
+#### `CorrectedSet`
+
+| Field | Type | Required |
+|---|---|---|
+| `exercise_id` | `string` | yes |
+| `weight` | `number` | yes |
+| `unit` | `WeightUnit` | no |
+| `reps` | `integer | null` | no |
+| `rpe` | `number | null` | no |
+| `is_warmup` | `boolean` | no |
+| `set_count` | `integer` | no |
+
+#### `CuratedExerciseOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `exercise_id` | `string` | yes |
+| `name` | `string` | yes |
+| `thumbnail_url` | `string | null` | yes |
+| `target_sets` | `integer` | yes |
+| `target_reps_low` | `integer` | yes |
+| `target_reps_high` | `integer` | yes |
+| `rest_seconds` | `integer` | yes |
+| `superset_group` | `integer | null` | no |
+
+#### `CuratedProgramOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `slug` | `string` | yes |
+| `name` | `string` | yes |
+| `category` | `string` | yes |
+| `level` | `string` | yes |
+| `weeks` | `integer` | yes |
+| `sessions_per_week` | `integer` | yes |
+| `description` | `string` | yes |
+| `routines` | `CuratedRoutineOut[]` | yes |
+| `saved_program_id` | `string | null` | no |
+
+#### `CuratedRoutineOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `name` | `string` | yes |
+| `exercises` | `CuratedExerciseOut[]` | yes |
+
 #### `DeleteAccountRequest`
 
 | Field | Type | Required |
@@ -1814,12 +3013,29 @@ otherwise 503 with per-dependency detail.
 | `active` | `DuelOut[]` | yes |
 | `pending` | `DuelOut[]` | yes |
 | `completed` | `DuelOut[]` | yes |
+| `closed` | `DuelOut[]` | no |
 
 #### `DuelMetric`
 
 | Field | Type | Required |
 |---|---|---|
 | _(no properties)_ | | |
+
+#### `DuelMode`
+
+| Field | Type | Required |
+|---|---|---|
+| `metric` | `string` | yes |
+| `title` | `string` | yes |
+| `fairness` | `string` | yes |
+| `eligible` | `boolean` | yes |
+| `reason` | `string | null` | no |
+
+#### `DuelModesOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `modes` | `DuelMode[]` | yes |
 
 #### `DuelOut`
 
@@ -1836,6 +3052,10 @@ otherwise 503 with per-dependency detail.
 | `is_draw` | `boolean` | no |
 | `resolved_at` | `string | null` | no |
 | `points_awarded` | `integer | null` | no |
+| `reward_points` | `integer | null` | no |
+| `reward_type` | `string | null` | no |
+| `rules` | `string` | no |
+| `expires_at` | `string | null` | no |
 
 #### `DuelSide`
 
@@ -1845,12 +3065,46 @@ otherwise 503 with per-dependency detail.
 | `display_name` | `string` | yes |
 | `score` | `number` | yes |
 | `is_rival` | `boolean` | no |
+| `breakdown` | `BreakdownLine[]` | no |
+| `tiebreak` | `number | null` | no |
 
 #### `Equipment`
 
 | Field | Type | Required |
 |---|---|---|
 | _(no properties)_ | | |
+
+#### `EquipmentOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `code` | `string` | yes |
+| `display_name` | `string` | yes |
+| `icon_asset` | `string` | yes |
+| `browsable` | `boolean` | yes |
+
+#### `ExerciseBrowsePage`
+
+| Field | Type | Required |
+|---|---|---|
+| `items` | `ExerciseCardOut[]` | yes |
+| `total` | `integer` | yes |
+| `next_cursor` | `string | null` | no |
+
+#### `ExerciseCardOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `id` | `string` | yes |
+| `name` | `string` | yes |
+| `category` | `string` | yes |
+| `equipment` | `string` | yes |
+| `primary_muscle_groups` | `string[]` | yes |
+| `thumbnail_url` | `string | null` | yes |
+| `is_custom` | `boolean` | yes |
+| `media_author` | `string | null` | no |
+| `media_license` | `string | null` | no |
+| `media_source_url` | `string | null` | no |
 
 #### `ExerciseCategory`
 
@@ -1909,10 +3163,31 @@ otherwise 503 with per-dependency detail.
 | `category` | `string` | yes |
 | `primary_muscle_groups` | `string[]` | yes |
 | `equipment` | `string` | yes |
+| `tags` | `string[]` | no |
+| `secondary_muscle_groups` | `string[]` | no |
+| `mechanic` | `string | null` | no |
 | `instructions` | `string | null` | yes |
+| `steps` | `string[]` | no |
+| `tips` | `string[]` | no |
 | `media_url` | `string | null` | yes |
+| `thumbnail_url` | `string | null` | no |
+| `illustration_url` | `string | null` | no |
+| `animation_url` | `string | null` | no |
+| `media_license` | `string | null` | no |
+| `media_author` | `string | null` | no |
+| `media_source_url` | `string | null` | no |
 | `is_custom` | `boolean` | yes |
 | `is_archived` | `boolean` | yes |
+
+#### `ExerciseStatsOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `exercise_id` | `string` | yes |
+| `range` | `string` | yes |
+| `series` | `StatsPoint[]` | yes |
+| `sessions` | `StatsSession[]` | yes |
+| `records` | `StatsRecord[]` | yes |
 
 #### `ExerciseUpdate`
 
@@ -1925,12 +3200,54 @@ otherwise 503 with per-dependency detail.
 | `instructions` | `string | null` | no |
 | `media_url` | `string | null` | no |
 
+#### `FavoriteIn`
+
+| Field | Type | Required |
+|---|---|---|
+| `target_type` | `string` | yes |
+| `target_id` | `string` | yes |
+
+#### `FeedExercise`
+
+| Field | Type | Required |
+|---|---|---|
+| `name` | `string` | yes |
+| `thumbnail_url` | `string | null` | yes |
+| `sets` | `integer` | yes |
+
+#### `FeedItem`
+
+| Field | Type | Required |
+|---|---|---|
+| `session_id` | `string` | yes |
+| `user` | `UserCard` | yes |
+| `name` | `string | null` | yes |
+| `started_at` | `string` | yes |
+| `ended_at` | `string` | yes |
+| `visibility` | `string` | yes |
+| `duration_seconds` | `integer` | yes |
+| `volume_kg` | `number` | yes |
+| `working_sets` | `integer` | yes |
+| `records` | `integer` | yes |
+| `points` | `integer` | yes |
+| `exercises` | `FeedExercise[]` | yes |
+| `more_exercises` | `integer` | yes |
+| `spotted` | `integer` | yes |
+| `spotted_by_me` | `boolean` | yes |
+
 #### `FeedOut`
 
 | Field | Type | Required |
 |---|---|---|
 | `entries` | `ActivityOut[]` | yes |
 | `next_before` | `string | null` | no |
+
+#### `FeedPage`
+
+| Field | Type | Required |
+|---|---|---|
+| `items` | `FeedItem[]` | yes |
+| `next_cursor` | `string | null` | no |
 
 #### `FinishResponse`
 
@@ -1945,6 +3262,31 @@ otherwise 503 with per-dependency detail.
 | `streak` | `StreakOut` | yes |
 | `progression` | `ProgressionDeltaOut` | yes |
 | `raids` | `RaidHitOut[]` | no |
+| `muscles_worked` | `object` | no |
+| `rank_change` | `object | null` | no |
+| `quest_progress` | `QuestProgressOut[]` | no |
+| `quests_completed` | `QuestProgressOut[]` | no |
+
+#### `FromSessionIn`
+
+| Field | Type | Required |
+|---|---|---|
+| `name` | `string | null` | no |
+
+#### `GameOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `rank` | `string` | yes |
+| `level` | `integer` | yes |
+| `next_rank` | `string | null` | yes |
+| `xp` | `integer` | yes |
+| `xp_next_rank` | `integer | null` | yes |
+| `points_this_week` | `integer` | yes |
+| `quests_done` | `integer` | yes |
+| `quests_total` | `integer` | yes |
+| `streak_weeks` | `integer` | yes |
+| `unread_notifications` | `integer` | yes |
 
 #### `HTTPValidationError`
 
@@ -1960,6 +3302,34 @@ otherwise 503 with per-dependency detail.
 | `text` | `string` | yes |
 | `target_weight_kg` | `number | null` | yes |
 | `target_reps` | `integer | null` | yes |
+
+#### `HistoryMonthOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `month` | `string` | yes |
+| `sessions` | `HistoryRowOut[]` | yes |
+
+#### `HistoryPage`
+
+| Field | Type | Required |
+|---|---|---|
+| `months` | `HistoryMonthOut[]` | yes |
+| `next_cursor` | `string | null` | no |
+
+#### `HistoryRowOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `id` | `string` | yes |
+| `name` | `string | null` | yes |
+| `started_at` | `string` | yes |
+| `duration_seconds` | `integer` | yes |
+| `volume_kg` | `number` | yes |
+| `working_sets` | `integer` | yes |
+| `exercise_count` | `integer` | yes |
+| `pr_count` | `integer` | yes |
+| `points` | `integer` | yes |
 
 #### `JoinRequest`
 
@@ -1989,13 +3359,14 @@ otherwise 503 with per-dependency detail.
 | `rank` | `string` | yes |
 | `is_me` | `boolean` | yes |
 
-#### `LeaderboardOut`
+#### `LeaderboardRow`
 
 | Field | Type | Required |
 |---|---|---|
-| `party_id` | `string` | yes |
-| `total_party_xp` | `integer` | yes |
-| `entries` | `LeaderboardEntry[]` | yes |
+| `position` | `integer` | yes |
+| `user` | `UserCard` | yes |
+| `points` | `integer` | yes |
+| `is_me` | `boolean` | yes |
 
 #### `LeagueEntryOut`
 
@@ -2034,6 +3405,27 @@ otherwise 503 with per-dependency detail.
 | `reason` | `string` | yes |
 | `session_id` | `string | null` | yes |
 | `created_at` | `string` | yes |
+
+#### `LibraryItem`
+
+| Field | Type | Required |
+|---|---|---|
+| `type` | `string` | yes |
+| `id` | `string` | yes |
+| `title` | `string` | yes |
+| `subtitle` | `string` | yes |
+| `color` | `string | null` | no |
+| `image` | `string | null` | no |
+| `favorite` | `boolean` | yes |
+| `last_used_at` | `string | null` | no |
+
+#### `LibraryPage`
+
+| Field | Type | Required |
+|---|---|---|
+| `items` | `LibraryItem[]` | yes |
+| `favorite_count` | `integer` | yes |
+| `next_cursor` | `string | null` | no |
 
 #### `LifetimeStats`
 
@@ -2077,6 +3469,11 @@ otherwise 503 with per-dependency detail.
 | `weight_unit` | `string` | no |
 | `character_class` | `string` | no |
 | `character_class_set_at` | `string | null` | no |
+| `username` | `string | null` | no |
+| `avatar_url` | `string | null` | no |
+| `bio` | `string | null` | no |
+| `default_rest_seconds` | `integer` | no |
+| `default_visibility` | `string` | no |
 | `progress` | `ProgressOut` | yes |
 
 #### `MeUpdate`
@@ -2085,6 +3482,12 @@ otherwise 503 with per-dependency detail.
 |---|---|---|
 | `weight_unit` | `WeightUnit | null` | no |
 | `character_class` | `CharacterClass | string | null` | no |
+| `display_name` | `string | null` | no |
+| `username` | `string | null` | no |
+| `avatar_url` | `string | null` | no |
+| `bio` | `string | null` | no |
+| `default_rest_seconds` | `integer | null` | no |
+| `default_visibility` | `string | null` | no |
 
 #### `MeasurementMetric`
 
@@ -2110,11 +3513,167 @@ otherwise 503 with per-dependency detail.
 | `rank` | `string` | yes |
 | `party_xp` | `integer` | yes |
 
+#### `MonthlyHeroOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `month` | `string` | yes |
+| `show` | `boolean` | yes |
+| `workouts` | `integer` | yes |
+
+#### `MonthlyRecordOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `exercise_name` | `string` | yes |
+| `record_type` | `string` | yes |
+| `value` | `number` | yes |
+| `achieved_at` | `string` | yes |
+
+#### `MonthlySummaryOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `month` | `string` | yes |
+| `workouts` | `integer` | yes |
+| `duration_seconds` | `integer` | yes |
+| `active_days` | `integer` | yes |
+| `best_week_workouts` | `integer` | yes |
+| `volume_kg` | `number` | yes |
+| `working_sets` | `integer` | yes |
+| `volume_comparison` | `string` | yes |
+| `muscles` | `MuscleVolumeOut[]` | yes |
+| `records` | `MonthlyRecordOut[]` | yes |
+| `record_count` | `integer` | yes |
+| `points` | `integer` | yes |
+| `rank` | `string` | yes |
+| `level` | `integer` | yes |
+| `rank_ups` | `string[]` | yes |
+| `quests_completed` | `integer` | yes |
+| `duels_played` | `integer` | yes |
+| `duels_won` | `integer` | yes |
+
 #### `MuscleGroup`
 
 | Field | Type | Required |
 |---|---|---|
 | _(no properties)_ | | |
+
+#### `MuscleGroupOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `code` | `string` | yes |
+| `display_name` | `string` | yes |
+| `body_side` | `string` | yes |
+| `svg_path_ids` | `string[]` | yes |
+| `size_class` | `string` | yes |
+| `tile_asset` | `string` | yes |
+| `browsable` | `boolean` | yes |
+
+#### `MuscleRecoveryOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `code` | `string` | yes |
+| `display_name` | `string` | yes |
+| `percent` | `integer` | yes |
+| `svg_path_ids` | `string[]` | yes |
+
+#### `MuscleVolumeOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `code` | `string` | yes |
+| `display_name` | `string` | yes |
+| `sets` | `number` | yes |
+| `intensity` | `number` | yes |
+| `svg_path_ids` | `string[]` | yes |
+
+#### `MusclesOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `from_date` | `string` | yes |
+| `to_date` | `string` | yes |
+| `muscles` | `MuscleVolumeOut[]` | yes |
+
+#### `MyExerciseOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `exercise_id` | `string` | yes |
+| `name` | `string` | yes |
+| `thumbnail_url` | `string | null` | yes |
+| `primary_muscle_groups` | `string[]` | yes |
+| `equipment` | `string` | yes |
+| `last_performed_at` | `string` | yes |
+| `sessions` | `integer` | yes |
+| `best_weight_kg` | `number | null` | yes |
+| `best_weight_reps` | `integer | null` | yes |
+| `best_est_1rm` | `number | null` | yes |
+
+#### `MyExercisesPage`
+
+| Field | Type | Required |
+|---|---|---|
+| `items` | `MyExerciseOut[]` | yes |
+| `next_cursor` | `string | null` | no |
+
+#### `NotificationOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `id` | `string` | yes |
+| `type` | `string` | yes |
+| `actor` | `UserCard | null` | yes |
+| `target_type` | `string | null` | yes |
+| `target_id` | `string | null` | yes |
+| `detail` | `string | null` | yes |
+| `read` | `boolean` | yes |
+| `created_at` | `string` | yes |
+
+#### `NotificationPage`
+
+| Field | Type | Required |
+|---|---|---|
+| `items` | `NotificationOut[]` | yes |
+| `unread` | `integer` | yes |
+| `next_cursor` | `string | null` | no |
+
+#### `ParseFeedback`
+
+| Field | Type | Required |
+|---|---|---|
+| `accepted` | `boolean` | yes |
+| `corrected_result` | `CorrectedSet | null` | no |
+
+#### `ParseFeedbackResponse`
+
+| Field | Type | Required |
+|---|---|---|
+| `alias_learned` | `boolean` | yes |
+
+#### `ParseRequest`
+
+| Field | Type | Required |
+|---|---|---|
+| `text` | `string` | yes |
+| `session_id` | `string | null` | no |
+| `exercise_id` | `string | null` | no |
+
+#### `ParseResponse`
+
+| Field | Type | Required |
+|---|---|---|
+| `parse_id` | `string` | yes |
+| `parser_used` | `string` | yes |
+| `proposed_sets` | `ProposedSetOut[]` | yes |
+| `set_count` | `integer` | yes |
+| `exercise_confidence` | `number` | yes |
+| `exercise_alternatives` | `AlternativeOut[]` | yes |
+| `unparsed_fragments` | `string[]` | yes |
+| `problem` | `string | null` | no |
 
 #### `PartyCreate`
 
@@ -2212,6 +3771,7 @@ otherwise 503 with per-dependency detail.
 | `session_bonus` | `integer` | yes |
 | `streak_bonus` | `integer` | yes |
 | `reversals` | `integer` | yes |
+| `quest_points` | `integer` | no |
 | `total` | `integer` | yes |
 
 #### `PointsSummaryOut`
@@ -2258,16 +3818,64 @@ otherwise 503 with per-dependency detail.
 | `exercises` | `PresetExerciseOut[]` | yes |
 | `matches_your_path` | `boolean` | no |
 
-#### `ProfileOut`
+#### `PreviousOut`
 
 | Field | Type | Required |
 |---|---|---|
-| `user` | `UserOut` | yes |
-| `progress` | `ProgressOut` | yes |
-| `stats` | `LifetimeStats` | yes |
-| `badges` | `BadgeOut[]` | yes |
-| `badges_earned` | `integer` | yes |
-| `badges_total` | `integer` | yes |
+| `exercise_id` | `string` | yes |
+| `session_id` | `string | null` | yes |
+| `performed_at` | `string | null` | yes |
+| `sets` | `PreviousSetOut[]` | yes |
+
+#### `PreviousSetOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `set_number` | `integer` | yes |
+| `weight_kg` | `number` | yes |
+| `reps` | `integer | null` | yes |
+| `set_type` | `string` | yes |
+| `rpe` | `number | null` | yes |
+
+#### `ProgramIn`
+
+| Field | Type | Required |
+|---|---|---|
+| `name` | `string` | yes |
+| `description` | `string | null` | no |
+| `training_category` | `string | null` | no |
+| `level` | `string | null` | no |
+| `weeks` | `integer | null` | no |
+| `sessions_per_week` | `integer | null` | no |
+| `is_public` | `boolean` | no |
+| `cover_color` | `string | null` | no |
+
+#### `ProgramOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `id` | `string` | yes |
+| `name` | `string` | yes |
+| `description` | `string | null` | yes |
+| `training_category` | `string | null` | yes |
+| `level` | `string | null` | yes |
+| `weeks` | `integer | null` | yes |
+| `sessions_per_week` | `integer | null` | yes |
+| `is_public` | `boolean` | yes |
+| `cover_color` | `string | null` | yes |
+| `owner_user_id` | `string | null` | yes |
+| `routines` | `ProgramRoutineOut[]` | yes |
+| `favorite` | `boolean` | no |
+
+#### `ProgramRoutineOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `id` | `string` | yes |
+| `name` | `string` | yes |
+| `order_in_program` | `integer | null` | yes |
+| `exercise_count` | `integer` | yes |
+| `last_performed_at` | `string | null` | yes |
 
 #### `ProgressOut`
 
@@ -2306,6 +3914,18 @@ otherwise 503 with per-dependency detail.
 | `leveled_up` | `boolean` | yes |
 | `ranked_up` | `boolean` | yes |
 
+#### `ProposedSetOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `exercise_id` | `string` | yes |
+| `exercise_name` | `string` | yes |
+| `weight` | `number` | yes |
+| `unit` | `string` | yes |
+| `reps` | `integer | null` | yes |
+| `rpe` | `number | null` | yes |
+| `is_warmup` | `boolean` | yes |
+
 #### `PushDeviceRegister`
 
 | Field | Type | Required |
@@ -2318,6 +3938,14 @@ otherwise 503 with per-dependency detail.
 | Field | Type | Required |
 |---|---|---|
 | _(no properties)_ | | |
+
+#### `QuestBoardOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `daily` | `AssignmentOut[]` | yes |
+| `weekly` | `AssignmentOut[]` | yes |
+| `rerolls_left` | `integer` | yes |
 
 #### `QuestCreate`
 
@@ -2345,6 +3973,20 @@ otherwise 503 with per-dependency detail.
 | `created_at` | `string` | yes |
 | `current_period_key` | `string` | yes |
 | `completed_in_current_period` | `boolean` | yes |
+
+#### `QuestProgressOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `assignment_id` | `string` | yes |
+| `title` | `string` | yes |
+| `period` | `string` | yes |
+| `progress` | `integer` | yes |
+| `target` | `integer` | yes |
+| `advanced` | `boolean` | yes |
+| `completed` | `boolean` | yes |
+| `completed_now` | `boolean` | yes |
+| `reward_points` | `integer` | yes |
 
 #### `QuestStatus`
 
@@ -2403,6 +4045,25 @@ otherwise 503 with per-dependency detail.
 | `ends_at` | `string` | yes |
 | `hitters` | `RaidHitterOut[]` | yes |
 
+#### `ReactionOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `spotted` | `integer` | yes |
+| `spotted_by_me` | `boolean` | yes |
+
+#### `ReadIn`
+
+| Field | Type | Required |
+|---|---|---|
+| `ids` | `string[]` | no |
+
+#### `ReadOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `unread` | `integer` | yes |
+
 #### `RecordOut`
 
 | Field | Type | Required |
@@ -2415,6 +4076,14 @@ otherwise 503 with per-dependency detail.
 | `achieved_at` | `string` | yes |
 | `session_id` | `string` | yes |
 | `set_id` | `string | null` | yes |
+
+#### `RecoveryOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `overall` | `integer` | yes |
+| `muscles` | `MuscleRecoveryOut[]` | yes |
+| `note` | `string` | yes |
 
 #### `Recurrence`
 
@@ -2444,6 +4113,21 @@ otherwise 503 with per-dependency detail.
 | Field | Type | Required |
 |---|---|---|
 | `refresh_token` | `string` | yes |
+
+#### `ReorderIn`
+
+| Field | Type | Required |
+|---|---|---|
+| `order` | `string[]` | yes |
+
+#### `RerollResponse`
+
+| Field | Type | Required |
+|---|---|---|
+| `replaced` | `string` | yes |
+| `quest` | `AssignmentOut` | yes |
+| `rerolls_left` | `integer` | yes |
+| `progression` | `ProgressionDeltaOut | null` | no |
 
 #### `RewardCreate`
 
@@ -2479,8 +4163,12 @@ otherwise 503 with per-dependency detail.
 | `exercise_id` | `string` | yes |
 | `target_sets` | `integer | null` | no |
 | `target_reps` | `integer | null` | no |
+| `target_reps_low` | `integer | null` | no |
+| `target_reps_high` | `integer | null` | no |
 | `target_weight_kg` | `number | null` | no |
 | `rest_seconds` | `integer | null` | no |
+| `superset_group` | `integer | null` | no |
+| `notes` | `string | null` | no |
 
 #### `RoutineExerciseOut`
 
@@ -2490,8 +4178,12 @@ otherwise 503 with per-dependency detail.
 | `exercise` | `ExerciseOut` | yes |
 | `target_sets` | `integer | null` | yes |
 | `target_reps` | `integer | null` | yes |
+| `target_reps_low` | `integer | null` | no |
+| `target_reps_high` | `integer | null` | no |
 | `target_weight_kg` | `number | null` | yes |
 | `rest_seconds` | `integer | null` | yes |
+| `superset_group` | `integer | null` | no |
+| `notes` | `string | null` | no |
 
 #### `RoutineIn`
 
@@ -2500,6 +4192,9 @@ otherwise 503 with per-dependency detail.
 | `name` | `string` | yes |
 | `notes` | `string | null` | no |
 | `exercises` | `RoutineExerciseIn[]` | no |
+| `program_id` | `string | null` | no |
+| `order_in_program` | `integer | null` | no |
+| `color` | `string | null` | no |
 
 #### `RoutineOut`
 
@@ -2511,16 +4206,58 @@ otherwise 503 with per-dependency detail.
 | `exercises` | `RoutineExerciseOut[]` | yes |
 | `created_at` | `string` | yes |
 | `updated_at` | `string` | yes |
+| `program_id` | `string | null` | no |
+| `order_in_program` | `integer | null` | no |
+| `color` | `string | null` | no |
+| `last_performed_at` | `string | null` | no |
+
+#### `SeriesOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `metric` | `string` | yes |
+| `range` | `string` | yes |
+| `unit` | `string` | yes |
+| `points` | `SeriesPoint[]` | yes |
+
+#### `SeriesPoint`
+
+| Field | Type | Required |
+|---|---|---|
+| `week_start` | `string` | yes |
+| `value` | `number` | yes |
+
+#### `SessionExerciseIn`
+
+| Field | Type | Required |
+|---|---|---|
+| `exercise_id` | `string` | yes |
+| `rest_seconds` | `integer | null` | no |
+| `notes` | `string | null` | no |
 
 #### `SessionExerciseOut`
 
 | Field | Type | Required |
 |---|---|---|
+| `session_exercise_id` | `string | null` | no |
+| `position` | `integer` | no |
+| `superset_group` | `integer | null` | no |
+| `notes` | `string | null` | no |
+| `rest_seconds` | `integer | null` | no |
 | `exercise` | `ExerciseOut` | yes |
 | `hint` | `HintOut | null` | no |
 | `target` | `SessionTargetOut | null` | yes |
 | `sets` | `SetOut[]` | yes |
 | `previous_sets` | `SetOut[]` | yes |
+
+#### `SessionExercisePatch`
+
+| Field | Type | Required |
+|---|---|---|
+| `rest_seconds` | `integer | null` | no |
+| `notes` | `string | null` | no |
+| `superset_group` | `integer | null` | no |
+| `exercise_id` | `string | null` | no |
 
 #### `SessionOut`
 
@@ -2539,6 +4276,15 @@ otherwise 503 with per-dependency detail.
 | `points_credited` | `integer` | yes |
 | `qualified` | `boolean | null` | yes |
 | `exercises` | `SessionExerciseOut[]` | yes |
+| `visibility` | `string` | no |
+| `user_id` | `string | null` | no |
+
+#### `SessionPatch`
+
+| Field | Type | Required |
+|---|---|---|
+| `name` | `string | null` | no |
+| `visibility` | `string | null` | no |
 
 #### `SessionStart`
 
@@ -2547,6 +4293,7 @@ otherwise 503 with per-dependency detail.
 | `routine_id` | `string | null` | no |
 | `preset_slug` | `string | null` | no |
 | `name` | `string | null` | no |
+| `visibility` | `string | null` | no |
 
 #### `SessionStatus`
 
@@ -2569,6 +4316,7 @@ otherwise 503 with per-dependency detail.
 | `total_volume_kg` | `number` | yes |
 | `points_total` | `integer` | yes |
 | `pr_count` | `integer` | yes |
+| `visibility` | `string` | no |
 
 #### `SessionTargetOut`
 
@@ -2588,9 +4336,11 @@ otherwise 503 with per-dependency detail.
 | `reps` | `integer | null` | no |
 | `rpe` | `number | null` | no |
 | `is_warmup` | `boolean` | no |
+| `set_type` | `SetType | null` | no |
 | `duration_seconds` | `integer | null` | no |
 | `distance_m` | `number | null` | no |
 | `exercise_id` | `string` | yes |
+| `session_exercise_id` | `string | null` | no |
 | `client_set_id` | `string | null` | no |
 
 #### `SetDeleteResponse`
@@ -2600,6 +4350,7 @@ otherwise 503 with per-dependency detail.
 | `points_awarded` | `integer` | yes |
 | `session_points` | `integer` | yes |
 | `progression` | `ProgressionDeltaOut` | yes |
+| `quest_progress` | `QuestProgressOut[]` | no |
 
 #### `SetLogResponse`
 
@@ -2613,6 +4364,8 @@ otherwise 503 with per-dependency detail.
 | `set_cap_reached` | `boolean` | yes |
 | `progression` | `ProgressionDeltaOut` | yes |
 | `is_duplicate` | `boolean` | no |
+| `quest_progress` | `QuestProgressOut[]` | no |
+| `quests_completed` | `QuestProgressOut[]` | no |
 
 #### `SetOut`
 
@@ -2626,10 +4379,19 @@ otherwise 503 with per-dependency detail.
 | `reps` | `integer | null` | yes |
 | `rpe` | `number | null` | yes |
 | `is_warmup` | `boolean` | yes |
+| `set_type` | `string` | no |
+| `session_exercise_id` | `string | null` | no |
 | `is_pr` | `boolean` | yes |
+| `is_flagged` | `boolean` | no |
 | `duration_seconds` | `integer | null` | yes |
 | `distance_m` | `number | null` | yes |
 | `completed_at` | `string` | yes |
+
+#### `SetType`
+
+| Field | Type | Required |
+|---|---|---|
+| _(no properties)_ | | |
 
 #### `SetUpdate`
 
@@ -2640,6 +4402,7 @@ otherwise 503 with per-dependency detail.
 | `reps` | `integer | null` | no |
 | `rpe` | `number | null` | no |
 | `is_warmup` | `boolean | null` | no |
+| `set_type` | `SetType | null` | no |
 | `duration_seconds` | `integer | null` | no |
 | `distance_m` | `number | null` | no |
 
@@ -2652,6 +4415,18 @@ otherwise 503 with per-dependency detail.
 | `display_name` | `string` | yes |
 | `timezone` | `string` | no |
 
+#### `SnapshotOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `week_start` | `string` | yes |
+| `workouts` | `integer` | yes |
+| `duration_seconds` | `integer` | yes |
+| `volume_kg` | `number` | yes |
+| `workouts_delta` | `integer` | yes |
+| `duration_delta` | `integer` | yes |
+| `volume_delta` | `number` | yes |
+
 #### `StatOut`
 
 | Field | Type | Required |
@@ -2662,6 +4437,46 @@ otherwise 503 with per-dependency detail.
 | `detail` | `string` | yes |
 | `highlighted` | `boolean` | yes |
 
+#### `StatsPoint`
+
+| Field | Type | Required |
+|---|---|---|
+| `session_id` | `string` | yes |
+| `date` | `string` | yes |
+| `best_set_weight_kg` | `number | null` | yes |
+| `best_set_reps` | `integer | null` | yes |
+| `est_1rm` | `number | null` | yes |
+| `volume_kg` | `number` | yes |
+| `max_reps` | `integer | null` | yes |
+
+#### `StatsRecord`
+
+| Field | Type | Required |
+|---|---|---|
+| `record_type` | `string` | yes |
+| `value` | `number` | yes |
+| `weight_kg` | `number | null` | yes |
+| `achieved_at` | `string` | yes |
+
+#### `StatsSession`
+
+| Field | Type | Required |
+|---|---|---|
+| `session_id` | `string` | yes |
+| `name` | `string | null` | yes |
+| `started_at` | `string` | yes |
+| `sets` | `StatsSet[]` | yes |
+
+#### `StatsSet`
+
+| Field | Type | Required |
+|---|---|---|
+| `set_number` | `integer` | yes |
+| `set_type` | `string` | yes |
+| `weight_kg` | `number` | yes |
+| `reps` | `integer | null` | yes |
+| `is_pr` | `boolean` | yes |
+
 #### `StreakOut`
 
 | Field | Type | Required |
@@ -2671,6 +4486,41 @@ otherwise 503 with per-dependency detail.
 | `target` | `integer` | yes |
 | `this_week_done` | `boolean` | yes |
 | `sessions_to_go` | `integer` | yes |
+| `freezes_held` | `integer` | no |
+
+#### `StreakStatusOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `weeks` | `integer` | yes |
+| `this_week_sessions` | `integer` | yes |
+| `target` | `integer` | yes |
+| `this_week_done` | `boolean` | yes |
+| `sessions_to_go` | `integer` | yes |
+| `freezes_held` | `integer` | yes |
+| `freeze_cap` | `integer` | yes |
+| `weeks_to_next_freeze` | `integer` | yes |
+| `freezes_used_unseen` | `string[]` | yes |
+
+#### `SuggestedOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `routine_id` | `string` | yes |
+| `name` | `string` | yes |
+| `abbreviation` | `string` | yes |
+| `color` | `string | null` | yes |
+| `exercise_count` | `integer` | yes |
+| `last_performed_at` | `string | null` | yes |
+| `days_since` | `integer | null` | yes |
+| `fits_path` | `boolean` | yes |
+
+#### `TaxonomyOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `muscle_groups` | `MuscleGroupOut[]` | yes |
+| `equipment` | `EquipmentOut[]` | yes |
 
 #### `TokenResponse`
 
@@ -2709,6 +4559,21 @@ otherwise 503 with per-dependency detail.
 | `best_kg` | `number | null` | yes |
 | `passed` | `boolean` | yes |
 
+#### `UserCard`
+
+| Field | Type | Required |
+|---|---|---|
+| `id` | `string` | yes |
+| `display_name` | `string` | yes |
+| `username` | `string | null` | yes |
+| `avatar_url` | `string | null` | yes |
+| `rank` | `string` | yes |
+| `level` | `integer` | yes |
+| `training_category` | `string | null` | yes |
+| `you_follow` | `boolean` | yes |
+| `follows_you` | `boolean` | yes |
+| `reason` | `string | null` | no |
+
 #### `UserOut`
 
 | Field | Type | Required |
@@ -2721,6 +4586,18 @@ otherwise 503 with per-dependency detail.
 | `weight_unit` | `string` | no |
 | `character_class` | `string` | no |
 | `character_class_set_at` | `string | null` | no |
+| `username` | `string | null` | no |
+| `avatar_url` | `string | null` | no |
+| `bio` | `string | null` | no |
+| `default_rest_seconds` | `integer` | no |
+| `default_visibility` | `string` | no |
+
+#### `UserPage`
+
+| Field | Type | Required |
+|---|---|---|
+| `items` | `UserCard[]` | yes |
+| `next_cursor` | `string | null` | no |
 
 #### `ValidationError`
 
@@ -2788,3 +4665,42 @@ otherwise 503 with per-dependency detail.
 | `period` | `string` | yes |
 | `period_start` | `string | null` | yes |
 | `entries` | `WorkoutLeaderboardEntry[]` | yes |
+
+#### `app__schemas__party__LeaderboardOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `party_id` | `string` | yes |
+| `total_party_xp` | `integer` | yes |
+| `entries` | `LeaderboardEntry[]` | yes |
+
+#### `app__schemas__profile__ProfileOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `user` | `UserOut` | yes |
+| `progress` | `ProgressOut` | yes |
+| `stats` | `LifetimeStats` | yes |
+| `badges` | `BadgeOut[]` | yes |
+| `badges_earned` | `integer` | yes |
+| `badges_total` | `integer` | yes |
+
+#### `app__schemas__social__LeaderboardOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `period` | `string` | yes |
+| `rows` | `LeaderboardRow[]` | yes |
+| `me` | `LeaderboardRow` | yes |
+
+#### `app__schemas__social__ProfileOut`
+
+| Field | Type | Required |
+|---|---|---|
+| `user` | `UserCard` | yes |
+| `bio` | `string | null` | yes |
+| `followers` | `integer` | yes |
+| `following` | `integer` | yes |
+| `workouts` | `integer` | yes |
+| `is_friend` | `boolean` | yes |
+| `is_me` | `boolean` | yes |

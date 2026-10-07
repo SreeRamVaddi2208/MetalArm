@@ -47,7 +47,13 @@ class RaidHit(UUIDPrimaryKey, Base):
         Uuid(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
     )
     session_id: Mapped[uuid.UUID] = mapped_column(
-        Uuid(as_uuid=True), ForeignKey("workout_sessions.id", ondelete="CASCADE"), nullable=False
+        Uuid(as_uuid=True),
+        ForeignKey("workout_sessions.id", ondelete="CASCADE"),
+        nullable=False,
+        # uq_raid_hits_boss_session is (boss_id, session_id), so session_id is
+        # the TRAILING column and cannot serve the foreign key check. Deleting
+        # any workout session would otherwise scan every raid hit.
+        index=True,
     )
     damage: Mapped[int] = mapped_column(Integer, nullable=False)
     created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=_utcnow)

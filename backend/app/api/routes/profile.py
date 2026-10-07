@@ -13,7 +13,7 @@ from app.api.deps import CurrentUser, DbSession
 from app.core import badges as badge_rules
 from app.core import character as character_sheet
 from app.core import leveling, rank_trials
-from app.core import workout_streaks
+from app.core import streak_freezes, workout_streaks
 from app.core.periods import local_now
 from app.core.workout_store import qualified_weeks, workout_points_credited
 from app.models.workout import SetEntry, WorkoutSession
@@ -118,7 +118,8 @@ def read_profile(current_user: CurrentUser, db: DbSession) -> ProfileOut:
         )
     ).scalar_one()
     longest_workout_streak = workout_streaks.longest_weekly_streak(
-        qualified_weeks(db, current_user.id)
+        qualified_weeks(db, current_user.id),
+        covered=streak_freezes.state(db, current_user.id).covered,
     )
 
     computed = badge_rules.evaluate(

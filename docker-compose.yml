@@ -18,6 +18,43 @@ services:
     image: postgres:17-alpine
     container_name: metalarm-postgres
     restart: unless-stopped
+    # Query-level visibility, which a stock server has none of:
+    # log_min_duration_statement is -1, pg_stat_statements is not loaded and
+    # track_io_timing is off, so there is no way to find out WHICH statement is
+    # slow - only that something is. Every optimisation decision after this
+    # point cites these numbers, so they have to exist before the numbers do.
+    #
+    # shared_preload_libraries can only be set at server start, which is why it
+    # lives here and not in a migration. On managed Postgres these are provider
+    # settings rather than ours; the extension itself is created by a migration
+    # so it exists either way.
+    #
+    # Deliberately verbose for development: auto_explain instruments every
+    # statement and logs the plan for any that passes the threshold, and
+    # log_temp_files=0 catches work_mem spilling to disk, which is what a badly
+    # planned aggregate looks like from the outside.
+    command:
+      - postgres
+      - -c
+      - shared_preload_libraries=pg_stat_statements,auto_explain
+      - -c
+      - pg_stat_statements.max=10000
+      - -c
+      - pg_stat_statements.track=all
+      - -c
+      - track_io_timing=on
+      - -c
+      - log_min_duration_statement=200
+      - -c
+      - log_lock_waits=on
+      - -c
+      - log_temp_files=0
+      - -c
+      - auto_explain.log_min_duration=1000
+      - -c
+      - auto_explain.log_analyze=on
+      - -c
+      - auto_explain.log_nested_statements=on
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -43,11 +80,26 @@ services:
     image: redis:8-alpine
     container_name: metalarm-redis
     restart: unless-stopped
+    # maxmemory with volatile-lru, NOT the defaults. Out of the box Redis has no
+    # memory limit and a noeviction policy, so it grows until the host runs out
+    # and then starts refusing writes - at which point rate limiting fails open
+    # (app/core/rate_limit.py swallows the error) and every leaderboard read
+    # falls back to a Postgres GROUP BY. The failure lands hardest exactly when
+    # the system is already under pressure.
+    #
+    # volatile-lru rather than allkeys-lru: it only ever evicts a key that has a
+    # TTL. Everything this app writes sets one - the rate-limit buckets and the
+    # party XP cache both EXPIRE - so there is always a victim available, and
+    # anything added later WITHOUT a TTL is protected rather than silently
+    # dropped. A policy cannot differ per key on one instance, so this is the
+    # choice that fails safely for both workloads.
     command:
       [
         "redis-server",
         "--appendonly", "yes",
         "--requirepass", "${REDIS_PASSWORD}",
+        "--maxmemory", "${REDIS_MAXMEMORY:-256mb}",
+        "--maxmemory-policy", "volatile-lru",
       ]
     ports:
       # Loopback only - see the note on the postgres service.
@@ -90,7 +142,7 @@ services:
     image: metalarm-backend
     container_name: metalarm-migrate
     command:
-      ["sh", "-c", "alembic upgrade head && python -m scripts.import_exercises && python -m scripts.seed_training_paths"]
+      ["sh", "-c", "alembic upgrade head && python -m scripts.import_exercises && python -m scripts.seed_training_paths && python -m scripts.seed_quest_templates"]
     restart: "no"
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
@@ -167,6 +219,7 @@ services:
       args:
         # Browser-reachable, and baked into the JS bundle at build time.
         REFLEX_API_URL: ${REFLEX_API_URL:-http://localhost:3000}
+        METALARM_PUBLIC_API_URL: ${METALARM_PUBLIC_API_URL:-http://localhost:8000}
     container_name: metalarm-frontend
     restart: unless-stopped
     environment:

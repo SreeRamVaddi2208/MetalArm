@@ -76,6 +76,10 @@ async def list_routines(token: str) -> list[dict]:
     return await request("GET", "/routines", token=token)
 
 
+async def get_routine(token: str, routine_id: str) -> dict:
+    return await request("GET", f"/routines/{routine_id}", token=token)
+
+
 async def create_routine(token: str, payload: dict) -> dict:
     return await request("POST", "/routines", token=token, json=payload)
 
@@ -147,6 +151,11 @@ async def finish_session(token: str, session_id: str) -> dict:
     return await request("POST", f"/workouts/sessions/{session_id}/finish", token=token)
 
 
+async def routine_from_session(token: str, session_id: str, name: str | None = None) -> dict:
+    return await request("POST", f"/routines/from-session/{session_id}", token=token,
+                         json={"name": name} if name else {})
+
+
 async def abandon_session(token: str, session_id: str) -> dict:
     return await request("POST", f"/workouts/sessions/{session_id}/abandon", token=token)
 
@@ -177,3 +186,98 @@ async def create_measurement(token: str, payload: dict) -> dict:
 
 async def delete_measurement(token: str, measurement_id: str) -> None:
     await request("DELETE", f"/body-measurements/{measurement_id}", token=token)
+
+
+# --- Natural-language logging ----------------------------------------------
+# A parse PROPOSES sets; nothing is logged until each is sent to log_set.
+
+
+async def parse_set(token: str, text: str, session_id: str = "", exercise_id: str = "") -> dict:
+    body: dict = {"text": text}
+    if session_id:
+        body["session_id"] = session_id
+    if exercise_id:
+        body["exercise_id"] = exercise_id
+    return await request("POST", "/log/parse", token=token, json=body)
+
+
+async def parse_feedback(token: str, parse_id: str, payload: dict) -> dict:
+    return await request("POST", f"/log/parse/{parse_id}/feedback", token=token, json=payload)
+
+
+# --- Overhaul phase 1: exercise cards ---------------------------------------
+# A session is an ordered list of cards; sets belong to a card.
+
+
+async def add_session_exercise(token: str, session_id: str, exercise_id: str) -> dict:
+    return await request("POST", f"/workouts/sessions/{session_id}/exercises", token=token,
+                         json={"exercise_id": exercise_id})
+
+
+async def update_session_exercise(token: str, session_id: str, card_id: str, payload: dict) -> dict:
+    return await request("PATCH", f"/workouts/sessions/{session_id}/exercises/{card_id}",
+                         token=token, json=payload)
+
+
+async def reorder_session_exercises(token: str, session_id: str, order: list[str]) -> dict:
+    return await request("POST", f"/workouts/sessions/{session_id}/exercises/reorder",
+                         token=token, json={"order": order})
+
+
+async def remove_session_exercise(token: str, session_id: str, card_id: str, force: bool = False) -> dict:
+    return await request("DELETE", _q(f"/workouts/sessions/{session_id}/exercises/{card_id}",
+                                      force="true" if force else ""), token=token)
+
+
+# --- Overhaul phase 1: the Library -------------------------------------------
+
+
+async def library(token: str, filter: str = "programs", sort: str = "recents", cursor: str = "",
+                  limit: int = 30) -> dict:
+    return await request("GET", _q("/library", filter=filter, sort=sort, cursor=cursor, limit=limit),
+                         token=token)
+
+
+async def programs(token: str, mine: bool = True) -> list[dict]:
+    return await request("GET", _q("/programs", mine="true" if mine else "false"), token=token)
+
+
+async def get_program(token: str, program_id: str) -> dict:
+    return await request("GET", f"/programs/{program_id}", token=token)
+
+
+async def create_program(token: str, payload: dict) -> dict:
+    return await request("POST", "/programs", token=token, json=payload)
+
+
+async def delete_program(token: str, program_id: str) -> None:
+    await request("DELETE", f"/programs/{program_id}", token=token)
+
+
+async def favorite(token: str, target_type: str, target_id: str, on: bool) -> None:
+    if on:
+        await request("POST", "/favorites", token=token,
+                      json={"target_type": target_type, "target_id": target_id})
+    else:
+        await request("DELETE", f"/favorites/{target_type}/{target_id}", token=token)
+
+
+async def suggested(token: str) -> list[dict]:
+    return await request("GET", "/workouts/suggested", token=token)
+
+
+# --- Explore (overhaul phase 3) ---------------------------------------------
+
+
+async def browse(token: str, q: str = "", muscle: str = "", equipment: str = "", category: str = "",
+                 cursor: str = "", limit: int = 30) -> dict:
+    return await request("GET", _q("/exercises/browse", q=q, muscle=muscle, equipment=equipment,
+                                    category=category, cursor=cursor, limit=limit), token=token)
+
+
+async def curated_programs(token: str, category: str = "") -> list[dict]:
+    return await request("GET", _q("/programs/curated", category=category), token=token)
+
+
+async def save_curated(token: str, slug: str) -> dict:
+    return await request("POST", f"/programs/curated/{slug}/save", token=token)

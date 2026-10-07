@@ -23,7 +23,7 @@ from sqlalchemy.orm import Session
 # name `app` in this module from the FastAPI instance to the package, and
 # app.dependency_overrides then resolves against the module.
 from app import models as _models  # noqa: F401
-from app.core import training_categories
+from app.core import exercise_aliases, quest_templates, taxonomy, training_categories
 from app.core.config import get_settings
 from app.db.session import Base, get_db
 from app.main import app
@@ -61,13 +61,16 @@ def engine() -> Generator[Engine, None, None]:
     test_engine = create_engine(_test_db_url(), pool_pre_ping=True)
     Base.metadata.create_all(test_engine)
 
-    # The exercise library and the training paths, loaded once through the REAL
+    # The exercise library, the training paths and the quest templates, loaded once through the REAL
     # seeding code - so every test run also proves the shipped files load
     # cleanly. Committed, so they survive each test's rollback. Production gets
     # both the same way, on deploy.
     with Session(test_engine) as seed:
+        taxonomy.seed(seed)
         import_exercises(seed, read_file(DEFAULT_FILE))
+        exercise_aliases.seed(seed)
         training_categories.seed(seed)
+        quest_templates.seed(seed)
         seed.commit()
 
     yield test_engine
@@ -117,6 +120,21 @@ def _rate_limits_off(monkeypatch: pytest.MonkeyPatch) -> None:
     address, which the real limits would block. test_rate_limits.py switches
     limiting back on for itself."""
     monkeypatch.setattr(settings, "rate_limit_enabled", False)
+
+
+@pytest.fixture(autouse=True)
+def _generated_quests_off(request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Generated quests are off unless a test is marked `quests`.
+
+    Which quests a user gets is seeded by their (random) user id, and a quest
+    that completes mid-workout adds XP and ledger rows - so left on, every
+    test asserting an exact XP or points figure would pass or fail depending
+    on the draw. test_quest_board.py turns them on and pins the draw.
+    """
+    if request.node.get_closest_marker("quests") is None:
+        from app.core import quest_board
+
+        monkeypatch.setattr(quest_board, "_COUNTS", {period: 0 for period in quest_board._COUNTS})
 
 
 def unique_email() -> str:

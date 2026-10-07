@@ -61,6 +61,38 @@ class MuscleGroup(str, enum.Enum):
     CARDIO = "cardio"
 
 
+class ExerciseTag(str, enum.Enum):
+    """What KIND of work an exercise is, in the vocabulary the training paths
+    already speak (training_categories.json `emphasis_tags`). Generated quests
+    filter on these ("6 isolation sets"); nothing scores on them."""
+
+    BIG3 = "big3"
+    COMPOUND_HEAVY = "compound_heavy"
+    COMPOUND = "compound"
+    COMPOUND_LIGHT = "compound_light"
+    ISOLATION = "isolation"
+    MOBILITY = "mobility"
+    PLYOMETRIC = "plyometric"
+
+
+class SetType(str, enum.Enum):
+    """What kind of set it was. Only a warm-up is not a working set: drop and
+    failure sets count for points, quests, duels and records like any other.
+    set_entries.is_warmup is kept in step by a CHECK, so every rule written
+    against is_warmup stays correct without knowing set types exist."""
+
+    NORMAL = "normal"
+    WARMUP = "warmup"
+    DROP = "drop"
+    FAILURE = "failure"
+
+
+class Visibility(str, enum.Enum):
+    PUBLIC = "public"
+    FOLLOWERS = "followers"
+    PRIVATE = "private"
+
+
 class SessionStatus(str, enum.Enum):
     IN_PROGRESS = "in_progress"
     COMPLETED = "completed"
@@ -87,6 +119,20 @@ class LedgerSource(str, enum.Enum):
     # when the duel is judged; the ledger's UNIQUE on (source_type, source_id)
     # is what makes "once" true rather than a flag that can be checked stale.
     DUEL_WON = "duel_won"
+    # A generated quest reached its target (app/core/quest_board.py). source_id
+    # is the QuestAssignment. Not in uq_points_ledger_once: like a set award,
+    # it is reversed if the set that completed it is deleted, and re-awarded if
+    # the quest is completed again - the level_progress lock serialises that.
+    QUEST_COMPLETED = "quest_completed"
+    # All of a week's generated quests done. source_id is the assignment whose
+    # completion finished the set.
+    QUEST_BONUS = "quest_bonus"
+    # A fair duel that ended level: each side is paid. source_id is
+    # duel_engine.reward_key(duel, user), one per side, so the once-only
+    # index still holds.
+    DUEL_DRAW = "duel_draw"
+    # The loser of a duel who still trained: paid for showing up.
+    DUEL_PARTICIPATION = "duel_participation"
     # Negates an earlier entry (a deleted or edited set, an abandoned session).
     # The ledger is append-only, so undoing an award is a new row, never an
     # UPDATE or DELETE of the original.

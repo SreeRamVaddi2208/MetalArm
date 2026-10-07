@@ -156,6 +156,24 @@ async def delete_quest(token: str, quest_id: str) -> None:
     await request("DELETE", f"/quests/{quest_id}", token=token)
 
 
+async def quest_board(token: str) -> dict:
+    """Today's generated quests and this week's, with server-computed progress."""
+    return await request("GET", "/quests/current", token=token)
+
+
+async def reroll_quest(token: str, assignment_id: str) -> dict:
+    return await request("POST", f"/quests/assignments/{assignment_id}/reroll", token=token)
+
+
+async def streak(token: str) -> dict:
+    """The weekly workout streak with its freezes."""
+    return await request("GET", "/streak", token=token)
+
+
+async def acknowledge_streak(token: str) -> None:
+    await request("POST", "/streak/seen", token=token)
+
+
 async def complete_quest(token: str, quest_id: str) -> dict:
     return await request("POST", f"/quests/{quest_id}/complete", token=token)
 
@@ -305,6 +323,16 @@ async def create_duel(
     return await request("POST", "/duels", token=token, json=payload)
 
 
+async def duel_modes(token: str, opponent_id: str = "") -> dict:
+    """Every mode, and whether a duel against `opponent_id` could use it."""
+    path = f"/duels/modes?opponent_id={opponent_id}" if opponent_id else "/duels/modes"
+    return await request("GET", path, token=token)
+
+
+async def cancel_duel(token: str, duel_id: str) -> dict:
+    return await request("POST", f"/duels/{duel_id}/cancel", token=token)
+
+
 async def accept_duel(token: str, duel_id: str) -> dict:
     return await request("POST", f"/duels/{duel_id}/accept", token=token)
 
@@ -316,3 +344,11 @@ async def decline_duel(token: str, duel_id: str) -> dict:
 async def activity_feed(token: str, *, party_id: str = "", limit: int = 30) -> dict:
     params = f"?limit={limit}" + (f"&party_id={party_id}" if party_id else "")
     return await request("GET", f"/feed{params}", token=token)
+
+
+# --- Overhaul: taxonomy ----------------------------------------------------
+
+
+async def taxonomy(token: str) -> dict:
+    """Muscle groups and equipment, with display names and body-map path ids."""
+    return await request("GET", "/taxonomy", token=token)

@@ -8,9 +8,12 @@ Sprint 2: auth (signup/login/JWT) and quest CRUD, mounted under /api/v1.
 """
 
 import logging
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from typing import Any
 
 import redis
+from anyio.to_thread import current_default_thread_limiter
 from fastapi import FastAPI, Response, status
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
@@ -30,6 +33,26 @@ logger = logging.getLogger("metalarm")
 # finds the server, so production serves neither.
 DOCS_ENABLED = settings.environment != "production"
 
+@asynccontextmanager
+async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+    """Match the request threadpool to the connection pool it feeds from.
+
+    AnyIO's limiter is a RunVar, so it can only be set from inside the running
+    event loop - which is why this is a lifespan hook and not module-level code.
+    See Settings.request_thread_limit for why the number is what it is.
+    """
+    limiter = current_default_thread_limiter()
+    before = limiter.total_tokens
+    limiter.total_tokens = settings.request_thread_limit
+    logger.info(
+        "request threads %d -> %d (db pool ceiling %d)",
+        before,
+        limiter.total_tokens,
+        settings.db_pool_size + settings.db_max_overflow,
+    )
+    yield
+
+
 app = FastAPI(
     title="MetalArm API",
     description="Turn real goals and habits into RPG-style progression.",
@@ -37,6 +60,7 @@ app = FastAPI(
     docs_url="/docs" if DOCS_ENABLED else None,
     redoc_url="/redoc" if DOCS_ENABLED else None,
     openapi_url="/openapi.json" if DOCS_ENABLED else None,
+    lifespan=lifespan,
 )
 
 app.add_middleware(

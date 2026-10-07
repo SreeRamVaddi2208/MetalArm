@@ -55,7 +55,7 @@ async function signIn(page, email) {
   await page.locator('input').first().fill(email);
   await page.locator('input[type=password]').fill(password);
   await page.getByText('ENTER', { exact: true }).click();
-  await page.waitForURL('**/dashboard', { timeout: 20000 });
+  await page.waitForURL('**/home', { timeout: 20000 });
 }
 
 const launchOptions = process.env.CHROME_PATH
@@ -85,11 +85,13 @@ try {
         (await page.getByText('comes from your own recent weeks').count()) > 0);
   // Wait for it: the panel's heading is static, while the member list arrives
   // with the state delta a moment later.
-  await page.getByText('OR CHALLENGE SOMEONE IN YOUR PARTY').waitFor({ timeout: 20000 });
+  await page.getByText('OR CHALLENGE A FRIEND OR PARTY MEMBER').waitFor({ timeout: 20000 });
   await page.getByText('Bob', { exact: false }).first().waitFor({ timeout: 20000 });
   check('party members are offered', true);
 
   await page.getByRole('button', { name: 'CHALLENGE', exact: true }).first().click();
+  // Challenging opens the mode picker (fair duels); raw volume is always open.
+  await page.locator('[role=button][aria-disabled=false]').filter({ hasText: /^Volume/ }).first().click();
   await page.getByText('Waiting for Bob').waitFor({ timeout: 20000 });
   check('the challenge is waiting on the other lifter', true);
   await page.screenshot({ path: `${OUT}/duel-pending.png`, fullPage: true });

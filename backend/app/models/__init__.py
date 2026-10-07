@@ -6,7 +6,7 @@ autogenerate and silently omitted from migrations.
 """
 
 from app.models.auth_session import AuthSession
-from app.models.duel import ActivityEvent, Duel
+from app.models.duel import ActivityEvent, Duel, DuelBaseline
 from app.models.party import (
     Party,
     PartyMembership,
@@ -14,11 +14,21 @@ from app.models.party import (
     PartyQuestCompletion,
 )
 from app.models.league import LeagueMembership
+from app.models.nl_log import ExerciseAlias, ParseLog
+from app.models.program import Favorite, Program
 from app.models.push_device import PushDevice
 from app.models.quest import Quest, QuestCompletion
+from app.models.quest_board import (
+    QuestAssignment,
+    QuestReroll,
+    QuestTemplate,
+    StreakFreezeEvent,
+)
+from app.models.taxonomy import EquipmentInfo, MuscleGroupInfo
 from app.models.training_category import TrainingCategoryProfile
 from app.models.raid import RaidBoss, RaidHit
 from app.models.reward import RewardItem, RewardRedemption
+from app.models.social import Follow, Notification, Reaction
 from app.models.user import LevelProgress, User
 from app.models.workout import (
     BodyMeasurement,
@@ -27,22 +37,35 @@ from app.models.workout import (
     PointsLedgerEntry,
     Routine,
     RoutineExercise,
+    SessionExercise,
     SetEntry,
     WorkoutImport,
     WorkoutSession,
 )
 
 __all__ = [
+    "Follow",
+    "Notification",
+    "Reaction",
     "ActivityEvent",
     "AuthSession",
     "Duel",
+    "DuelBaseline",
     "LeagueMembership",
+    "ExerciseAlias",
+    "ParseLog",
     "PushDevice",
     "User",
     "LevelProgress",
     "Quest",
     "TrainingCategoryProfile",
+    "MuscleGroupInfo",
+    "EquipmentInfo",
     "QuestCompletion",
+    "QuestAssignment",
+    "QuestReroll",
+    "QuestTemplate",
+    "StreakFreezeEvent",
     "RewardItem",
     "RewardRedemption",
     "Party",
@@ -57,6 +80,9 @@ __all__ = [
     "WorkoutSession",
     "WorkoutImport",
     "SetEntry",
+    "SessionExercise",
+    "Program",
+    "Favorite",
     "PersonalRecord",
     "PointsLedgerEntry",
     "BodyMeasurement",

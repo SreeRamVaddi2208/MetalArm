@@ -55,6 +55,13 @@ jobs:
       - run: pip install -r requirements-dev.txt
       - name: Migrations apply cleanly and match the models
         run: alembic upgrade head && alembic check
+      # Service containers take no command, so the Redis above starts with the
+      # defaults (no ceiling, noeviction). Give it the settings every deployed
+      # Redis runs with (docker-compose.yml) - tests/test_db_capacity.py checks them.
+      - name: Redis configured as deployed (256mb, volatile-lru)
+        run: |
+          docker exec ${{ job.services.redis.id }} redis-cli CONFIG SET maxmemory 256mb
+          docker exec ${{ job.services.redis.id }} redis-cli CONFIG SET maxmemory-policy volatile-lru
       - name: Tests
         run: pytest -q
 

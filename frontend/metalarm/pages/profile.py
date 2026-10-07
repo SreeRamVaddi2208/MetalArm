@@ -319,7 +319,7 @@ def profile_page() -> rx.Component:
         rx.flex(
             rx.box(
                 pinned(stat_panel()),
-                width=rx.breakpoints(initial="100%", lg="340px"),
+                width="100%",
                 flex_shrink="0",
             ),
             rx.vstack(
@@ -338,7 +338,7 @@ def profile_page() -> rx.Component:
                     ),
                     rx.grid(
                         rx.foreach(ProfileState.badges, badge_tile),
-                        columns=rx.breakpoints(initial="2", md="3"),
+                        columns="2",
                         gap="0.75rem",
                         width="100%",
                     ),
@@ -350,7 +350,7 @@ def profile_page() -> rx.Component:
                 flex="1",
                 min_width="0",
             ),
-            direction=rx.breakpoints(initial="column", lg="row"),
+            direction="column",
             gap="1.25rem",
             width="100%",
             align="start",

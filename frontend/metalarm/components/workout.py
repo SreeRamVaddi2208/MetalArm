@@ -16,6 +16,8 @@ from metalarm import ranks, theme
 from metalarm.components.exercise_demo import exercise_demo
 from metalarm.components.presets import preset_cards
 from metalarm.components.layout import section_heading
+from metalarm.components.quest_card import freeze_icons
+from metalarm.components.voice_log import voice_bar
 from metalarm.components.rest_timer import elapsed_clock
 from metalarm.components.stat_panel import xp_bar
 from metalarm.state.auth import AuthState
@@ -26,6 +28,7 @@ from metalarm.workout_models import (
     ExerciseCard,
     HistoryRow,
     PrView,
+    QuestLine,
     RoutineItem,
     SetRow,
 )
@@ -96,6 +99,63 @@ def _rank_color():
 # ---------------------------------------------------------------------------
 
 
+def quest_moment() -> rx.Component:
+    """The quest beat, inside the HUD rather than over the screen.
+
+    Reward sizes read set < quest < PR < rank-up: a set gets its points, a
+    quest gets this line (with a check that pops in - lf-check, which goes
+    still under prefers-reduced-motion), a PR gets the full overlay. The chip
+    otherwise shows the last quest a set moved, and is never a button: it adds
+    nothing to the logging loop.
+    """
+    return rx.cond(
+        WorkoutState.has_quest_done,
+        rx.hstack(
+            rx.box(pill("QUEST COMPLETE", theme.SUCCESS), class_name="lf-check"),
+            rx.text(WorkoutState.quest_done.title, color=theme.TEXT, font_size="0.8rem",
+                    font_weight="700", min_width="0", overflow="hidden",
+                    text_overflow="ellipsis", white_space="nowrap"),
+            rx.spacer(),
+            rx.text(WorkoutState.quest_done.reward_label, color=theme.WARNING,
+                    font_size="0.8rem", font_weight="800"),
+            width="100%",
+            align="center",
+            spacing="2",
+            on_click=WorkoutState.dismiss_quest_done,
+        ),
+        rx.cond(
+            WorkoutState.has_quest_chip,
+            rx.hstack(
+                rx.icon("target", size=12, color=theme.MUTED),
+                rx.text(WorkoutState.quest_chip.title, color=theme.MUTED, font_size="0.72rem",
+                        min_width="0", overflow="hidden", text_overflow="ellipsis",
+                        white_space="nowrap"),
+                rx.text(WorkoutState.quest_chip.progress_label, color=theme.TEXT,
+                        font_size="0.72rem", font_weight="800"),
+                spacing="2",
+                align="center",
+                max_width="100%",
+            ),
+        ),
+    )
+
+
+def _quest_line(line: QuestLine) -> rx.Component:
+    return rx.hstack(
+        rx.cond(line.done, pill("DONE", theme.SUCCESS), pill(line.progress_label, theme.MUTED)),
+        rx.text(line.title, color=rx.cond(line.done, theme.TEXT, theme.MUTED),
+                font_size="0.85rem", min_width="0"),
+        rx.spacer(),
+        rx.cond(line.done, rx.text(line.reward_label, color=theme.WARNING,
+                                   font_weight="800", font_size="0.85rem")),
+        width="100%",
+        align="center",
+        spacing="2",
+        padding_block="0.35rem",
+        border_bottom=f"1px solid {theme.BORDER}",
+    )
+
+
 def hud() -> rx.Component:
     color = _rank_color()
     return rx.vstack(
@@ -125,12 +185,17 @@ def hud() -> rx.Component:
                     font_size="0.85rem",
                     letter_spacing="0.12em",
                 ),
-                rx.text(
-                    WorkoutState.streak.label,
-                    color=rx.cond(WorkoutState.streak.weeks > 0, theme.SUCCESS, theme.FAINT),
-                    font_size="0.66rem",
-                    font_weight="800",
-                    letter_spacing="0.14em",
+                rx.hstack(
+                    rx.text(
+                        WorkoutState.streak.label,
+                        color=rx.cond(WorkoutState.streak.weeks > 0, theme.SUCCESS, theme.FAINT),
+                        font_size="0.66rem",
+                        font_weight="800",
+                        letter_spacing="0.14em",
+                    ),
+                    freeze_icons(WorkoutState.streak.freeze_slots),
+                    spacing="2",
+                    align="center",
                 ),
                 spacing="0",
                 align="start",
@@ -168,6 +233,7 @@ def hud() -> rx.Component:
             spacing="3",
         ),
         xp_bar(),
+        quest_moment(),
         rx.text(WorkoutState.streak.sub, color=theme.FAINT, font_size="0.72rem"),
         spacing="3",
         **theme.panel(padding="1rem 1.1rem", box_shadow=theme.glow(theme.ACCENT, "50px")),
@@ -286,7 +352,7 @@ def start_view() -> rx.Component:
         preset_cards(),
         section_heading(
             "FROM A ROUTINE",
-            rx.link("MANAGE ROUTINES", href="/routines", color=theme.ACCENT, font_size="0.68rem",
+            rx.link("MANAGE ROUTINES", href="/library", color=theme.ACCENT, font_size="0.68rem",
                     font_weight="800", letter_spacing="0.12em"),
         ),
         rx.cond(
@@ -505,6 +571,12 @@ def _set_row(entry: SetRow, is_cardio) -> rx.Component:
                 rx.text(entry.summary, color=theme.TEXT, font_weight="700", font_size="0.95rem"),
                 rx.cond(entry.detail != "", rx.text(entry.detail, color=theme.FAINT, font_size="0.72rem")),
                 rx.cond(entry.is_pr, pill("PR", PR_COLOR)),
+                # Neutral on purpose: it says what happens, never why.
+                rx.cond(
+                    entry.flagged,
+                    rx.text("This set won't count toward competitions",
+                            color=theme.FAINT, font_size="0.68rem"),
+                ),
                 rx.spacer(),
                 rx.text("EDIT", color=theme.FAINT, font_size="0.6rem", font_weight="800", letter_spacing="0.12em"),
                 on_click=WorkoutState.start_edit(entry.id),
@@ -752,6 +824,9 @@ def live_view() -> rx.Component:
             rx.vstack(rx.foreach(WorkoutState.cards, exercise_card), spacing="3", width="100%"),
             empty("Add your first exercise to start logging."),
         ),
+        # Voice and typed logging: an addition beside the tap loop, never a
+        # step inside it.
+        voice_bar(),
         rx.button(
             "+ ADD EXERCISE",
             on_click=PickerState.open_for("session"),
@@ -861,6 +936,15 @@ def summary_view() -> rx.Component:
             rx.vstack(
                 rx.text("RECORDS BROKEN", **{**theme.LABEL_STYLE, "color": PR_COLOR}),
                 rx.foreach(s.prs, pr_line),
+                spacing="1",
+                **theme.panel(padding="1rem 1.1rem"),
+            ),
+        ),
+        rx.cond(
+            s.quests.length() > 0,
+            rx.vstack(
+                rx.text("QUESTS PROGRESSED", **theme.LABEL_STYLE),
+                rx.foreach(s.quests, _quest_line),
                 spacing="1",
                 **theme.panel(padding="1rem 1.1rem"),
             ),

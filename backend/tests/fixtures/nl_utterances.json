@@ -1,0 +1,915 @@
+[
+ {
+  "text": "80 for 8",
+  "current": "barbell-bench-press",
+  "last": null,
+  "user_unit": "kg",
+  "expect": {
+   "exercise": "barbell-bench-press",
+   "weight": 80,
+   "unit": "kg",
+   "reps": 8,
+   "sets": 1,
+   "rpe": null,
+   "warmup": false
+  }
+ },
+ {
+  "text": "bench 80 for 8",
+  "current": "barbell-bench-press",
+  "last": null,
+  "user_unit": "kg",
+  "expect": {
+   "exercise": "barbell-bench-press",
+   "weight": 80,
+   "unit": "kg",
+   "reps": 8,
+   "sets": 1,
+   "rpe": null,
+   "warmup": false
+  }
+ },
+ {
+  "text": "squat 100 for 5",
+  "current": "barbell-bench-press",
+  "last": null,
+  "user_unit": "kg",
+  "expect": {
+   "exercise": "back-squat",
+   "weight": 100,
+   "unit": "kg",
+   "reps": 5,
+   "sets": 1,
+   "rpe": null,
+   "warmup": false
+  }
+ },
+ {
+  "text": "deadlift 180 x 3",
+  "current": "barbell-bench-press",
+  "last": null,
+  "user_unit": "kg",
+  "expect": {
+   "exercise": "deadlift",
+   "weight": 180,
+   "unit": "kg",
+   "reps": 3,
+   "sets": 1,
+   "rpe": null,
+   "warmup": false
+  }
+ },
+ {
+  "text": "80 x 8",
+  "current": "barbell-bench-press",
+  "last": null,
+  "user_unit": "kg",
+  "expect": {
+   "exercise": "barbell-bench-press",
+   "weight": 80,
+   "unit": "kg",
+   "reps": 8,
+   "sets": 1,
+   "rpe": null,
+   "warmup": false
+  }
+ },
+ {
+  "text": "80\u00d78",
+  "current": "barbell-bench-press",
+  "last": null,
+  "user_unit": "kg",
+  "expect": {
+   "exercise": "barbell-bench-press",
+   "weight": 80,
+   "unit": "kg",
+   "reps": 8,
+   "sets": 1,
+   "rpe": null,
+   "warmup": false
+  }
+ },
+ {
+  "text": "80kg for 8",
+  "current": "barbell-bench-press",
+  "last": null,
+  "user_unit": "kg",
+  "expect": {
+   "exercise": "barbell-bench-press",
+   "weight": 80,
+   "unit": "kg",
+   "reps": 8,
+   "sets": 1,
+   "rpe": null,
+   "warmup": false
+  }
+ },
+ {
+  "text": "80 kg 8 reps",
+  "current": "barbell-bench-press",
+  "last": null,
+  "user_unit": "kg",
+  "expect": {
+   "exercise": "barbell-bench-press",
+   "weight": 80,
+   "unit": "kg",
+   "reps": 8,
+   "sets": 1,
+   "rpe": null,
+   "warmup": false
+  }
+ },
+ {
+  "text": "80kg x 8 reps",
+  "current": "barbell-bench-press",
+  "last": null,
+  "user_unit": "kg",
+  "expect": {
+   "exercise": "barbell-bench-press",
+   "weight": 80,
+   "unit": "kg",
+   "reps": 8,
+   "sets": 1,
+   "rpe": null,
+   "warmup": false
+  }
+ },
+ {
+  "text": "8 reps at 80",
+  "current": "barbell-bench-press",
+  "last": null,
+  "user_unit": "kg",
+  "expect": {
+   "exercise": "barbell-bench-press",
+   "weight": 80,
+   "unit": "kg",
+   "reps": 8,
+   "sets": 1,
+   "rpe": null,
+   "warmup": false
+  }
+ },
+ {
+  "text": "bench 82.5 for 6",
+  "current": "barbell-bench-press",
+  "last": null,
+  "user_unit": "kg",
+  "expect": {
+   "exercise": "barbell-bench-press",
+   "weight": 82.5,
+   "unit": "kg",
+   "reps": 6,
+   "sets": 1,
+   "rpe": null,
+   "warmup": false
+  }
+ },
+ {
+  "text": "bench 82,5 for 6",
+  "current": "barbell-bench-press",
+  "last": null,
+  "user_unit": "kg",
+  "expect": {
+   "exercise": "barbell-bench-press",
+   "weight": 82.5,
+   "unit": "kg",
+   "reps": 6,
+   "sets": 1,
+   "rpe": null,
+   "warmup": false
+  }
+ },
+ {
+  "text": "bench 80 8",
+  "current": "barbell-bench-press",
+  "last": null,
+  "user_unit": "kg",
+  "expect": {
+   "exercise": "barbell-bench-press",
+   "weight": 80,
+   "unit": "kg",
+   "reps": 8,
+   "sets": 1,
+   "rpe": null,
+   "warmup": false
+  }
+ },
+ {
+  "text": "3 sets of 8 at 80",
+  "current": "barbell-bench-press",
+  "last": null,
+  "user_unit": "kg",
+  "expect": {
+   "exercise": "barbell-bench-press",
+   "weight": 80,
+   "unit": "kg",
+   "reps": 8,
+   "sets": 3,
+   "rpe": null,
+   "warmup": false
+  }
+ },
+ {
+  "text": "3x8 at 80",
+  "current": "barbell-bench-press",
+  "last": null,
+  "user_unit": "kg",
+  "expect": {
+   "exercise": "barbell-bench-press",
+   "weight": 80,
+   "unit": "kg",
+   "reps": 8,
+   "sets": 3,
+   "rpe": null,
+   "warmup": false
+  }
+ },
+ {
+  "text": "3 x 8 @ 80kg",
+  "current": "barbell-bench-press",
+  "last": null,
+  "user_unit": "kg",
+  "expect": {
+   "exercise": "barbell-bench-press",
+   "weight": 80,
+   "unit": "kg",
+   "reps": 8,
+   "sets": 3,
+   "rpe": null,
+   "warmup": false
+  }
+ },
+ {
+  "text": "squat 5 sets of 5 at 120",
+  "current": "barbell-bench-press",
+  "last": null,
+  "user_unit": "kg",
+  "expect": {
+   "exercise": "back-squat",
+   "weight": 120,
+   "unit": "kg",
+   "reps": 5,
+   "sets": 5,
+   "rpe": null,
+   "warmup": false
+  }
+ },
+ {
+  "text": "80 for 8 for 3 sets",
+  "current": "barbell-bench-press",
+  "last": null,
+  "user_unit": "kg",
+  "expect": {
+   "exercise": "barbell-bench-press",
+   "weight": 80,
+   "unit": "kg",
+   "reps": 8,
+   "sets": 3,
+   "rpe": null,
+   "warmup": false
+  }
+ },
+ {
+  "text": "80 for 8 x 3 sets",
+  "current": "barbell-bench-press",
+  "last": null,
+  "user_unit": "kg",
+  "expect": {
+   "exercise": "barbell-bench-press",
+   "weight": 80,
+   "unit": "kg",
+   "reps": 8,
+   "sets": 3,
+   "rpe": null,
+   "warmup": false
+  }
+ },
+ {
+  "text": "8 reps",
+  "current": "barbell-bench-press",
+  "last": {
+   "slug": "barbell-bench-press",
+   "weight_kg": 80,
+   "reps": 8
+  },
+  "user_unit": "kg",
+  "expect": {
+   "exercise": "barbell-bench-press",
+   "weight": 80,
+   "unit": "kg",
+   "reps": 8,
+   "sets": 1,
+   "rpe": null,
+   "warmup": false
+  }
+ },
+ {
+  "text": "6 reps",
+  "current": "barbell-bench-press",
+  "last": {
+   "slug": "barbell-bench-press",
+   "weight_kg": 80,
+   "reps": 8
+  },
+  "user_unit": "kg",
+  "expect": {
+   "exercise": "barbell-bench-press",
+   "weight": 80,
+   "unit": "kg",
+   "reps": 6,
+   "sets": 1,
+   "rpe": null,
+   "warmup": false
+  }
+ },
+ {
+  "text": "same weight for 6",
+  "current": "barbell-bench-press",
+  "last": {
+   "slug": "barbell-bench-press",
+   "weight_kg": 80,
+   "reps": 8
+  },
+  "user_unit": "kg",
+  "expect": {
+   "exercise": "barbell-bench-press",
+   "weight": 80,
+   "unit": "kg",
+   "reps": 6,
+   "sets": 1,
+   "rpe": null,
+   "warmup": false
+  }
+ },
+ {
+  "text": "same again",
+  "current": "barbell-bench-press",
+  "last": {
+   "slug": "barbell-bench-press",
+   "weight_kg": 80,
+   "reps": 8
+  },
+  "user_unit": "kg",
+  "expect": {
+   "exercise": "barbell-bench-press",
+   "weight": 80,
+   "unit": "kg",
+   "reps": 8,
+   "sets": 1,
+   "rpe": null,
+   "warmup": false
+  }
+ },
+ {
+  "text": "another one",
+  "current": "barbell-bench-press",
+  "last": {
+   "slug": "barbell-bench-press",
+   "weight_kg": 80,
+   "reps": 8
+  },
+  "user_unit": "kg",
+  "expect": {
+   "exercise": "barbell-bench-press",
+   "weight": 80,
+   "unit": "kg",
+   "reps": 8,
+   "sets": 1,
+   "rpe": null,
+   "warmup": false
+  }
+ },
+ {
+  "text": "one more",
+  "current": "barbell-bench-press",
+  "last": {
+   "slug": "barbell-bench-press",
+   "weight_kg": 80,
+   "reps": 8
+  },
+  "user_unit": "kg",
+  "expect": {
+   "exercise": "barbell-bench-press",
+   "weight": 80,
+   "unit": "kg",
+   "reps": 8,
+   "sets": 1,
+   "rpe": null,
+   "warmup": false
+  }
+ },
+ {
+  "text": "eighty for eight",
+  "current": "barbell-bench-press",
+  "last": null,
+  "user_unit": "kg",
+  "expect": {
+   "exercise": "barbell-bench-press",
+   "weight": 80,
+   "unit": "kg",
+   "reps": 8,
+   "sets": 1,
+   "rpe": null,
+   "warmup": false
+  }
+ },
+ {
+  "text": "bench eighty five for six",
+  "current": "barbell-bench-press",
+  "last": null,
+  "user_unit": "kg",
+  "expect": {
+   "exercise": "barbell-bench-press",
+   "weight": 85,
+   "unit": "kg",
+   "reps": 6,
+   "sets": 1,
+   "rpe": null,
+   "warmup": false
+  }
+ },
+ {
+  "text": "squat one hundred and twenty for five",
+  "current": "barbell-bench-press",
+  "last": null,
+  "user_unit": "kg",
+  "expect": {
+   "exercise": "back-squat",
+   "weight": 120,
+   "unit": "kg",
+   "reps": 5,
+   "sets": 1,
+   "rpe": null,
+   "warmup": false
+  }
+ },
+ {
+  "text": "squat a hundred for ten",
+  "current": "barbell-bench-press",
+  "last": null,
+  "user_unit": "kg",
+  "expect": {
+   "exercise": "back-squat",
+   "weight": 100,
+   "unit": "kg",
+   "reps": 10,
+   "sets": 1,
+   "rpe": null,
+   "warmup": false
+  }
+ },
+ {
+  "text": "deadlift two twenty five for three",
+  "current": "barbell-bench-press",
+  "last": null,
+  "user_unit": "kg",
+  "expect": {
+   "exercise": "deadlift",
+   "weight": 225,
+   "unit": "kg",
+   "reps": 3,
+   "sets": 1,
+   "rpe": null,
+   "warmup": false
+  }
+ },
+ {
+  "text": "eighty point five for eight",
+  "current": "barbell-bench-press",
+  "last": null,
+  "user_unit": "kg",
+  "expect": {
+   "exercise": "barbell-bench-press",
+   "weight": 80.5,
+   "unit": "kg",
+   "reps": 8,
+   "sets": 1,
+   "rpe": null,
+   "warmup": false
+  }
+ },
+ {
+  "text": "sixty and a half for twelve",
+  "current": "barbell-bench-press",
+  "last": null,
+  "user_unit": "kg",
+  "expect": {
+   "exercise": "barbell-bench-press",
+   "weight": 60.5,
+   "unit": "kg",
+   "reps": 12,
+   "sets": 1,
+   "rpe": null,
+   "warmup": false
+  }
+ },
+ {
+  "text": "80 4 8",
+  "current": "barbell-bench-press",
+  "last": null,
+  "user_unit": "kg",
+  "expect": {
+   "exercise": "barbell-bench-press",
+   "weight": 80,
+   "unit": "kg",
+   "reps": 8,
+   "sets": 1,
+   "rpe": null,
+   "warmup": false
+  }
+ },
+ {
+  "text": "Bench, 80 for 8.",
+  "current": "barbell-bench-press",
+  "last": null,
+  "user_unit": "kg",
+  "expect": {
+   "exercise": "barbell-bench-press",
+   "weight": 80,
+   "unit": "kg",
+   "reps": 8,
+   "sets": 1,
+   "rpe": null,
+   "warmup": false
+  }
+ },
+ {
+  "text": "185 pounds for 5",
+  "current": "barbell-bench-press",
+  "last": null,
+  "user_unit": "kg",
+  "expect": {
+   "exercise": "barbell-bench-press",
+   "weight": 185,
+   "unit": "lb",
+   "reps": 5,
+   "sets": 1,
+   "rpe": null,
+   "warmup": false
+  }
+ },
+ {
+  "text": "185 lbs x 5",
+  "current": "barbell-bench-press",
+  "last": null,
+  "user_unit": "kg",
+  "expect": {
+   "exercise": "barbell-bench-press",
+   "weight": 185,
+   "unit": "lb",
+   "reps": 5,
+   "sets": 1,
+   "rpe": null,
+   "warmup": false
+  }
+ },
+ {
+  "text": "100 kilos for 5",
+  "current": "barbell-bench-press",
+  "last": null,
+  "user_unit": "kg",
+  "expect": {
+   "exercise": "barbell-bench-press",
+   "weight": 100,
+   "unit": "kg",
+   "reps": 5,
+   "sets": 1,
+   "rpe": null,
+   "warmup": false
+  }
+ },
+ {
+  "text": "135 for 10",
+  "current": "barbell-bench-press",
+  "last": null,
+  "user_unit": "lb",
+  "expect": {
+   "exercise": "barbell-bench-press",
+   "weight": 135,
+   "unit": "lb",
+   "reps": 10,
+   "sets": 1,
+   "rpe": null,
+   "warmup": false
+  }
+ },
+ {
+  "text": "warm up 60 for 10",
+  "current": "barbell-bench-press",
+  "last": null,
+  "user_unit": "kg",
+  "expect": {
+   "exercise": "barbell-bench-press",
+   "weight": 60,
+   "unit": "kg",
+   "reps": 10,
+   "sets": 1,
+   "rpe": null,
+   "warmup": true
+  }
+ },
+ {
+  "text": "warmup 40 x 12",
+  "current": "barbell-bench-press",
+  "last": null,
+  "user_unit": "kg",
+  "expect": {
+   "exercise": "barbell-bench-press",
+   "weight": 40,
+   "unit": "kg",
+   "reps": 12,
+   "sets": 1,
+   "rpe": null,
+   "warmup": true
+  }
+ },
+ {
+  "text": "warm-up set 60 for 10",
+  "current": "barbell-bench-press",
+  "last": null,
+  "user_unit": "kg",
+  "expect": {
+   "exercise": "barbell-bench-press",
+   "weight": 60,
+   "unit": "kg",
+   "reps": 10,
+   "sets": 1,
+   "rpe": null,
+   "warmup": true
+  }
+ },
+ {
+  "text": "80 for 8 rpe 8",
+  "current": "barbell-bench-press",
+  "last": null,
+  "user_unit": "kg",
+  "expect": {
+   "exercise": "barbell-bench-press",
+   "weight": 80,
+   "unit": "kg",
+   "reps": 8,
+   "sets": 1,
+   "rpe": 8,
+   "warmup": false
+  }
+ },
+ {
+  "text": "80 for 8 rpe 8.5",
+  "current": "barbell-bench-press",
+  "last": null,
+  "user_unit": "kg",
+  "expect": {
+   "exercise": "barbell-bench-press",
+   "weight": 80,
+   "unit": "kg",
+   "reps": 8,
+   "sets": 1,
+   "rpe": 8.5,
+   "warmup": false
+  }
+ },
+ {
+  "text": "80 for 8 at 9",
+  "current": "barbell-bench-press",
+  "last": null,
+  "user_unit": "kg",
+  "expect": {
+   "exercise": "barbell-bench-press",
+   "weight": 80,
+   "unit": "kg",
+   "reps": 8,
+   "sets": 1,
+   "rpe": 9,
+   "warmup": false
+  }
+ },
+ {
+  "text": "80 for 8 at rpe seven",
+  "current": "barbell-bench-press",
+  "last": null,
+  "user_unit": "kg",
+  "expect": {
+   "exercise": "barbell-bench-press",
+   "weight": 80,
+   "unit": "kg",
+   "reps": 8,
+   "sets": 1,
+   "rpe": 7,
+   "warmup": false
+  }
+ },
+ {
+  "text": "rdl 100 for 8",
+  "current": "barbell-bench-press",
+  "last": null,
+  "user_unit": "kg",
+  "expect": {
+   "exercise": "romanian-deadlift",
+   "weight": 100,
+   "unit": "kg",
+   "reps": 8,
+   "sets": 1,
+   "rpe": null,
+   "warmup": false
+  }
+ },
+ {
+  "text": "ohp 50 for 5",
+  "current": "barbell-bench-press",
+  "last": null,
+  "user_unit": "kg",
+  "expect": {
+   "exercise": "overhead-press",
+   "weight": 50,
+   "unit": "kg",
+   "reps": 5,
+   "sets": 1,
+   "rpe": null,
+   "warmup": false
+  }
+ },
+ {
+  "text": "Barbell Bench Press 90 for 3",
+  "current": "barbell-bench-press",
+  "last": null,
+  "user_unit": "kg",
+  "expect": {
+   "exercise": "barbell-bench-press",
+   "weight": 90,
+   "unit": "kg",
+   "reps": 3,
+   "sets": 1,
+   "rpe": null,
+   "warmup": false
+  }
+ },
+ {
+  "text": "incline bench 70 for 8",
+  "current": "barbell-bench-press",
+  "last": null,
+  "user_unit": "kg",
+  "expect": {
+   "exercise": "incline-barbell-bench-press",
+   "weight": 70,
+   "unit": "kg",
+   "reps": 8,
+   "sets": 1,
+   "rpe": null,
+   "warmup": false
+  }
+ },
+ {
+  "text": "lat pulldown 60 for 12",
+  "current": "barbell-bench-press",
+  "last": null,
+  "user_unit": "kg",
+  "expect": {
+   "exercise": "lat-pulldown",
+   "weight": 60,
+   "unit": "kg",
+   "reps": 12,
+   "sets": 1,
+   "rpe": null,
+   "warmup": false
+  }
+ },
+ {
+  "text": "pull ups 8 reps",
+  "current": "barbell-bench-press",
+  "last": null,
+  "user_unit": "kg",
+  "expect": {
+   "exercise": "pull-up",
+   "weight": 0,
+   "unit": "kg",
+   "reps": 8,
+   "sets": 1,
+   "rpe": null,
+   "warmup": false
+  }
+ },
+ {
+  "text": "then curls 15 for 12",
+  "current": "barbell-bench-press",
+  "last": null,
+  "user_unit": "kg",
+  "expect": {
+   "exercise": "barbell-curl",
+   "weight": 15,
+   "unit": "kg",
+   "reps": 12,
+   "sets": 1,
+   "rpe": null,
+   "warmup": false
+  }
+ },
+ {
+  "text": "sqaut 100 for 5",
+  "current": "barbell-bench-press",
+  "last": null,
+  "user_unit": "kg",
+  "expect": {
+   "exercise": "back-squat",
+   "weight": 100,
+   "unit": "kg",
+   "reps": 5,
+   "sets": 1,
+   "rpe": null,
+   "warmup": false
+  }
+ },
+ {
+  "text": "bench 80 for 8 please mate",
+  "current": "barbell-bench-press",
+  "last": null,
+  "user_unit": "kg",
+  "expect": {
+   "exercise": "barbell-bench-press",
+   "weight": 80,
+   "unit": "kg",
+   "reps": 8,
+   "sets": 1,
+   "rpe": null,
+   "warmup": false,
+   "unparsed": [
+    "mate"
+   ]
+  }
+ },
+ {
+  "text": "banana",
+  "current": "barbell-bench-press",
+  "last": null,
+  "user_unit": "kg",
+  "expect": {
+   "problem": "Couldn't find a set"
+  }
+ },
+ {
+  "text": "",
+  "current": "barbell-bench-press",
+  "last": null,
+  "user_unit": "kg",
+  "expect": {
+   "problem": "Nothing"
+  }
+ },
+ {
+  "text": "same again",
+  "current": "barbell-bench-press",
+  "last": null,
+  "user_unit": "kg",
+  "expect": {
+   "problem": "no set to repeat"
+  }
+ },
+ {
+  "text": "bench for",
+  "current": "barbell-bench-press",
+  "last": null,
+  "user_unit": "kg",
+  "expect": {
+   "problem": "Couldn't find a set"
+  }
+ },
+ {
+  "text": "bench 2000 for 5",
+  "current": "barbell-bench-press",
+  "last": null,
+  "user_unit": "kg",
+  "expect": {
+   "problem": "over"
+  }
+ },
+ {
+  "text": "squat 8 reps",
+  "current": "barbell-bench-press",
+  "last": {
+   "slug": "barbell-bench-press",
+   "weight_kg": 80,
+   "reps": 8
+  },
+  "user_unit": "kg",
+  "expect": {
+   "problem": "What weight"
+  }
+ },
+ {
+  "text": "80 for 8",
+  "current": null,
+  "last": null,
+  "user_unit": "kg",
+  "expect": {
+   "problem": "Which exercise"
+  }
+ },
+ {
+  "text": "80 for 8 for 50 sets",
+  "current": "barbell-bench-press",
+  "last": null,
+  "user_unit": "kg",
+  "expect": {
+   "problem": "At most"
+  }
+ }
+]

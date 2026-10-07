@@ -6,6 +6,7 @@ import uuid
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from decimal import Decimal
@@ -261,6 +262,45 @@ def test_the_winner_is_paid_exactly_once(
     assert paid[0].points == engine.WIN_POINTS
 
 
+def test_the_database_itself_refuses_a_second_duel_award(
+    client: TestClient, user_factory, db: Session
+) -> None:
+    """The guard underneath the lock, tested directly.
+
+    app/core/duels.py awards the winner inside a SAVEPOINT and treats an
+    IntegrityError as "already paid" - so that except branch is only correct if
+    the database really does refuse the second row. Two simultaneous readers both
+    judging a closed duel is the case it exists for, and the row lock alone is
+    not the whole story.
+
+    This could not be tested before: uq_points_ledger_once listed 'duel_won' in
+    the migration but not in the model, and the suite builds its schema from the
+    model, so the second insert used to succeed here while failing in production.
+    """
+    mine, me = user_factory()
+    made = client.post(DUELS, json={"against_rival": True, "days": 1}, headers=mine).json()
+    duel = close_window(db, made["id"])
+    train(db, me["id"], duel.window_start + dt.timedelta(hours=1), weight=100, reps=10, sets=5)
+
+    paid = client.get(f"{DUELS}/{made['id']}", headers=mine).json()
+    assert paid["points_awarded"] == engine.WIN_POINTS
+
+    # Forge the award a second time, exactly as a racing reader would.
+    db.expire_all()
+    with pytest.raises(IntegrityError):
+        db.add(
+            PointsLedgerEntry(
+                user_id=uuid.UUID(me["id"]),
+                source_type=LedgerSource.DUEL_WON.value,
+                source_id=uuid.UUID(made["id"]),
+                points=engine.WIN_POINTS,
+                reason="a racing second reader",
+            )
+        )
+        db.flush()
+    db.rollback()
+
+
 def test_a_draw_has_no_winner_and_pays_nobody(
     client: TestClient, auth: dict, db: Session
 ) -> None:
@@ -446,3 +486,240 @@ def test_finishing_a_workout_writes_one_feed_entry(client: TestClient, auth: dic
 
     kinds = [e["event_type"] for e in client.get(FEED, headers=auth).json()["entries"]]
     assert "session_completed" in kinds or "pr_achieved" in kinds, kinds
+
+
+# ---------------------------------------------------------------------------
+# Fair modes
+# ---------------------------------------------------------------------------
+
+
+def end_now(db: Session, duel_id: str) -> Duel:
+    """End the window a second ago WITHOUT moving its start, so training
+    placed inside it by the test stays inside it."""
+    duel = db.get(Duel, uuid.UUID(duel_id))
+    duel.window_end = dt.datetime.now(dt.timezone.utc) - dt.timedelta(seconds=1)
+    db.commit()
+    db.refresh(duel)
+    return duel
+
+
+def train_qualified(db: Session, user_id: str, at: dt.datetime, *, weight: float = 100,
+                    reps: int = 5, sets: int = 3, slug: str = "barbell-bench-press",
+                    flagged: bool = False) -> None:
+    """A qualifying finished workout of `sets` working sets, at `at`."""
+    exercise = db.scalars(select(Exercise).where(Exercise.slug == slug)).one()
+    session = WorkoutSession(
+        user_id=uuid.UUID(user_id),
+        started_at=at - dt.timedelta(minutes=45),
+        ended_at=at,
+        status=SessionStatus.COMPLETED.value,
+        qualified=True,
+    )
+    db.add(session)
+    db.flush()
+    for number in range(1, sets + 1):
+        db.add(SetEntry(
+            session_id=session.id, user_id=uuid.UUID(user_id), exercise_id=exercise.id,
+            set_number=number, weight_kg=Decimal(str(weight)), reps=reps, is_warmup=False,
+            completed_at=at, is_flagged=flagged, flag_reason="e1rm_jump" if flagged else None,
+        ))
+    db.commit()
+
+
+def challenge(client: TestClient, challenger: dict, opponent_id: str, metric: str, **extra):
+    return client.post(DUELS, json={"opponent_id": opponent_id, "metric": metric, **extra},
+                       headers=challenger)
+
+
+def accepted(client: TestClient, a: dict, b: dict, b_id: str, metric: str) -> dict:
+    r = challenge(client, a, b_id, metric)
+    assert r.status_code == 201, r.text
+    r = client.post(f"{DUELS}/{r.json()['id']}/accept", headers=b)
+    assert r.status_code == 200, r.text
+    return r.json()
+
+
+def rewards(db: Session, user_id: str) -> list[PointsLedgerEntry]:
+    return list(db.scalars(select(PointsLedgerEntry).where(
+        PointsLedgerEntry.user_id == uuid.UUID(user_id),
+        PointsLedgerEntry.source_type.in_(("duel_won", "duel_draw", "duel_participation")),
+    )))
+
+
+def test_progress_needs_history_and_says_whose(client: TestClient, user_factory) -> None:
+    a, a_user = user_factory()
+    b, b_user = user_factory()
+    party_with(client, a, b)
+    r = challenge(client, a, b_user["id"], "progress")
+    assert r.status_code == 422
+    assert "no lifts in the last 4 weeks" in r.json()["detail"]
+
+    modes = {m["metric"]: m for m in client.get(
+        f"{DUELS}/modes", params={"opponent_id": b_user["id"]}, headers=a).json()["modes"]}
+    assert modes["consistency"]["eligible"] is True
+    assert modes["progress"]["eligible"] is False and modes["progress"]["reason"]
+    assert modes["relative_volume"]["eligible"] is False
+    assert all(m["fairness"] for m in modes.values())
+
+
+def test_the_rival_does_not_do_fair_modes(client: TestClient, auth: dict) -> None:
+    r = client.post(DUELS, json={"against_rival": True, "metric": "consistency"}, headers=auth)
+    assert r.status_code == 422
+
+
+def test_consistency_winner_and_a_loser_who_trained_are_both_paid(
+    client: TestClient, user_factory, db: Session
+) -> None:
+    a, a_user = user_factory()
+    b, b_user = user_factory()
+    party_with(client, a, b)
+    duel = accepted(client, a, b, b_user["id"], "consistency")
+    start = backdate(db, duel["id"], days=3).window_start
+    for day in range(3):
+        train_qualified(db, a_user["id"], start + dt.timedelta(days=day, hours=1), weight=20)
+    train_qualified(db, b_user["id"], start + dt.timedelta(hours=2), weight=200)
+
+    live = client.get(f"{DUELS}/{duel['id']}", headers=a).json()
+    assert (live["challenger"]["score"], live["opponent"]["score"]) == (3, 1)
+    assert len(live["challenger"]["breakdown"]) == 3
+    assert live["rules"]
+
+    end_now(db, duel["id"])
+    done = client.get(f"{DUELS}/{duel['id']}", headers=b).json()
+    assert done["winner_id"] == a_user["id"]
+    assert done["reward_type"] == "duel_participation"
+    assert done["reward_points"] == engine.PARTICIPATION_POINTS
+    assert [r.points for r in rewards(db, a_user["id"])] == [engine.WIN_POINTS]
+    # Reading again pays nothing more.
+    client.get(f"{DUELS}/{duel['id']}", headers=a)
+    assert len(rewards(db, a_user["id"])) == len(rewards(db, b_user["id"])) == 1
+
+
+def test_a_loser_who_never_trained_gets_nothing(client: TestClient, user_factory, db: Session) -> None:
+    a, a_user = user_factory()
+    b, b_user = user_factory()
+    party_with(client, a, b)
+    duel = accepted(client, a, b, b_user["id"], "consistency")
+    start = backdate(db, duel["id"]).window_start
+    train_qualified(db, a_user["id"], start + dt.timedelta(hours=1))
+    end_now(db, duel["id"])
+    client.get(f"{DUELS}/{duel['id']}", headers=a)
+    assert rewards(db, b_user["id"]) == []
+
+
+def test_a_fair_draw_pays_both_sides_once(client: TestClient, user_factory, db: Session) -> None:
+    a, a_user = user_factory()
+    b, b_user = user_factory()
+    party_with(client, a, b)
+    duel = accepted(client, a, b, b_user["id"], "consistency")
+    start = backdate(db, duel["id"]).window_start
+    train_qualified(db, a_user["id"], start + dt.timedelta(hours=1), weight=50)
+    train_qualified(db, b_user["id"], start + dt.timedelta(hours=2), weight=150)
+    end_now(db, duel["id"])
+    done = client.get(f"{DUELS}/{duel['id']}", headers=a).json()
+    client.get(f"{DUELS}/{duel['id']}", headers=b)
+    assert done["is_draw"] is True
+    assert [r.points for r in rewards(db, a_user["id"])] == [engine.DRAW_POINTS]
+    assert [r.points for r in rewards(db, b_user["id"])] == [engine.DRAW_POINTS]
+
+
+def test_duel_rewards_stop_at_the_weekly_cap(client: TestClient, user_factory, db: Session) -> None:
+    a, a_user = user_factory()
+    others = [user_factory() for _ in range(engine.REWARDS_PER_WEEK + 1)]
+    paid = []
+    for b, b_user in others:
+        party_with(client, a, b)
+        duel = accepted(client, a, b, b_user["id"], "consistency")
+        start = backdate(db, duel["id"]).window_start
+        train_qualified(db, a_user["id"], start + dt.timedelta(hours=1))
+        end_now(db, duel["id"])
+        paid.append(client.get(f"{DUELS}/{duel['id']}", headers=a).json()["reward_points"])
+    assert paid == [engine.WIN_POINTS] * engine.REWARDS_PER_WEEK + [None]
+
+
+def test_progress_baselines_are_fixed_when_the_duel_starts(
+    client: TestClient, user_factory, db: Session
+) -> None:
+    a, a_user = user_factory()
+    b, b_user = user_factory()
+    party_with(client, a, b)
+    now = dt.datetime.now(dt.timezone.utc)
+    train_qualified(db, a_user["id"], now - dt.timedelta(days=5), weight=100, reps=1)
+    train_qualified(db, b_user["id"], now - dt.timedelta(days=5), weight=50, reps=1)
+    duel = accepted(client, a, b, b_user["id"], "progress")
+    start = backdate(db, duel["id"]).window_start
+    train_qualified(db, a_user["id"], start + dt.timedelta(hours=1), weight=105, reps=1)
+    train_qualified(db, b_user["id"], start + dt.timedelta(hours=1), weight=55, reps=1)
+
+    live = client.get(f"{DUELS}/{duel['id']}", headers=a).json()
+    assert (live["challenger"]["score"], live["opponent"]["score"]) == (5.0, 10.0)
+
+    # A heavier set backfilled into the baseline period changes nothing.
+    train_qualified(db, b_user["id"], start - dt.timedelta(days=2), weight=80, reps=1)
+    again = client.get(f"{DUELS}/{duel['id']}", headers=a).json()
+    assert again["opponent"]["score"] == 10.0
+
+
+def test_flagged_sets_are_kept_out_of_duels(client: TestClient, user_factory, db: Session) -> None:
+    a, a_user = user_factory()
+    b, b_user = user_factory()
+    party_with(client, a, b)
+    duel = accepted(client, a, b, b_user["id"], "volume")
+    start = backdate(db, duel["id"]).window_start
+    train_qualified(db, a_user["id"], start + dt.timedelta(hours=1), weight=100, reps=5, sets=1)
+    train_qualified(db, a_user["id"], start + dt.timedelta(hours=2), weight=400, reps=5, sets=1,
+                    flagged=True)
+    live = client.get(f"{DUELS}/{duel['id']}", headers=a).json()
+    assert live["challenger"]["score"] == 500
+
+
+def test_an_implausible_logged_set_is_flagged_but_still_logged(
+    client: TestClient, auth: dict
+) -> None:
+    from tests.test_workouts import exercise_id, log, start as start_session
+
+    session = start_session(client, auth)
+    bench = exercise_id(client, auth)
+    first = log(client, auth, session["id"], bench, weight=100, reps=5)
+    assert first["set"]["is_flagged"] is False
+    jump = log(client, auth, session["id"], bench, weight=160, reps=5)
+    assert jump["set"]["is_flagged"] is True
+    assert jump["points_awarded"] > 0  # still scores for its owner
+
+
+def test_live_duels_are_capped(client: TestClient, user_factory) -> None:
+    a, _ = user_factory()
+    for _ in range(engine.MAX_LIVE):
+        b, b_user = user_factory()
+        party_with(client, a, b)
+        assert challenge(client, a, b_user["id"], "consistency").status_code == 201
+    b, b_user = user_factory()
+    party_with(client, a, b)
+    assert challenge(client, a, b_user["id"], "consistency").status_code == 409
+
+
+def test_an_unanswered_challenge_expires(client: TestClient, user_factory, db: Session) -> None:
+    a, _ = user_factory()
+    b, b_user = user_factory()
+    party_with(client, a, b)
+    duel_id = challenge(client, a, b_user["id"], "consistency").json()["id"]
+    duel = db.get(Duel, uuid.UUID(duel_id))
+    duel.created_at = duel.created_at - engine.ACCEPT_WITHIN - dt.timedelta(minutes=1)
+    db.commit()
+    assert client.get(f"{DUELS}/{duel_id}", headers=a).json()["status"] == "expired"
+    assert client.post(f"{DUELS}/{duel_id}/accept", headers=b).status_code == 409
+
+
+def test_only_the_challenger_can_cancel_and_only_while_pending(
+    client: TestClient, user_factory
+) -> None:
+    a, _ = user_factory()
+    b, b_user = user_factory()
+    party_with(client, a, b)
+    duel_id = challenge(client, a, b_user["id"], "consistency").json()["id"]
+    assert client.post(f"{DUELS}/{duel_id}/cancel", headers=b).status_code == 409
+    r = client.post(f"{DUELS}/{duel_id}/cancel", headers=a)
+    assert r.status_code == 200 and r.json()["status"] == "cancelled"
+    assert client.post(f"{DUELS}/{duel_id}/cancel", headers=a).status_code == 409
+    listed = client.get(DUELS, headers=a).json()
+    assert [d["id"] for d in listed["closed"]] == [duel_id]

@@ -14,6 +14,475 @@ Entry format:
 
 ---
 
+## 2026-10-07 (47) - Opus - overhaul phase 5: Monthly Summary, installable PWA, offline sets, celebrations
+
+**Changed**
+- **Monthly Summary** - `GET /analytics/monthly-summary?month=` (default last
+  month, the user's local month): workouts, time, active days, best week,
+  volume with a relatable comparison (`analytics.volume_comparison`, against
+  rounded everyday weights in `workout_rules.VOLUME_COMPARISONS` - "That's
+  about 3.3 small cars"), muscles most-trained first, the month's records,
+  ledger points, current rank and the month's rank-ups (from the RANK_UP
+  activity rows), quests completed, duels played and won (duels count once
+  settled - they are judged on read). `GET /analytics/monthly-summary/latest`
+  says whether Home shows last month's card (first 7 days, last month had a
+  workout).
+- **Story** at `/summary/<YYYY-MM>`: seven full-screen slides with progress
+  bars - tap right for next, left for back - ending in a summary card with
+  Share (the existing story-card renderer) and Done. The hero card sits on
+  Home in the first week of a month, and on You -> Overview.
+- **Installable**: `assets/manifest.json` (standalone, start /home, 192 /
+  512 / maskable icons rendered from the existing mark by
+  `scripts/icon/render_icon.mjs --pwa`), theme colour, `assets/sw.js`
+  (hashed build files, exercise images and icons cache-first; pages
+  network-first with the last copy and `offline.html` as fallbacks; the API
+  and Reflex's socket never cached).
+- **Offline set logging** (`components/offline.py`): with no connection, a tap
+  on "Log set" is caught before React, the row's shown values (pre-filled
+  from the routine or last time) are kept in localStorage with their own
+  `client_set_id`, the card says "N queued" and a banner says so; when the
+  connection is back they are posted to the API oldest first (the id makes a
+  retry log nothing twice) and the workout reloads. The browser-facing API
+  URL is a frontend build arg, `METALARM_PUBLIC_API_URL` (dev
+  `http://localhost:8000`, prod `https://api.${DOMAIN}`, already in CORS).
+- **Celebrations**: the PR moment rebuilt on the tokens (record gold, scrim,
+  same entrance, reduced motion a fade, tap anywhere to dismiss) and taken
+  off the token-lint legacy list. Tiers: "+N" on a set < the quest chip <
+  the PR card < the rank-up takeover (which keeps its royal palette).
+
+**Verified**
+- `tests/test_monthly.py` (4): comparisons read naturally; month totals by
+  hand; a seeded month (three workouts placed in last month, one either side)
+  summarises exactly - 3 workouts, 8,100 s, 3,915 kg, 8 sets, "about 3.3 small
+  cars", chest first, only that month's records and points; an empty month;
+  the hero flag; a month boundary in the user's time zone. Full backend
+  suite passes (exit 0, the two dev-DB health tests deselected); `alembic
+  check` clean (rebuilt image) - no migration this phase.
+- `scripts/e2e/pwa_e2e.mjs` (new, Gate 5): manifest and every icon served;
+  the service worker active; Chrome's own installability check
+  (`Page.getInstallabilityErrors`, which Lighthouse's PWA audit ran on before
+  Lighthouse 12 dropped the category) reports nothing, in a real
+  (non-incognito) profile; offline - the banner, two taps queue two sets, the
+  card shows them, an app page opens from the cache; online again - exactly
+  two 80 kg x 5 sets logged and shown, the queue empty, nothing doubled on the
+  next flush; the demo account's last month on all seven slides matching the
+  API at 375 and 430 with no overflow, back-tap, and the Home card shown
+  exactly when the API says - ALL PASSED (26).
+- All other suites pass: workout 104, logging 36, analytics 53, explore 36,
+  social 21, duels 12, rank-up 51; `web_tour.mjs` full take, no misses.
+- `docs/api-contract.md` regenerated.
+- iOS `scripts/dev.sh ios`: ** TEST SUCCEEDED ** - XCTest 25 executed, 0 failures (live tour skipped); Swift Testing 94 passed. The API change is additive.
+
+**Blocked:** nothing.
+
+**Other agent needs to know:** offline logging covers the tap-to-log loop on
+an open workout (values as shown); typing new numbers needs the connection,
+since inputs are server state. A page never opened before cannot load
+offline - it gets `offline.html`.
+
+---
+
+## 2026-10-07 (46) - Opus - overhaul phase 4: follows, feed, reactions, notifications, Home
+
+**Changed**
+- **Social graph** (migration `9c2d4e6f8a10`: `follows`, `reactions`,
+  `notifications`; models in `app/models/social.py`). Friends = mutual
+  follows. Every rule about who sees what is in `app/core/social.py`:
+  a finished workout is public (anyone), followers (its owner's followers) or
+  private (owner); in-progress and abandoned are owner-only.
+- **Endpoints** (`routes/social.py`): `POST/DELETE /follows/{id}`;
+  `GET /users/search?q=` (name or username, never email, never yourself),
+  `/users/suggested` (followed by people you follow, then party mates, with
+  the reason), `/users/{id}`, `/users/{id}/followers|following|sessions`;
+  `GET /feed/following` (you + people you follow, as visibility allows, from
+  the finish totals, up to six exercises per card); `GET/POST/DELETE
+  /workouts/sessions/{id}/reactions` ("spotted", once each);
+  `GET /notifications`, `POST /notifications/read`; `GET /me/game` (rank,
+  XP to the next rank's level, points this week, quests done, weekly streak,
+  unread); `GET /leaderboard/friends?period=week|all` (you + people you
+  follow, by ledger points, ties share a place, your own row always
+  returned). The existing `/feed` (party activity) is untouched.
+- Notifications: a follow, a spot, a duel challenge, a friend's record (to
+  mutual friends, never for a private workout), a quest completing (in
+  `quest_board.refresh`, so set logging counts too). An unread repeat is not
+  stacked; nobody is told about their own action.
+- **Workouts**: `visibility` on start (defaults to the account's),
+  `PATCH /workouts/sessions/{id}` (name, visibility - also after finish),
+  `visibility` and `user_id` on `SessionOut`, `visibility` on summaries.
+  `GET /workouts/sessions/{id}` reads a friend's finished workout when its
+  visibility allows.
+- **Duels**: a mutual follow now makes someone challengeable, as well as a
+  shared party (kept, so existing party duels still work);
+  `GET /duels/opponents` lists them; the challenged get a notification.
+- **Home** rebuilt (`pages/home.py`): avatar, the Following / Leaderboard /
+  Duels switcher, find friends, streak flame, bell with unread badge; the game
+  strip (-> `/quests`); weekly snapshot with deltas; the feed (spot from the
+  card, "Show more"), the friends leaderboard (week / all time, your row kept
+  in sight), duels. The old dashboard (quest board, rank detail, the
+  `?celebrate=` preview) now lives at `/quests`.
+- **People**: Explore -> People (search, people you may know, Follow /
+  Following); profiles at `/u/<id>` (rank frame, counts, Follow back,
+  Challenge for friends, their visible workouts); `/notifications`.
+  Session Detail shows whose workout it is and lets you spot it, or - your
+  own - choose who can see it; the workout summary has the same control.
+  You shows follower counts.
+- Gallery feed card: the decorative "verified" tick removed - nobody is
+  verified. Delta pills say "=" when nothing changed rather than "▼ 0".
+
+**Verified**
+- `tests/test_social.py` (12): follows and friends, notification de-dupe,
+  the three visibility rules in the feed / profile / session read, feed
+  totals and paging, spotting (and 404 when you cannot see it), friend PR
+  and quest notifications, mark read, people search (no email, not self),
+  friends-of-friends suggestions, duels for friends only (one-way is not
+  enough), the leaderboard with shared places, `/me/game` against `/auth/me`.
+  Full backend suite passes (exit 0, the two dev-DB health tests
+  deselected); migration up / down / up and `alembic check` clean on a
+  scratch DB with a REBUILT image (the first check ran an old image - caught
+  it; it also found the id server defaults and an unindexed FK, both fixed).
+- `scripts/e2e/social_e2e.mjs` (new, Gate 4): two browsers - search, follow,
+  the followers-only workout in the feed (never the private one) with its
+  numbers, spot, the other side's notifications, follow back from one,
+  challenge and accept a duel with no shared party, the leaderboard -
+  375 and 430: ALL PASSED (21).
+- Also passing: `workout_e2e` 104, `logging_e2e` 36, `analytics_e2e` 53,
+  `explore_e2e` 36, `duels_e2e` 12 and `rank_up_e2e` 51 (both were stale
+  since phase 0's /dashboard -> /home and the fair-duel mode picker; fixed),
+  `web_tour.mjs` full take with no missed controls.
+- Social reads on the demo account: <= 11 ms each.
+- `docs/api-contract.md` regenerated (108 paths).
+- iOS `scripts/dev.sh ios`: ** TEST SUCCEEDED ** - XCTest 25 executed, 0 failures (live tour skipped); Swift Testing 94 passed. API changes are additive.
+
+**Blocked:** nothing.
+
+**Other agent needs to know:** "Friendship" in the next-slice duel spec is
+now mutual follows; parties still count for duels. The Monthly Summary hero
+card on Home is phase 5.
+
+---
+
+## 2026-10-07 (45) - Opus - overhaul phase 3: Explore, the full wger import, curated programs
+
+**Changed**
+- **wger library import** (`scripts/import_wger.py library`): the snapshot now
+  keeps each description with its own licence; the import adds wger exercises
+  the library lacks, under an allow list (CC-BY-SA 3.0/4.0, CC-BY 4.0, CC0),
+  no AI-flagged images, usable English names, mapped muscles. Then every
+  candidate was read by hand into `backend/app/data/wger/review.json`:
+  45 were library exercises under another name (matched, not duplicated -
+  so a lifter's records do not split), 25 left out (non-English, unclear,
+  duplicates), 87 corrected (names, muscles, equipment - wger has no
+  "machine" - category, stretches as mobility). Every new image was then
+  checked on a contact sheet: 17 kept without their image (watermarks,
+  third-party logos, copyright notices an uploader cannot licence, or
+  unflagged AI art) and without wger's text, which would need a credit.
+  Result: 193 exercises (was 91), 102 new; 30 existing ones took their
+  wger twin's image. `docs/wger-licence-review.md` has the counts.
+- **MetalArm diagrams** (`scripts/exercise_diagrams.py`): the 48 exercises
+  with no licensed art get our own drawing - the body-map figure, primary
+  muscles lit, secondary at 40%, equipment named - CC0, credited "MetalArm".
+- **Curated programs** (`app/data/programs.json`, `core/curated.py`): two per
+  path with real routines (rep ranges, rest, supersets), original names.
+  `GET /programs/curated?category=` (the user's path first, with their saved
+  copy's id) and `POST /programs/curated/{slug}/save` (copies it into the
+  Library as an owned program and routines; 409 the second time).
+- **`GET /exercises/browse`**: search by name or shipped alias ("rdl"),
+  muscle, equipment, category, A-Z keyset cursor, `total`, and each image's
+  credit. Credits page pages through it.
+- **Explore** (`pages/explore.py`): search with recent searches; muscle and
+  equipment grids open a list filtered by both (chip rows to combine); count
+  and "Show more"; Programs by path with a detail sheet and Save to Library;
+  People says it arrives with following (phase 4).
+- **Picker** rebuilt on the new tokens: multi-select (tap to pick, "Add N
+  exercises" in the order picked), muscle and equipment chips, artwork
+  thumbnails, custom exercises kept. Off the token-lint legacy list.
+
+**Verified**
+- `tests/test_explore.py` (11): every library exercise has credited art,
+  real muscles (primary set, disjoint secondary), a table of 31 well-known
+  lifts has the right primary muscle, every browsable muscle has exercises;
+  curated programs well formed; browse filters/aliases/paging/visibility;
+  curated listing and save. Three older tests updated for the bigger library
+  (size bound; the attribution check; Strong's Smith squat now matches the
+  library's Smith Machine Squat - on equipment, never the barbell squat).
+  Full backend suite passes (exit 0, the two dev-DB health tests deselected);
+  `alembic check` clean - no migration.
+- `frontend/tests/test_assets.py`: every image file is shipped; no orphans.
+- `scripts/e2e/explore_e2e.mjs` (new, Gate 3): all 193 images served as
+  images, each credited; alias search; recent searches; Chest and Chest +
+  Dumbbell list exactly the API's counts; Exercise Detail shows its picture;
+  six programs, the user's path first; save -> Library with its routines;
+  the picker adds two at once - 375 and 430: ALL PASSED (36).
+- `workout_e2e` 104/104, `logging_e2e` 36/36, `analytics_e2e` 53/53 (picker
+  steps updated), `web_tour.mjs` full take, no missed controls.
+- `docs/api-contract.md` regenerated.
+- iOS `scripts/dev.sh ios`: ** TEST SUCCEEDED ** - XCTest 25 executed, 0 failures (live tour skipped); the API change is additive.
+
+**Blocked:** nothing.
+
+**Other agent needs to know:** wger images are mixed formats (png, jpg,
+webp, gif). Re-running the import is safe; `review.json` is the place to
+correct a wger exercise, not `exercises.json`.
+
+---
+
+## 2026-10-06 (44) - Opus - overhaul phase 2: clarity and analytics
+
+**Changed**
+- **Analytics read models** (`app/core/analytics.py`, pure): Monday weeks,
+  range starts (3M = 13 weeks incl. this one, 6M, Year, All = from the first
+  workout), the weekly snapshot with deltas, weekly series (duration, volume,
+  workouts from the finish totals; points from the ledger by the day each row
+  was written), the month calendar with runs of consecutive days, and muscle
+  load/intensity. Everything is in the user's local dates.
+- **Recovery** (`app/core/recovery.py`, pure): spec 8.2 exactly - primary
+  1.0 / secondary 0.5 load, halving every 24 h (small) / 36 h (large), last
+  96 h, thresholds 6 / 10; overall is the 7-day-load-weighted average. All
+  constants in `workout_rules.py`. The API returns a note saying it is an
+  estimate, and the UI shows it.
+- **Endpoints** (`routes/analytics.py`): `GET /analytics/snapshot?week=`,
+  `/analytics/series?metric=&range=`, `/analytics/muscles?from=&to=`,
+  `/analytics/calendar?month=`, `/analytics/recovery`, `/history?cursor=`
+  (months, keyset cursor, read from the finish snapshot only),
+  `/me/exercises?cursor=` (best set and e1RM from the records table),
+  `/exercises/{id}/stats?range=` (per-session best set / e1RM / volume / max
+  reps, the last 20 sessions' sets, current records).
+- **Bug fixed:** imported (Strong/Hevy) and seeded workouts never got the
+  finish totals snapshot, so they would have charted as 0. New
+  `store.write_totals`, called by the importer (for every finished session,
+  since a replay can move records between them) and by the demo seed.
+- **Workout tab** (`components/workout_home.py`): date title, week strip
+  (tap a day to see its workouts), Today with session cards and Start New
+  Workout, Suggested Workouts tiles, My insights (recovery ring -> recovery
+  sheet with a body map, streak + freezes, quests done, next rank), ready-made
+  workouts, unit switch. The old game header is gone from this tab; the
+  insights carry it.
+- **You tab** (`pages/you.py`): profile header (initials in the tier-framed
+  avatar, rank, level, points, path), Overview (3M/6M/Year/All, headline,
+  area chart, Duration/Volume/Workouts/Points chips, this week's muscle map,
+  month calendar with paging), Exercises, Measurements (chips per metric,
+  chart, add weight / body fat / custom), History by month. The old profile
+  page stays at `/profile` behind the gear.
+- **Exercise Detail** `/exercise/[id]`: artwork + credit, equipment chip,
+  favourite, Add to workout (into the live session, or a new one), About
+  (body map: primary 100%, secondary 40%; steps; tips), History, Charts (Best
+  set / Estimated 1RM / Volume / Max reps), Records.
+  **Session Detail** `/session/[id]`: stats and every set.
+- `scripts/seed_load.py`: the budget's dataset (2 years x 4 workouts/week)
+  and a p95 timing of every clarity read.
+
+**Verified**
+- `tests/test_analytics.py` (21): every pure function against hand-worked
+  numbers; recovery decay and floors; week boundaries at local midnight
+  (Kolkata) and across the New York DST change; every endpoint against a
+  seeded account worked out in the comments (the gate); input validation;
+  import totals. Full backend suite passes (exit 0, the two dev-DB health
+  tests deselected as before); `alembic check` clean - no migration this phase.
+- `scripts/e2e/analytics_e2e.mjs` (new, Gate 2): one workout of known
+  numbers (2,340 kg, 5 sets, bench 100 x 5, e1RM 116.7) shown exactly on the
+  Workout tab, You Overview/Exercises/History/Measurements, Exercise Detail
+  and Session Detail; recovery % equals the API's - 375 and 430: ALL PASSED (53).
+- `logging_e2e.mjs` 36/36, `workout_e2e.mjs` 104/104 (start-screen
+  selectors updated), `web_tour.mjs` full take with no missed controls.
+- `seed_load.py` on 416 workouts: every read p95 <= 17.4 ms (budget 200).
+- `docs/api-contract.md` regenerated (91 paths).
+- iOS `scripts/dev.sh ios`: ** TEST SUCCEEDED ** - XCTest 25 executed, 0 failures (live-backend tour skipped); Swift Testing 94 passed. The API change is additive.
+
+**Blocked:** nothing.
+
+**Other agent needs to know:** the You header shows points balance as "total
+points"; when `GET /me/game` lands (phase 4) it should move to that. The
+Monthly Summary card on Overview is phase 5.
+
+---
+
+## 2026-10-06 (43) - Opus - overhaul phase 1: logging depth, Active Workout, Summary, Library
+
+**Changed**
+- **Backend** (committed separately in 5509e6d): `SessionExercise` cards
+  (order, supersets, notes, rest) with backfill; `set_type` (normal / warm-up
+  / drop / failure; `is_warmup` kept in step by a CHECK); card endpoints (add,
+  patch, reorder, delete with `?force` reversing awards); `/previous`; session
+  totals snapshot; `muscles_worked` + `rank_change` on finish; programs,
+  favourites, `GET /library` (cursor-paged), `GET /workouts/suggested`.
+  This session: `POST /routines/from-session/{id}` ("Save as routine": the
+  cards in order with supersets/notes/rest; targets = working-set count and
+  the top working set; 409 until finished, 404 for someone else's).
+- **Active Workout** (`components/active_workout.py`): sticky header (name,
+  elapsed, sets/volume, discard, Finish); one card per SessionExercise with
+  artwork, superset stripe, notes, a menu (notes, rest -15/+15, move up/down,
+  superset with next, remove - forcing when it has sets); the SetRow table
+  (SET badge tap-cycles W/D/F, PREV, KG, REPS, RPE, check). Targets/last set
+  pre-fill the entry row, so a set is ONE tap; a set type applies to one set
+  only. Inline "+N", PR medal, record/baseline line, quest chip. Rest bar
+  restyled (-15/+15/skip) and lifted above the tab bar; only shown during a
+  live session.
+- **Workout Summary** (`components/workout_summary.py`): gradient stat card
+  (points, duration, volume, sets, records), muscles-worked body map from the
+  server's `muscles_worked` via taxonomy path ids, records, points
+  breakdown, quests, streak; Save as routine / Share / Done. Level/rank-up
+  still plays after it.
+- **Library tab** (`pages/library.py`, `state/library.py`): chips (Programs /
+  Routines / Exercises), sort cycle (Recents / Name / Most used), grid/list,
+  Favorites row, stars, "Create new program", program detail (routines,
+  start, add routine, delete), "Show more" on the cursor. Routine editor as a
+  full-screen sheet: rep ranges ("8-12"), supersets, per-slot notes, reorder,
+  picker, Start workout. `/routines` redirects to `/library`.
+- Legacy pages no longer use viewport breakpoints: inside the phone-width
+  shell they squeezed two columns into ~530 px on desktop (Home's quest board).
+- `scripts/dev.sh ios` failed on macOS bash 3.2 with no filter (empty array
+  under `set -u`); fixed.
+
+**Verified**
+- `scripts/e2e/logging_e2e.mjs` (new, Gate 1): a 5-exercise upper day with
+  two supersets, started from the Library, every set logged, a warm-up, a
+  reorder + note surviving a refresh, finish, Save as routine - at 375 and
+  430: ALL PASSED (36). Worst set: 2 taps (the warm-up); every other set 1.
+- `workout_e2e.mjs` ported to the new screens: ALL PASSED (104), including
+  every tab at phone and desktop width with no overflow.
+- `web_tour.mjs` ported (and its Sam-challenge selector fixed - it clicked
+  Maya's row): full take, no missed controls.
+- `screens.mjs`: no horizontal overflow on any tab at 375/430.
+- Backend suite passes (exit 0) with the two dev-DB health tests deselected
+  (they compare against the dev DB's other-branch revision); `alembic check`
+  clean at head `53f6a8cbeda0` on a scratch DB.
+- `docs/api-contract.md` regenerated (83 paths).
+- iOS `scripts/dev.sh ios`: XCTest 25 executed, 0 failures (testLiveBackendTour skipped - live-backend only); Swift Testing 94 tests in 13 suites passed. API changes are additive.
+
+**Blocked:** nothing.
+
+**Other agent needs to know:** the legacy `exercise_card`, `session_header`
+and old `summary_view` in `components/workout.py` are now only used for cardio
+cards and the edit row; delete them as those get their own rebuild.
+
+---
+
+## 2026-10-06 (42) - Opus - overhaul phase 0: design system, five-tab shell, taxonomy
+
+The "Lyfta-competitive overhaul" spec, phase 0, built on what exists (real
+auth, Postgres, multi-exercise sessions were already here - the spec assumed
+otherwise).
+
+**Changed**
+- **Design system** (`frontend/metalarm/theme.py`): the spec's tokens - pure
+  black, three surfaces, one blue accent for interaction, meaning-only colours
+  (streak, recovery, muscle, PR gold, tier colours), the type scale, 4-pt
+  spacing, radii, blur. Inter + system stack; Space Grotesk kept only for game
+  numerals. The legacy token names are re-pointed at the new palette so the
+  pre-overhaul screens already sit on it.
+- **Component library** (`frontend/metalarm/ui/`): TopBar, BottomTabBar,
+  StartWorkoutPill, SubTabs, FilterChip, SegmentedControl, StatTile, DeltaPill,
+  SectionHeader, HeroCard, MuscleTile, EquipmentCircle, RoutineTile, ListRow,
+  WeekStrip, MonthCalendar, RingMetric, AreaChart, MetricChips, BodyMap (an
+  original geometric figure, path ids = taxonomy svg_path_ids), FeedCard,
+  GameStrip, SetRow, EmptyState, skeletons, AvatarFrame (hexagon, tier colour).
+  Hidden `/gallery` shows all of it at 375 and 430 px.
+- **Five-tab shell**: Home, Explore, Workout, Library, You with a floating
+  translucent tab bar and the Start pill; `/dashboard` -> `/home`. Existing
+  pages are re-homed under their future tab, not rebuilt yet.
+- **Backend**: profile fields (username, avatar, bio, default rest, default
+  visibility); `muscle_groups` / `equipment` taxonomy + `GET /taxonomy`;
+  exercise fields (secondary muscles, mechanic, steps, tips, artwork with a
+  required licence + author). Migration `283a16dfbc66`.
+- **wger** (`scripts/import_wger.py`): pinned snapshot of wger's open exercise
+  data; 56/91 library exercises matched, 30 now carry wger artwork (CC-BY-SA
+  3.0/4.0, resized), each credited; `/about/credits` lists them all.
+
+**Verified**
+- Backend: full suite passes; `alembic check` clean; upgrade/downgrade round trip.
+- Frontend: tests + token lint pass; `scripts/e2e/screens.mjs` sweep of
+  /gallery and every tab at 375x812 and 430x932 - no horizontal overflow.
+
+**Other agent needs to know**
+- `frontend/tests/test_tokens.py`: no hex, rgba, literal font_size or radius
+  outside theme.py in ui/ and overhaul pages. Pre-overhaul files are on a
+  LEGACY allowlist that should only shrink.
+
+## 2026-10-05 (41) - Opus - quests & freezes, voice logging, fair duels
+
+**Changed**
+- **Generated quests** (`app/models/quest_board.py`, `app/core/quest_engine.py`
+  pure, `app/core/quest_board.py`, `app/api/routes/quest_board.py`, migration
+  `32523b4e7c01`): 2 daily + 3 weekly per user, chosen deterministically from
+  user + period out of `app/data/quest_templates.json` (31 templates, filtered by
+  training path). Separate from user-written quests, which are unchanged.
+  Progress is recomputed from the sets on every log / edit / delete / finish /
+  abandon - never accumulated. Rewards are `quest_completed` / `quest_bonus`
+  ledger rows outside the set and PR caps. A completion made during a live
+  workout rides that workout's ledger (XP now, shop points at finish) and is
+  reversed if the set behind it is deleted or the workout abandoned; one made
+  with no workout live is final and credited at once. One reroll a day.
+- **Exercise tags** (`exercises.tags`, in `exercises.json`): big3,
+  compound_heavy, compound, compound_light, isolation, mobility, plyometric.
+- **Streak freezes** (`app/core/streak_freezes.py`): protect the WEEKLY workout
+  streak. Earned every 4 counting weeks and for a week with all weekly quests
+  done, cap 2; spent automatically on a short week that would break a live
+  streak. Settled lazily, one CLOSED week at a time, from the week the user
+  first meets the feature (`users.freeze_settled_through`) - old history earns
+  nothing. A covered week keeps the streak but adds no week and pays no bonus.
+  `GET /streak`, `POST /streak/seen` for the one-time "streak saved" notice.
+- **Natural-language logging** (`app/core/nl_parser.py` pure grammar,
+  `app/core/nl_llm.py` Claude fallback, `app/core/nl_log.py`,
+  `app/api/routes/nl_log.py`, migration `4e8b1c2d9a17`): `POST /log/parse`
+  proposes sets and never logs them. Tier 2 runs only when the grammar finds no
+  set and `ANTHROPIC_API_KEY` is set; its answer is held to the candidate
+  exercise list and the grammar's bounds. Aliases moved to
+  `app/data/exercise_aliases.json`, read by both the parser and the Strong/Hevy
+  importer. A phrase corrected to the same exercise twice becomes a personal
+  alias.
+- **Fair duels** (`app/core/duel_scoring.py` pure, `app/core/plausibility.py`
+  pure, migration `7a3e9f0b5c42`): new modes consistency / progress /
+  relative_volume scored against each side's own baseline (snapshotted into
+  `duel_baselines` on accept). Draws pay 15 each, a loser who trained gets 10,
+  capped at 3 duel rewards a week - fair modes only; volume/sets/sessions pay
+  exactly as before. Fair-mode challenges expire after 48 h and are capped at 3
+  live; the original modes keep open-ended challenges and no cap.
+  `POST /duels/{id}/cancel`, `GET /duels/modes` (eligibility + reason).
+- **Set flags**: `set_entries.is_flagged` from plausibility checks on log and
+  edit. A flagged set is logged and scores for its owner, but is excluded from
+  duels, raids, leagues and the party workout board
+  (`workout_store.board_points()`).
+- **Web**: quest panel + freeze icons + "streak saved" notice on the dashboard;
+  in-session quest chip and quest-complete line in the workout HUD; "Quests
+  progressed" in the summary; hold-to-talk mic + typed box + editable proposal
+  card + Undo; duel mode picker with disabled modes and reasons, head-to-head
+  bars (dashboard and cards), breakdown, draw/loss result screens with Rematch,
+  neutral flagged-set note.
+
+**Spec deviations, on purpose**
+- Freezes are earned/spent per WEEK (the streak is weekly), "every 4 weeks"
+  instead of "every 7 days", and quest-earned freezes land when the week
+  closes rather than mid-week, so an earn never needs taking back.
+- Duel scores stay computed on read (no `DuelScore` table), as the existing
+  duels already are. Parties remain the friend graph; no `Friendship` table.
+- `quest_completed` is NOT in `uq_points_ledger_once`: like a set award it can
+  be reversed and re-earned; the level_progress lock serialises it.
+- The web app uses `theme.py` and the system font stack; Space Grotesk /
+  Manrope exist only on iOS.
+- The LLM fallback defaults to `claude-opus-5-5` at low effort
+  (`NL_PARSE_MODEL` to change); its p95 against the 2 s target is unmeasured.
+
+**Verified**
+- Database-free suites: `test_quest_engine`, `test_streak_freezes`,
+  `test_workout_streaks`, `test_points_engine`, `test_nl_parser` (62 fixture
+  utterances), `test_duel_scoring`, `test_plausibility` - all pass.
+- Frontend: `pytest frontend/tests` passes; dashboard, workout and duels pages
+  build and render.
+- `docs/api-contract.md` regenerated from the app's OpenAPI (71 paths).
+
+**Blocked**
+- NOT yet run: everything that needs Postgres - `test_quest_board`,
+  `test_nl_log`, the new `test_duels` cases, the rest of the suite against the
+  changed routes, `alembic upgrade head && alembic check` for the three
+  migrations. Docker was down for the whole session.
+
+**Other agent needs to know**
+- Tests run with generated quests OFF unless marked `@pytest.mark.quests`
+  (conftest), because which quests a random user id draws would otherwise make
+  exact-XP assertions flaky.
+- Seeding on deploy now also runs `scripts.seed_quest_templates`; aliases seed
+  inside `scripts.import_exercises`.
+
 ## 2026-09-26 (40) - Opus - duels, and the feed they feed into
 
 **Changed**

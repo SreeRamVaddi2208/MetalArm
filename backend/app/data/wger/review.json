@@ -1,0 +1,750 @@
+{
+ "_note": "Hand review of every wger exercise the library import would add (scripts/import_wger.py library). same: it IS a library exercise already - no new row; its image is used if ours has none. skip: left out, with why. Otherwise the fields given override wger's (name, category, equipment, primary_muscle_groups, secondary_muscle_groups). Ids not listed were read and are imported as-is. image: false keeps the exercise but not wger's image (image_why says why) - it gets the MetalArm diagram instead.",
+ "12": {
+  "same": "hip-adduction-machine"
+ },
+ "75": {
+  "same": "dumbbell-bench-press"
+ },
+ "76": {
+  "same": "close-grip-bench-press"
+ },
+ "81": {
+  "same": "dumbbell-row"
+ },
+ "83": {
+  "same": "barbell-row"
+ },
+ "84": {
+  "name": "Reverse-Grip Barbell Row"
+ },
+ "91": {
+  "same": "barbell-curl"
+ },
+ "92": {
+  "same": "dumbbell-curl"
+ },
+ "94": {
+  "name": "EZ-Bar Curl",
+  "image": false,
+  "image_why": "third-party watermark"
+ },
+ "95": {
+  "same": "cable-curl"
+ },
+ "135": {
+  "same": "pec-deck"
+ },
+ "146": {
+  "name": "Leg Press Calf Raise",
+  "equipment": "machine",
+  "category": "strength"
+ },
+ "171": {
+  "name": "Incline Crunch",
+  "category": "bodyweight"
+ },
+ "185": {
+  "same": "decline-barbell-bench-press"
+ },
+ "197": {
+  "same": "bench-dip"
+ },
+ "203": {
+  "same": "goblet-squat"
+ },
+ "206": {
+  "same": "walking-lunge"
+ },
+ "237": {
+  "same": "cable-crossover"
+ },
+ "238": {
+  "same": "dumbbell-fly"
+ },
+ "246": {
+  "same": "skull-crusher"
+ },
+ "275": {
+  "name": "Cable Hammer Curl",
+  "primary_muscle_groups": [
+   "biceps",
+   "forearms"
+  ]
+ },
+ "323": {
+  "same": "cable-crossover"
+ },
+ "349": {
+  "same": "cable-lateral-raise"
+ },
+ "375": {
+  "same": "hack-squat"
+ },
+ "377": {
+  "name": "Lying Leg Raise",
+  "secondary_muscle_groups": []
+ },
+ "418": {
+  "name": "EZ-Bar Military Press"
+ },
+ "427": {
+  "name": "Decline Crunch"
+ },
+ "456": {
+  "primary_muscle_groups": [
+   "quads",
+   "glutes"
+  ],
+  "secondary_muscle_groups": [
+   "hamstrings"
+  ]
+ },
+ "478": {
+  "equipment": "barbell",
+  "category": "strength",
+  "primary_muscle_groups": [
+   "shoulders"
+  ],
+  "secondary_muscle_groups": [
+   "triceps",
+   "quads",
+   "glutes"
+  ]
+ },
+ "484": {
+  "same": "rack-pull"
+ },
+ "512": {
+  "same": "seated-cable-row"
+ },
+ "513": {
+  "same": "t-bar-row"
+ },
+ "537": {
+  "same": "incline-dumbbell-press"
+ },
+ "538": {
+  "same": "incline-barbell-bench-press"
+ },
+ "539": {
+  "name": "Smith Machine Incline Bench Press",
+  "equipment": "smith_machine",
+  "category": "strength"
+ },
+ "543": {
+  "same": "machine-shoulder-press"
+ },
+ "566": {
+  "same": "overhead-press"
+ },
+ "567": {
+  "same": "seated-dumbbell-shoulder-press"
+ },
+ "570": {
+  "skip": "unclear which shrug; the barbell and dumbbell shrugs are in the library"
+ },
+ "571": {
+  "same": "barbell-shrug"
+ },
+ "572": {
+  "same": "dumbbell-shrug"
+ },
+ "659": {
+  "name": "Cable Triceps Extension"
+ },
+ "691": {
+  "name": "Smith Machine Upright Row",
+  "equipment": "smith_machine",
+  "category": "strength",
+  "image": false,
+  "image_why": "brand catalogue image (copyright notice)"
+ },
+ "693": {
+  "same": "upright-row"
+ },
+ "694": {
+  "name": "Dumbbell Upright Row"
+ },
+ "805": {
+  "same": "tricep-pushdown"
+ },
+ "822": {
+  "primary_muscle_groups": [
+   "shoulders"
+  ],
+  "secondary_muscle_groups": [
+   "traps"
+  ]
+ },
+ "927": {
+  "skip": "unclear movement, wrong category"
+ },
+ "957": {
+  "skip": "the same movement as Bird Dog"
+ },
+ "958": {
+  "name": "Suspension Biceps Curl",
+  "equipment": "other",
+  "category": "strength"
+ },
+ "959": {
+  "name": "Suspension Row",
+  "equipment": "other",
+  "category": "strength",
+  "primary_muscle_groups": [
+   "lats"
+  ],
+  "secondary_muscle_groups": [
+   "biceps",
+   "shoulders"
+  ]
+ },
+ "975": {
+  "name": "Kettlebell Curl"
+ },
+ "988": {
+  "same": "bulgarian-split-squat"
+ },
+ "999": {
+  "name": "Reverse Lunge"
+ },
+ "1000": {
+  "name": "Floor Dip"
+ },
+ "1012": {
+  "same": "dumbbell-curl"
+ },
+ "1022": {
+  "name": "Kettlebell Plank Row",
+  "primary_muscle_groups": [
+   "lats",
+   "abs"
+  ],
+  "secondary_muscle_groups": [
+   "shoulders",
+   "biceps",
+   "obliques"
+  ],
+  "image": false,
+  "image_why": "video thumbnail with overlaid text"
+ },
+ "1080": {
+  "name": "Hindu Push-Up"
+ },
+ "1084": {
+  "secondary_muscle_groups": [
+   "triceps",
+   "shoulders"
+  ]
+ },
+ "1086": {
+  "name": "Close-Grip Push-Up",
+  "primary_muscle_groups": [
+   "triceps",
+   "chest"
+  ],
+  "secondary_muscle_groups": [
+   "shoulders"
+  ]
+ },
+ "1087": {
+  "name": "Dumbbell Hang Power Clean",
+  "primary_muscle_groups": [
+   "glutes",
+   "hamstrings",
+   "traps"
+  ],
+  "secondary_muscle_groups": [
+   "quads",
+   "calves",
+   "shoulders"
+  ]
+ },
+ "1088": {
+  "name": "Dumbbell Sumo Deadlift"
+ },
+ "1089": {
+  "same": "russian-twist"
+ },
+ "1091": {
+  "primary_muscle_groups": [
+   "abs",
+   "shoulders"
+  ],
+  "secondary_muscle_groups": [
+   "obliques",
+   "glutes"
+  ]
+ },
+ "1098": {
+  "name": "Seated Rear Delt Raise",
+  "primary_muscle_groups": [
+   "shoulders"
+  ],
+  "secondary_muscle_groups": [
+   "traps"
+  ]
+ },
+ "1100": {
+  "name": "Wall Ball",
+  "primary_muscle_groups": [
+   "quads",
+   "glutes",
+   "shoulders"
+  ],
+  "secondary_muscle_groups": [
+   "abs",
+   "triceps"
+  ]
+ },
+ "1119": {
+  "skip": "not English; the seated cable row is in the library"
+ },
+ "1120": {
+  "skip": "not English; the seated cable row is in the library"
+ },
+ "1127": {
+  "name": "Close-Grip Supinated Lat Pulldown",
+  "secondary_muscle_groups": [
+   "biceps"
+  ]
+ },
+ "1131": {
+  "name": "Cable Glute Kickback"
+ },
+ "1136": {
+  "name": "Neutral-Grip Chest Pulldown",
+  "primary_muscle_groups": [
+   "lats"
+  ],
+  "secondary_muscle_groups": [
+   "biceps"
+  ]
+ },
+ "1137": {
+  "name": "Cable Pullover"
+ },
+ "1138": {
+  "name": "Incline Bench Pulldown"
+ },
+ "1141": {
+  "skip": "unclear movement"
+ },
+ "1186": {
+  "name": "Single-Arm Cable Row",
+  "image": false,
+  "image_why": "brand catalogue image (copyright notice)"
+ },
+ "1188": {
+  "skip": "the same as Dumbbell Side Bend"
+ },
+ "1192": {
+  "same": "dumbbell-curl"
+ },
+ "1217": {
+  "name": "Fingertip Push-Up"
+ },
+ "1223": {
+  "skip": "unclear movement"
+ },
+ "1225": {
+  "name": "Wide-Grip Dumbbell Curl"
+ },
+ "1226": {
+  "name": "Dumbbell Curl to Press",
+  "primary_muscle_groups": [
+   "biceps",
+   "shoulders"
+  ]
+ },
+ "1227": {
+  "name": "Dumbbell Rear Delt Row",
+  "image": false,
+  "image_why": "third-party logo"
+ },
+ "1230": {
+  "name": "Triceps Stretch",
+  "category": "mobility",
+  "image": false,
+  "image_why": "copyright notice"
+ },
+ "1231": {
+  "skip": "the other side of Triceps Stretch"
+ },
+ "1232": {
+  "name": "Standing Biceps Stretch",
+  "category": "mobility",
+  "primary_muscle_groups": [
+   "biceps"
+  ],
+  "secondary_muscle_groups": [
+   "chest",
+   "shoulders"
+  ]
+ },
+ "1233": {
+  "skip": "the other side of Standing Biceps Stretch"
+ },
+ "1239": {
+  "category": "mobility"
+ },
+ "1243": {
+  "same": "standing-calf-raise"
+ },
+ "1274": {
+  "name": "Seated Calf Stretch",
+  "category": "mobility",
+  "image": false,
+  "image_why": "copyright notice"
+ },
+ "1283": {
+  "primary_muscle_groups": [
+   "lats",
+   "traps"
+  ],
+  "secondary_muscle_groups": [
+   "biceps"
+  ]
+ },
+ "1285": {
+  "skip": "not English"
+ },
+ "1290": {
+  "name": "Reverse-Grip Barbell Curl",
+  "primary_muscle_groups": [
+   "biceps",
+   "forearms"
+  ]
+ },
+ "1296": {
+  "name": "Low-to-High Cable Fly"
+ },
+ "1298": {
+  "name": "Cable Cross Triceps Extension"
+ },
+ "1325": {
+  "skip": "unclear movement"
+ },
+ "1336": {
+  "same": "overhead-tricep-extension"
+ },
+ "1338": {
+  "skip": "the image is not a lateral raise, and the name says too little to be sure what it is"
+ },
+ "1377": {
+  "primary_muscle_groups": [
+   "obliques"
+  ],
+  "secondary_muscle_groups": [
+   "abs"
+  ]
+ },
+ "1387": {
+  "skip": "unclear movement"
+ },
+ "1392": {
+  "equipment": "barbell",
+  "category": "strength",
+  "secondary_muscle_groups": [
+   "glutes",
+   "lower_back"
+  ]
+ },
+ "1452": {
+  "category": "mobility"
+ },
+ "1479": {
+  "skip": "unclear movement"
+ },
+ "1554": {
+  "name": "Clap Push-Up",
+  "image": false,
+  "image_why": "looks AI-generated though not flagged"
+ },
+ "1567": {
+  "same": "hammer-curl"
+ },
+ "1581": {
+  "skip": "unclear movement"
+ },
+ "1582": {
+  "skip": "wger's muscles and equipment do not fit the movement"
+ },
+ "1593": {
+  "equipment": "smith_machine",
+  "primary_muscle_groups": [
+   "quads",
+   "glutes"
+  ],
+  "secondary_muscle_groups": [
+   "hamstrings"
+  ]
+ },
+ "1604": {
+  "equipment": "bodyweight",
+  "category": "bodyweight",
+  "primary_muscle_groups": [
+   "quads",
+   "glutes",
+   "adductors"
+  ],
+  "secondary_muscle_groups": [
+   "hamstrings"
+  ]
+ },
+ "1612": {
+  "name": "Kettlebell Sumo Deadlift"
+ },
+ "1613": {
+  "name": "Band Glute Kickback"
+ },
+ "1615": {
+  "same": "treadmill-run"
+ },
+ "1616": {
+  "name": "Dumbbell Donkey Kick",
+  "primary_muscle_groups": [
+   "glutes"
+  ],
+  "secondary_muscle_groups": [
+   "hamstrings"
+  ]
+ },
+ "1618": {
+  "same": "stationary-bike"
+ },
+ "1621": {
+  "name": "Unilateral Cable Row",
+  "primary_muscle_groups": [
+   "lats"
+  ],
+  "secondary_muscle_groups": [
+   "biceps"
+  ]
+ },
+ "1634": {
+  "name": "Rope Pullover"
+ },
+ "1635": {
+  "skip": "unclear movement"
+ },
+ "1638": {
+  "skip": "the same as Clean and Press; wger's equipment is wrong"
+ },
+ "1639": {
+  "primary_muscle_groups": [
+   "shoulders",
+   "traps"
+  ],
+  "secondary_muscle_groups": []
+ },
+ "1641": {
+  "name": "Kettlebell Single-Leg Deadlift",
+  "equipment": "kettlebell",
+  "primary_muscle_groups": [
+   "hamstrings",
+   "glutes"
+  ]
+ },
+ "1642": {
+  "primary_muscle_groups": [
+   "glutes"
+  ],
+  "secondary_muscle_groups": [
+   "hamstrings"
+  ]
+ },
+ "1648": {
+  "primary_muscle_groups": [
+   "abs"
+  ],
+  "secondary_muscle_groups": [
+   "obliques"
+  ]
+ },
+ "1651": {
+  "name": "Dumbbell Reverse Lunge"
+ },
+ "1653": {
+  "name": "Dumbbell Lateral Squat",
+  "equipment": "dumbbell",
+  "category": "strength",
+  "primary_muscle_groups": [
+   "quads",
+   "glutes",
+   "adductors"
+  ]
+ },
+ "1654": {
+  "equipment": "machine",
+  "category": "strength"
+ },
+ "1706": {
+  "same": "bulgarian-split-squat"
+ },
+ "1732": {
+  "name": "Band Face Pull",
+  "primary_muscle_groups": [
+   "shoulders"
+  ],
+  "secondary_muscle_groups": [
+   "traps"
+  ]
+ },
+ "1733": {
+  "name": "Isometric Squat Hold",
+  "image": false,
+  "image_why": "looks AI-generated though not flagged"
+ },
+ "1735": {
+  "skip": "unclear movement"
+ },
+ "1736": {
+  "name": "Dumbbell Single-Leg Deadlift",
+  "image": false,
+  "image_why": "looks AI-generated though not flagged"
+ },
+ "1738": {
+  "skip": "two movements in one entry"
+ },
+ "1744": {
+  "skip": "the same as Machine Lateral Raise"
+ },
+ "1745": {
+  "name": "Cable Front Raise"
+ },
+ "1747": {
+  "name": "Smith Machine Squat",
+  "equipment": "smith_machine",
+  "category": "strength"
+ },
+ "1748": {
+  "same": "hip-abduction-machine"
+ },
+ "1801": {
+  "same": "back-squat"
+ },
+ "1804": {
+  "name": "Ankle Dorsiflexion Rocks",
+  "category": "mobility"
+ },
+ "1830": {
+  "name": "Barbell Reverse Lunge",
+  "primary_muscle_groups": [
+   "quads",
+   "glutes"
+  ]
+ },
+ "1831": {
+  "name": "Machine Decline Chest Press",
+  "equipment": "machine",
+  "category": "strength"
+ },
+ "1835": {
+  "category": "mobility",
+  "equipment": "other",
+  "image": false,
+  "image_why": "third-party composite with marks"
+ },
+ "1854": {
+  "name": "Calf Foam Roll",
+  "category": "mobility",
+  "equipment": "other"
+ },
+ "1857": {
+  "name": "IT Band Foam Roll",
+  "category": "mobility",
+  "equipment": "other"
+ },
+ "1858": {
+  "name": "Quad Foam Roll",
+  "category": "mobility",
+  "equipment": "other"
+ },
+ "1859": {
+  "name": "Glute Foam Roll",
+  "category": "mobility",
+  "equipment": "other",
+  "image": false,
+  "image_why": "third-party logo"
+ },
+ "1889": {
+  "category": "bodyweight"
+ },
+ "1893": {
+  "same": "overhead-press"
+ },
+ "1900": {
+  "name": "Rope Triceps Pushdown",
+  "secondary_muscle_groups": [],
+  "image": false,
+  "image_why": "third-party infographic"
+ },
+ "1901": {
+  "primary_muscle_groups": [
+   "shoulders",
+   "glutes",
+   "hamstrings"
+  ],
+  "secondary_muscle_groups": [
+   "quads",
+   "traps",
+   "triceps"
+  ],
+  "image": false,
+  "image_why": "third-party watermark"
+ },
+ "1902": {
+  "name": "Weighted Push-Up",
+  "image": false,
+  "image_why": "third-party title overlay"
+ },
+ "1922": {
+  "name": "Seated Cable Chest Fly"
+ },
+ "1947": {
+  "name": "Dumbbell Snatch",
+  "primary_muscle_groups": [
+   "glutes",
+   "hamstrings",
+   "shoulders"
+  ],
+  "secondary_muscle_groups": [
+   "quads",
+   "traps"
+  ]
+ },
+ "1971": {
+  "primary_muscle_groups": [
+   "lats"
+  ],
+  "secondary_muscle_groups": [
+   "biceps"
+  ]
+ },
+ "2494": {
+  "name": "Band Terminal Knee Extension"
+ },
+ "2529": {
+  "name": "Explosive Push-Up",
+  "image": false,
+  "image_why": "third-party app logo"
+ },
+ "2530": {
+  "skip": "unclear movement"
+ },
+ "2620": {
+  "skip": "unclear movement"
+ },
+ "2674": {
+  "skip": "not English"
+ },
+ "2675": {
+  "skip": "not English"
+ },
+ "1572": {
+  "image": false,
+  "image_why": "looks AI-generated though not flagged"
+ }
+}

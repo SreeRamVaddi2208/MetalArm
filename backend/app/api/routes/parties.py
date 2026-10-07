@@ -20,6 +20,7 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import CurrentUser, DbSession
 from app.core import leaderboard, leveling, raids
+from app.core import workout_store as store
 from app.core.invites import generate_invite_code, normalize_invite_code
 from app.core.periods import local_date, local_now, period_key, resolve_timezone
 from app.core.progression import apply_completion, lock_progress
@@ -560,7 +561,7 @@ def party_workout_leaderboard(
 
     points_query = (
         select(PointsLedgerEntry.user_id, func.coalesce(func.sum(PointsLedgerEntry.points), 0))
-        .where(PointsLedgerEntry.user_id.in_(member_ids))
+        .where(PointsLedgerEntry.user_id.in_(member_ids), store.board_points())
         .group_by(PointsLedgerEntry.user_id)
     )
     workouts_query = (

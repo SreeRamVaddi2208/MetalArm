@@ -185,7 +185,10 @@ def test_last_performance_is_empty_for_a_new_exercise(client: TestClient, auth: 
 
 def test_the_shipped_seed_file_is_a_real_starter_library() -> None:
     records = read_file(DEFAULT_FILE)
-    assert 50 <= len(records) <= 150
+    # The hand-written starter set plus the reviewed wger import (phase 3,
+    # docs/wger-licence-review.md); a jump past this means something
+    # unreviewed came in.
+    assert 150 <= len(records) <= 300
     categories = {r["category"] for r in records}
     assert categories == {"strength", "cardio", "bodyweight", "mobility"}
 

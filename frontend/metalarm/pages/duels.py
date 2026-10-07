@@ -3,7 +3,13 @@
 import reflex as rx
 
 from metalarm import theme
-from metalarm.components.duel_card import activity_row, duel_card, pending_card, win_overlay
+from metalarm.components.duel_card import (
+    activity_row,
+    duel_card,
+    mode_picker,
+    pending_card,
+    win_overlay,
+)
 from metalarm.components.layout import error_banner, section_heading, shell
 from metalarm.components.level_up import keyframes
 from metalarm.state.duels import DuelState
@@ -81,7 +87,7 @@ def challenge_panel() -> rx.Component:
             DuelState.opponents.length() > 0,
             rx.vstack(
                 rx.text(
-                    "OR CHALLENGE SOMEONE IN YOUR PARTY",
+                    "OR CHALLENGE A FRIEND OR PARTY MEMBER",
                     color=theme.MUTED,
                     font_size="0.68rem",
                     letter_spacing="0.14em",
@@ -94,7 +100,7 @@ def challenge_panel() -> rx.Component:
                         rx.spacer(),
                         rx.button(
                             "CHALLENGE",
-                            on_click=lambda: DuelState.challenge_member(member.user_id),
+                            on_click=lambda: DuelState.open_modes(member.user_id, member.display_name),
                             background="transparent",
                             color=theme.ACCENT,
                             border=f"1px solid {theme.BORDER}",
@@ -129,6 +135,7 @@ def duels_page() -> rx.Component:
             win_overlay(),
             section_heading("DUELS", "Head to head, over a window you choose"),
             error_banner(DuelState.error),
+            mode_picker(),
             challenge_panel(),
             rx.cond(
                 DuelState.pending.length() > 0,

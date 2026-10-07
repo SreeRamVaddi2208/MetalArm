@@ -32,6 +32,11 @@ class DuelCreate(BaseModel):
         return self
 
 
+class BreakdownLine(BaseModel):
+    label: str
+    value: float
+
+
 class DuelSide(BaseModel):
     """One half of a duel, as the client renders it."""
 
@@ -39,6 +44,11 @@ class DuelSide(BaseModel):
     display_name: str
     score: float
     is_rival: bool = False
+    # The fair modes' working - days trained, % gained per exercise, volume vs
+    # usual. Aggregates only, never the other side's sets.
+    breakdown: list[BreakdownLine] = []
+    # Consistency only: total working sets, which breaks a tie on days.
+    tiebreak: float | None = None
 
 
 class DuelOut(BaseModel):
@@ -58,12 +68,36 @@ class DuelOut(BaseModel):
     # Set on the response that JUST judged a duel the caller won, so the
     # client knows to celebrate rather than diffing two fetches.
     points_awarded: int | None = None
+    # What the CALLER was paid when it settled - win, draw or participation -
+    # and which. None while it runs, or when the weekly cap paid nothing.
+    reward_points: int | None = None
+    reward_type: str | None = None
+    # What counts toward this mode, one line, for the detail screen.
+    rules: str = ""
+    # Pending only: when the challenge expires unanswered.
+    expires_at: dt.datetime | None = None
 
 
 class DuelListOut(BaseModel):
     active: list[DuelOut]
     pending: list[DuelOut]
     completed: list[DuelOut]
+    # Declined, cancelled or expired - never played.
+    closed: list[DuelOut] = []
+
+
+class DuelMode(BaseModel):
+    metric: str
+    title: str
+    # One line on why it is fair, for the mode picker.
+    fairness: str
+    eligible: bool
+    # Why not, when not - shown on the disabled card as-is.
+    reason: str | None = None
+
+
+class DuelModesOut(BaseModel):
+    modes: list[DuelMode]
 
 
 class ActivityOut(BaseModel):

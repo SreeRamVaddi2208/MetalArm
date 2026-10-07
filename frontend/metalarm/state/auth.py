@@ -77,6 +77,11 @@ class AuthState(rx.State):
         return bool(self.token)
 
     @rx.var
+    def initials(self) -> str:
+        """Up to two letters for the avatar."""
+        return "".join(w[0] for w in self.display_name.split()[:2]).upper() or "?"
+
+    @rx.var
     def xp_percent(self) -> int:
         """XP bar fill, 0-100.
 
@@ -226,7 +231,7 @@ class AuthState(rx.State):
             self.loading = False
 
         if ok:
-            yield rx.redirect("/dashboard")
+            yield rx.redirect("/home")
 
     async def do_signup(self):
         # Async generator - see the note in do_login about yield vs return.
@@ -256,7 +261,7 @@ class AuthState(rx.State):
             self.loading = False
 
         if ok:
-            yield rx.redirect("/dashboard")
+            yield rx.redirect("/home")
 
     async def do_logout(self):
         # End this browser's session on the server too, with the refresh token

@@ -10,11 +10,14 @@ from collections import defaultdict
 
 from fastapi import APIRouter, HTTPException, Query, status
 from pydantic import BaseModel
-from sqlalchemy import exists, select
+import base64
+
+from sqlalchemy import and_, exists, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.api.deps import CurrentUser, DbSession
+from app.core import exercise_aliases
 from app.core import personal_records as prs
 from app.core import progression_hints as hints
 from app.core import workout_store as store
@@ -31,6 +34,7 @@ from app.models.workout_enums import (
     WeightUnit,
     values,
 )
+from app.schemas.library import ExerciseBrowsePage, ExerciseCardOut
 from app.schemas.workout import (
     HintOut,
     ExerciseCreate,
@@ -93,6 +97,68 @@ def exercise_meta(current_user: CurrentUser) -> ExerciseMetaOut:
         weight_units=list(values(WeightUnit)),
         measurement_metrics=list(values(MeasurementMetric)),
         measurement_units=list(values(MeasurementUnit)),
+    )
+
+
+def _browse_cursor(key: str, row_id: uuid.UUID) -> str:
+    return base64.urlsafe_b64encode(f"n:{key}|{row_id}".encode()).decode()
+
+
+def _browse_after(cursor: str) -> tuple[str, uuid.UUID]:
+    try:
+        kind, rest = base64.urlsafe_b64decode(cursor.encode()).decode().split(":", 1)
+        key, row_id = rest.rsplit("|", 1)
+        if kind != "n":
+            raise ValueError
+        return key, uuid.UUID(row_id)
+    except (ValueError, UnicodeDecodeError):
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "Bad cursor") from None
+
+
+@router.get("/browse", response_model=ExerciseBrowsePage)
+def browse_exercises(
+    current_user: CurrentUser,
+    db: DbSession,
+    q: str | None = Query(default=None, max_length=120, description="Name or a known alias contains."),
+    muscle: MuscleGroup | None = Query(default=None, description="Primary muscle group."),
+    equipment: Equipment | None = None,
+    category: ExerciseCategory | None = None,
+    cursor: str | None = None,
+    limit: int = Query(default=30, ge=1, le=100),
+) -> ExerciseBrowsePage:
+    """Explore's exercise list: the library plus the caller's own, filtered
+    by any mix of search, muscle, equipment and category, A-Z, cursor-paged.
+    `total` counts every match, for "142 exercises"."""
+    query = select(Exercise).where(store.visible_to(current_user.id), Exercise.is_archived.is_(False))
+    if q and q.strip():
+        needle = q.strip().casefold()
+        pattern = needle.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        # "RDL" finds Romanian Deadlift: the shipped aliases count as names.
+        alias_slugs = [slug for slug, names in exercise_aliases.definitions().items()
+                       if any(needle in n.casefold() for n in names)]
+        query = query.where(or_(Exercise.name.ilike(f"%{pattern}%", escape="\\"),
+                                Exercise.slug.in_(alias_slugs)))
+    if muscle is not None:
+        query = query.where(Exercise.primary_muscle_groups.contains([muscle.value]))
+    if equipment is not None:
+        query = query.where(Exercise.equipment == equipment.value)
+    if category is not None:
+        query = query.where(Exercise.category == category.value)
+    total = db.scalar(select(func.count()).select_from(query.subquery())) or 0
+    if cursor:
+        key, row_id = _browse_after(cursor)
+        query = query.where(or_(Exercise.name_key > key, and_(Exercise.name_key == key, Exercise.id > row_id)))
+    rows = list(db.scalars(query.order_by(Exercise.name_key, Exercise.id).limit(limit + 1)))
+    more = len(rows) > limit
+    rows = rows[:limit]
+    return ExerciseBrowsePage(
+        items=[ExerciseCardOut(id=e.id, name=e.name, category=e.category, equipment=e.equipment,
+                               primary_muscle_groups=list(e.primary_muscle_groups or []),
+                               thumbnail_url=e.thumbnail_url, is_custom=e.is_custom,
+                               media_author=e.media_author, media_license=e.media_license,
+                               media_source_url=e.media_source_url) for e in rows],
+        total=total,
+        next_cursor=_browse_cursor(rows[-1].name_key, rows[-1].id) if more else None,
     )
 
 

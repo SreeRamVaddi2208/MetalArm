@@ -36,13 +36,16 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.api.deps import CurrentUser, DbSession
-from app.core import activity
+from app.core import activity, social
 from app.core import personal_records as prs
 from app.core import progression_hints as hints
 from app.core import points_engine as pe
 from app.core import workout_rules as rules
 from app.core import workout_store as store
 from app.core import importer, presets, raids, rank_trials, rate_limit
+from app.core import analytics, plausibility
+from app.core import quest_board as board
+from app.core import streak_freezes as freezes
 from app.core import training_categories
 from app.core import workout_streaks as streaks
 from app.core.periods import local_now, resolve_timezone
@@ -59,12 +62,14 @@ from app.models.workout import (
     PointsLedgerEntry,
     Routine,
     RoutineExercise,
+    SessionExercise,
     SetEntry,
     WorkoutSession,
 )
 from app.models.duel import ActivityType
-from app.models.workout_enums import LedgerSource, RecordType, SessionStatus, WeightUnit
+from app.models.workout_enums import LedgerSource, RecordType, SessionStatus, SetType, Visibility, WeightUnit
 from app.schemas.quest import ProgressionDeltaOut
+from app.schemas.quest_board import QuestProgressOut
 from app.schemas.workout import (
     HintOut,
     AbandonResponse,
@@ -76,11 +81,17 @@ from app.schemas.workout import (
     PointsBreakdownOut,
     PointsSummaryOut,
     PresetExerciseOut,
+    PreviousOut,
+    PreviousSetOut,
+    ReorderIn,
+    SessionExerciseIn,
+    SessionExercisePatch,
     PresetOut,
     PrEventOut,
     RecordOut,
     SessionExerciseOut,
     SessionOut,
+    SessionPatch,
     SessionStart,
     SessionSummaryOut,
     SessionTargetOut,
@@ -156,6 +167,43 @@ def _get_set(db: Session, session: WorkoutSession, set_id: uuid.UUID) -> SetEntr
     return entry
 
 
+def _card_for(
+    db: Session, session: WorkoutSession, exercise_id: uuid.UUID, card_id: uuid.UUID | None
+) -> SessionExercise:
+    """The card a set goes on: the one named, else the session's first card
+    for the exercise, else a new one at the end of the order."""
+    if card_id is not None:
+        card = db.execute(
+            select(SessionExercise).where(
+                SessionExercise.id == card_id, SessionExercise.session_id == session.id
+            )
+        ).scalar_one_or_none()
+        if card is None or card.exercise_id != exercise_id:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                                detail="That exercise is not in this workout")
+        return card
+    card = db.execute(
+        select(SessionExercise)
+        .where(SessionExercise.session_id == session.id, SessionExercise.exercise_id == exercise_id)
+        .order_by(SessionExercise.position)
+        .limit(1)
+    ).scalar_one_or_none()
+    if card is None:
+        card = _append_card(db, session, exercise_id)
+    return card
+
+
+def _append_card(db: Session, session: WorkoutSession, exercise_id: uuid.UUID, **fields) -> SessionExercise:
+    top = db.execute(
+        select(func.max(SessionExercise.position)).where(SessionExercise.session_id == session.id)
+    ).scalar_one()
+    card = SessionExercise(session_id=session.id, exercise_id=exercise_id,
+                           position=0 if top is None else top + 1, **fields)
+    db.add(card)
+    db.flush()
+    return card
+
+
 def _active_session(db: Session, user: User) -> WorkoutSession | None:
     return db.execute(
         select(WorkoutSession).where(
@@ -177,6 +225,25 @@ def _duration_seconds(session: WorkoutSession) -> int:
 
 def _working(sets: list[SetEntry]) -> list[SetEntry]:
     return [s for s in sets if not s.is_warmup]
+
+
+def _flag(db: Session, entry: SetEntry, exercise: Exercise, now: dt.datetime) -> None:
+    """Judge a set's plausibility. Never blocks it: a flagged set is logged
+    and scored for its owner as usual, and only kept out of competitions."""
+    verdict = plausibility.check(
+        weight_kg=entry.weight_kg,
+        reps=entry.reps,
+        is_warmup=entry.is_warmup,
+        equipment=exercise.equipment,
+        recent_best_e1rm=store.recent_best_e1rm(
+            db,
+            entry.user_id,
+            entry.exercise_id,
+            now - dt.timedelta(days=rules.FLAG_E1RM_LOOKBACK_DAYS),
+            exclude_set_id=entry.id,
+        ),
+    )
+    entry.is_flagged, entry.flag_reason = verdict.flagged, verdict.reason
 
 
 def _volume(sets: list[SetEntry]) -> Decimal:
@@ -223,6 +290,14 @@ def _pr_events_out(
     ]
 
 
+def _cards(db: Session, session_id: uuid.UUID) -> list[SessionExercise]:
+    return list(db.scalars(
+        select(SessionExercise)
+        .where(SessionExercise.session_id == session_id)
+        .order_by(SessionExercise.position, SessionExercise.created_at)
+    ))
+
+
 def _session_out(db: Session, session: WorkoutSession, user: User) -> SessionOut:
     sets = list(
         db.scalars(
@@ -231,9 +306,9 @@ def _session_out(db: Session, session: WorkoutSession, user: User) -> SessionOut
             .order_by(SetEntry.completed_at, SetEntry.set_number)
         )
     )
+    cards = _cards(db, session.id)
 
-    # Planned exercises first, in routine order, then anything added ad hoc in
-    # the order it was first logged.
+    # Routine targets, by exercise: the card says what to aim for.
     targets: dict[uuid.UUID, SessionTargetOut] = {}
     if session.routine_id is not None:
         routine = db.get(Routine, session.routine_id)
@@ -247,21 +322,18 @@ def _session_out(db: Session, session: WorkoutSession, user: User) -> SessionOut
                     rest_seconds=slot.rest_seconds,
                 ),
             )
-    order = list(targets)
-    for entry in sets:
-        if entry.exercise_id not in targets and entry.exercise_id not in order:
-            order.append(entry.exercise_id)
 
+    exercise_ids = list(dict.fromkeys(c.exercise_id for c in cards))
     exercises = {
-        e.id: e for e in db.scalars(select(Exercise).where(Exercise.id.in_(order)))
-    } if order else {}
-    previous = store.previous_sets(db, user.id, order, exclude_session_id=session.id)
+        e.id: e for e in db.scalars(select(Exercise).where(Exercise.id.in_(exercise_ids)))
+    } if exercise_ids else {}
+    previous = store.previous_sets(db, user.id, exercise_ids, exclude_session_id=session.id)
     # One query for every card: what to try next on each exercise.
-    top_sets = store.recent_top_sets(db, user.id, order)
+    top_sets = store.recent_top_sets(db, user.id, exercise_ids)
 
     grouped: dict[uuid.UUID, list[SetEntry]] = defaultdict(list)
     for entry in sets:
-        grouped[entry.exercise_id].append(entry)
+        grouped[entry.session_exercise_id].append(entry)
 
     working = _working(sets)
     return SessionOut(
@@ -277,24 +349,32 @@ def _session_out(db: Session, session: WorkoutSession, user: User) -> SessionOut
         points_total=store.session_ledger(db, session.id).total,
         points_credited=session.points_credited,
         qualified=session.qualified,
+        visibility=session.visibility,
+        user_id=session.user_id,
         exercises=[
             SessionExerciseOut(
-                exercise=ExerciseOut.model_validate(exercises[ex_id]),
-                target=targets.get(ex_id),
-                sets=[SetOut.model_validate(s) for s in grouped.get(ex_id, [])],
+                session_exercise_id=card.id,
+                position=card.position,
+                superset_group=card.superset_group,
+                notes=card.notes,
+                rest_seconds=card.rest_seconds,
+                exercise=ExerciseOut.model_validate(exercises[card.exercise_id]),
+                target=targets.get(card.exercise_id),
+                sets=[SetOut.model_validate(s) for s in grouped.get(card.id, [])],
                 previous_sets=[
-                    SetOut.model_validate(s) for s in previous.get(ex_id, (None, []))[1]
+                    SetOut.model_validate(s)
+                    for s in previous.get(card.exercise_id, (None, []))[1]
                 ],
                 hint=HintOut.from_hint(
                     hints.suggest(
-                        top_sets.get(ex_id, []),
-                        equipment=exercises[ex_id].equipment,
+                        top_sets.get(card.exercise_id, []),
+                        equipment=exercises[card.exercise_id].equipment,
                         unit=user.weight_unit,
                     )
                 ),
             )
-            for ex_id in order
-            if ex_id in exercises
+            for card in cards
+            if card.exercise_id in exercises
         ],
     )
 
@@ -345,25 +425,39 @@ def _summaries(db: Session, sessions: list[WorkoutSession]) -> list[SessionSumma
                 total_volume_kg=_volume(sets),
                 points_total=points.get(s.id, 0),
                 pr_count=prs_count.get(s.id, 0),
+                visibility=s.visibility,
             )
         )
     return out
 
 
-def _streak_out(state: streaks.WeeklyStreak) -> StreakOut:
+def _streak_out(state: streaks.WeeklyStreak, freezes_held: int = 0) -> StreakOut:
     return StreakOut(
         weeks=state.weeks,
         this_week_sessions=state.this_week_sessions,
         target=state.target,
         this_week_done=state.this_week_done,
         sessions_to_go=state.sessions_to_go,
+        freezes_held=freezes_held,
     )
 
 
-def _current_streak(db: Session, user: User) -> streaks.WeeklyStreak:
-    return streaks.weekly_streak(
-        store.qualified_weeks(db, user.id), streaks.week_key(_now(), user.timezone)
-    )
+def _current_streak(db: Session, user: User) -> StreakOut:
+    """Settles closed weeks' freezes first, so the caller holds the
+    level_progress lock and commits."""
+    state, held = freezes.current_streak(db, user, _now())
+    return _streak_out(state, held.balance)
+
+
+def _quest_fields(quests: board.Refresh | None) -> dict:
+    if quests is None:
+        return {}
+    return {
+        "quest_progress": [QuestProgressOut.from_update(u) for u in quests.updates],
+        "quests_completed": [
+            QuestProgressOut.from_update(u) for u in quests.updates if u.completed_now
+        ],
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -416,6 +510,7 @@ def _set_response(
     points: int,
     delta: ProgressionDelta,
     duplicate: bool = False,
+    quests: board.Refresh | None = None,
 ) -> SetLogResponse:
     ledger = store.session_ledger(db, session.id)
     rows = list(db.scalars(select(PersonalRecord).where(PersonalRecord.set_id == entry.id)))
@@ -433,6 +528,7 @@ def _set_response(
         ),
         progression=_delta_out(delta),
         is_duplicate=duplicate,
+        **_quest_fields(quests),
     )
 
 
@@ -573,9 +669,19 @@ def start_session(payload: SessionStart, current_user: CurrentUser, db: DbSessio
         name=payload.name or (routine.name if routine else None),
         started_at=_now(),
         status=SessionStatus.IN_PROGRESS.value,
+        visibility=payload.visibility or current_user.default_visibility,
     )
     db.add(session)
     try:
+        db.flush()
+        # The routine's plan becomes the workout's cards: order, rest,
+        # supersets and notes, before a single set is logged.
+        for slot in routine.exercises if routine else []:
+            db.add(SessionExercise(
+                session_id=session.id, exercise_id=slot.exercise_id, position=slot.position,
+                superset_group=slot.superset_group, notes=slot.notes,
+                rest_seconds=slot.rest_seconds,
+            ))
         db.flush()
     except IntegrityError:
         # uq_workout_sessions_one_active: the database, not a Python check, is
@@ -663,7 +769,24 @@ def list_sessions(
 
 @router.get("/sessions/{session_id}", response_model=SessionOut)
 def read_session(session_id: uuid.UUID, current_user: CurrentUser, db: DbSession) -> SessionOut:
+    """Your own workout - or someone else's finished one that its visibility
+    lets you see (app/core/social.py), rendered as its owner sees it."""
+    session = db.get(WorkoutSession, session_id)
+    if session is not None and session.user_id != current_user.id and social.can_see(db, current_user.id, session):
+        return _session_out(db, session, db.get(User, session.user_id))
     return _session_out(db, _get_owned_session(db, session_id, current_user), current_user)
+
+
+@router.patch("/sessions/{session_id}", response_model=SessionOut)
+def update_session(session_id: uuid.UUID, payload: SessionPatch, current_user: CurrentUser,
+                   db: DbSession) -> SessionOut:
+    session = _get_owned_session(db, session_id, current_user)
+    if payload.name is not None:
+        session.name = payload.name.strip()
+    if payload.visibility is not None:
+        session.visibility = payload.visibility
+    db.commit()
+    return _session_out(db, session, current_user)
 
 
 @router.post(
@@ -723,25 +846,27 @@ def log_set(
             status_code=status.HTTP_409_CONFLICT, detail="That exercise has been archived"
         )
 
+    card = _card_for(db, session, exercise.id, payload.session_exercise_id)
     set_number = (
         db.execute(
-            select(func.count(SetEntry.id)).where(
-                SetEntry.session_id == session.id, SetEntry.exercise_id == exercise.id
-            )
+            select(func.count(SetEntry.id)).where(SetEntry.session_exercise_id == card.id)
         ).scalar_one()
         + 1
     )
+    set_type = payload.resolved_type
     entry = SetEntry(
         session_id=session.id,
         user_id=current_user.id,
         exercise_id=exercise.id,
+        session_exercise_id=card.id,
+        set_type=set_type.value,
         set_number=set_number,
         weight_kg=payload.weight_kg,
         reps=payload.reps,
         rpe=_rpe(payload.rpe),
         duration_seconds=payload.duration_seconds,
         distance_m=_distance(payload.distance_m),
-        is_warmup=payload.is_warmup,
+        is_warmup=set_type is SetType.WARMUP,
         completed_at=now,
         client_set_id=payload.client_set_id,
     )
@@ -754,6 +879,7 @@ def log_set(
             status_code=status.HTTP_409_CONFLICT, detail="That set was already logged"
         ) from None
 
+    _flag(db, entry, exercise, now)
     events = prs.detect(store.load_bests(db, current_user.id, exercise.id), store.lift_of(entry))
     store.add_records(
         db,
@@ -769,13 +895,17 @@ def log_set(
     entry.is_pr = any(not e.is_baseline for e in events)
 
     outcome = _award_set(db, user=current_user, session=session, entry=entry, events=events)
-    delta = apply_xp(progress, xp=outcome.total, at=now, tz_name=current_user.timezone)
+    # Quest rewards are their own ledger rows, outside the set and PR caps.
+    quests = board.refresh(db, current_user, now, session=session)
+    delta = apply_xp(
+        progress, xp=outcome.total + quests.xp, at=now, tz_name=current_user.timezone
+    )
     # A new heaviest lift can pass a rank trial - and level up the rank here.
     delta = rank_trials.refresh(db, progress, current_user, delta)
 
     response = _set_response(
         db, session=session, entry=entry, exercise=exercise, outcome=outcome,
-        points=outcome.total, delta=delta,
+        points=outcome.total + quests.xp, delta=delta, quests=quests,
     )
     db.commit()
 
@@ -820,8 +950,14 @@ def update_set(
         entry.distance_m = _distance(payload.distance_m)
     if "rpe" in changes:
         entry.rpe = _rpe(payload.rpe)
-    if changes.get("is_warmup") is not None:
+    if changes.get("set_type") is not None:
+        entry.set_type = payload.set_type.value  # type: ignore[union-attr]
+        entry.is_warmup = payload.set_type is SetType.WARMUP
+    elif changes.get("is_warmup") is not None:
         entry.is_warmup = bool(payload.is_warmup)
+        entry.set_type = SetType.WARMUP.value if entry.is_warmup else (
+            SetType.NORMAL.value if entry.set_type == SetType.WARMUP.value else entry.set_type
+        )
 
     if entry.reps is None and entry.duration_seconds is None and entry.distance_m is None:
         raise HTTPException(
@@ -830,6 +966,7 @@ def update_set(
         )
 
     now = _now()
+    _flag(db, entry, db.get(Exercise, entry.exercise_id), now)  # type: ignore[arg-type]
     ledger = store.session_ledger(db, session.id)
     reversed_points = store.reverse(
         db,
@@ -846,14 +983,15 @@ def update_set(
         entry=entry,
         events=store.events_for_set(db, entry.id),
     )
-    net = outcome.total - reversed_points
+    quests = board.refresh(db, current_user, now, session=session)
+    net = outcome.total - reversed_points + quests.xp
     delta = apply_xp(progress, xp=net, at=now, tz_name=current_user.timezone)
     delta = rank_trials.refresh(db, progress, current_user, delta)
 
     exercise = db.get(Exercise, entry.exercise_id)
     response = _set_response(
         db, session=session, entry=entry, exercise=exercise, outcome=outcome,  # type: ignore[arg-type]
-        points=net, delta=delta,
+        points=net, delta=delta, quests=quests,
     )
     db.commit()
     return response
@@ -878,29 +1016,182 @@ def delete_set(
         entries=ledger.active_for_set(entry.id),
         reason="Set deleted",
     )
-    exercise_id, number = entry.exercise_id, entry.set_number
+    exercise_id, card_id, number = entry.exercise_id, entry.session_exercise_id, entry.set_number
     db.delete(entry)
     db.flush()
     # Close the gap so the UI never shows "set 1, set 3".
     db.execute(
         update(SetEntry)
-        .where(
-            SetEntry.session_id == session.id,
-            SetEntry.exercise_id == exercise_id,
-            SetEntry.set_number > number,
-        )
+        .where(SetEntry.session_exercise_id == card_id, SetEntry.set_number > number)
         .values(set_number=SetEntry.set_number - 1)
     )
     store.replay_exercise(db, current_user.id, exercise_id)
 
-    delta = apply_xp(progress, xp=-reversed_points, at=_now(), tz_name=current_user.timezone)
+    now = _now()
+    # A quest this set completed is reopened if it now falls short.
+    quests = board.refresh(db, current_user, now, session=session)
+    net = quests.xp - reversed_points
+    delta = apply_xp(progress, xp=net, at=now, tz_name=current_user.timezone)
     delta = rank_trials.refresh(db, progress, current_user, delta)
     session_points = store.session_ledger(db, session.id).total
     db.commit()
     return SetDeleteResponse(
-        points_awarded=-reversed_points,
+        points_awarded=net,
         session_points=session_points,
         progression=_delta_out(delta),
+        quest_progress=_quest_fields(quests)["quest_progress"],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Exercise cards in a live workout
+# ---------------------------------------------------------------------------
+
+
+def _get_card(db: Session, session: WorkoutSession, card_id: uuid.UUID) -> SessionExercise:
+    card = db.execute(
+        select(SessionExercise).where(
+            SessionExercise.id == card_id, SessionExercise.session_id == session.id
+        )
+    ).scalar_one_or_none()
+    if card is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Exercise not in this workout")
+    return card
+
+
+def _usable_exercise(db: Session, user: User, exercise_id: uuid.UUID) -> Exercise:
+    exercise = store.get_visible_exercise(db, exercise_id, user.id)
+    if exercise is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Exercise not found")
+    if exercise.is_archived:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="That exercise has been archived")
+    return exercise
+
+
+@router.post("/sessions/{session_id}/exercises", response_model=SessionOut,
+             status_code=status.HTTP_201_CREATED)
+def add_session_exercise(
+    session_id: uuid.UUID, payload: SessionExerciseIn, current_user: CurrentUser, db: DbSession
+) -> SessionOut:
+    """Add an exercise card at the end of a live workout. The same exercise
+    may be added twice (a back-off block later in the session)."""
+    session = _get_owned_session(db, session_id, current_user)
+    _require_live(session)
+    _usable_exercise(db, current_user, payload.exercise_id)
+    _append_card(db, session, payload.exercise_id,
+                 rest_seconds=payload.rest_seconds if payload.rest_seconds is not None
+                 else current_user.default_rest_seconds,
+                 notes=payload.notes)
+    db.commit()
+    return _session_out(db, session, current_user)
+
+
+@router.patch("/sessions/{session_id}/exercises/{card_id}", response_model=SessionOut)
+def update_session_exercise(
+    session_id: uuid.UUID, card_id: uuid.UUID, payload: SessionExercisePatch,
+    current_user: CurrentUser, db: DbSession,
+) -> SessionOut:
+    """Notes, rest, superset grouping - and swapping the exercise, while the
+    card has no sets yet."""
+    session = _get_owned_session(db, session_id, current_user)
+    _require_live(session)
+    card = _get_card(db, session, card_id)
+    changes = payload.model_dump(exclude_unset=True)
+    if "notes" in changes:
+        card.notes = payload.notes
+    if "rest_seconds" in changes:
+        card.rest_seconds = payload.rest_seconds
+    if "superset_group" in changes:
+        card.superset_group = payload.superset_group
+    if payload.exercise_id is not None and payload.exercise_id != card.exercise_id:
+        has_sets = db.execute(
+            select(SetEntry.id).where(SetEntry.session_exercise_id == card.id).limit(1)
+        ).first()
+        if has_sets:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT,
+                                detail="Sets are logged on this exercise - remove them to replace it")
+        card.exercise_id = _usable_exercise(db, current_user, payload.exercise_id).id
+    db.commit()
+    return _session_out(db, session, current_user)
+
+
+@router.post("/sessions/{session_id}/exercises/reorder", response_model=SessionOut)
+def reorder_session_exercises(
+    session_id: uuid.UUID, payload: ReorderIn, current_user: CurrentUser, db: DbSession
+) -> SessionOut:
+    """Put the cards in a new order: every card id of the session, once."""
+    session = _get_owned_session(db, session_id, current_user)
+    _require_live(session)
+    cards = {c.id: c for c in _cards(db, session.id)}
+    if len(payload.order) != len(set(payload.order)) or set(payload.order) != set(cards):
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                            detail="Send every exercise in this workout exactly once")
+    for position, card_id in enumerate(payload.order):
+        cards[card_id].position = position
+    db.commit()
+    return _session_out(db, session, current_user)
+
+
+@router.delete("/sessions/{session_id}/exercises/{card_id}", response_model=SessionOut)
+def remove_session_exercise(
+    session_id: uuid.UUID, card_id: uuid.UUID, current_user: CurrentUser, db: DbSession,
+    force: bool = Query(default=False, description="Also remove the sets logged on it."),
+) -> SessionOut:
+    """Take a card out of a live workout. With sets on it, 409 unless
+    `force` - then its sets go too and every award they earned is reversed,
+    exactly as deleting them one by one would."""
+    progress = lock_progress(db, current_user.id)
+    session = _get_owned_session(db, session_id, current_user)
+    _require_live(session)
+    card = _get_card(db, session, card_id)
+    entries = list(db.scalars(select(SetEntry).where(SetEntry.session_exercise_id == card.id)))
+    if entries and not force:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT,
+                            detail=f"{len(entries)} sets are logged on this exercise")
+    reversed_points = 0
+    if entries:
+        ledger = store.session_ledger(db, session.id)
+        for entry in entries:
+            reversed_points += store.reverse(
+                db, user_id=current_user.id, session_id=session.id,
+                entries=ledger.active_for_set(entry.id), reason="Exercise removed",
+            )
+    exercise_id = card.exercise_id
+    db.delete(card)  # its sets cascade
+    db.flush()
+    if entries:
+        store.replay_exercise(db, current_user.id, exercise_id)
+    now = _now()
+    quests = board.refresh(db, current_user, now, session=session)
+    apply_xp(progress, xp=quests.xp - reversed_points, at=now, tz_name=current_user.timezone)
+    # Close the gap in the order.
+    for position, remaining in enumerate(_cards(db, session.id)):
+        remaining.position = position
+    db.commit()
+    return _session_out(db, session, current_user)
+
+
+@router.get("/sessions/{session_id}/previous", response_model=PreviousOut)
+def previous_performance(
+    session_id: uuid.UUID, current_user: CurrentUser, db: DbSession,
+    exercise_id: uuid.UUID = Query(),
+) -> PreviousOut:
+    """The PREVIOUS column: the last finished session's sets on this exercise
+    (other than this one), by set number."""
+    session = _get_owned_session(db, session_id, current_user)
+    found = store.previous_sets(db, current_user.id, [exercise_id], exclude_session_id=session.id)
+    if exercise_id not in found:
+        return PreviousOut(exercise_id=exercise_id, session_id=None, performed_at=None, sets=[])
+    last, sets = found[exercise_id]
+    return PreviousOut(
+        exercise_id=exercise_id,
+        session_id=last.id,
+        performed_at=last.ended_at or last.started_at,
+        sets=[
+            PreviousSetOut(set_number=s.set_number, weight_kg=float(s.weight_kg), reps=s.reps,
+                           set_type=s.set_type, rpe=float(s.rpe) if s.rpe is not None else None)
+            for s in sets
+        ],
     )
 
 
@@ -950,7 +1241,7 @@ def finish_session(
                 at=now,
             )
 
-    state = streaks.weekly_streak(store.qualified_weeks(db, current_user.id), week)
+    state, held = freezes.current_streak(db, current_user, now)
     awards = pe.award_for_completion(
         pe.CompletionContext(
             duration_minutes=minutes,
@@ -970,10 +1261,18 @@ def finish_session(
             period_key=week if award.source_type is LedgerSource.STREAK_BONUS else None,
         )
 
+    # Before the ledger is totalled: a quest this workout completes is paid
+    # into this workout's ledger, and so credited by this finish.
+    quests = board.refresh(db, current_user, now, session=session)
+
     ledger = store.session_ledger(db, session.id)
     credit = max(0, ledger.total)
     session.points_credited = credit
-    completion_xp = sum(a.points for a in awards)
+    # The totals snapshot: history and feeds read these instead of the sets.
+    session.total_volume_kg = _volume(working)
+    session.total_working_sets = len(working)
+    session.duration_seconds = int((now - session.started_at).total_seconds())
+    completion_xp = sum(a.points for a in awards) + quests.xp
 
     if qualified:
         # A real workout also advances the global daily streak that gates the
@@ -992,7 +1291,9 @@ def finish_session(
     # A real workout hits the boss of every party the user is in.
     raid_hits = (
         raids.hit_parties(
-            db, user_id=current_user.id, session_id=session.id, volume=_volume(working), now=now
+            db, user_id=current_user.id, session_id=session.id,
+            # A flagged set does not hit a boss for the whole party.
+            volume=_volume([s for s in working if not s.is_flagged]), now=now
         )
         if qualified
         else []
@@ -1009,13 +1310,28 @@ def finish_session(
         e.id: e.name
         for e in db.scalars(select(Exercise).where(Exercise.id.in_(list(by_exercise))))
     } if by_exercise else {}
+    session.total_prs = sum(1 for r in records if not r.is_baseline)
+    # Friends hear about a real record - if they may see the workout.
+    real = [r for r in records if not r.is_baseline]
+    if real and session.visibility != Visibility.PRIVATE.value:
+        top = real[0]
+        line = f"{names.get(top.exercise_id, 'A lift')}: new {top.record_type.replace('_', ' ')}"
+        for friend in social.friend_ids(db, current_user.id):
+            social.notify(db, friend, "friend_pr", actor_id=current_user.id, target_type="session",
+                          target_id=session.id, detail=line, now=now)
     summary = _summaries(db, [session])[0]
+    muscles = {
+        e.id: (e.primary_muscle_groups, e.secondary_muscle_groups)
+        for e in db.scalars(select(Exercise).where(Exercise.id.in_({s.exercise_id for s in working})))
+    } if working else {}
     breakdown = PointsBreakdownOut(
         set_points=ledger.gross(LedgerSource.SET_LOGGED),
         pr_bonus=ledger.gross(LedgerSource.PR_ACHIEVED),
         session_bonus=ledger.gross(LedgerSource.SESSION_COMPLETED),
         streak_bonus=ledger.gross(LedgerSource.STREAK_BONUS),
         reversals=ledger.gross(LedgerSource.REVERSAL),
+        quest_points=ledger.gross(LedgerSource.QUEST_COMPLETED)
+        + ledger.gross(LedgerSource.QUEST_BONUS),
         total=ledger.total,
     )
     # The feed, fanned out from what just happened. Last, so a feed write can
@@ -1061,9 +1377,14 @@ def finish_session(
         breakdown=breakdown,
         points_credited=credit,
         pr_events=_pr_events_out(records, names, ledger.pr_bonus_set_ids()),
-        streak=_streak_out(state),
+        streak=_streak_out(state, held.balance),
         progression=_delta_out(delta),
         raids=raid_hits,
+        muscles_worked=analytics.muscle_intensity(muscles[s.exercise_id] for s in working),
+        rank_change=(
+            {"from": delta.rank_before, "to": delta.rank_after} if delta.ranked_up else None
+        ),
+        **_quest_fields(quests),
     )
     db.commit()
     return response
@@ -1099,7 +1420,13 @@ def abandon_session(
     for exercise_id in exercise_ids:
         store.replay_exercise(db, current_user.id, exercise_id)
 
-    delta = apply_xp(progress, xp=-reversed_points, at=now, tz_name=current_user.timezone)
+    # The reversal above took back any quest this workout completed; the quest
+    # reopens, and completes again only if finished workouts still carry it.
+    quests = board.refresh(db, current_user, now)
+    progress.points_balance += quests.points_now
+    delta = apply_xp(
+        progress, xp=quests.xp - reversed_points, at=now, tz_name=current_user.timezone
+    )
     delta = rank_trials.refresh(db, progress, current_user, delta)
     summary = _summaries(db, [session])[0]
     db.commit()
@@ -1184,6 +1511,8 @@ def list_records(
 @router.get("/points", response_model=PointsSummaryOut)
 def points_summary(current_user: CurrentUser, db: DbSession) -> PointsSummaryOut:
     """Workout points totals and the weekly streak."""
+    # Reading the streak settles closed weeks' freezes, which writes.
+    lock_progress(db, current_user.id)
     local = local_now(current_user.timezone)
     monday = local.date() - dt.timedelta(days=local.weekday())
     week_start = dt.datetime.combine(
@@ -1206,12 +1535,14 @@ def points_summary(current_user: CurrentUser, db: DbSession) -> PointsSummaryOut
         )
     ).scalar_one()
 
-    return PointsSummaryOut(
+    out = PointsSummaryOut(
         total_points=_sum(),
         this_week_points=_sum(PointsLedgerEntry.created_at >= week_start),
         sessions_completed=int(completed),
-        streak=_streak_out(_current_streak(db, current_user)),
+        streak=_current_streak(db, current_user),
     )
+    db.commit()
+    return out
 
 
 @router.get("/points/ledger", response_model=list[LedgerEntryOut])

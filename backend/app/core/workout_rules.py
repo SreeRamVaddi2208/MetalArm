@@ -55,6 +55,84 @@ STREAK_SESSIONS_PER_WEEK = 3
 STREAK_BONUS_PER_WEEK = 10
 STREAK_BONUS_CAP = 100
 
+# --- Generated quests (app/core/quest_board.py) --------------------------------
+# How many are handed out per period. Each template carries its own reward;
+# these are what the shipped templates are sized against.
+DAILY_QUESTS = 2
+WEEKLY_QUESTS = 3
+DAILY_QUEST_POINTS = 15
+WEEKLY_QUEST_POINTS = 40
+# Paid once a week, when the last of that week's quests is done.
+ALL_WEEKLY_QUESTS_BONUS = 25
+# Swaps of one daily quest for another, per local day.
+QUEST_REROLLS_PER_DAY = 1
+
+# --- Streak freezes (app/core/streak_freezes.py) -------------------------------
+# A freeze covers one week that fell short, so the weekly streak survives a
+# deliberate rest week. Earned every FREEZE_EARN_EVERY_WEEKS counting weeks of
+# streak and for finishing a week's quests; never more than FREEZE_CAP held.
+# Weeks rather than the spec's "every 7 days", because the streak is weekly.
+FREEZE_CAP = 2
+FREEZE_EARN_EVERY_WEEKS = 4
+
+# --- Suggested workouts (GET /workouts/suggested) -------------------------------
+# Routines are ranked by how long since they were last done; one that fits the
+# user's training path counts as this many days staler, and one never done
+# counts as this many days since. Tune by moving these, not the code.
+SUGGEST_CATEGORY_BONUS_DAYS = 3
+SUGGEST_NEVER_DONE_DAYS = 14
+SUGGEST_LIMIT = 10
+
+# --- Analytics (app/core/analytics.py, app/core/recovery.py) -------------------
+# The You tab's range control, in whole weeks; "All" starts at the first workout.
+ANALYTICS_RANGE_WEEKS = {"3M": 13, "6M": 26, "Year": 52}
+# Recovery is an ESTIMATE from training volume, not physiology. A working set
+# loads its primary muscles 1.0 and its secondary 0.5 (analytics.PRIMARY_WEIGHT
+# / SECONDARY_WEIGHT); that load decays, halving every half-life, and only the
+# last RECOVERY_WINDOW_HOURS count. A muscle carrying THRESHOLD units of load
+# reads 0% recovered. Large muscles shrug off load more slowly but take more.
+RECOVERY_WINDOW_HOURS = 96
+RECOVERY_HALF_LIFE_HOURS = {"small": 24.0, "large": 36.0}
+RECOVERY_THRESHOLD = {"small": 6.0, "large": 10.0}
+# Overall recovery: the average over muscles trained in this many days,
+# weighted by how much each was trained.
+RECOVERY_OVERALL_DAYS = 7
+
+# --- Monthly Summary ------------------------------------------------------------
+# "That's about 3 small cars": a month's volume against everyday weights, kg.
+# Rounded, commonly quoted figures - an illustration, not a measurement.
+VOLUME_COMPARISONS = (
+    ("a grand piano", "grand pianos", 450),
+    ("a small car", "small cars", 1_200),
+    ("an African elephant", "African elephants", 6_000),
+    ("a loaded semi-truck", "loaded semi-trucks", 36_000),
+    ("a blue whale", "blue whales", 150_000),
+)
+# The hero card on Home: the first days of a month, for the month before.
+MONTHLY_HERO_DAYS = 7
+
+# --- Plausibility (app/core/plausibility.py) ---------------------------------
+# A set that trips one of these is still logged and still scores for its owner,
+# but stays out of duels and leaderboards. Generous on purpose: the cost of a
+# false flag is someone's honest PR not counting against a friend.
+FLAG_E1RM_JUMP = 0.15          # e1RM this far above the last 7 days' best
+FLAG_E1RM_LOOKBACK_DAYS = 7
+FLAG_MAX_WEIGHTED_REPS = 50    # reps on a set with any weight on it
+# Heaviest believable load by equipment, in kg (per hand for dumbbells and
+# kettlebells, as logged). Anything above is past world records.
+FLAG_CEILING_KG = {
+    "barbell": 500,
+    "trap_bar": 500,
+    "smith_machine": 500,
+    "ez_bar": 200,
+    "dumbbell": 120,
+    "kettlebell": 100,
+    "cable": 300,
+    "machine": 700,
+    "plate": 100,
+    "band": 150,
+}
+
 # --- Session hygiene -------------------------------------------------------
 # A session left open this long refuses new sets, and duration counts only up
 # to this for the bonus - a forgotten session cannot bank a 20-hour multiplier.

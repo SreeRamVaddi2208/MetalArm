@@ -1,0 +1,353 @@
+{
+ "muscle_groups": [
+  {
+   "code": "chest",
+   "display_name": "Chest",
+   "body_side": "front",
+   "svg_path_ids": [
+    "front-chest-l",
+    "front-chest-r"
+   ],
+   "size_class": "large",
+   "tile_asset": "muscle/chest",
+   "sort_order": 0,
+   "browsable": true
+  },
+  {
+   "code": "biceps",
+   "display_name": "Biceps",
+   "body_side": "front",
+   "svg_path_ids": [
+    "front-biceps-l",
+    "front-biceps-r"
+   ],
+   "size_class": "small",
+   "tile_asset": "muscle/biceps",
+   "sort_order": 1,
+   "browsable": true
+  },
+  {
+   "code": "triceps",
+   "display_name": "Triceps",
+   "body_side": "back",
+   "svg_path_ids": [
+    "back-triceps-l",
+    "back-triceps-r"
+   ],
+   "size_class": "small",
+   "tile_asset": "muscle/triceps",
+   "sort_order": 2,
+   "browsable": true
+  },
+  {
+   "code": "back",
+   "display_name": "Back",
+   "body_side": "back",
+   "svg_path_ids": [
+    "back-upper-back"
+   ],
+   "size_class": "large",
+   "tile_asset": "muscle/back",
+   "sort_order": 3,
+   "browsable": true
+  },
+  {
+   "code": "shoulders",
+   "display_name": "Shoulders",
+   "body_side": "both",
+   "svg_path_ids": [
+    "front-delt-l",
+    "front-delt-r",
+    "back-delt-l",
+    "back-delt-r"
+   ],
+   "size_class": "small",
+   "tile_asset": "muscle/shoulders",
+   "sort_order": 4,
+   "browsable": true
+  },
+  {
+   "code": "abs",
+   "display_name": "Abs",
+   "body_side": "front",
+   "svg_path_ids": [
+    "front-abs"
+   ],
+   "size_class": "small",
+   "tile_asset": "muscle/abs",
+   "sort_order": 5,
+   "browsable": true
+  },
+  {
+   "code": "quads",
+   "display_name": "Quadriceps",
+   "body_side": "front",
+   "svg_path_ids": [
+    "front-quad-l",
+    "front-quad-r"
+   ],
+   "size_class": "large",
+   "tile_asset": "muscle/quads",
+   "sort_order": 6,
+   "browsable": true
+  },
+  {
+   "code": "hamstrings",
+   "display_name": "Hamstrings",
+   "body_side": "back",
+   "svg_path_ids": [
+    "back-hamstring-l",
+    "back-hamstring-r"
+   ],
+   "size_class": "large",
+   "tile_asset": "muscle/hamstrings",
+   "sort_order": 7,
+   "browsable": true
+  },
+  {
+   "code": "glutes",
+   "display_name": "Glutes",
+   "body_side": "back",
+   "svg_path_ids": [
+    "back-glute-l",
+    "back-glute-r"
+   ],
+   "size_class": "large",
+   "tile_asset": "muscle/glutes",
+   "sort_order": 8,
+   "browsable": true
+  },
+  {
+   "code": "calves",
+   "display_name": "Calves",
+   "body_side": "back",
+   "svg_path_ids": [
+    "back-calf-l",
+    "back-calf-r"
+   ],
+   "size_class": "small",
+   "tile_asset": "muscle/calves",
+   "sort_order": 9,
+   "browsable": true
+  },
+  {
+   "code": "forearms",
+   "display_name": "Forearms",
+   "body_side": "both",
+   "svg_path_ids": [
+    "front-forearm-l",
+    "front-forearm-r",
+    "back-forearm-l",
+    "back-forearm-r"
+   ],
+   "size_class": "small",
+   "tile_asset": "muscle/forearms",
+   "sort_order": 10,
+   "browsable": true
+  },
+  {
+   "code": "neck",
+   "display_name": "Neck",
+   "body_side": "both",
+   "svg_path_ids": [
+    "front-neck",
+    "back-neck"
+   ],
+   "size_class": "small",
+   "tile_asset": "muscle/neck",
+   "sort_order": 11,
+   "browsable": true
+  },
+  {
+   "code": "cardio",
+   "display_name": "Cardio",
+   "body_side": "none",
+   "svg_path_ids": [],
+   "size_class": "large",
+   "tile_asset": "muscle/cardio",
+   "sort_order": 12,
+   "browsable": true
+  },
+  {
+   "code": "lats",
+   "display_name": "Lats",
+   "body_side": "back",
+   "svg_path_ids": [
+    "back-lat-l",
+    "back-lat-r"
+   ],
+   "size_class": "large",
+   "tile_asset": "muscle/lats",
+   "sort_order": 13,
+   "browsable": false
+  },
+  {
+   "code": "traps",
+   "display_name": "Traps",
+   "body_side": "both",
+   "svg_path_ids": [
+    "back-trap",
+    "front-trap-l",
+    "front-trap-r"
+   ],
+   "size_class": "small",
+   "tile_asset": "muscle/traps",
+   "sort_order": 14,
+   "browsable": false
+  },
+  {
+   "code": "lower_back",
+   "display_name": "Lower back",
+   "body_side": "back",
+   "svg_path_ids": [
+    "back-lower-back"
+   ],
+   "size_class": "large",
+   "tile_asset": "muscle/lower_back",
+   "sort_order": 15,
+   "browsable": false
+  },
+  {
+   "code": "obliques",
+   "display_name": "Obliques",
+   "body_side": "front",
+   "svg_path_ids": [
+    "front-oblique-l",
+    "front-oblique-r"
+   ],
+   "size_class": "small",
+   "tile_asset": "muscle/obliques",
+   "sort_order": 16,
+   "browsable": false
+  },
+  {
+   "code": "adductors",
+   "display_name": "Adductors",
+   "body_side": "front",
+   "svg_path_ids": [
+    "front-adductor-l",
+    "front-adductor-r"
+   ],
+   "size_class": "small",
+   "tile_asset": "muscle/adductors",
+   "sort_order": 17,
+   "browsable": false
+  },
+  {
+   "code": "abductors",
+   "display_name": "Abductors",
+   "body_side": "back",
+   "svg_path_ids": [
+    "back-abductor-l",
+    "back-abductor-r"
+   ],
+   "size_class": "small",
+   "tile_asset": "muscle/abductors",
+   "sort_order": 18,
+   "browsable": false
+  },
+  {
+   "code": "full_body",
+   "display_name": "Full body",
+   "body_side": "none",
+   "svg_path_ids": [],
+   "size_class": "large",
+   "tile_asset": "muscle/full_body",
+   "sort_order": 19,
+   "browsable": false
+  }
+ ],
+ "equipment": [
+  {
+   "code": "barbell",
+   "display_name": "Barbell",
+   "icon_asset": "equipment/barbell",
+   "sort_order": 0,
+   "browsable": true
+  },
+  {
+   "code": "dumbbell",
+   "display_name": "Dumbbell",
+   "icon_asset": "equipment/dumbbell",
+   "sort_order": 1,
+   "browsable": true
+  },
+  {
+   "code": "bodyweight",
+   "display_name": "Body weight",
+   "icon_asset": "equipment/bodyweight",
+   "sort_order": 2,
+   "browsable": true
+  },
+  {
+   "code": "cable",
+   "display_name": "Cable",
+   "icon_asset": "equipment/cable",
+   "sort_order": 3,
+   "browsable": true
+  },
+  {
+   "code": "machine",
+   "display_name": "Machine",
+   "icon_asset": "equipment/machine",
+   "sort_order": 4,
+   "browsable": true
+  },
+  {
+   "code": "smith_machine",
+   "display_name": "Smith machine",
+   "icon_asset": "equipment/smith_machine",
+   "sort_order": 5,
+   "browsable": true
+  },
+  {
+   "code": "kettlebell",
+   "display_name": "Kettlebell",
+   "icon_asset": "equipment/kettlebell",
+   "sort_order": 6,
+   "browsable": true
+  },
+  {
+   "code": "band",
+   "display_name": "Band",
+   "icon_asset": "equipment/band",
+   "sort_order": 7,
+   "browsable": true
+  },
+  {
+   "code": "other",
+   "display_name": "Other",
+   "icon_asset": "equipment/other",
+   "sort_order": 8,
+   "browsable": true
+  },
+  {
+   "code": "ez_bar",
+   "display_name": "EZ bar",
+   "icon_asset": "equipment/ez_bar",
+   "sort_order": 9,
+   "browsable": false
+  },
+  {
+   "code": "trap_bar",
+   "display_name": "Trap bar",
+   "icon_asset": "equipment/trap_bar",
+   "sort_order": 10,
+   "browsable": false
+  },
+  {
+   "code": "plate",
+   "display_name": "Plate",
+   "icon_asset": "equipment/plate",
+   "sort_order": 11,
+   "browsable": false
+  },
+  {
+   "code": "cardio_machine",
+   "display_name": "Cardio machine",
+   "icon_asset": "equipment/cardio_machine",
+   "sort_order": 12,
+   "browsable": false
+  }
+ ]
+}

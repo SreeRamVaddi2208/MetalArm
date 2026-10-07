@@ -132,6 +132,12 @@ class SetRow:
     detail: str = ""
     is_warmup: bool = False
     is_pr: bool = False
+    # Kept out of competitions by the server (plausibility). Shown neutrally.
+    flagged: bool = False
+    # normal / warmup / drop / failure.
+    set_type: str = "normal"
+    # Last session's set at this position ("80 kg × 8"), for the PREVIOUS column.
+    previous: str = "-"
     # Raw values in the display unit, used to pre-fill the next set and the
     # edit form.
     rpe: str = ""
@@ -170,6 +176,8 @@ class SetRow:
             detail=" · ".join(details),
             is_warmup=bool(data.get("is_warmup")),
             is_pr=bool(data.get("is_pr")),
+            flagged=bool(data.get("is_flagged")),
+            set_type=data.get("set_type") or ("warmup" if data.get("is_warmup") else "normal"),
             rpe=fmt(_num(data["rpe"])) if data.get("rpe") else "",
             weight=fmt(to_unit(kg, unit)) if kg else "",
             reps=str(reps) if reps else "",
@@ -187,10 +195,24 @@ class ExerciseCard:
     """
 
     exercise_id: str = ""
+    # The card on the server: what log, edit, reorder and remove address.
+    session_exercise_id: str = ""
+    # 0 = not in a superset; cards sharing a number are one.
+    superset_group: int = 0
+    notes: str = ""
+    # The next set's type, tapped through on the entry row's SET cell.
+    entry_type: str = "normal"
+    # PREVIOUS for the next set: last session's set at that position.
+    entry_previous: str = "-"
+    menu_open: bool = False
+    # "+N" for the set just logged on this card, faded out by CSS.
+    last_points: str = ""
     name: str = ""
     muscles_label: str = ""
     # "" when the library has no demo clip for this movement yet.
     media_url: str = ""
+    # The exercise artwork (wger, credited on /about/credits).
+    thumbnail_url: str = ""
     is_cardio: bool = False
     target_label: str = ""
     rest_seconds: int = 90
@@ -376,11 +398,18 @@ class RoutineSlot:
     target_weight: str = ""
     rest_seconds: str = ""
     target_label: str = ""
+    # Slots sharing a number are a superset; 0 is none.
+    superset_group: int = 0
+    notes: str = ""
+    image: str = ""
 
     @classmethod
     def from_api(cls, data: dict[str, Any], unit: str) -> "RoutineSlot":
         exercise = data.get("exercise") or {}
-        sets, reps, kg = data.get("target_sets"), data.get("target_reps"), data.get("target_weight_kg")
+        sets, kg = data.get("target_sets"), data.get("target_weight_kg")
+        low, high = data.get("target_reps_low"), data.get("target_reps_high")
+        # "8-12" for a range, "8" for a single target; the editor parses both.
+        reps = f"{low}-{high}" if low and high and low != high else (data.get("target_reps") or "")
         bits = []
         if sets:
             bits.append(f"{sets}")
@@ -397,6 +426,9 @@ class RoutineSlot:
             target_weight=fmt(to_unit(kg, unit)) if kg else "",
             rest_seconds=str(data.get("rest_seconds")) if data.get("rest_seconds") else "",
             target_label=" ".join(bits),
+            superset_group=data.get("superset_group") or 0,
+            notes=data.get("notes") or "",
+            image=exercise.get("thumbnail_url") or "",
         )
 
 
@@ -408,6 +440,7 @@ class RoutineItem:
     summary_label: str = ""
     exercise_count: int = 0
     slots: list[RoutineSlot] = dataclasses.field(default_factory=list)
+    program_id: str = ""
 
     @classmethod
     def from_api(cls, data: dict[str, Any], unit: str) -> "RoutineItem":
@@ -421,6 +454,7 @@ class RoutineItem:
             summary_label=summary or "No exercises yet",
             exercise_count=len(slots),
             slots=slots,
+            program_id=data.get("program_id") or "",
         )
 
 
@@ -454,6 +488,11 @@ class HistoryRow:
         )
 
 
+# The most freezes anyone can hold (backend FREEZE_CAP). Display only: the
+# server decides how many are held.
+FREEZE_SLOTS = 2
+
+
 @dataclasses.dataclass
 class StreakView:
     weeks: int = 0
@@ -462,6 +501,9 @@ class StreakView:
     done: bool = False
     label: str = "NO STREAK YET"
     sub: str = ""
+    # One entry per freeze slot, True where a freeze is held - rendered as
+    # icons, so a list rather than a count.
+    freeze_slots: list[bool] = dataclasses.field(default_factory=list)
 
     @classmethod
     def from_api(cls, data: dict[str, Any]) -> "StreakView":
@@ -476,6 +518,7 @@ class StreakView:
             sub = f"{to_go} more workout{'s' if to_go != 1 else ''} this week keeps it alive"
         else:
             sub = f"{this_week}/{target} workouts this week - hit {target} to start a streak"
+        held = data.get("freezes_held") or 0
         return cls(
             weeks=weeks,
             this_week=this_week,
@@ -483,6 +526,7 @@ class StreakView:
             done=done,
             label=f"{weeks}-WEEK STREAK" if weeks else "NO STREAK YET",
             sub=sub,
+            freeze_slots=[i < held for i in range(FREEZE_SLOTS)],
         )
 
 
@@ -491,6 +535,88 @@ class AwardLine:
     label: str = ""
     points_label: str = ""
     negative: bool = False
+
+
+@dataclasses.dataclass
+class Alternative:
+    exercise_id: str = ""
+    name: str = ""
+
+
+@dataclasses.dataclass
+class VoiceProposal:
+    """What POST /log/parse proposed, as an editable card. Fields are strings
+    because they are bound to inputs; nothing here is logged until confirmed."""
+
+    parse_id: str = ""
+    exercise_id: str = ""
+    exercise_name: str = ""
+    weight: str = ""
+    unit: str = "kg"
+    reps: str = ""
+    rpe: str = ""
+    warmup: bool = False
+    set_count: int = 1
+    # The match was a guess: show the alternatives prominently.
+    unsure: bool = False
+    alternatives: list[Alternative] = dataclasses.field(default_factory=list)
+    unparsed_label: str = ""
+    by_llm: bool = False
+    # The proposal as it arrived, to tell "logged as-is" from "edited".
+    original: str = ""
+
+    @classmethod
+    def from_api(cls, data: dict[str, Any]) -> "VoiceProposal":
+        first = (data.get("proposed_sets") or [{}])[0]
+        unparsed = data.get("unparsed_fragments") or []
+        proposal = cls(
+            parse_id=str(data.get("parse_id") or ""),
+            exercise_id=str(first.get("exercise_id") or ""),
+            exercise_name=first.get("exercise_name") or "",
+            weight=fmt(first.get("weight") or 0),
+            unit=first.get("unit") or "kg",
+            reps=str(first.get("reps") or ""),
+            rpe=fmt(first["rpe"]) if first.get("rpe") is not None else "",
+            warmup=bool(first.get("is_warmup")),
+            set_count=int(data.get("set_count") or 1),
+            unsure=float(data.get("exercise_confidence") or 0) < 0.85,
+            alternatives=[
+                Alternative(exercise_id=str(a.get("exercise_id") or ""), name=a.get("name") or "")
+                for a in data.get("exercise_alternatives") or []
+            ],
+            unparsed_label=f"Ignored: {' '.join(unparsed)}" if unparsed else "",
+            by_llm=data.get("parser_used") == "llm",
+        )
+        proposal.original = proposal.signature()
+        return proposal
+
+    def signature(self) -> str:
+        return "|".join(
+            [self.exercise_id, self.weight, self.unit, self.reps, self.rpe,
+             str(self.warmup), str(self.set_count)]
+        )
+
+
+@dataclasses.dataclass
+class QuestLine:
+    """One generated quest as a set or a finish left it - the in-session chip
+    and the summary's "Quests progressed" block."""
+
+    id: str = ""
+    title: str = ""
+    progress_label: str = ""
+    done: bool = False
+    reward_label: str = ""
+
+    @classmethod
+    def from_api(cls, data: dict[str, Any]) -> "QuestLine":
+        return cls(
+            id=str(data.get("assignment_id") or ""),
+            title=data.get("title") or "",
+            progress_label=f"{data.get('progress') or 0}/{data.get('target') or 0}",
+            done=bool(data.get("completed")),
+            reward_label=f"+{data.get('reward_points') or 0}",
+        )
 
 
 @dataclasses.dataclass
@@ -506,6 +632,8 @@ class FinishSummary:
     lines: list[AwardLine] = dataclasses.field(default_factory=list)
     prs: list[PrView] = dataclasses.field(default_factory=list)
     streak: StreakView = dataclasses.field(default_factory=StreakView)
+    # "Quests progressed": every current quest with any progress, done or not.
+    quests: list[QuestLine] = dataclasses.field(default_factory=list)
     # The story card (metalarm/share_card.py): the workout's biggest moment.
     share_kind: str = ""
     share_eyebrow: str = ""
@@ -538,6 +666,7 @@ class FinishSummary:
             ("pr_bonus", "PR bonus"),
             ("session_bonus", "Workout bonus"),
             ("streak_bonus", "Streak bonus"),
+            ("quest_points", "Quests"),
             ("reversals", "Corrections"),
         ):
             points = breakdown.get(key) or 0
@@ -577,6 +706,11 @@ class FinishSummary:
             lines=lines,
             prs=prs,
             streak=StreakView.from_api(data.get("streak") or {}),
+            quests=[
+                QuestLine.from_api(q)
+                for q in data.get("quest_progress") or []
+                if (q.get("progress") or 0) > 0
+            ],
         )
 
 
@@ -630,4 +764,70 @@ class BodyRow:
             metric_label=(data.get("label") or "").upper() or _METRIC_LABELS.get(metric, metric.upper()),
             value_label=f"{fmt(_num(data.get('value')))}{unit_label}",
             date_label=day_label(data.get("recorded_at"), tz),
+        )
+
+
+# ---------------------------------------------------------------------------
+# The social feed (overhaul phase 4)
+# ---------------------------------------------------------------------------
+
+
+def initials_of(name: str) -> str:
+    return "".join(w[0] for w in (name or "").split()[:2]).upper() or "?"
+
+
+def ago(iso: str | None) -> str:
+    """'just now', '3h ago', 'Yesterday', 'Mon 6 Oct'."""
+    if not iso:
+        return ""
+    try:
+        moment = dt.datetime.fromisoformat(iso.replace("Z", "+00:00"))
+    except ValueError:
+        return ""
+    seconds = (dt.datetime.now(dt.timezone.utc) - moment).total_seconds()
+    if seconds < 60:
+        return "just now"
+    if seconds < 3600:
+        return f"{int(seconds // 60)}m ago"
+    if seconds < 86400:
+        return f"{int(seconds // 3600)}h ago"
+    if seconds < 2 * 86400:
+        return "Yesterday"
+    return moment.strftime("%a %-d %b")
+
+
+@dataclasses.dataclass
+class FeedCard:
+    session_id: str = ""
+    user_id: str = ""
+    name: str = ""
+    initials: str = ""
+    rank: str = "E"
+    when: str = ""
+    title: str = ""
+    duration: str = ""
+    volume: str = ""
+    records: int = 0
+    points: str = ""
+    spotted: int = 0
+    spotted_by_me: bool = False
+    more: int = 0
+    exercises: list[dict[str, str]] = dataclasses.field(default_factory=list)
+
+    @classmethod
+    def from_api(cls, item: dict[str, Any], unit: str) -> "FeedCard":
+        user = item.get("user") or {}
+        minutes = int(item.get("duration_seconds") or 0) // 60
+        return cls(
+            session_id=str(item["session_id"]), user_id=str(user.get("id") or ""),
+            name=user.get("display_name") or "", initials=initials_of(user.get("display_name") or ""),
+            rank=user.get("rank") or "E", when=ago(item.get("ended_at")),
+            title=item.get("name") or "Workout",
+            duration=f"{minutes // 60}h {minutes % 60}m" if minutes >= 60 else f"{minutes}m",
+            volume=f"{thousands(to_unit(item.get('volume_kg'), unit))} {unit}",
+            records=item.get("records") or 0, points=f"+{item.get('points') or 0}",
+            spotted=item.get("spotted") or 0, spotted_by_me=bool(item.get("spotted_by_me")),
+            more=item.get("more_exercises") or 0,
+            exercises=[{"caption": f"{e['sets']} × {e['name']}", "image": e.get("thumbnail_url") or ""}
+                       for e in item.get("exercises") or []],
         )

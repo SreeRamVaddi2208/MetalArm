@@ -37,6 +37,9 @@ SIGNUP_PER_IP = Limit("signup-ip", 5, 60 * 60)
 REFRESH_PER_IP = Limit("refresh-ip", 60, 15 * 60)
 # Per user: an import rebuilds every touched record, so it is not free.
 IMPORT_PER_USER = Limit("import-user", 10, 60 * 60)
+# Per user: each natural-language parse that reaches the LLM costs money.
+# Over it, parsing falls back to the grammar alone rather than failing.
+NL_LLM_PER_USER = Limit("nl-llm-user", 60, 60 * 60)
 # Per account, whatever address the guesses come from.
 LOGIN_PER_EMAIL = Limit("login-email", 10, 15 * 60)
 

@@ -9,7 +9,7 @@ flourish; a promotion is the event.
 import reflex as rx
 
 from metalarm import theme
-from metalarm.models import ActivityEntry, Duel
+from metalarm.models import ActivityEntry, BreakdownLine, Duel, DuelMode
 from metalarm.state.duels import DuelState
 
 
@@ -25,6 +25,73 @@ def _score(label: str, value: str, ahead, accent: str) -> rx.Component:
         ),
         spacing="1",
         align="start",
+    )
+
+
+def head_to_head(duel: Duel) -> rx.Component:
+    """Your share of the two scores as one bar - scaleX, never width."""
+    return rx.box(
+        rx.box(
+            width="100%",
+            height="100%",
+            transform=f"scaleX({duel.my_share})",
+            transform_origin="left center",
+            background=f"linear-gradient(90deg, {theme.ACCENT_DIM}, {theme.ACCENT})",
+            border_radius="999px",
+            transition="transform 420ms cubic-bezier(0.22, 1, 0.36, 1)",
+        ),
+        width="100%",
+        height="6px",
+        background=theme.BORDER,
+        border_radius="999px",
+        overflow="hidden",
+        margin_top="0.6rem",
+    )
+
+
+def _line(line: BreakdownLine) -> rx.Component:
+    return rx.hstack(
+        rx.text(line.label, color=theme.MUTED, font_size="0.74rem"),
+        rx.spacer(),
+        rx.text(line.value_label, color=theme.TEXT, font_size="0.74rem", font_weight="700"),
+        width="100%",
+    )
+
+
+def _breakdown_column(title, lines) -> rx.Component:
+    return rx.vstack(
+        rx.text(title, **theme.LABEL_STYLE),
+        rx.cond(
+            lines.length() > 0,
+            rx.foreach(lines, _line),
+            rx.text("Nothing counted yet", color=theme.FAINT, font_size="0.72rem"),
+        ),
+        spacing="1",
+        width="100%",
+        align="start",
+    )
+
+
+def duel_detail(duel: Duel) -> rx.Component:
+    """What counts toward this mode, and both sides' working - aggregates
+    only, as the server sends them."""
+    return rx.cond(
+        DuelState.open_duel == duel.id,
+        rx.vstack(
+            rx.text(duel.rules, color=theme.FAINT, font_size="0.74rem", line_height="1.45"),
+            rx.grid(
+                _breakdown_column("YOU", duel.my_breakdown),
+                _breakdown_column(duel.their_name.upper(), duel.their_breakdown),
+                columns="2",
+                gap="1rem",
+                width="100%",
+            ),
+            spacing="2",
+            width="100%",
+            padding_top="0.7rem",
+            border_top=f"1px solid {theme.BORDER}",
+            margin_top="0.6rem",
+        ),
     )
 
 
@@ -57,6 +124,7 @@ def duel_card(duel: Duel) -> rx.Component:
             align="center",
             padding_top="0.6rem",
         ),
+        head_to_head(duel),
         rx.cond(
             duel.status == "completed",
             rx.text(
@@ -71,6 +139,21 @@ def duel_card(duel: Duel) -> rx.Component:
                 padding_top="0.5rem",
             ),
         ),
+        rx.cond(
+            ~duel.opponent.is_rival,
+            rx.button(
+                rx.cond(DuelState.open_duel == duel.id, "Hide details", "Details"),
+                on_click=lambda: DuelState.toggle_detail(duel.id),
+                background="transparent",
+                color=theme.FAINT,
+                border="none",
+                font_size="0.68rem",
+                padding="0.3rem 0",
+                margin_top="0.3rem",
+                cursor="pointer",
+            ),
+        ),
+        duel_detail(duel),
         width="100%",
         padding="0.9rem 1rem",
         background=theme.PANEL,
@@ -131,7 +214,7 @@ def pending_card(duel: Duel, *, incoming: bool) -> rx.Component:
                 ),
                 rx.button(
                     "WITHDRAW",
-                    on_click=lambda: DuelState.decline(duel.id),
+                    on_click=lambda: DuelState.cancel(duel.id),
                     background="transparent",
                     color=theme.FAINT,
                     border=f"1px solid {theme.BORDER}",
@@ -177,45 +260,172 @@ def activity_row(entry: ActivityEntry) -> rx.Component:
     )
 
 
+def mode_picker() -> rx.Component:
+    """Challenge flow, step two: the modes, each with a line on why it is
+    fair. A mode the two of you cannot use yet is shown, disabled, with the
+    server's reason - rather than hidden, which would just look missing."""
+
+    def card(mode: DuelMode) -> rx.Component:
+        return rx.box(
+            rx.vstack(
+                rx.text(mode.title, color=rx.cond(mode.eligible, theme.TEXT, theme.FAINT),
+                        font_weight="800", font_size="0.9rem"),
+                rx.text(mode.fairness, color=theme.MUTED, font_size="0.76rem"),
+                rx.cond(~mode.eligible,
+                        rx.text(mode.reason, color=theme.FAINT, font_size="0.72rem",
+                                font_style="italic")),
+                spacing="1",
+                align="start",
+            ),
+            on_click=rx.cond(mode.eligible, DuelState.choose_mode(mode.metric), rx.noop()),
+            cursor=rx.cond(mode.eligible, "pointer", "not-allowed"),
+            opacity=rx.cond(mode.eligible, "1", "0.55"),
+            width="100%",
+            padding="0.8rem 0.9rem",
+            background=theme.FIELD,
+            border=f"1px solid {theme.BORDER}",
+            border_radius="12px",
+            _hover={"border_color": rx.cond(mode.eligible, theme.BORDER_HI, theme.BORDER)},
+            custom_attrs={"role": "button", "aria-disabled": rx.cond(mode.eligible, "false", "true")},
+        )
+
+    return rx.cond(
+        DuelState.show_modes,
+        rx.vstack(
+            rx.hstack(
+                rx.text(f"CHALLENGE {DuelState.picking_name.upper()}", **theme.LABEL_STYLE),
+                rx.spacer(),
+                rx.button("Cancel", on_click=DuelState.close_modes, background="transparent",
+                          color=theme.FAINT, border="none", font_size="0.72rem", cursor="pointer"),
+                width="100%",
+                align="center",
+            ),
+            rx.foreach(DuelState.modes, card),
+            spacing="2",
+            width="100%",
+            padding="1rem",
+            background=theme.PANEL,
+            border=f"1px solid {theme.BORDER_HI}",
+            border_radius="14px",
+        ),
+    )
+
+
+def dashboard_duels() -> rx.Component:
+    """Running duels on the home screen: a head-to-head bar each."""
+    return rx.cond(
+        DuelState.active.length() > 0,
+        rx.vstack(
+            rx.foreach(
+                DuelState.active,
+                lambda duel: rx.link(
+                    rx.box(
+                        rx.hstack(
+                            rx.text(duel.metric_label, color=theme.ACCENT, font_size="0.64rem",
+                                    font_weight="800", letter_spacing="0.16em"),
+                            rx.spacer(),
+                            rx.text(duel.ends_label, color=theme.FAINT, font_size="0.68rem"),
+                            width="100%",
+                        ),
+                        rx.hstack(
+                            rx.text(f"You {duel.my_score_label}", color=theme.TEXT,
+                                    font_size="0.8rem", font_weight="700"),
+                            rx.spacer(),
+                            rx.text(f"{duel.their_score_label} {duel.their_name}",
+                                    color=theme.MUTED, font_size="0.8rem"),
+                            width="100%",
+                            padding_top="0.3rem",
+                        ),
+                        head_to_head(duel),
+                        width="100%",
+                        padding="0.75rem 0.9rem",
+                        background=theme.PANEL,
+                        border=f"1px solid {theme.BORDER}",
+                        border_radius="12px",
+                    ),
+                    href="/duels",
+                    width="100%",
+                    _hover={"text_decoration": "none"},
+                ),
+            ),
+            spacing="2",
+            width="100%",
+        ),
+    )
+
+
 def win_overlay() -> rx.Component:
-    """The smaller sibling: the rank-up's veil, card and line, nothing more."""
+    """A settled duel's moment: the rank-up's veil, card and line, nothing
+    more - sized between a quest and a PR. A loss is not a defeat screen: it
+    shows what showing up earned, and offers the rematch."""
+    kind = DuelState.result_kind
     return rx.cond(
         DuelState.show_win,
         rx.box(
             rx.center(
                 rx.vstack(
                     rx.heading(
-                        "DUEL WON",
+                        rx.cond(kind == "draw", "DUEL DRAWN",
+                                rx.cond(kind == "loss", "GOOD FIGHT", "DUEL WON")),
                         size="7",
                         letter_spacing="0.2em",
                         class_name="lf-line",
                         color=theme.TEXT,
                     ),
                     rx.text(
-                        f"You beat {DuelState.won_against}.",
+                        rx.cond(
+                            kind == "draw",
+                            f"Dead level with {DuelState.won_against}.",
+                            rx.cond(kind == "loss",
+                                    f"{DuelState.won_against} took this one. You showed up.",
+                                    f"You beat {DuelState.won_against}."),
+                        ),
                         color=theme.MUTED,
                         font_size="0.9rem",
                         class_name="lf-line",
+                        text_align="center",
                     ),
-                    rx.text(
-                        f"+{DuelState.won_points} points",
-                        color=theme.ACCENT,
-                        font_size="1.1rem",
-                        font_weight="800",
-                        class_name="lf-line",
+                    rx.cond(
+                        DuelState.won_points > 0,
+                        rx.text(
+                            f"+{DuelState.won_points} points",
+                            color=theme.ACCENT,
+                            font_size="1.1rem",
+                            font_weight="800",
+                            class_name="lf-line",
+                        ),
                     ),
-                    rx.button(
-                        "CONTINUE",
-                        on_click=DuelState.dismiss_win,
-                        background=theme.ACCENT,
-                        color=theme.ON_ACCENT,
-                        border="none",
-                        border_radius="10px",
-                        font_weight="800",
-                        letter_spacing="0.14em",
-                        font_size="0.75rem",
-                        padding="0.6rem 1.3rem",
-                        cursor="pointer",
+                    rx.hstack(
+                        rx.cond(
+                            (kind != "win") & (DuelState.result_their_id != ""),
+                            rx.button(
+                                "REMATCH",
+                                on_click=DuelState.rematch,
+                                background="transparent",
+                                color=theme.ACCENT,
+                                border=f"1px solid {theme.ACCENT}66",
+                                border_radius="10px",
+                                font_weight="800",
+                                letter_spacing="0.14em",
+                                font_size="0.75rem",
+                                padding="0.6rem 1.1rem",
+                                cursor="pointer",
+                            ),
+                        ),
+                        rx.button(
+                            "CONTINUE",
+                            on_click=DuelState.dismiss_win,
+                            background=theme.ACCENT,
+                            color=theme.ON_ACCENT,
+                            border="none",
+                            border_radius="10px",
+                            font_weight="800",
+                            letter_spacing="0.14em",
+                            font_size="0.75rem",
+                            padding="0.6rem 1.3rem",
+                            cursor="pointer",
+                        ),
+                        spacing="2",
                         class_name="lf-line",
                     ),
                     spacing="3",
@@ -227,6 +437,7 @@ def win_overlay() -> rx.Component:
                     border_radius="18px",
                     box_shadow=theme.glow(theme.ACCENT, "70px"),
                     max_width="90vw",
+                    on_click=rx.stop_propagation,
                 ),
                 width="100%",
                 height="100%",

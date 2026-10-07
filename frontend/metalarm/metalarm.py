@@ -8,22 +8,41 @@ so animation can be iterated on without touching how data flows.
 import reflex as rx
 
 from metalarm import theme
+from metalarm.pages.credits import credits_page
+from metalarm.components.offline import PUBLIC_API
 from metalarm.pages.dashboard import dashboard_page
+from metalarm.pages.home import home_page
+from metalarm.pages.monthly import monthly_page
+from metalarm.pages.people import notifications_page, user_page
+from metalarm.pages.explore import explore_page
+from metalarm.pages.gallery import gallery_page
 from metalarm.pages.login import login_page, signup_page
 from metalarm.pages.duels import duels_page
 from metalarm.pages.parties import parties_page
+from metalarm.pages.details import exercise_page, session_page
 from metalarm.pages.profile import profile_page
+from metalarm.pages.you import you_page
 from metalarm.pages.progress import progress_page
 from metalarm.pages.rewards import rewards_page
-from metalarm.pages.routines import routines_page
+from metalarm.pages.library import library_page
 from metalarm.pages.workout import workout_page
 from metalarm.state.auth import AuthState
+from metalarm.state.credits import CreditsState
+from metalarm.state.explore import ExploreState
 from metalarm.state.parties import PartyState
 from metalarm.state.profile import ProfileState
 from metalarm.state.progress import ProgressState
 from metalarm.state.duels import DuelState
 from metalarm.state.quests import QuestState
 from metalarm.state.rewards import RewardState
+from metalarm.state.home import HomeState
+from metalarm.state.library import LibraryState
+from metalarm.state.monthly import MonthlyState
+from metalarm.state.people import NotificationsState, PeopleState, ProfileViewState
+from metalarm.state.exercise_detail import ExerciseDetailState
+from metalarm.state.session_detail import SessionDetailState
+from metalarm.state.workout_home import WorkoutHomeState
+from metalarm.state.you import YouState
 from metalarm.state.routines import RoutineState
 from metalarm.state.workout import WorkoutState
 
@@ -42,7 +61,23 @@ def landing() -> rx.Component:
 class RouteState(rx.State):
     async def route_home(self):
         auth = await self.get_state(AuthState)
-        return rx.redirect("/dashboard" if auth.token else "/login")
+        return rx.redirect("/home" if auth.token else "/login")
+
+    def to_home(self):
+        """/dashboard was the home screen before the five-tab shell."""
+        return rx.redirect("/home")
+
+    async def enter_explore(self):
+        auth = await self.get_state(AuthState)
+        if not auth.token:
+            return rx.redirect("/login")
+        return [AuthState.refresh_me, ExploreState.load, PeopleState.load]
+
+    async def enter_credits(self):
+        auth = await self.get_state(AuthState)
+        if not auth.token:
+            return rx.redirect("/login")
+        return CreditsState.load
 
     async def enter_dashboard(self):
         """Guard + load. Redirects out when there is no session, so a page is
@@ -50,7 +85,12 @@ class RouteState(rx.State):
         auth = await self.get_state(AuthState)
         if not auth.token:
             return rx.redirect("/login")
-        return [AuthState.refresh_me, QuestState.load, QuestState.preview_celebration]
+        return [
+            AuthState.refresh_me,
+            QuestState.load,
+            DuelState.load_summary,
+            QuestState.preview_celebration,
+        ]
 
     async def enter_rewards(self):
         auth = await self.get_state(AuthState)
@@ -82,13 +122,65 @@ class RouteState(rx.State):
         auth = await self.get_state(AuthState)
         if not auth.token:
             return rx.redirect("/login")
-        return [AuthState.refresh_me, WorkoutState.load]
+        return [AuthState.refresh_me, WorkoutState.load, WorkoutHomeState.load]
 
     async def enter_routines(self):
         auth = await self.get_state(AuthState)
         if not auth.token:
             return rx.redirect("/login")
         return [AuthState.refresh_me, RoutineState.load]
+
+    async def enter_home(self):
+        auth = await self.get_state(AuthState)
+        if not auth.token:
+            return rx.redirect("/login")
+        return [AuthState.refresh_me, HomeState.load, QuestState.load, DuelState.load_summary,
+                MonthlyState.load_hero]
+
+    async def enter_monthly(self):
+        auth = await self.get_state(AuthState)
+        if not auth.token:
+            return rx.redirect("/login")
+        return MonthlyState.load
+
+    async def enter_user(self):
+        auth = await self.get_state(AuthState)
+        if not auth.token:
+            return rx.redirect("/login")
+        return ProfileViewState.load
+
+    async def enter_notifications(self):
+        auth = await self.get_state(AuthState)
+        if not auth.token:
+            return rx.redirect("/login")
+        return NotificationsState.load
+
+    async def enter_you(self):
+        auth = await self.get_state(AuthState)
+        if not auth.token:
+            return rx.redirect("/login")
+        return [AuthState.refresh_me, YouState.load, MonthlyState.load_hero]
+
+    async def enter_exercise(self):
+        auth = await self.get_state(AuthState)
+        if not auth.token:
+            return rx.redirect("/login")
+        return [AuthState.refresh_me, ExerciseDetailState.load]
+
+    async def enter_session(self):
+        auth = await self.get_state(AuthState)
+        if not auth.token:
+            return rx.redirect("/login")
+        return SessionDetailState.load
+
+    async def enter_library(self):
+        auth = await self.get_state(AuthState)
+        if not auth.token:
+            return rx.redirect("/login")
+        return [AuthState.refresh_me, RoutineState.load, LibraryState.load]
+
+    def to_library(self):
+        return rx.redirect("/library")
 
     async def enter_progress(self):
         auth = await self.get_state(AuthState)
@@ -100,24 +192,54 @@ class RouteState(rx.State):
         """Keep a signed-in user off the auth pages."""
         auth = await self.get_state(AuthState)
         if auth.token:
-            return rx.redirect("/dashboard")
+            return rx.redirect("/home")
 
+
+# Global CSS the components share: skeleton shimmer, the "+N points" fade,
+# and their reduced-motion variants. Values come from theme tokens.
+GLOBAL_CSS = f"""
+html, body {{ background: {theme.COLOR_BG}; }}
+/* Dialogs (the exercise picker) open over full-screen sheets and the tab bar. */
+.rt-BaseDialogOverlay {{ z-index: 90; }}
+body {{ font-family: {theme.FONT_UI}; font-variant-numeric: tabular-nums;
+       -webkit-font-smoothing: antialiased; }}
+.ma-skeleton {{ background: linear-gradient(90deg, {theme.SURFACE_1} 0%, {theme.SURFACE_2} 50%,
+  {theme.SURFACE_1} 100%); background-size: 200% 100%; animation: ma-shimmer 1.4s ease-in-out infinite; }}
+@keyframes ma-shimmer {{ 0% {{ background-position: 200% 0; }} 100% {{ background-position: -200% 0; }} }}
+.ma-points-fade {{ animation: ma-points 1.2s {theme.EASE} forwards; pointer-events: none; }}
+@keyframes ma-points {{ 0% {{ opacity: 0; transform: translateY(4px); }} 20% {{ opacity: 1; transform: none; }}
+  80% {{ opacity: 1; }} 100% {{ opacity: 0; transform: translateY(-6px); }} }}
+@media (prefers-reduced-motion: reduce) {{
+  .ma-skeleton {{ animation: none; }}
+  .ma-points-fade {{ animation: ma-points-still 1.2s linear forwards; }}
+  @keyframes ma-points-still {{ 0%, 80% {{ opacity: 1; }} 100% {{ opacity: 0; }} }}
+}}
+"""
 
 app = rx.App(
     # The app icon (scripts/icon/render_icon.mjs writes both files).
     head_components=[
         rx.el.link(rel="icon", type="image/png", href="/favicon.png"),
         rx.el.link(rel="apple-touch-icon", href="/apple-touch-icon.png"),
+        rx.el.meta(name="viewport", content="width=device-width, initial-scale=1, viewport-fit=cover"),
+        # Installable (phase 5): the manifest, the bar colour, the service worker.
+        rx.el.link(rel="manifest", href="/manifest.json"),
+        rx.el.meta(name="theme-color", content=theme.COLOR_BG),
+        rx.el.meta(name="apple-mobile-web-app-capable", content="yes"),
+        rx.el.meta(name="apple-mobile-web-app-status-bar-style", content="black"),
+        rx.el.meta(name="ma-api", content=PUBLIC_API),
+        rx.script("if ('serviceWorker' in navigator) { window.addEventListener('load', function () {"
+                  " navigator.serviceWorker.register('/sw.js').catch(function () {}); }); }"),
+        rx.el.style(GLOBAL_CSS),
     ],
+    # Inter for the interface, Space Grotesk for the game's numerals.
+    stylesheets=[theme.FONT_STYLESHEET],
     # Applied to <body>; without it the page shows the browser default behind
     # the layout on overscroll.
     style={
-        "background": theme.BG,
-        "color": theme.TEXT,
-        "font_family": (
-            "ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, "
-            "'Helvetica Neue', Arial, sans-serif"
-        ),
+        "background": theme.COLOR_BG,
+        "color": theme.TEXT_PRIMARY,
+        "font_family": theme.FONT_UI,
     },
 )
 
@@ -134,12 +256,29 @@ app.add_page(
     title="Create account - MetalArm",
     on_load=RouteState.bounce_if_signed_in,
 )
-app.add_page(
-    dashboard_page,
-    route="/dashboard",
-    title="Quest board - MetalArm",
-    on_load=RouteState.enter_dashboard,
-)
+app.add_page(home_page, route="/home", title="Home - MetalArm", on_load=RouteState.enter_home)
+# The old dashboard: the full quest board and rank detail, behind the game strip.
+app.add_page(dashboard_page, route="/quests", title="Rank & Quests - MetalArm",
+             on_load=RouteState.enter_dashboard)
+app.add_page(monthly_page, route="/summary/[ym]", title="Your month - MetalArm",
+             on_load=RouteState.enter_monthly)
+app.add_page(user_page, route="/u/[id]", title="Profile - MetalArm", on_load=RouteState.enter_user)
+app.add_page(notifications_page, route="/notifications", title="Notifications - MetalArm",
+             on_load=RouteState.enter_notifications)
+app.add_page(landing, route="/dashboard", title="MetalArm", on_load=RouteState.to_home)
+app.add_page(explore_page, route="/explore", title="Explore - MetalArm",
+             on_load=RouteState.enter_explore)
+app.add_page(library_page, route="/library", title="Library - MetalArm",
+             on_load=RouteState.enter_library)
+app.add_page(you_page, route="/you", title="You - MetalArm", on_load=RouteState.enter_you)
+app.add_page(exercise_page, route="/exercise/[id]", title="Exercise - MetalArm",
+             on_load=RouteState.enter_exercise)
+app.add_page(session_page, route="/session/[id]", title="Workout - MetalArm",
+             on_load=RouteState.enter_session)
+app.add_page(credits_page, route="/about/credits", title="Credits - MetalArm",
+             on_load=RouteState.enter_credits)
+# Hidden: the design-system catalogue, for review and the screenshot sweep.
+app.add_page(gallery_page, route="/gallery", title="Gallery - MetalArm")
 app.add_page(
     rewards_page,
     route="/rewards",
@@ -170,12 +309,8 @@ app.add_page(
     title="Workout - MetalArm",
     on_load=RouteState.enter_workout,
 )
-app.add_page(
-    routines_page,
-    route="/routines",
-    title="Routines - MetalArm",
-    on_load=RouteState.enter_routines,
-)
+# The routines page became the Library tab.
+app.add_page(landing, route="/routines", title="MetalArm", on_load=RouteState.to_library)
 app.add_page(
     progress_page,
     route="/progress",

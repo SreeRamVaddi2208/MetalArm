@@ -29,3 +29,7 @@ email-validator==2.3.0
 bcrypt==5.0.0
 PyJWT==2.11.0
 python-multipart==0.0.32
+
+# Natural-language set logging, tier 2 (app/core/nl_llm.py). Optional at
+# runtime: with no ANTHROPIC_API_KEY the fallback is simply off.
+anthropic==1.11.0

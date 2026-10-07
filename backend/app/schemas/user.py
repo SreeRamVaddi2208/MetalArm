@@ -4,7 +4,7 @@ import datetime as dt
 import uuid
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.models.enums import CharacterClass
 from app.models.workout_enums import WeightUnit
@@ -70,6 +70,12 @@ class UserOut(BaseModel):
     # When it was chosen or cleared. Null means never asked, which is how
     # onboarding knows whether to ask.
     character_class_set_at: dt.datetime | None = None
+    username: str | None = None
+    avatar_url: str | None = None
+    bio: str | None = None
+    default_rest_seconds: int = 90
+    # 'public' | 'followers' | 'private'
+    default_visibility: str = "followers"
 
 
 class MeOut(UserOut):
@@ -82,3 +88,11 @@ class MeUpdate(BaseModel):
     weight_unit: WeightUnit | None = None
     # "" clears the class; anything outside the enum is a 422.
     character_class: CharacterClass | Literal[""] | None = None
+    display_name: str | None = Field(default=None, min_length=1, max_length=50)
+    # 3-30 of a-z, 0-9, _ and . - case is kept for display, ignored for
+    # uniqueness. 409 when taken.
+    username: str | None = Field(default=None, pattern=r"^[A-Za-z0-9_.]{3,30}$")
+    avatar_url: str | None = Field(default=None, max_length=500)
+    bio: str | None = Field(default=None, max_length=160)
+    default_rest_seconds: int | None = Field(default=None, ge=0, le=900)
+    default_visibility: Literal["public", "followers", "private"] | None = None

@@ -17,8 +17,8 @@ import datetime as dt
 import uuid
 from collections.abc import Iterable, Sequence
 
-from sqlalchemy import delete, func, or_, select, tuple_
-from sqlalchemy.orm import Session
+from sqlalchemy import and_, delete, func, not_, or_, select, tuple_
+from sqlalchemy.orm import Session, aliased
 
 from app.core import personal_records as prs
 from app.core import progression_hints as hints
@@ -456,3 +456,81 @@ def streak_paid(db: Session, user_id: uuid.UUID, week: str) -> bool:
         ).first()
         is not None
     )
+
+
+# ---------------------------------------------------------------------------
+# Plausibility inputs
+# ---------------------------------------------------------------------------
+
+
+def recent_best_e1rm(
+    db: Session,
+    user_id: uuid.UUID,
+    exercise_id: uuid.UUID,
+    since: dt.datetime,
+    exclude_set_id: uuid.UUID | None = None,
+):
+    """Best estimated 1RM on one exercise since `since`, from working sets
+    that were not themselves flagged - or None. What plausibility.check
+    measures a new set against."""
+    db.flush()
+    query = select(SetEntry.weight_kg, SetEntry.reps).where(
+        SetEntry.user_id == user_id,
+        SetEntry.exercise_id == exercise_id,
+        SetEntry.completed_at >= since,
+        SetEntry.is_warmup.is_(False),
+        SetEntry.is_flagged.is_(False),
+        SetEntry.reps.is_not(None),
+    )
+    if exclude_set_id is not None:
+        query = query.where(SetEntry.id != exclude_set_id)
+    best = None
+    for weight_kg, reps in db.execute(query):
+        estimate = prs.est_1rm(weight_kg, reps)
+        if estimate is not None and (best is None or estimate > best):
+            best = estimate
+    return best
+
+
+def board_points():
+    """WHERE clause for ledger sums that rank people against each other
+    (leagues, the party workout board): a flagged set's awards - and the
+    reversals of them - stay out. They still count for their owner."""
+    flagged = select(SetEntry.id).where(SetEntry.is_flagged.is_(True))
+    award = aliased(PointsLedgerEntry)
+    flagged_awards = select(award.id).where(
+        award.source_type.in_(_SET_LEVEL), award.source_id.in_(flagged)
+    )
+    return and_(
+        not_(and_(PointsLedgerEntry.source_type.in_(_SET_LEVEL), PointsLedgerEntry.source_id.in_(flagged))),
+        not_(
+            and_(
+                PointsLedgerEntry.source_type == LedgerSource.REVERSAL.value,
+                PointsLedgerEntry.source_id.in_(flagged_awards),
+            )
+        ),
+    )
+
+
+def write_totals(db: Session, sessions: Sequence[WorkoutSession]) -> None:
+    """Snapshot each finished session's totals - volume and count of working
+    sets, duration, non-baseline records - as finish does. For sessions that
+    become completed without finishing (imports, seeds), and after a replay
+    that may have moved records between them."""
+    ids = [s.id for s in sessions]
+    if not ids:
+        return
+    working: dict[uuid.UUID, list[SetEntry]] = {i: [] for i in ids}
+    for entry in db.scalars(select(SetEntry).where(SetEntry.session_id.in_(ids), SetEntry.is_warmup.is_(False))):
+        working[entry.session_id].append(entry)
+    records = dict(db.execute(
+        select(PersonalRecord.session_id, func.count(PersonalRecord.id))
+        .where(PersonalRecord.session_id.in_(ids), PersonalRecord.is_baseline.is_(False))
+        .group_by(PersonalRecord.session_id)).tuples().all())
+    for s in sessions:
+        s.total_volume_kg = prs.session_volume(lift_of(e) for e in working[s.id])
+        s.total_working_sets = len(working[s.id])
+        s.total_prs = records.get(s.id, 0)
+        if s.ended_at is not None:
+            s.duration_seconds = max(0, int((s.ended_at - s.started_at).total_seconds()))
+    db.flush()

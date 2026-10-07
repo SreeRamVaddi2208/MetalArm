@@ -134,7 +134,11 @@ def test_an_import_builds_history_records_and_xp(client: TestClient, auth: dict,
     assert body["workouts_imported"] == 2
     assert body["sets_imported"] == 7
     assert body["rows_skipped"] == 1
-    assert sorted(body["exercises_created"]) == ["Cable Kickback (Cable)", "Squat (Smith Machine)"]
+    # The Smith squat is a library exercise since the wger import (phase 3) -
+    # matched on equipment, so never the barbell Back Squat.
+    assert body["exercises_created"] == ["Cable Kickback (Cable)"]
+    smith = client.get("/api/v1/exercises", params={"q": "Smith Machine Squat"}, headers=auth).json()[0]
+    assert client.get(f"/api/v1/exercises/{smith['id']}/history", headers=auth).json()[0]["working_sets"] == 1
     assert body["xp_awarded"] == 2 * importer.XP_PER_WORKOUT
     assert body["progression"]["xp_awarded"] == 2 * importer.XP_PER_WORKOUT
     assert not body["duplicate"]

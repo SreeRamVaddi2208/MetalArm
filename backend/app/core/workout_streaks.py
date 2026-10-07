@@ -12,11 +12,16 @@ The current week is special: while it is still in progress and short of
 target, it does not break the streak - last week's run is still alive. It only
 breaks once the week ENDS short, which is exactly when the next week begins
 and its key is no longer the current one.
+
+A week that ended short can be COVERED by a streak freeze
+(app/core/streak_freezes.py). A covered week neither breaks the run nor adds
+to it: the count stays where it was, and since no session brought the week to
+target, no streak bonus is paid for it either.
 """
 
 import dataclasses
 import datetime as dt
-from collections.abc import Mapping
+from collections.abc import Mapping, Set
 
 from app.core import workout_rules as rules
 from app.core.periods import period_key
@@ -39,15 +44,49 @@ def previous_week(key: str) -> str:
     return f"{iso_year}-W{iso_week:02d}"
 
 
+def next_week(key: str) -> str:
+    iso_year, iso_week, _ = (_monday(key) + dt.timedelta(days=7)).isocalendar()
+    return f"{iso_year}-W{iso_week:02d}"
+
+
+def run_ending(
+    sessions_per_week: Mapping[str, int],
+    week: str,
+    covered: Set[str] = frozenset(),
+    target: int = rules.STREAK_SESSIONS_PER_WEEK,
+) -> int:
+    """Counting weeks in the unbroken run that ends with `week`. Covered
+    weeks are passed through without being counted."""
+    weeks = 0
+    key = week
+    while True:
+        if sessions_per_week.get(key, 0) >= target:
+            weeks += 1
+        elif key not in covered:
+            return weeks
+        key = previous_week(key)
+
+
 def longest_weekly_streak(
     sessions_per_week: Mapping[str, int],
     target: int = rules.STREAK_SESSIONS_PER_WEEK,
+    covered: Set[str] = frozenset(),
 ) -> int:
-    """The longest run of consecutive counting weeks ever held.
+    """The longest run of consecutive counting weeks ever held, a week a
+    freeze covered bridging the run as it does for the live streak.
 
     Drives the streak badge, which - like the daily-streak badges - keys off a
     value that never goes down, so taking a week off cannot revoke it.
     """
+    if covered:
+        return max(
+            (
+                run_ending(sessions_per_week, week, covered, target)
+                for week, n in sessions_per_week.items()
+                if n >= target
+            ),
+            default=0,
+        )
     mondays = sorted(_monday(k) for k, n in sessions_per_week.items() if n >= target)
     best = run = 0
     previous: dt.date | None = None
@@ -74,16 +113,15 @@ def weekly_streak(
     sessions_per_week: Mapping[str, int],
     current_week: str,
     target: int = rules.STREAK_SESSIONS_PER_WEEK,
+    covered: Set[str] = frozenset(),
 ) -> WeeklyStreak:
-    """Streak state from counts of qualifying sessions keyed by ISO week."""
+    """Streak state from counts of qualifying sessions keyed by ISO week, and
+    the weeks a freeze covered."""
     this_week = sessions_per_week.get(current_week, 0)
     done = this_week >= target
 
     key = current_week if done else previous_week(current_week)
-    weeks = 0
-    while sessions_per_week.get(key, 0) >= target:
-        weeks += 1
-        key = previous_week(key)
+    weeks = run_ending(sessions_per_week, key, covered, target)
 
     return WeeklyStreak(
         weeks=weeks, this_week_sessions=this_week, target=target, this_week_done=done

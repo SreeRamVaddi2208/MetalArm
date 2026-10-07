@@ -47,6 +47,7 @@ from app.core import rank_trials
 from app.core import workout_rules as rules
 from app.core import workout_store as store
 from app.core import workout_streaks as streaks
+from app.core import exercise_aliases
 from app.core.exercise_names import clean_name, name_key, slugify
 from app.core.progression import ProgressionDelta, apply_xp
 from app.models.user import LevelProgress, User
@@ -334,32 +335,11 @@ _EQUIPMENT = {
     "hex bar": "trap_bar",
     "plate": "plate",
 }
-# Slugs the generic rules miss -> library slug. Keys are the slugs built from
-# the source name ("equipment base", "base equipment" or the bare base).
-ALIASES = {
-    "squat": "back-squat",
-    "barbell-squat": "back-squat",
-    "barbell-deadlift": "deadlift",
-    "military-press": "overhead-press",
-    "barbell-strict-military-press": "overhead-press",
-    "barbell-bent-over-row": "barbell-row",
-    "bent-over-row": "barbell-row",
-    "seated-row": "seated-cable-row",
-    "cable-seated-row": "seated-cable-row",
-    "hip-thrust": "barbell-hip-thrust",
-    "barbell-incline-bench-press": "incline-barbell-bench-press",
-    "barbell-decline-bench-press": "decline-barbell-bench-press",
-    "dumbbell-incline-bench-press": "incline-dumbbell-press",
-    "barbell-close-grip-bench-press": "close-grip-bench-press",
-    "dumbbell-chest-fly": "dumbbell-fly",
-    "dumbbell-shoulder-press": "seated-dumbbell-shoulder-press",
-    "calf-raise": "standing-calf-raise",
-    "running": "outdoor-run",
-    "treadmill-running": "treadmill-run",
-    "cycling": "stationary-bike",
-    "indoor-cycling": "stationary-bike",
-    "rowing": "rowing-machine",
-}
+# Slugs the generic rules miss -> library slug, from the same alias file that
+# natural-language logging reads (app/data/exercise_aliases.json). Keys are the
+# slugs built from the source name ("equipment base", "base equipment" or the
+# bare base).
+ALIASES = exercise_aliases.slug_map()
 # Spelling variants between the apps and the library.
 _SPELLINGS = (
     ("biceps-", ""),
@@ -573,6 +553,10 @@ def run_import(
     # belongs in the history rather than as today's PR.
     for exercise_id in touched:
         store.replay_exercise(db, user.id, exercise_id)
+    # The replay can move records between old sessions too, so every
+    # finished session's snapshot is rewritten, not just the imported ones.
+    store.write_totals(db, list(db.scalars(select(WorkoutSession).where(
+        WorkoutSession.user_id == user.id, WorkoutSession.status == SessionStatus.COMPLETED.value))))
     record.exercises_created = len(resolver.created)
 
     delta = apply_xp(progress, xp=record.xp_awarded, at=now, tz_name=user.timezone)

@@ -1,20 +1,21 @@
-"""Exercise picker: search the library, filter by muscle group, or create a
-custom exercise - then hand the choice to whoever opened the picker.
+"""Exercise picker: search the library, filter by muscle and equipment, pick
+several, or create a custom exercise - then hand the picks, in the order
+chosen, to whoever opened it (the live workout or the routine editor).
 
-One picker serves both the live workout and the routine editor (`mode`), so
-the library UI exists exactly once.
+The same browse endpoint as Explore (GET /exercises/browse), so the library
+reads the same everywhere.
 """
 
 from __future__ import annotations
 
 import reflex as rx
 
+from metalarm import api
 from metalarm import workout_api as wapi
 from metalarm.api import ApiError
 from metalarm.state.auth import AuthState
 from metalarm.state.routines import RoutineState
 from metalarm.state.workout import WorkoutState
-from metalarm.workout_models import Chip, ExercisePick
 
 
 class PickerState(rx.State):
@@ -22,12 +23,14 @@ class PickerState(rx.State):
     mode: str = "session"
     query: str = ""
     muscle: str = ""
-    muscles: list[Chip] = []
-    # Raw values too: rx.select takes a list of plain strings.
-    muscle_values: list[str] = []
-    categories: list[str] = []
-    equipment: list[str] = []
-    results: list[ExercisePick] = []
+    gear: str = ""
+    muscles: list[dict[str, str]] = []
+    gears: list[dict[str, str]] = []
+    categories: list[str] = ["strength", "bodyweight", "cardio", "mobility"]
+    results: list[dict[str, str]] = []
+    cursor: str = ""
+    # Ids in the order they were picked.
+    selected: list[str] = []
     loading: bool = False
     error: str = ""
 
@@ -37,8 +40,17 @@ class PickerState(rx.State):
     new_muscle: str = "chest"
 
     @rx.var
-    def has_results(self) -> bool:
-        return len(self.results) > 0
+    def add_label(self) -> str:
+        n = len(self.selected)
+        return f"Add {n} exercise{'s' if n != 1 else ''}" if n else "Pick exercises to add"
+
+    @rx.var
+    def muscle_codes(self) -> list[str]:
+        return [m["code"] for m in self.muscles]
+
+    @rx.var
+    def gear_codes(self) -> list[str]:
+        return [g["code"] for g in self.gears]
 
     @rx.var
     def create_label(self) -> str:
@@ -52,50 +64,71 @@ class PickerState(rx.State):
         self.mode = mode
         self.is_open = True
         self.show_create = False
+        self.selected = []
         self.error = ""
         token = await self._token()
         if not self.muscles:
             try:
-                meta = await wapi.exercise_meta(token)
+                data = await api.taxonomy(token)
             except ApiError as exc:
                 self.error = exc.detail
                 return
-            self.muscle_values = list(meta.get("muscle_groups") or [])
-            self.muscles = [Chip.of(m) for m in self.muscle_values]
-            self.categories = list(meta.get("categories") or [])
-            self.equipment = list(meta.get("equipment") or [])
-        await self._search(token)
+            self.muscles = [{"code": m["code"], "label": m["display_name"]}
+                            for m in data.get("muscle_groups", []) if m["browsable"]]
+            self.gears = [{"code": e["code"], "label": e["display_name"]}
+                          for e in data.get("equipment", []) if e["browsable"]]
+        await self._search()
 
     def set_open(self, value: bool) -> None:
         self.is_open = value
 
     async def set_query(self, value: str):
         self.query = value
-        await self._search(await self._token())
+        await self._search()
 
-    async def pick_muscle(self, value: str):
-        self.muscle = "" if self.muscle == value else value
-        await self._search(await self._token())
+    async def pick_muscle(self, code: str):
+        self.muscle = "" if self.muscle == code else code
+        await self._search()
 
-    async def _search(self, token: str) -> None:
+    async def pick_gear(self, code: str):
+        self.gear = "" if self.gear == code else code
+        await self._search()
+
+    async def _search(self, more: bool = False) -> None:
         self.loading = True
         try:
-            rows = await wapi.search_exercises(token, q=self.query, muscle=self.muscle)
-            self.results = [ExercisePick.from_api(r) for r in rows]
-            self.error = ""
+            page = await wapi.browse(await self._token(), q=self.query.strip(), muscle=self.muscle,
+                                     equipment=self.gear, cursor=self.cursor if more else "", limit=40)
         except ApiError as exc:
             self.error = exc.detail
-        finally:
             self.loading = False
+            return
+        rows = [{"id": str(e["id"]), "name": e["name"], "image": e.get("thumbnail_url") or "",
+                 "sub": " · ".join([m.replace("_", " ").capitalize() for m in e["primary_muscle_groups"]][:2]
+                                   + [e["equipment"].replace("_", " ").capitalize().replace("Ez bar", "EZ bar")])}
+                for e in page.get("items") or []]
+        self.results = (self.results + rows) if more else rows
+        self.cursor = page.get("next_cursor") or ""
+        self.error = ""
+        self.loading = False
 
-    def _hand_off(self, exercise_id: str):
+    async def more(self):
+        if self.cursor:
+            await self._search(more=True)
+
+    def toggle(self, exercise_id: str) -> None:
+        self.selected = ([i for i in self.selected if i != exercise_id] if exercise_id in self.selected
+                         else [*self.selected, exercise_id])
+
+    def _hand_off(self, ids: list[str]):
         self.is_open = False
-        if self.mode == "routine":
-            return RoutineState.add_slot(exercise_id)
-        return WorkoutState.add_exercise(exercise_id)
+        self.selected = []
+        target = RoutineState.add_slot if self.mode == "routine" else WorkoutState.add_exercise
+        return [target(i) for i in ids]
 
-    def pick(self, exercise_id: str):
-        return self._hand_off(exercise_id)
+    def add_selected(self):
+        if self.selected:
+            return self._hand_off(list(self.selected))
 
     # --- custom exercise --------------------------------------------------
 
@@ -120,15 +153,11 @@ class PickerState(rx.State):
         try:
             created = await wapi.create_exercise(
                 await self._token(),
-                {
-                    "name": name,
-                    "category": self.new_category,
-                    "primary_muscle_groups": [self.new_muscle],
-                    "equipment": self.new_equipment,
-                },
+                {"name": name, "category": self.new_category,
+                 "primary_muscle_groups": [self.new_muscle], "equipment": self.new_equipment},
             )
         except ApiError as exc:
             self.error = exc.detail
             return
         self.show_create = False
-        return self._hand_off(created["id"])
+        return self._hand_off([*self.selected, created["id"]])
