@@ -1,0 +1,114 @@
+{
+ "labels": {
+  "web": "WHAT'S NEW"
+ },
+ "cards": {
+  "title": {
+   "eyebrow": "WHAT'S NEW",
+   "headline": "METALARM",
+   "line": "A calmer MetalArm · four tabs · two taps a set"
+  },
+  "end": {
+   "eyebrow": "THANKS FOR WATCHING",
+   "headline": "METALARM",
+   "line": "Lift. Level. Repeat."
+  }
+ },
+ "web": [
+  {
+   "id": "intro",
+   "caption": "A calmer MetalArm",
+   "voice": "MetalArm has a new look. One accent colour, fewer words, and everything you already had, in four tabs. Here it is."
+  },
+  {
+   "id": "home",
+   "caption": "Home: your rank, your week, one button",
+   "voice": "Home starts with your rank and the experience to the next one. Then your week in three numbers, your last workout, and one button: start a workout."
+  },
+  {
+   "id": "feed",
+   "caption": "Friends' workouts and the leaderboard",
+   "voice": "Below that, how you stand with friends, and their workouts. Tap the hand to spot one."
+  },
+  {
+   "id": "leaderboard",
+   "caption": "The full leaderboard",
+   "voice": "The whole leaderboard is one tap away, this week or all time. Your own row is the one that's tinted."
+  },
+  {
+   "id": "train",
+   "caption": "Train: everything that starts a workout",
+   "voice": "Train holds everything that starts a workout: what's up next, your routines, programs, ready-made workouts, and the exercise library."
+  },
+  {
+   "id": "exercises",
+   "caption": "The exercise library",
+   "voice": "The library lists every exercise. Search, or narrow it by muscle and equipment."
+  },
+  {
+   "id": "routine",
+   "caption": "A routine, then Start",
+   "voice": "A routine shows its exercises, supersets and targets. Start is the one button that matters."
+  },
+  {
+   "id": "active",
+   "caption": "One exercise in focus, one Log set",
+   "voice": "In a workout, only the exercise you're on shows the steppers and Log set. Last time's numbers sit underneath. One tap logs the set and starts your rest."
+  },
+  {
+   "id": "advance",
+   "caption": "Supersets alternate on their own",
+   "voice": "Finish a set in a superset and the focus moves to its partner. When an exercise is done, it moves on to the next one. That is two taps a set, at most."
+  },
+  {
+   "id": "options",
+   "caption": "Everything else is in one sheet",
+   "voice": "Set type, notes, rest, order and supersets are all in one sheet, out of the way until you need them."
+  },
+  {
+   "id": "pr",
+   "caption": "A record: a banner, not an interruption",
+   "voice": "Beat a record and a banner rises from the bottom, with the points it earned, then gets out of your way. You're still mid-workout."
+  },
+  {
+   "id": "summary",
+   "caption": "The summary: what it earned",
+   "voice": "Finish, and the summary shows the time, volume and sets, every point and where it came from, and the muscles you worked."
+  },
+  {
+   "id": "progress",
+   "caption": "Progress: one chart, your records",
+   "voice": "Progress is one chart. All your training by week, or pick a single exercise to see its estimated one-rep max, with a dot on every record."
+  },
+  {
+   "id": "history",
+   "caption": "History, week by week",
+   "voice": "History shows the month at a glance, then every workout, grouped by week."
+  },
+  {
+   "id": "profile",
+   "caption": "Profile: you, then settings in groups",
+   "voice": "Profile is you: your rank, your level and your lifetime numbers. Then settings, grouped: people, the game, training, the app, and your account."
+  },
+  {
+   "id": "game",
+   "caption": "Quests, duels, parties and rewards",
+   "voice": "Quests, duels, parties and rewards all live here now. Same features, calmer screens."
+  },
+  {
+   "id": "motion",
+   "caption": "Reduce motion: the app stands still",
+   "voice": "And if you'd rather nothing moved, switch on Reduce motion. Every animation in the app stops."
+  },
+  {
+   "id": "system",
+   "caption": "One system behind every screen",
+   "voice": "Behind all of it is one small design system: one accent, six text styles, and the same building blocks on every screen."
+  },
+  {
+   "id": "end",
+   "caption": "Lift. Level. Repeat.",
+   "voice": "That's the new MetalArm. Lift, level, repeat."
+  }
+ ]
+}

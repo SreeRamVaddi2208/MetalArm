@@ -16,6 +16,7 @@ from metalarm import workout_api as wapi
 from metalarm.api import ApiError
 from metalarm.state.auth import AuthState
 from metalarm.ui.body_map import paths_for
+from metalarm.workout_models import plural
 
 CATEGORY_LABELS = {"powerlifter": "Powerlifter", "bodybuilder": "Bodybuilder", "athlete": "Athlete"}
 RECENT_MAX = 6
@@ -31,7 +32,7 @@ def _rows(program: dict) -> list[dict[str, str]]:
     """A curated program's routines and their exercises, flat, for the sheet."""
     rows = []
     for r in program["routines"]:
-        rows.append({"kind": "head", "title": r["name"], "sub": f"{len(r['exercises'])} exercises",
+        rows.append({"kind": "head", "title": r["name"], "sub": plural(len(r['exercises']), "exercise"),
                      "image": "", "id": ""})
         for e in r["exercises"]:
             reps = str(e["target_reps_low"]) + (

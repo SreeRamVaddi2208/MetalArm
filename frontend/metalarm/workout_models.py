@@ -50,6 +50,12 @@ def weight_label(kg: float | None, unit: str) -> str:
     return f"{fmt(to_unit(kg, unit))} {unit}"
 
 
+def plural(n: int | None, word: str) -> str:
+    """'1 set', '3 sets', '0 sets'."""
+    n = int(n or 0)
+    return f"{n:,} {word}" if n == 1 else f"{n:,} {word}s"
+
+
 def thousands(value: float) -> str:
     return f"{round(value):,}"
 
@@ -484,7 +490,7 @@ class HistoryRow:
             title=session_title(data.get("name"), data.get("started_at"), tz),
             date_label=day_label(data.get("started_at"), tz),
             duration_label=f"{int((data.get('duration_seconds') or 0) // 60)} min",
-            sets_label=f"{data.get('working_sets') or 0} sets",
+            sets_label=plural(data.get('working_sets'), "set"),
             volume_label=f"{thousands(to_unit(data.get('total_volume_kg'), unit))} {unit}",
             points=data.get("points_total") or 0,
             pr_count=data.get("pr_count") or 0,
