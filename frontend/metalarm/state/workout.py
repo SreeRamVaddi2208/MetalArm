@@ -46,6 +46,7 @@ from metalarm.workout_models import (
     StreakView,
     fmt,
     muscles_label,
+    plural,
     session_title,
     thousands,
     to_unit,
@@ -94,7 +95,7 @@ def build_card(
 
     bits = []
     if t.get("target_sets"):
-        bits.append(f"{t['target_sets']} sets")
+        bits.append(plural(t['target_sets'], "set"))
     if t.get("target_reps"):
         bits.append(f"× {t['target_reps']}")
     if t.get("target_weight_kg"):

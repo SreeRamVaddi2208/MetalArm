@@ -12,7 +12,7 @@ from metalarm import workout_api as wapi
 from metalarm.api import ApiError
 from metalarm.state.auth import AuthState
 from metalarm.state.workout_home import last_done_label
-from metalarm.workout_models import ago
+from metalarm.workout_models import ago, plural
 
 CATEGORY = {"powerlifter": "Powerlifter", "bodybuilder": "Bodybuilder", "athlete": "Athlete"}
 
@@ -40,7 +40,7 @@ class TrainState(rx.State):
             return
         top = suggested[0] if suggested else None
         self.up_next = ({"id": str(top["routine_id"]), "name": top["name"],
-                         "sub": f"{top['exercise_count']} exercises · {last_done_label(top.get('days_since'))}"}
+                         "sub": f"{plural(top['exercise_count'], 'exercise')} · {last_done_label(top.get('days_since'))}"}
                         if top else {})
         self.routines = [{"id": str(r["id"]), "name": r["title"],
                           "sub": r["subtitle"] + (f" · {ago(r['last_used_at'])}" if r.get("last_used_at") else "")}
@@ -88,7 +88,7 @@ class ProgramState(rx.State):
                                     f"{p['sessions_per_week']}× a week" if p.get("sessions_per_week") else "") if b]
                 self.meta = " · ".join(b.capitalize() if i == 0 else b for i, b in enumerate(bits))
                 self.routines = [{"id": str(r["id"]), "name": r["name"],
-                                  "sub": f"{r['exercise_count']} exercises"
+                                  "sub": plural(r['exercise_count'], "exercise")
                                          + (f" · {ago(r['last_performed_at'])}" if r.get("last_performed_at") else "")}
                                  for r in p.get("routines") or []]
             else:

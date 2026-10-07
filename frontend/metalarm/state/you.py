@@ -20,7 +20,7 @@ from metalarm.api import ApiError
 from metalarm.state.auth import AuthState
 from metalarm.state.workout_home import duration_label, history_rows
 from metalarm.ui.body_map import paths_for
-from metalarm.workout_models import fmt, local_dt, to_unit
+from metalarm.workout_models import fmt, local_dt, plural, to_unit
 
 TABS = ["Overview", "Exercises", "Measurements", "History"]
 # The API has no 1M range; "1Y" is its "Year".
@@ -315,7 +315,7 @@ class YouState(rx.State):
                     best += f" × {e['best_weight_reps']}"
             rows.append({
                 "id": str(e["exercise_id"]), "name": e["name"], "image": e.get("thumbnail_url") or "",
-                "best": f"Best set {best}" if best else f"{e['sessions']} workouts",
+                "best": f"Best set {best}" if best else plural(e['sessions'], "workout"),
                 "e1rm": f"e1RM {fmt(to_unit(e['best_est_1rm'], unit))} {unit}" if e.get("best_est_1rm") else "",
             })
             rows[-1]["sub"] = " · ".join(b for b in (rows[-1]["best"], rows[-1]["e1rm"]) if b)

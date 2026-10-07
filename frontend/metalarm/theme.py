@@ -110,6 +110,8 @@ TAB_BAR_HEIGHT = "64px"
 BOTTOM_CLEARANCE = "160px"
 # Where a toast or banner floats: above the tab bar AND the pinned button.
 FLOAT_BOTTOM = f"calc({TAB_BAR_HEIGHT} + 12px + {BUTTON_HEIGHT} + 16px + env(safe-area-inset-bottom))"
+# A toast stacks one slot above that, so it never covers the PR banner.
+TOAST_BOTTOM = f"calc({TAB_BAR_HEIGHT} + 12px + {BUTTON_HEIGHT} + 16px + 56px + env(safe-area-inset-bottom))"
 
 RADIUS = "12px"           # cards and inputs
 RADIUS_SHEET = "16px"     # sheets (top corners)

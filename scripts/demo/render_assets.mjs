@@ -41,9 +41,9 @@ const CARDS = {
 const VOICE = process.env.DEMO_VOICE || 'Samantha';
 const RATE = process.env.DEMO_RATE || '182';
 
-// MetalArm's palette (frontend/metalarm/theme.py) and system font stack.
+// MetalArm's tokens (frontend/metalarm/theme.py): flat near-black, one accent.
 const FONT = "-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', Helvetica, Arial, sans-serif"; // single-quoted names: it goes inside a double-quoted style attribute
-const BG = '#0b0b0c', PANEL = '#1a1a1d', TEXT = '#f2f2f4', MUTED = '#8e8e96', BORDER = '#2a2a2f';
+const BG = '#0E0E10', TEXT = '#F4F4F2', MUTED = '#A1A1A8', BORDER = '#2A2A2F', ACCENT = '#FF6B2C';
 
 function seconds(file) {
   return Number(execFileSync('ffprobe', ['-v', 'error', '-show_entries', 'format=duration',
@@ -60,9 +60,9 @@ const caption = (part, index, total, text) => `<!doctype html><html><body style=
 </div></body></html>`;
 
 const card = (eyebrow, headline, line) => `<!doctype html><html><body style="margin:0">
-<div style="width:1920px;height:1080px;background:radial-gradient(circle at 50% 42%, ${PANEL} 0%, ${BG} 62%);
+<div style="width:1920px;height:1080px;background:${BG};
   display:flex;flex-direction:column;align-items:center;justify-content:center;gap:28px;font-family:${FONT}">
-  <div style="font-size:24px;letter-spacing:.5em;color:${MUTED};font-weight:800">${eyebrow}</div>
+  <div style="font-size:24px;letter-spacing:.5em;color:${ACCENT};font-weight:800">${eyebrow}</div>
   <div style="font-size:150px;font-weight:900;letter-spacing:.12em;color:${TEXT}">${headline}</div>
   <div style="font-size:34px;color:${MUTED};letter-spacing:.06em">${line}</div>
 </div></body></html>`;

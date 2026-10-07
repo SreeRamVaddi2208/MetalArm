@@ -15,7 +15,7 @@ from metalarm.share_card import share_card_script
 from metalarm.state.auth import AuthState
 from metalarm.state.workout_home import duration_label
 from metalarm.ui.body_map import paths_for
-from metalarm.workout_models import fmt, thousands, to_unit
+from metalarm.workout_models import fmt, plural, thousands, to_unit
 
 SLIDES = 7
 RECORD_NAMES = {"max_weight": "Heaviest", "est_1rm": "Best e1RM", "max_volume": "Most volume",
@@ -118,7 +118,7 @@ class MonthlyState(rx.State):
             "kind": "workout",
             "eyebrow": "MY MONTH",
             "headline": self.title.upper(),
-            "caption": self.comparison or f"{self.workouts} workouts",
+            "caption": self.comparison or plural(self.workouts, "workout"),
             "stats": [
                 {"value": str(self.workouts), "label": "Workouts"},
                 {"value": self.volume_label, "label": "Volume"},

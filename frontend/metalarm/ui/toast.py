@@ -34,7 +34,7 @@ def toast() -> rx.Component:
             key=ToastState.serial.to_string(),
             position="fixed", left="0", right="0", margin="0 auto", width="fit-content",
             max_width=f"calc({t.MAX_WIDTH} - 40px)",
-            bottom=t.FLOAT_BOTTOM,
+            bottom=t.TOAST_BOTTOM,
             background=t.SURFACE_2, border_radius=t.RADIUS_PILL, padding=f"{t.space(12)} {t.space(16)}",
             z_index="90", class_name="ma-toast", custom_attrs={"role": "status", "aria-live": "polite"},
         ),
