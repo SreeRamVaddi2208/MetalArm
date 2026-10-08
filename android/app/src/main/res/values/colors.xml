@@ -1,0 +1,4 @@
+<resources>
+    <!-- The window colour before Compose draws: Theme.bg. -->
+    <color name="bg">#0E0E10</color>
+</resources>

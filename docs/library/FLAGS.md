@@ -106,3 +106,22 @@ A reviewer sub-agent read before/after sheets of every iOS screen against the te
 - **Schedule grid:** it scrolls sideways inside its own row, exactly as on the web (rule 10 is about the page itself scrolling sideways).
 - **Descriptions:** the mock catalog's descriptions just repeat the title. The real catalog has written ones.
 - **Not acted on:** the reviewer's nitpicks (truncated record titles, "240s rest" instead of minutes, the board's "+" button). Each is a candidate for later.
+
+## Android
+
+The native Android app (`android/`) has the Library too, on the same endpoints
+and with the same behaviour as iOS and the web. See `android/README.md`.
+
+A reviewer sub-agent compared every Android screen with its iOS twin, against
+the ten rules.
+
+**Fixed:**
+- **Sign-up:** the submit button was hidden under the keyboard. It is now the pinned primary.
+- **Demo thumbnails:** a clip that can't load showed as a black square. It now falls back to the placeholder tile.
+- **Progress chart:** gained its value and date labels.
+- **League list:** dropped the rank badges, as on iOS.
+- **Workout steppers:** the weight and reps values were drawn outside their field and were invisible.
+
+**Not acted on:**
+- The badge names from the API are in Title Case ("First Workout") on every client.
+- Nitpicks: a smoothed chart line, a magnifier in the picker's search field.

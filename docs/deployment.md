@@ -7,7 +7,7 @@ HTTPS certificates automatically. The stack is defined in
 | URL | Serves |
 |---|---|
 | `https://DOMAIN` | Web app (Reflex), plus `/privacy` and `/support` |
-| `https://api.DOMAIN` | API for the web app's server and the iOS app |
+| `https://api.DOMAIN` | API for the web app's server and the iOS and Android apps |
 
 Only ports 80 and 443 are public. Postgres, Redis, the API and the web app are
 reachable only on the stack's internal network.
@@ -121,3 +121,24 @@ and `https://metalarm.example.com` placeholders).
    (email, name, fitness data, user ID; linked to the user; no tracking).
 5. Give App Review a demo account (create one on the production server).
 6. Xcode → Product → Archive → Distribute App → TestFlight, then submit.
+
+## 9. Android app release checklist (not done yet)
+
+The app lives in `android/`. The release build's server addresses are set in
+`app/build.gradle.kts` (`API_BASE_URL`, `WEB_BASE_URL`); they are placeholders
+today.
+
+1. **Server addresses:** set them to `https://api.DOMAIN` and `https://DOMAIN`.
+2. **Upload key:** create one (`keytool -genkeypair …`), keep it out of git, and
+   add a `signingConfigs.release` read from environment variables. The release
+   build is unsigned until then.
+3. **Play Console:** create the app with application id `com.sreeram.metalarm`.
+4. **Listing:** the screenshots come from the UI tests (see
+   `android/README.md`). The privacy policy URL is `https://DOMAIN/privacy`. The
+   Data safety answers match the iOS privacy label: email, name, fitness data
+   and user ID, linked to the user, no tracking.
+5. **Health Connect:** complete the declaration form for the exercise write
+   permission. MetalArm writes workouts only and never reads.
+6. **Testing:** give the reviewers a demo account, upload an internal-testing
+   release (`./gradlew bundleRelease`), then promote it.
+

@@ -8,7 +8,7 @@
 //  only; rank-tier colours only inside RankBadge and the rank-up overlay.
 //
 //  Views use these tokens and the primitives in Components.swift - never a
-//  raw colour, size or radius (scripts/check_ios_tokens.py enforces it).
+//  raw colour, size or radius (scripts/check_client_tokens.py enforces it).
 //
 
 import SwiftUI

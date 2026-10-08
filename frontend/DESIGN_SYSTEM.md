@@ -149,7 +149,7 @@ The iPhone app (`ios/MetalARM`) runs on the same system, with the same tokens an
   | `skeleton` | `Skeleton` |
   | `shell(pinned=…)` | `.pinnedPrimary { }` |
 
-- **Enforcement:** `scripts/check_ios_tokens.py`, which runs as `tests/test_ios_tokens.py` in this suite. It fails on any of these outside `Theme/`:
+- **Enforcement:** `scripts/check_client_tokens.py`, which runs as `tests/test_client_tokens.py` in this suite. It fails on any of these outside `Theme/`:
   - a raw colour or hex value;
   - a fixed font size or a system text style;
   - a numeric corner radius;
@@ -164,4 +164,36 @@ The iPhone app (`ios/MetalARM`) runs on the same system, with the same tokens an
 1. Build it from `Components.swift`, with `.screen()` for the frame and `.pinnedPrimary` for the one primary.
 2. Give each list a `Skeleton`, an `EmptyState` and an `ErrorState`.
 3. Give its controls `accessibilityIdentifier`s for `MetalARMUITests`.
-4. Run `python scripts/check_ios_tokens.py`.
+4. Run `python scripts/check_client_tokens.py`.
+
+## Android
+
+The Android app (`android/`) runs on the same system as the other two
+clients, in Jetpack Compose.
+
+- **Tokens:** `theme/Theme.kt`, value for value with `theme.py` and
+  `Theme.swift`. Type sizes are in `sp`, so they follow the system font size.
+- **Primitives:** `theme/Components.kt`, with the same names as iOS:
+  - `MAButton` with `ButtonKind.Primary`, `Secondary`, `Ghost` and `Danger`;
+  - `IconButton`, `Modifier.card()`, `Screen(pinned = …)` (the pinned primary);
+  - `ListRow`, `RowGroup { row { } }`, `SectionBlock`, `Chip`, `ChipRow`, `Segmented`, `StatTile`, `ProgressBar`, `Pill`;
+  - `RankBadge`, `Avatar`, `EmptyState`, `ErrorState`, `Skeleton`, `ScreenTitle`.
+
+  Material 3 only draws system pieces (switches, sheets, menus), coloured
+  with our tokens through `MetalArmTheme`.
+- **Enforcement:** `scripts/check_client_tokens.py`, run as
+  `tests/test_client_tokens.py`. Outside `theme/` it rejects:
+  - raw colours;
+  - literal `sp` sizes and font sizes;
+  - numeric corner radii;
+  - Material typography;
+  - tier colours outside `RankBadge` and the rank-up overlay;
+  - colours that differ from `theme.py`.
+
+  `ShareCard.kt` is exempt, because it draws a fixed-size image.
+
+**To add a screen everywhere:** build it on the web (`pages/`), on iOS
+(`Views/`) and on Android (`ui/`). Use the same words, the same test ids
+(`accessibilityIdentifier` on iOS, `testTag` on Android), and the same one
+primary. Then run the three test suites and `python scripts/check_client_tokens.py`.
+
