@@ -6,11 +6,15 @@
 Log a set and watch your XP bar move. Break a record and the app celebrates it.
 Train with friends in a party and climb the weekly leaderboard.
 
-MetalArm has three parts that share one API:
+MetalArm has four parts that share one API:
 
 - **Backend** - FastAPI + PostgreSQL + Redis, with Alembic migrations and JWT auth
 - **Web app** - Reflex (Python compiled to React/Next.js)
 - **iPhone app** - native SwiftUI, in [`ios/`](ios)
+- **Android app** - native Kotlin and Jetpack Compose, in [`android/`](android)
+
+**Every change ships to all three clients**: the web app, the iPhone app and
+the Android app, in the same piece of work.
 
 <p align="center">
   <img src="ios/AppStore/screenshots/03-home.png" width="200" alt="Home: level, rank, XP and weekly streak">
@@ -71,11 +75,13 @@ In development there is no Caddy: the API is on `:8000` and the web app on `:300
 | [`backend/`](backend) | FastAPI app (`app/`), Alembic migrations, exercise importer, pytest suite |
 | [`frontend/`](frontend) | Reflex web app (`metalarm/`) |
 | [`ios/`](ios) | SwiftUI iPhone app, unit and UI tests, App Store screenshots |
+| [`android/`](android) | Kotlin / Jetpack Compose Android app, unit and UI tests ([`android/README.md`](android/README.md)) |
 | [`deploy/`](deploy) | Production stack: Compose file, Caddyfile, backups, privacy and support pages |
 | [`docs/`](docs) | API contract, workout API guide, data model, deployment guide |
 | [`scripts/`](scripts) | API contract generator, smoke test, browser end-to-end test |
 | [`.github/workflows/ci.yml`](.github/workflows/ci.yml) | CI: backend tests and image builds, on every push and pull request |
 | [`.github/workflows/ios.yml`](.github/workflows/ios.yml) | iOS tests, when `ios/` changes, on pushes to `main`, or on demand |
+| [`.github/workflows/android.yml`](.github/workflows/android.yml) | Android lint, tests and builds, when `android/` changes, on pushes to `main`, or on demand |
 
 ---
 

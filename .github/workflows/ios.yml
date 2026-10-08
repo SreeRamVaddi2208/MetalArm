@@ -9,7 +9,7 @@
 # grown past the budget. Splitting them means a slow UI suite can no longer
 # hide the unit result, and each gets a clock that suits it.
 #
-# The design-token lint for ios/ (scripts/check_ios_tokens.py) runs in ci.yml's
+# The design-token lint for ios/ (scripts/check_client_tokens.py) runs in ci.yml's
 # frontend job, which needs no Mac.
 name: iOS
 
