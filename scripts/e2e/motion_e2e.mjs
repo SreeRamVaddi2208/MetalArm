@@ -59,7 +59,7 @@ const browser = await chromium.launch(launch);
 
 async function sweep(label, page) {
   console.log(`\n${label}`);
-  for (const path of ['/home', '/train', '/train/exercises', '/progress', '/profile', '/quests', '/design-system']) {
+  for (const path of ['/home', '/train', '/library', '/library/exercises', '/progress', '/profile', '/quests', '/design-system']) {
     await page.goto(UI + path);
     await page.waitForLoadState('networkidle').catch(() => {});
     const found = await moving(page);

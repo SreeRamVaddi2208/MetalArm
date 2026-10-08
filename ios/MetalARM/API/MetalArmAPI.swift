@@ -50,6 +50,18 @@ protocol MetalArmAPI: AnyObject {
     func finishSession(sessionID: String) async throws -> FinishResult
     func abandonSession(sessionID: String) async throws
 
+    // The Library: ready-made programs and workouts for each training path
+    func libraryHome() async throws -> LibraryHome
+    func libraryPrograms(category: String?, filters: LibraryFilters) async throws -> [LibraryProgramCard]
+    func libraryProgram(slug: String) async throws -> LibraryProgram
+    func libraryWorkouts(category: String?, filters: LibraryFilters) async throws -> [LibraryWorkoutCard]
+    func libraryWorkout(slug: String) async throws -> LibraryWorkout
+    /// A live session pre-loaded with the workout's exercises. 409 if one is live.
+    func startLibraryWorkout(slug: String) async throws -> WorkoutSession
+    func saveLibraryWorkout(slug: String) async throws -> SavedRoutine
+    func followProgram(slug: String) async throws -> Enrollment
+    func unfollowProgram(slug: String) async throws -> Enrollment
+
     // Parties
     func parties() async throws -> [Party]
     func createParty(name: String) async throws -> Party

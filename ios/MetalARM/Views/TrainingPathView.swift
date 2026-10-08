@@ -33,20 +33,16 @@ struct TrainingPathView: View {
     var body: some View {
         VStack(spacing: 0) {
             ScrollView {
-                VStack(alignment: .leading, spacing: 18) {
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text(isOnboarding ? "WHICH ONE'S YOU?" : "TRAINING PATH")
-                            .font(Theme.body(11, .semibold))
-                            .kerning(1)
-                            .foregroundStyle(Theme.accent)
+                VStack(alignment: .leading, spacing: Theme.Space.s16) {
+                    VStack(alignment: .leading, spacing: Theme.Space.s8) {
                         Text(isOnboarding ? "Pick how you train" : "How you train")
-                            .font(Theme.display(28))
+                            .font(Theme.titleLG)
                             .foregroundStyle(Theme.text)
-                        Text("It sets the weights, reps and workouts MetalArm suggests. It never changes your points or your rank.")
-                            .font(Theme.body(13))
-                            .foregroundStyle(Theme.dim)
+                        Text("It shapes the workouts and programs MetalArm leads with. It never changes your points or your rank.")
+                            .font(Theme.body)
+                            .foregroundStyle(Theme.text2)
                     }
-                    .padding(.top, isOnboarding ? 28 : 8)
+                    .padding(.top, isOnboarding ? Theme.Space.s32 : Theme.Space.s8)
 
                     ForEach(paths) { path in
                         card(path)
@@ -54,10 +50,10 @@ struct TrainingPathView: View {
 
                     ErrorText(message: model.errorMessage)
                 }
-                .padding(20)
+                .screen()
             }
 
-            VStack(spacing: 10) {
+            VStack(spacing: Theme.Space.s8) {
                 Button {
                     Task {
                         guard let chosen else { return }
@@ -66,9 +62,8 @@ struct TrainingPathView: View {
                 } label: {
                     Text(isOnboarding ? "Start training" : "Save")
                 }
-                .buttonStyle(PrimaryButtonStyle())
+                .buttonStyle(.primary)
                 .disabled(chosen == nil || model.isBusy)
-                .opacity(chosen == nil ? 0.5 : 1)
                 .accessibilityIdentifier("confirmPathButton")
 
                 if isOnboarding {
@@ -80,13 +75,12 @@ struct TrainingPathView: View {
                             onDone()
                         }
                     }
-                    .font(Theme.body(13, .semibold))
-                    .foregroundStyle(Theme.dim)
+                    .buttonStyle(MAButtonStyle(kind: .ghost))
                     .accessibilityIdentifier("skipPathButton")
                 }
             }
-            .padding(.horizontal, 24)
-            .padding(.bottom, 24)
+            .padding(.horizontal, Theme.gutter)
+            .padding(.bottom, Theme.Space.s16)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Theme.bg)
@@ -107,33 +101,28 @@ struct TrainingPathView: View {
         return Button {
             chosen = path.category
         } label: {
-            HStack(alignment: .top, spacing: 14) {
+            // Selected: a 2 pt accent outline on accent-soft, and a check.
+            // No glow - the same card the web app uses.
+            HStack(alignment: .top, spacing: Theme.Space.s12) {
                 TrainingPathCharacter(category: path.category, height: 132)
                     .frame(width: 104)
-                VStack(alignment: .leading, spacing: 5) {
-                    Text(path.displayName)
-                        .font(Theme.display(19))
-                        .foregroundStyle(selected ? Theme.accent : Theme.text)
-                    Text(path.tagline)
-                        .font(Theme.body(12.5))
-                        .foregroundStyle(Theme.dim)
+                VStack(alignment: .leading, spacing: Theme.Space.s4) {
+                    Text(path.displayName).font(Theme.title).foregroundStyle(Theme.text)
+                    Text(path.tagline).font(Theme.body).foregroundStyle(Theme.text2)
                         .fixedSize(horizontal: false, vertical: true)
-                    Text(path.summary)
-                        .font(Theme.body(11, .semibold))
-                        .foregroundStyle(Theme.silver)
-                        .padding(.top, 2)
+                    Text(path.summary).font(Theme.caption).foregroundStyle(Theme.text2)
                 }
                 Spacer(minLength: 0)
+                Image(systemName: selected ? "checkmark.circle.fill" : "circle")
+                    .font(.system(.title3))
+                    .foregroundStyle(selected ? Theme.accent : Theme.border)
             }
-            .padding(14)
+            .padding(Theme.cardPadding)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(selected ? Theme.accent.opacity(0.12) : Theme.card, in: RoundedRectangle(cornerRadius: 18))
-            .overlay(
-                RoundedRectangle(cornerRadius: 18)
-                    .stroke(selected ? Theme.accent : Theme.cardBorder, lineWidth: selected ? 2 : 1))
-            .shadow(color: Theme.accent.opacity(selected ? 0.22 : 0), radius: 18)
-            .scaleEffect(selected ? 1.015 : 1)
-            .animation(.spring(response: 0.3, dampingFraction: 0.75), value: selected)
+            .background(selected ? Theme.accentSoft : Theme.surface, in: RoundedRectangle(cornerRadius: Theme.radius))
+            .overlay(RoundedRectangle(cornerRadius: Theme.radius).stroke(selected ? Theme.accent : Theme.border,
+                                                                         lineWidth: selected ? 2 : 1))
+            .animation(.easeOut(duration: Theme.fast), value: selected)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

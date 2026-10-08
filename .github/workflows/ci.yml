@@ -2,6 +2,8 @@
 # tests, and production image builds.
 # The iOS app's tests live in ios.yml, which runs only when ios/ changes
 # (macOS minutes cost 10x on a private repo).
+# The iOS design-token lint (scripts/check_ios_tokens.py) is pure Python, so
+# it runs here with the frontend tests, on every push.
 name: CI
 
 on:

@@ -17,7 +17,7 @@ import SwiftUI
 struct ExerciseDemo: View {
     let exercise: Exercise
     var size: CGFloat = 96
-    var cornerRadius: CGFloat = 12
+    var cornerRadius: CGFloat = Theme.radius
     /// Where this demo is being shown. The same exercise appears in several
     /// places at once - a card, the sheet over it, the picker - so the place
     /// is part of the identifier, or a test cannot say which one it means.
@@ -26,26 +26,26 @@ struct ExerciseDemo: View {
     var body: some View {
         ZStack {
             RoundedRectangle(cornerRadius: cornerRadius)
-                .fill(Theme.bg2)
+                .fill(Theme.surface2)
             if let url = exercise.mediaUrl.flatMap(URL.init(string:)) {
                 LoopingVideo(url: url)
                     .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
             } else {
                 VStack(spacing: 5) {
-                    Image(systemName: "play.slash")
-                        .font(Theme.body(size > 70 ? 18 : 13))
-                        .foregroundStyle(Theme.faint)
+                    Image(systemName: "dumbbell")
+                        .font(size > 70 ? Theme.title : Theme.label)
+                        .foregroundStyle(Theme.text3)
                     if size > 70 {
                         Text("Demo coming")
-                            .font(Theme.body(10))
-                            .foregroundStyle(Theme.faint)
+                            .font(Theme.caption)
+                            .foregroundStyle(Theme.text3)
                     }
                 }
 
             }
         }
         .frame(width: size, height: size)
-        .overlay(RoundedRectangle(cornerRadius: cornerRadius).stroke(Theme.cardBorder))
+        
         // One element, not a stack of them: a demo is a single thing to a
         // screen reader. The identifier says which state it is in, so a test
         // can tell a playing clip from the "demo coming" placeholder.

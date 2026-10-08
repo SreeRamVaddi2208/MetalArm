@@ -1,4 +1,4 @@
-// Gate 3: the exercise library and programs on the Train tab - and every
+// Gate 3: the exercise library and programs in the Library tab - and every
 // library exercise has an illustration.
 //
 //   node explore_e2e.mjs [screenshot-dir]
@@ -8,8 +8,8 @@
 //   - search finds by alias ("rdl"), remembers recent searches;
 //   - a muscle chip, then an equipment chip, list exactly what the API counts;
 //   - Exercise Detail shows the picture;
-//   - curated programs: two per path, the user's first; one saved, with its
-//     routines;
+//   - the Library leads with the user's path; a program shows its schedule
+//     and can be followed;
 //   - the workout picker adds two exercises in one go.
 // Screenshots at 360, 390 and 430, no sideways scroll, no uncaught errors.
 
@@ -93,7 +93,7 @@ try {
     await page.waitForURL('**/home', { timeout: 30000 });
 
     // --- Search -------------------------------------------------------------
-    await page.goto(`${UI}/train/exercises`);
+    await page.goto(`${UI}/library/exercises`);
     const total = (await api('/exercises/browse?limit=1', 'GET', null, token)).body.total;
     check(`the library opens on all ${total} exercises`, await seen(page.getByText(`${total} exercises`, { exact: true }), 20000));
     await page.screenshot({ path: join(dir, '01-exercises.png'), fullPage: true });
@@ -130,26 +130,23 @@ try {
     await page.getByRole('button', { name: 'Clear', exact: true }).click();
     check('Clear goes back to the whole library', await seen(page.getByText(`${total} exercises`, { exact: true })));
 
-    // --- Programs --------------------------------------------------------------
-    await page.goto(`${UI}/train`);
-    const curated = page.locator('a[href^="/train/program/"]');
-    await curated.first().waitFor({ timeout: 15000 });
-    const count = await curated.count();
-    // Six curated plans; once one is saved (at 360) your copy takes its place.
-    check('six programs on the Train tab', count === 6, String(count));
-    const firstTwo = [await curated.nth(0).innerText(), await curated.nth(1).innerText()];
-    check('the bodybuilder plans come first',
-      width !== 360 || firstTwo.every((x) => x.includes('Bodybuilder')), firstTwo.join(' | '));
-    await page.screenshot({ path: join(dir, '04-train-programs.png'), fullPage: true });
-    await overflow('Train');
+    // --- Programs: the Library leads with the user's path --------------------
+    await page.goto(`${UI}/library`);
+    const shelf = page.locator('.ma-shelf .ma-program-card');
+    await shelf.first().waitFor({ timeout: 15000 });
+    check('three programs recommended for this path', (await shelf.count()) === 3);
+    const shown = await shelf.evaluateAll((cards) => cards.map((c) => c.innerText));
+    check('all of them bodybuilding, flagged for your path',
+      shown.every((x) => x.includes('For your path')), shown.join(' | '));
+    await page.screenshot({ path: join(dir, '04-library.png'), fullPage: true });
+    await overflow('Library');
     if (width === 360) {
-      await page.getByText('Upper / Lower Builder', { exact: true }).click();
-      check('a program lists its routines', await seen(page.getByText('Lower B', { exact: true })));
-      await page.getByRole('button', { name: 'Save to library' }).click();
-      check('saving opens your copy', await seen(page.getByRole('button', { name: 'Delete program' })));
-      check('your copy has its four routines',
-        (await seen(page.getByText('Upper A', { exact: true }))) && (await seen(page.getByText('Lower B', { exact: true }))));
-      await page.screenshot({ path: join(dir, '05-program-saved.png'), fullPage: true });
+      await page.goto(`${UI}/library/program/upper-lower-8wk`);
+      check('a program shows its schedule', await seen(page.getByText('Lower B', { exact: true })));
+      check('and the adjust-to-your-ability note', await seen(page.locator('.ma-adjust-note')));
+      await page.getByRole('button', { name: 'Follow program' }).click();
+      check('following offers the first workout', await seen(page.getByRole('button', { name: 'Start next: Upper A' })));
+      await page.screenshot({ path: join(dir, '05-program-followed.png'), fullPage: true });
 
       // --- Picker multi-select -------------------------------------------------
       await page.goto(`${UI}/train`);

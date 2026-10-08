@@ -26,14 +26,13 @@ struct AuthView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: Theme.Space.s16) {
                 Text(isSignUp ? "Create your account" : "Welcome back")
-                    .font(Theme.display(30))
+                    .font(Theme.titleLG)
                     .foregroundStyle(Theme.text)
                 Text(isSignUp ? "Your workouts, XP and records, synced to every device." : "Sign in to pick up where you left off.")
-                    .font(Theme.body(15))
-                    .foregroundStyle(Theme.dim)
-                    .padding(.bottom, 8)
+                    .font(Theme.body)
+                    .foregroundStyle(Theme.text2)
 
                 if isSignUp {
                     field("Display name", text: $displayName)
@@ -46,14 +45,14 @@ struct AuthView: View {
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
                     .accessibilityIdentifier("emailField")
-                SecureField("", text: $password, prompt: Text("Password").foregroundStyle(Theme.faint))
+                SecureField("", text: $password, prompt: Text("Password").foregroundStyle(Theme.text3))
                     .textContentType(isSignUp ? .newPassword : .password)
                     .modifier(FieldStyle())
                     .accessibilityIdentifier("passwordField")
                 if isSignUp {
                     Text("At least 8 characters.")
-                        .font(Theme.body(12))
-                        .foregroundStyle(Theme.faint)
+                        .font(Theme.caption)
+                        .foregroundStyle(Theme.text2)
                 }
 
                 ErrorText(message: model.errorMessage)
@@ -62,41 +61,36 @@ struct AuthView: View {
                     Task { await submit() }
                 } label: {
                     if model.isBusy {
-                        ProgressView().tint(Theme.bg)
+                        ProgressView().tint(Theme.onAccent)
                     } else {
-                        Text(isSignUp ? "Create Account" : "Sign In")
+                        Text(isSignUp ? "Create account" : "Sign in")
                     }
                 }
-                .buttonStyle(PrimaryButtonStyle())
+                .buttonStyle(.primary)
                 .disabled(!canSubmit || model.isBusy)
-                .opacity(canSubmit ? 1 : 0.5)
                 .accessibilityIdentifier("authSubmitButton")
-                .padding(.top, 6)
 
                 Button(isSignUp ? "Already have an account? Sign in" : "New to MetalArm? Create an account") {
                     mode = isSignUp ? .signIn : .signUp
                     model.errorMessage = ""
                 }
-                .font(Theme.body(14, .semibold))
-                .foregroundStyle(Theme.accent)
-                .frame(maxWidth: .infinity)
+                .buttonStyle(MAButtonStyle(kind: .ghost))
                 .accessibilityIdentifier("authModeToggle")
 
-                Link("Privacy Policy", destination: AppConfig.privacyPolicyURL)
-                    .font(Theme.body(12))
-                    .foregroundStyle(Theme.dim)
-                    .frame(maxWidth: .infinity)
-                    .padding(.top, 12)
+                Link("Privacy policy", destination: AppConfig.privacyPolicyURL)
+                    .font(Theme.caption)
+                    .foregroundStyle(Theme.text2)
+                    .frame(maxWidth: .infinity, minHeight: Theme.touch)
             }
-            .padding(24)
-            .padding(.top, 40)
+            .screen()
+            .padding(.top, Theme.Space.s48)
         }
         .scrollDismissesKeyboard(.interactively)
         .background(Theme.bg.ignoresSafeArea())
     }
 
     private func field(_ title: String, text: Binding<String>) -> some View {
-        TextField("", text: text, prompt: Text(title).foregroundStyle(Theme.faint))
+        TextField("", text: text, prompt: Text(title).foregroundStyle(Theme.text3))
             .modifier(FieldStyle())
     }
 
@@ -112,11 +106,11 @@ struct AuthView: View {
 struct FieldStyle: ViewModifier {
     func body(content: Content) -> some View {
         content
-            .font(Theme.body(16))
+            .font(Theme.body)
             .foregroundStyle(Theme.text)
-            .padding(14)
-            .background(Theme.card, in: RoundedRectangle(cornerRadius: 14))
-            .overlay(RoundedRectangle(cornerRadius: 14).stroke(Theme.cardBorder))
+            .padding(.horizontal, Theme.Space.s16)
+            .frame(minHeight: Theme.buttonHeight)
+            .background(Theme.surface2, in: RoundedRectangle(cornerRadius: Theme.radius))
     }
 }
 

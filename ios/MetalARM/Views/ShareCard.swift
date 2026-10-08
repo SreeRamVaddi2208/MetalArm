@@ -62,47 +62,54 @@ struct ShareCardContent: Equatable {
 
 /// Laid out at 360 x 640 points and rendered at 3x.
 struct ShareCardView: View {
+    // The card is an exported 1080 x 1920 image, not a screen: its type is
+    // sized for the image, outside the app's scale.
+    private static func cardDisplay(_ size: CGFloat) -> Font { .custom("SpaceGrotesk-Bold", fixedSize: size) }
+    private static func cardBody(_ size: CGFloat, semibold: Bool = false) -> Font {
+        .custom(semibold ? "Manrope-SemiBold" : "Manrope-Regular", fixedSize: size)
+    }
+
     let content: ShareCardContent
 
     var body: some View {
         ZStack {
             Theme.bg
             RadialGradient(
-                colors: [Theme.silver.opacity(0.28), .clear], center: UnitPoint(x: 0.5, y: 0.4),
+                colors: [Theme.text2.opacity(0.28), .clear], center: UnitPoint(x: 0.5, y: 0.4),
                 startRadius: 0, endRadius: 300)
 
             VStack(spacing: 0) {
                 Text("METALARM")
-                    .font(Theme.display(14, .bold))
+                    .font(Self.cardDisplay(14))
                     .tracking(6)
-                    .foregroundStyle(Theme.dim)
+                    .foregroundStyle(Theme.text2)
                     .padding(.top, 56)
 
                 Spacer()
 
                 Text(content.eyebrow)
-                    .font(Theme.display(16, .bold))
+                    .font(Self.cardDisplay(16))
                     .tracking(5)
-                    .foregroundStyle(Theme.silver)
+                    .foregroundStyle(Theme.text2)
                 Text(content.headline)
-                    .font(Theme.display(120, .bold))
+                    .font(Self.cardDisplay(120))
                     .minimumScaleFactor(0.4)
                     .lineLimit(1)
                     .foregroundStyle(
                         LinearGradient(
-                            colors: [Theme.accent, Theme.silver, Theme.silverDeep], startPoint: .top, endPoint: .bottom))
+                            colors: [Theme.accent, Theme.accent], startPoint: .top, endPoint: .bottom))
                     .shadow(color: Theme.accent.opacity(0.35), radius: 18)
                     .padding(.horizontal, 24)
                 Text(content.caption)
-                    .font(Theme.body(15))
+                    .font(Self.cardBody(15))
                     .foregroundStyle(Theme.text)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 32)
                     .padding(.top, 6)
                 if !content.note.isEmpty {
                     Text(content.note)
-                        .font(Theme.body(13, .semibold))
-                        .foregroundStyle(Theme.silver)
+                        .font(Self.cardBody(13, semibold: true))
+                        .foregroundStyle(Theme.text2)
                         .multilineTextAlignment(.center)
                         .padding(.horizontal, 32)
                         .padding(.top, 8)
@@ -114,23 +121,23 @@ struct ShareCardView: View {
                     ForEach(content.stats, id: \.self) { stat in
                         VStack(spacing: 2) {
                             Text(stat.value)
-                                .font(Theme.display(16, .bold))
+                                .font(Self.cardDisplay(16))
                                 .foregroundStyle(Theme.text)
                             Text(stat.label)
-                                .font(Theme.body(10))
-                                .foregroundStyle(Theme.dim)
+                                .font(Self.cardBody(10))
+                                .foregroundStyle(Theme.text2)
                         }
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 12)
-                        .background(Theme.card, in: RoundedRectangle(cornerRadius: 12))
-                        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.cardBorder))
+                        .background(Theme.surface, in: RoundedRectangle(cornerRadius: 12))
+                        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border))
                     }
                 }
                 .padding(.horizontal, 24)
 
                 Text(content.inviteCode.map { "Join my party: \($0)" } ?? "Level up every workout")
-                    .font(Theme.body(13, .semibold))
-                    .foregroundStyle(Theme.dim)
+                    .font(Self.cardBody(13, semibold: true))
+                    .foregroundStyle(Theme.text2)
                     .padding(.top, 18)
                     .padding(.bottom, 48)
             }

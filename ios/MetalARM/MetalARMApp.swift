@@ -24,10 +24,15 @@ struct MetalARMApp: App {
 
         let api: MetalArmAPI
         if arguments.contains("-UITestMockAPI") {
-            api = MockAPIClient(
+            let mock = MockAPIClient(
                 signedIn: arguments.contains("-UITestSignedIn"), levelUpOnFinish: arguments.contains("-UITestLevelUp"),
                 rankUpOnFinish: arguments.contains("-UITestRankUp"), offline: arguments.contains("-UITestOffline"),
                 pathUnanswered: arguments.contains("-UITestNoTrainingPath"))
+            // -UITestPath <category>: an account that already trains on that path.
+            if let flag = arguments.firstIndex(of: "-UITestPath"), flag + 1 < arguments.count {
+                mock.characterClass = arguments[flag + 1]
+            }
+            api = mock
         } else {
             let tokens = KeychainTokenStore()
             if resetOnboarding { tokens.tokens = nil }

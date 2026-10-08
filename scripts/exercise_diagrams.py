@@ -21,7 +21,6 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "frontend"))
 
-from metalarm import theme as t  # noqa: E402
 from metalarm.ui.body_map import BACK, BASE, FRONT, FRONT_LEGS  # noqa: E402
 
 LIBRARY = ROOT / "backend" / "app" / "data" / "exercises.json"
@@ -32,6 +31,8 @@ LICENSE = "CC0 1.0"
 SECONDARY = 0.4
 # Light, like the line drawings beside it in a list.
 PAPER, FIGURE, REGION, INK = "#F2F2F4", "#D8D8DC", "#C9C9CE", "#6E6E73"
+# The diagrams keep their own red: they are artwork, drawn on paper, not UI.
+LIT = "#E5533D"
 
 
 def _figure(paths: dict[str, str], extra: list[str], lit: dict[str, float], dx: float) -> str:
@@ -40,7 +41,7 @@ def _figure(paths: dict[str, str], extra: list[str], lit: dict[str, float], dx: 
     for pid, d in paths.items():
         out.append(f'<path d="{d}" fill="{REGION}"/>')
         if lit.get(pid):
-            out.append(f'<path d="{d}" fill="{t.MUSCLE_ACTIVE}" fill-opacity="{lit[pid]}"/>')
+            out.append(f'<path d="{d}" fill="{LIT}" fill-opacity="{lit[pid]}"/>')
     out.append("</g>")
     return "".join(out)
 

@@ -1,4 +1,4 @@
-"""The app shell: avatar, top bar, the four-tab bar, and the page column.
+"""The app shell: avatar, top bar, the five-tab bar, and the page column.
 
 Every signed-in page sits in shell(): a 430 px column centred on wide
 screens, 20 px gutters, safe-area insets, the tab bar at the bottom, and -
@@ -16,6 +16,7 @@ from metalarm import theme as t
 from metalarm.ui.primitives import icon_button, text, when
 
 TABS = [("home", "Home", "/home", "house"), ("train", "Train", "/train", "dumbbell"),
+        ("library", "Library", "/library", "library"),
         ("progress", "Progress", "/progress", "chart-line"), ("profile", "Profile", "/profile", "user")]
 
 

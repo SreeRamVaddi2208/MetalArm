@@ -202,6 +202,9 @@ struct SessionTarget: Codable, Equatable {
     var targetReps: Int?
     var targetWeightKg: Double?
     var restSeconds: Int?
+    // The rep range when the plan gives one ("8-12"); targetReps is its top.
+    var targetRepsLow: Int?
+    var targetRepsHigh: Int?
 }
 
 /// One slot of a ready-made workout: the movement, and what it asks for.
@@ -251,6 +254,8 @@ struct WorkoutPreset: Codable, Equatable, Identifiable {
 struct SessionExercise: Codable, Equatable, Identifiable {
     var exercise: Exercise
     var target: SessionTarget?
+    // Cards sharing a number are a superset; nil is none.
+    var supersetGroup: Int?
     var sets: [WorkoutSet]
     // The last completed session's sets on this exercise: the ghost values.
     var previousSets: [WorkoutSet]
@@ -661,4 +666,158 @@ func parseServerDate(_ text: String) -> Date? {
 
 extension String {
     var trimmed: String { trimmingCharacters(in: .whitespacesAndNewlines) }
+}
+
+// MARK: - The Library (GET /library/...)
+//
+// What is recommended, and in what order, is the server's: `recommended` and
+// `sort` arrive on every item and the app renders them as given.
+
+struct LibraryWorkoutCard: Codable, Equatable, Identifiable, Hashable {
+    var slug: String
+    var name: String
+    var description: String?
+    var category: String
+    var categoryLabel: String
+    var difficulty: String
+    var durationMinutes: Int
+    var exerciseCount: Int
+    var equipment: [String]
+    var focusTags: [String]?
+    var recommended: Bool
+    var sort: Int
+
+    var id: String { slug }
+}
+
+struct LibraryProgramCard: Codable, Equatable, Identifiable, Hashable {
+    var slug: String
+    var name: String
+    var description: String?
+    var category: String
+    var categoryLabel: String
+    var difficulty: String
+    var weeks: Int
+    var daysPerWeek: Int
+    var equipment: [String]
+    var recommended: Bool
+    var sort: Int
+    var following: Bool?
+
+    var id: String { slug }
+    var meta: String { "\(weeks) weeks · \(daysPerWeek) days a week · \(difficulty.capitalized)" }
+}
+
+struct LibraryWorkoutExercise: Codable, Equatable, Identifiable {
+    var position: Int
+    var exercise: Exercise
+    var targetSets: Int
+    var repLow: Int
+    var repHigh: Int
+    var restSeconds: Int
+    var note: String?
+    var supersetGroup: Int
+
+    var id: Int { position }
+    /// "4 × 8–12 · 90s rest" - targets, never a weight.
+    var target: String {
+        "\(targetSets) × \(repLow == repHigh ? "\(repLow)" : "\(repLow)–\(repHigh)") · \(restSeconds)s rest"
+    }
+}
+
+struct LibraryWorkout: Codable, Equatable {
+    var slug: String
+    var name: String
+    var description: String?
+    var category: String
+    var categoryLabel: String
+    var difficulty: String
+    var durationMinutes: Int
+    var exerciseCount: Int
+    var equipment: [String]
+    var recommended: Bool
+    var exercises: [LibraryWorkoutExercise]
+    var routineId: String?
+}
+
+struct ScheduleDay: Codable, Equatable, Hashable {
+    var day: Int
+    var workoutSlug: String?
+    var workoutName: String?
+}
+
+struct ScheduleWeek: Codable, Equatable, Hashable, Identifiable {
+    var week: Int
+    var days: [ScheduleDay]
+
+    var id: Int { week }
+}
+
+struct Enrollment: Codable, Equatable {
+    var id: String
+    var programSlug: String
+    var status: String
+    var startedAt: String
+    var currentWeek: Int
+    var currentDay: Int
+    var nextWorkout: LibraryWorkoutCard?
+}
+
+struct LibraryProgram: Codable, Equatable {
+    var slug: String
+    var name: String
+    var description: String?
+    var category: String
+    var categoryLabel: String
+    var difficulty: String
+    var weeks: Int
+    var daysPerWeek: Int
+    var equipment: [String]
+    var recommended: Bool
+    var following: Bool?
+    var schedule: [ScheduleWeek]
+    var workouts: [LibraryWorkoutCard]
+    var enrollment: Enrollment?
+
+    var meta: String { "\(weeks) weeks · \(daysPerWeek) days a week · \(difficulty.capitalized)" }
+}
+
+struct YourProgram: Codable, Equatable {
+    var program: LibraryProgramCard
+    var enrollment: Enrollment
+}
+
+struct PathCount: Codable, Equatable, Identifiable {
+    var category: String
+    var label: String
+    var programs: Int
+    var workouts: Int
+
+    var id: String { category }
+}
+
+struct LibraryHome: Codable, Equatable {
+    var path: String
+    var needsPath: Bool
+    var yourProgram: YourProgram?
+    var recommendedPrograms: [LibraryProgramCard]
+    var recommendedWorkouts: [LibraryWorkoutCard]
+    var otherPaths: [PathCount]
+}
+
+/// Optional filters for the program and workout lists.
+struct LibraryFilters: Equatable {
+    var daysPerWeek: Int?
+    var difficulty: String?
+    var equipment: [String] = []
+    var maxMinutes: Int?
+
+    var isEmpty: Bool { daysPerWeek == nil && difficulty == nil && equipment.isEmpty && maxMinutes == nil }
+    var count: Int { (daysPerWeek == nil ? 0 : 1) + (difficulty == nil ? 0 : 1) + equipment.count + (maxMinutes == nil ? 0 : 1) }
+}
+
+/// What save-to-routines returns: enough to say where it went.
+struct SavedRoutine: Codable, Equatable {
+    var id: String
+    var name: String
 }

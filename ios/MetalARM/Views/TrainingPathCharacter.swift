@@ -33,12 +33,12 @@ struct TrainingPathCharacter: View {
                     scene: scene,
                     options: [.allowsCameraControl, .autoenablesDefaultLighting]
                 )
-                .background(Theme.bg2)
+                .background(Theme.surface2)
                 .accessibilityIdentifier("pathCharacter-\(category)")
             } else {
                 Image(systemName: "figure.strengthtraining.traditional")
-                    .font(.system(size: height * 0.5, weight: .semibold))
-                    .foregroundStyle(Theme.silver)
+                    .font(.system(size: height * 0.5, weight: .semibold)) // token-exempt: a symbol sized to its frame
+                    .foregroundStyle(Theme.text2)
                     .accessibilityIdentifier("pathCharacterFallback-\(category)")
             }
         }
@@ -108,7 +108,7 @@ enum CharacterScene {
         return scene
     }
 
-    private static let surface = UIColor(red: 0x12 / 255, green: 0x12 / 255, blue: 0x14 / 255, alpha: 1)
+    private static let surface = UIColor(Theme.surface2)
 
     private static func spin(_ node: SCNNode) {
         node.runAction(.repeatForever(.rotateBy(x: 0, y: .pi * 2, z: 0, duration: 18)))
@@ -144,13 +144,13 @@ enum CharacterScene {
         // SceneKit paints its own background, and its default is WHITE, which
         // put a bright rectangle behind every figure on a near-black card.
         // `.clear` is not enough - it falls back to white - so name the colour:
-        // Theme.bg2 (#121214), the same well the rest of the card sits in.
+        // Theme.surface2 (#202024), the same well the rest of the card sits in.
         scene.background.contents = surface
         let figure = SCNNode()
 
         let metal = SCNMaterial()
         metal.lightingModel = .physicallyBased
-        metal.diffuse.contents = UIColor(white: 0.78, alpha: 1)
+        metal.diffuse.contents = UIColor(white: 0.78, alpha: 1) // token-exempt: a 3D material, lit by the scene
         metal.metalness.contents = 0.65
         metal.roughness.contents = 0.35
 

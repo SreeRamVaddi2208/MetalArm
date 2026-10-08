@@ -163,9 +163,9 @@ try {
   });
 
   await chapter('preset', async () => {
-    await tap(page.locator('.ma-preset-card').first(), 'open a preset');
+    await go('/library/workout/squat-day');
     await wait(1500);
-    await tap(page.locator('.ma-preset-start'), 'start preset');
+    await tap(page.getByRole('button', { name: 'Start workout' }), 'start library workout');
     await firstCard().waitFor({ timeout: 15000 });
     await wait(1500);
   });

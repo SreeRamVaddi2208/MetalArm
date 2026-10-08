@@ -117,6 +117,15 @@ final class ButtonSweepUITests: MetalARMUITestCase {
         (toggle.value as? String) == "1"
     }
 
+    /// Progress's top set is shown in the chosen unit.
+    @MainActor
+    private func topSetUnit(_ app: XCUIApplication, _ unit: String) -> Bool {
+        let label = element(app, "topSetUnit")
+        guard label.waitForExistence(timeout: reacts) else { return false }
+        let matches = expectation(for: NSPredicate(format: "label == %@", unit), evaluatedWith: label)
+        return XCTWaiter.wait(for: [matches], timeout: reacts) == .completed
+    }
+
     @MainActor
     private func startWorkoutWithBench(_ app: XCUIApplication) {
         app.buttons["homeStartWorkoutButton"].tap()
@@ -150,7 +159,7 @@ final class ButtonSweepUITests: MetalARMUITestCase {
         let submit = app.buttons["authSubmitButton"]
         XCTAssertFalse(submit.isEnabled, "Sign In should be disabled until the form is filled")
 
-        assertOpensSafari(linkNamed("Privacy Policy", in: app), in: app, "Privacy Policy (sign-in)")
+        assertOpensSafari(linkNamed("Privacy policy", in: app), in: app, "Privacy policy (sign-in)")
 
         type("sree@metalarm.dev", into: app.textFields["emailField"])
         type(password, into: app.secureTextFields["passwordField"])
@@ -170,9 +179,9 @@ final class ButtonSweepUITests: MetalARMUITestCase {
         let addFirst = app.buttons["addFirstExerciseButton"]
         XCTAssertTrue(addFirst.waitForExistence(timeout: reacts), "Workout never started")
         addFirst.tap()
-        XCTAssertTrue(app.navigationBars["Add Exercise"].waitForExistence(timeout: reacts), "Picker did not open")
-        app.navigationBars["Add Exercise"].buttons["Cancel"].tap()
-        XCTAssertTrue(app.navigationBars["Add Exercise"].waitForNonExistence(timeout: 5), "Picker Cancel did not close it")
+        XCTAssertTrue(app.navigationBars["Add exercise"].waitForExistence(timeout: reacts), "Picker did not open")
+        app.navigationBars["Add exercise"].buttons["Cancel"].tap()
+        XCTAssertTrue(app.navigationBars["Add exercise"].waitForNonExistence(timeout: 5), "Picker Cancel did not close it")
         XCTAssertTrue(addFirst.exists, "Cancel should leave the workout empty")
 
         // Search, then pick.
@@ -205,11 +214,11 @@ final class ButtonSweepUITests: MetalARMUITestCase {
         XCTAssertTrue(app.keyboards.firstMatch.waitForNonExistence(timeout: 5), "Keyboard Done did not close the keyboard")
 
         app.buttons["logSetButton"].tap()
-        XCTAssertTrue(app.staticTexts["1 set logged"].waitForExistence(timeout: reacts), "Log Set did nothing")
+        XCTAssertTrue(setsLogged(app, 1).waitForExistence(timeout: reacts), "Log Set did nothing")
 
         // Discard, through the options menu and its confirmation.
         app.buttons["Workout options"].tap()
-        let discard = app.buttons["Discard Workout"]
+        let discard = app.buttons["Discard workout"]
         XCTAssertTrue(discard.waitForExistence(timeout: reacts), "Options menu did not open")
         discard.tap()
         // Wait for the CONFIRMATION, not just for a button of that name: the
@@ -218,7 +227,7 @@ final class ButtonSweepUITests: MetalARMUITestCase {
         XCTAssertTrue(
             app.staticTexts["Discard this workout?"].waitForExistence(timeout: reacts),
             "The confirmation never appeared")
-        let confirm = app.buttons["Discard Workout"].firstMatch
+        let confirm = app.buttons["Discard workout"].firstMatch
         XCTAssertTrue(confirm.waitForExistence(timeout: reacts), "Discard was not confirmed")
         for _ in 1...3 where !confirm.isHittable { Thread.sleep(forTimeInterval: 0.4) }
         confirm.tap()
@@ -255,20 +264,20 @@ final class ButtonSweepUITests: MetalARMUITestCase {
     @MainActor
     func testRanksControls() throws {
         let app = launchSignedIn()
-        openTab(app, "Ranks")
-        XCTAssertTrue(app.staticTexts["Meera"].waitForExistence(timeout: reacts), "Party board did not load")
+        openLeaderboard(app)
+        XCTAssertTrue(element(app, "partyRow-Meera").waitForExistence(timeout: reacts), "Party board did not load")
 
         let add = app.buttons["Add a party"]
 
         // Create: Cancel does nothing, Create adds the party.
         add.tap()
-        app.buttons["Create a Party"].tap()
+        app.buttons["Create a party"].tap()
         XCTAssertTrue(app.alerts["Create a party"].waitForExistence(timeout: reacts), "Create a Party did not open")
         app.alerts["Create a party"].buttons["Cancel"].tap()
         XCTAssertTrue(app.alerts["Create a party"].waitForNonExistence(timeout: 5), "Cancel did not close Create")
 
         add.tap()
-        app.buttons["Create a Party"].tap()
+        app.buttons["Create a party"].tap()
         let createAlert = app.alerts["Create a party"]
         XCTAssertTrue(createAlert.waitForExistence(timeout: reacts))
         type("Sweep Crew", into: createAlert.textFields.firstMatch)
@@ -279,36 +288,33 @@ final class ButtonSweepUITests: MetalARMUITestCase {
 
         // Join: Cancel does nothing, a wrong code is explained, the right one works.
         add.tap()
-        app.buttons["Join with Code"].tap()
+        app.buttons["Join with a code"].tap()
         XCTAssertTrue(app.alerts["Join a party"].waitForExistence(timeout: reacts), "Join with Code did not open")
         app.alerts["Join a party"].buttons["Cancel"].tap()
         XCTAssertTrue(app.alerts["Join a party"].waitForNonExistence(timeout: 5), "Cancel did not close Join")
 
         add.tap()
-        app.buttons["Join with Code"].tap()
+        app.buttons["Join with a code"].tap()
         type("WRONG999", into: app.alerts["Join a party"].textFields.firstMatch)
         app.alerts["Join a party"].buttons["Join"].tap()
         XCTAssertTrue(app.staticTexts.containing(NSPredicate(format: "label CONTAINS 'No party with that invite code'")).firstMatch
             .waitForExistence(timeout: reacts), "A wrong invite code was not explained")
 
         add.tap()
-        app.buttons["Join with Code"].tap()
+        app.buttons["Join with a code"].tap()
         type("IRON2345", into: app.alerts["Join a party"].textFields.firstMatch)
         app.alerts["Join a party"].buttons["Join"].tap()
         XCTAssertTrue(app.staticTexts.containing(NSPredicate(format: "label CONTAINS 'No party with that invite code'")).firstMatch
             .waitForNonExistence(timeout: 5), "Joining with a valid code still shows an error")
         // Joining selects the party joined. Meera also appears in the league and
         // raid cards, so look for a row that only Iron Crew's own board has.
-        let ironCrewRow = app.staticTexts["3 workouts · Novice"]
+        let ironCrewRow = element(app, "partyRow-Arjun")
         XCTAssertTrue(ironCrewRow.waitForExistence(timeout: reacts), "Joining Iron Crew did not switch to its board")
 
-        // The switcher moves between parties. It is labelled with the selected
-        // party, so while its menu is open the other party's name is the only match.
-        app.buttons["Iron Crew"].firstMatch.tap()
-        app.buttons["Sweep Crew"].tap()
-        XCTAssertTrue(ironCrewRow.waitForNonExistence(timeout: 5), "Switching to Sweep Crew kept Iron Crew's board")
+        // The chips move between parties.
         app.buttons["Sweep Crew"].firstMatch.tap()
-        app.buttons["Iron Crew"].tap()
+        XCTAssertTrue(ironCrewRow.waitForNonExistence(timeout: 5), "Switching to Sweep Crew kept Iron Crew's board")
+        app.buttons["Iron Crew"].firstMatch.tap()
         XCTAssertTrue(ironCrewRow.waitForExistence(timeout: reacts), "Switching back to Iron Crew did not load its board")
 
         let share = app.buttons["Share"].firstMatch
@@ -364,12 +370,12 @@ final class ButtonSweepUITests: MetalARMUITestCase {
         picker.buttons["lb"].tap()
         XCTAssertTrue(picker.buttons["lb"].isSelected, "lb not selected")
         openTab(app, "Progress")
-        XCTAssertTrue(app.staticTexts["lb top set"].waitForExistence(timeout: reacts), "Switching to lb did not change Progress")
+        XCTAssertTrue(topSetUnit(app, "lb"), "Switching to lb did not change Progress")
         openTab(app, "Profile")
         scrollUntilHittable(picker, in: app)
         picker.buttons["kg"].tap()
         openTab(app, "Progress")
-        XCTAssertTrue(app.staticTexts["kg top set"].waitForExistence(timeout: reacts), "Switching back to kg did not change Progress")
+        XCTAssertTrue(topSetUnit(app, "kg"), "Switching back to kg did not change Progress")
         openTab(app, "Profile")
 
         // Both notification toggles flip, and stay flipped across a relaunch.
@@ -407,9 +413,9 @@ final class ButtonSweepUITests: MetalARMUITestCase {
         XCTAssertTrue(importButton.waitForExistence(timeout: reacts), "Could not get back from the file picker")
 
         // Privacy and Support hand off to Safari.
-        let privacy = linkNamed("Privacy Policy", in: app)
+        let privacy = linkNamed("Privacy policy", in: app)
         scrollUntilHittable(privacy, in: app)
-        assertOpensSafari(privacy, in: app, "Privacy Policy (profile)")
+        assertOpensSafari(privacy, in: app, "Privacy policy (profile)")
         let support = linkNamed("Support", in: app)
         scrollUntilHittable(support, in: app)
         assertOpensSafari(support, in: app, "Support")
@@ -418,16 +424,16 @@ final class ButtonSweepUITests: MetalARMUITestCase {
         let delete = app.buttons["deleteAccountButton"]
         scrollUntilHittable(delete, in: app)
         delete.tap()
-        XCTAssertTrue(app.navigationBars["Delete Account"].waitForExistence(timeout: reacts), "Delete Account did not open")
-        app.navigationBars["Delete Account"].buttons["Cancel"].tap()
-        XCTAssertTrue(app.navigationBars["Delete Account"].waitForNonExistence(timeout: 5), "Cancel did not close Delete Account")
+        XCTAssertTrue(app.navigationBars["Delete account"].waitForExistence(timeout: reacts), "Delete Account did not open")
+        app.navigationBars["Delete account"].buttons["Cancel"].tap()
+        XCTAssertTrue(app.navigationBars["Delete account"].waitForNonExistence(timeout: 5), "Cancel did not close Delete Account")
         XCTAssertTrue(delete.exists, "Cancelling a delete should leave you signed in")
 
         // Sign Out of All Devices, confirmed: back to sign-in.
-        let everywhere = app.buttons["Sign Out of All Devices"]
+        let everywhere = app.buttons["Sign out of all devices"]
         scrollUntilHittable(everywhere, in: app)
         everywhere.tap()
-        let confirm = app.buttons["Sign Out Everywhere"]
+        let confirm = app.buttons["Sign out everywhere"]
         XCTAssertTrue(confirm.waitForExistence(timeout: reacts), "Sign Out Everywhere was not confirmed")
         confirm.tap()
         XCTAssertTrue(app.buttons["authSubmitButton"].waitForExistence(timeout: 10), "Sign Out Everywhere did not sign out")
@@ -452,7 +458,7 @@ final class ButtonSweepUITests: MetalARMUITestCase {
         let checks: [(tab: String, content: XCUIElement)] = [
             ("Home", app.staticTexts["Level 14 · Intermediate"]),
             ("Progress", app.staticTexts["Heaviest — Barbell Bench Press"]),
-            ("Ranks", app.staticTexts["Meera"]),
+            ("Library", app.buttons["choosePathButton"]),
             ("Profile", app.staticTexts["Badges"]),
         ]
         for (tab, content) in checks {

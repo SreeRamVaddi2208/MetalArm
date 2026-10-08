@@ -50,14 +50,14 @@ final class MetalARMUITests: MetalARMUITestCase {
         attachScreenshot(app, named: "05 Workout")
 
         logSet.tap()
-        XCTAssertTrue(app.staticTexts["1 set logged"].waitForExistence(timeout: reacts), "Set was not logged")
+        XCTAssertTrue(setsLogged(app, 1).waitForExistence(timeout: reacts), "Set was not logged")
         XCTAssertTrue(element(app, "prBanner").exists, "PR banner missing")
         XCTAssertTrue(element(app, "restBanner").exists, "Rest timer missing")
         attachScreenshot(app, named: "06 Set logged")
 
         app.buttons["finishButton"].tap()
         XCTAssertTrue(app.buttons["doneButton"].waitForExistence(timeout: reacts), "Summary never appeared")
-        XCTAssertTrue(app.staticTexts["New Personal Record!"].exists)
+        XCTAssertTrue(app.staticTexts["New personal record"].exists)
         XCTAssertTrue(element(app, "unqualifiedNote").exists, "Short workout was not explained")
         attachScreenshot(app, named: "07 Summary")
 
@@ -129,30 +129,24 @@ final class MetalARMUITests: MetalARMUITestCase {
 
     @MainActor
     func testStartingAReadyMadeWorkout() throws {
-        let app = launchSignedIn()
-        openTab(app, "Workout")
+        // Ready-made workouts live in the Library now; Train links there.
+        let app = launchSignedIn(["-UITestPath", "powerlifter"])
+        openTab(app, "Train")
+        let browse = app.buttons["trainToLibrary"]
+        XCTAssertTrue(browse.waitForExistence(timeout: reacts), "Train does not lead to the Library")
+        browse.tap()
 
-        let card = app.buttons["preset-powerlifting-heavy-day"]
-        XCTAssertTrue(card.waitForExistence(timeout: 10), "The ready-made workouts never appeared")
-        card.tap()
+        let squatDay = app.buttons["library-workout-squat-day"]
+        XCTAssertTrue(squatDay.waitForExistence(timeout: reacts), "The recommended workouts never appeared")
+        scrollUntilHittable(squatDay, in: app)
+        squatDay.tap()
+        XCTAssertTrue(element(app, "library-exercise-0").waitForExistence(timeout: reacts), "The workout did not open")
+        XCTAssertTrue(element(app, "library-exercise-0").label.contains("5 × 3–5 · 240s rest"), "The plan reads wrong")
+        attachScreenshot(app, named: "13 Library workout")
 
-        // The demo sits beside the plan, on the first movement.
-        XCTAssertTrue(
-            element(app, "presetDemoVideo-Barbell Back Squat").waitForExistence(timeout: reacts),
-            "No demo beside the workout for its first movement")
-        attachScreenshot(app, named: "13 Ready-made workout")
-
-        // Tapping another movement moves the demo to it. That one has no clip
-        // yet, so the placeholder stands in - the layout must not jump.
-        app.buttons["presetSlot-Conventional Deadlift"].tap()
-        XCTAssertTrue(
-            element(app, "presetDemoPlaceholder-Conventional Deadlift").waitForExistence(timeout: reacts),
-            "The demo did not follow the tapped movement")
-
-        app.buttons["startPresetButton"].tap()
-
-        // The workout opens already loaded: the plan's exercises, in order.
-        XCTAssertTrue(app.buttons["logSetButton"].waitForExistence(timeout: 10), "The workout did not start")
+        app.buttons["libraryStartButton"].tap()
+        // Train, already loaded: the plan's exercises, in order.
+        XCTAssertTrue(app.buttons["logSetButton"].waitForExistence(timeout: reacts), "The workout did not start")
         XCTAssertTrue(app.buttons["Barbell Back Squat"].firstMatch.exists, "The plan's first exercise is missing")
         XCTAssertTrue(app.buttons["Conventional Deadlift"].firstMatch.exists, "The plan's last exercise is missing")
         XCTAssertFalse(app.buttons["addFirstExerciseButton"].exists, "A loaded workout should not ask for a first exercise")
@@ -164,16 +158,18 @@ final class MetalARMUITests: MetalARMUITestCase {
         attachScreenshot(app, named: "03 Home")
 
         openTab(app, "Progress")
-        XCTAssertTrue(app.staticTexts["Personal records"].waitForExistence(timeout: reacts), "Progress did not load")
+        XCTAssertTrue(app.staticTexts["Records"].waitForExistence(timeout: reacts), "Progress did not load")
         XCTAssertTrue(app.staticTexts["Heaviest — Barbell Bench Press"].waitForExistence(timeout: reacts))
         attachScreenshot(app, named: "08 Progress")
 
-        openTab(app, "Ranks")
-        XCTAssertTrue(app.staticTexts["Meera"].waitForExistence(timeout: reacts), "Party board did not load")
-        XCTAssertTrue(app.staticTexts["(you)"].exists)
+        openTab(app, "Home")
+        XCTAssertTrue(element(app, "homeBoardRow-Meera").waitForExistence(timeout: reacts), "Home's leaderboard did not load")
+        openLeaderboard(app)
+        XCTAssertTrue(element(app, "partyRow-Meera").waitForExistence(timeout: reacts), "Party board did not load")
+        XCTAssertTrue(element(app, "partyRow-Sree Ram").label.contains("(you)"), "Your row is not marked")
         XCTAssertTrue(element(app, "leagueCard").waitForExistence(timeout: reacts), "League card missing")
         XCTAssertTrue(element(app, "raidCard").exists, "Party raid missing")
-        attachScreenshot(app, named: "09 Ranks")
+        attachScreenshot(app, named: "09 Leaderboard")
 
         openTab(app, "Profile")
         XCTAssertTrue(app.staticTexts["Badges"].waitForExistence(timeout: reacts), "Profile did not load")
@@ -216,7 +212,7 @@ final class MetalARMUITests: MetalARMUITestCase {
         let app = finishOneSetWorkout(flag: "-UITestRankUp")
         let overlay = element(app, "levelUpOverlay")
         XCTAssertTrue(overlay.waitForExistence(timeout: reacts), "Rank-up celebration never appeared")
-        XCTAssertTrue(app.staticTexts["RANK UP"].exists)
+        XCTAssertTrue(app.staticTexts["Rank up"].exists)
         XCTAssertTrue(app.staticTexts["You're now Advanced at level 20."].exists)
         Thread.sleep(forTimeInterval: 1.2)
         attachScreenshot(app, named: "Rank up")
@@ -257,7 +253,7 @@ final class MetalARMUITests: MetalARMUITestCase {
 
         let overlay = element(app, "levelUpOverlay")
         XCTAssertTrue(overlay.waitForExistence(timeout: reacts), "Level-up celebration never appeared")
-        XCTAssertTrue(app.staticTexts["LEVEL UP"].exists)
+        XCTAssertTrue(app.staticTexts["Level up"].exists)
         XCTAssertTrue(app.staticTexts["You reached level 15. Keep going."].exists)
         // Let the rings and sparks settle before the screenshot.
         Thread.sleep(forTimeInterval: 1.2)
@@ -290,6 +286,16 @@ final class MetalARMUITests: MetalARMUITestCase {
         type("live-\(UUID().uuidString.prefix(8).lowercased())@metalarm.dev", into: app.textFields["emailField"])
         typeNewPassword(password, into: app.secureTextFields["passwordField"], in: app)
         app.buttons["authSubmitButton"].tap()
+        // A new account is asked how it trains; the Library leads with that path.
+        let bodybuilder = app.buttons["path-bodybuilder"]
+        if bodybuilder.waitForExistence(timeout: 15) {
+            dismissSavePasswordPrompt(app)
+            let confirm = app.buttons["confirmPathButton"]
+            scrollUntilHittable(bodybuilder, in: app, clearOf: confirm)
+            bodybuilder.tap()
+            XCTAssertTrue(waitUntilEnabled(confirm))
+            confirm.tap()
+        }
         let level = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH 'Level 1 '")).firstMatch
         XCTAssertTrue(level.waitForExistence(timeout: 15), "Sign-up against the backend failed")
         dismissSavePasswordPrompt(app)
@@ -309,9 +315,9 @@ final class MetalARMUITests: MetalARMUITestCase {
         type("5", into: app.textFields["repsField"])
         app.buttons["keyboardDoneButton"].tap()
         app.buttons["logSetButton"].tap()
-        XCTAssertTrue(app.staticTexts["1 set logged"].waitForExistence(timeout: 10), "First set was not logged")
+        XCTAssertTrue(setsLogged(app, 1).waitForExistence(timeout: 10), "First set was not logged")
         app.buttons["logSetButton"].tap()
-        XCTAssertTrue(app.staticTexts["2 sets logged"].waitForExistence(timeout: 10), "Second set was not logged")
+        XCTAssertTrue(setsLogged(app, 2).waitForExistence(timeout: 10), "Second set was not logged")
         attachScreenshot(app, named: "Live 03 Workout")
 
         app.buttons["finishButton"].tap()
@@ -320,16 +326,30 @@ final class MetalARMUITests: MetalARMUITestCase {
         app.buttons["doneButton"].tap()
 
         openTab(app, "Progress")
-        XCTAssertTrue(app.staticTexts["Personal records"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["Records"].waitForExistence(timeout: 10))
         attachScreenshot(app, named: "Live 05 Progress")
 
-        openTab(app, "Ranks")
+        openLeaderboard(app)
         XCTAssertTrue(app.buttons["createPartyButton"].waitForExistence(timeout: 10))
-        attachScreenshot(app, named: "Live 06 Ranks")
+        attachScreenshot(app, named: "Live 06 Leaderboard")
 
         openTab(app, "Profile")
         XCTAssertTrue(app.staticTexts["Badges"].waitForExistence(timeout: 10))
         attachScreenshot(app, named: "Live 07 Profile")
+
+        // The Library, from the server: a recommended workout starts on Train.
+        openTab(app, "Library")
+        let recommended = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'library-workout-'")).firstMatch
+        XCTAssertTrue(recommended.waitForExistence(timeout: 15), "The Library had no recommendations")
+        attachScreenshot(app, named: "Live 08 Library")
+        scrollUntilHittable(recommended, in: app)
+        recommended.tap()
+        let start = app.buttons["libraryStartButton"]
+        XCTAssertTrue(start.waitForExistence(timeout: 15), "The Library workout did not open")
+        attachScreenshot(app, named: "Live 09 Library workout")
+        start.tap()
+        XCTAssertTrue(app.buttons["logSetButton"].waitForExistence(timeout: 15), "The Library workout did not start")
+        attachScreenshot(app, named: "Live 10 Library session")
 
         deleteAccount(app)
     }

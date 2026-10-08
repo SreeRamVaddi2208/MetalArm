@@ -1,4 +1,4 @@
-"""Page frame: the four-tab shell (metalarm/ui/chrome.py) around every
+"""Page frame: the five-tab shell (metalarm/ui/chrome.py) around every
 signed-in page, the session keeper, and the inline message lines."""
 
 import reflex as rx
@@ -30,8 +30,9 @@ def session_keeper() -> rx.Component:
 # Which tab each route belongs to.
 ROUTE_TABS = (
     ("/home", "home"), ("/leaderboard", "home"), ("/notifications", "home"), ("/u/[id]", "home"),
-    ("/train", "train"), ("/train/exercises", "train"), ("/train/routine/[id]", "train"),
-    ("/train/program/[id]", "train"), ("/exercise/[id]", "train"),
+    ("/train", "train"), ("/train/routine/[id]", "train"), ("/train/program/[id]", "train"),
+    ("/library", "library"), ("/library/path/[lib_path]", "library"), ("/library/program/[lib_program]", "library"),
+    ("/library/workout/[lib_workout]", "library"), ("/library/exercises", "library"), ("/exercise/[id]", "library"),
     ("/progress", "progress"), ("/progress/history", "progress"), ("/progress/measurements", "progress"),
     ("/progress/recovery", "progress"), ("/session/[id]", "progress"), ("/summary/[ym]", "progress"),
     ("/profile", "profile"), ("/profile/people", "profile"), ("/quests", "profile"), ("/duels", "profile"),

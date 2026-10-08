@@ -161,6 +161,51 @@ final class LiveAPIClient: MetalArmAPI {
         _ = try await perform(.post("workouts/sessions/\(sessionID)/abandon", EmptyBody(), encoder), authenticated: true)
     }
 
+    // MARK: - Library
+
+    func libraryHome() async throws -> LibraryHome { try await send(.get("library/home")) }
+
+    func libraryPrograms(category: String?, filters: LibraryFilters) async throws -> [LibraryProgramCard] {
+        var query: [String: String] = [:]
+        if let category { query["category"] = category }
+        if let difficulty = filters.difficulty { query["difficulty"] = difficulty }
+        if let days = filters.daysPerWeek { query["days_per_week"] = String(days) }
+        return try await send(.get("library/programs", query: query, repeated: equipmentItems(filters)))
+    }
+
+    func libraryProgram(slug: String) async throws -> LibraryProgram { try await send(.get("library/programs/\(slug)")) }
+
+    func libraryWorkouts(category: String?, filters: LibraryFilters) async throws -> [LibraryWorkoutCard] {
+        var query: [String: String] = [:]
+        if let category { query["category"] = category }
+        if let difficulty = filters.difficulty { query["difficulty"] = difficulty }
+        if let minutes = filters.maxMinutes { query["max_minutes"] = String(minutes) }
+        return try await send(.get("library/workouts", query: query, repeated: equipmentItems(filters)))
+    }
+
+    func libraryWorkout(slug: String) async throws -> LibraryWorkout { try await send(.get("library/workouts/\(slug)")) }
+
+    func startLibraryWorkout(slug: String) async throws -> WorkoutSession {
+        try await send(.post("library/workouts/\(slug)/start", EmptyBody(), encoder))
+    }
+
+    func saveLibraryWorkout(slug: String) async throws -> SavedRoutine {
+        try await send(.post("library/workouts/\(slug)/save-to-routines", EmptyBody(), encoder))
+    }
+
+    func followProgram(slug: String) async throws -> Enrollment {
+        try await send(.post("library/programs/\(slug)/follow", EmptyBody(), encoder))
+    }
+
+    func unfollowProgram(slug: String) async throws -> Enrollment {
+        try await send(.delete("library/programs/\(slug)/follow", EmptyBody(), encoder))
+    }
+
+    /// `equipment` repeats: "what can I do with these".
+    private func equipmentItems(_ filters: LibraryFilters) -> [URLQueryItem] {
+        filters.equipment.map { URLQueryItem(name: "equipment", value: $0) }
+    }
+
     // MARK: - Parties
 
     func parties() async throws -> [Party] { try await send(.get("parties")) }
@@ -189,10 +234,12 @@ final class LiveAPIClient: MetalArmAPI {
         var method: String
         var path: String
         var query: [String: String] = [:]
+        /// Query parameters that repeat (`equipment=a&equipment=b`).
+        var repeated: [URLQueryItem] = []
         var body: Data?
 
-        static func get(_ path: String, query: [String: String] = [:]) -> RequestSpec {
-            RequestSpec(method: "GET", path: path, query: query)
+        static func get(_ path: String, query: [String: String] = [:], repeated: [URLQueryItem] = []) -> RequestSpec {
+            RequestSpec(method: "GET", path: path, query: query, repeated: repeated)
         }
 
         static func post(_ path: String, _ body: some Encodable, _ encoder: JSONEncoder) throws -> RequestSpec {
@@ -286,8 +333,9 @@ final class LiveAPIClient: MetalArmAPI {
 
     private func makeURLRequest(_ spec: RequestSpec) -> URLRequest {
         var components = URLComponents(url: baseURL.appending(path: "api/v1/" + spec.path), resolvingAgainstBaseURL: false)!
-        if !spec.query.isEmpty {
+        if !spec.query.isEmpty || !spec.repeated.isEmpty {
             components.queryItems = spec.query.sorted { $0.key < $1.key }.map { URLQueryItem(name: $0.key, value: $0.value) }
+                + spec.repeated
         }
         var request = URLRequest(url: components.url!, timeoutInterval: 15)
         request.httpMethod = spec.method

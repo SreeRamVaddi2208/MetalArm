@@ -165,7 +165,7 @@ try {
   });
 
   await chapter('explore', async () => {
-    await go('/train/exercises');
+    await go('/library/exercises');
     await glide(600);
     await glide(1300);
     await glide(0);

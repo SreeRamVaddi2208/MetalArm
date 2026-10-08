@@ -1,0 +1,1442 @@
+{
+ "about": "MetalArm's Library: ready-made workouts and programs for each training path. Imported by backend/scripts/import_library.py and checked by app/core/catalog_validator.py. Entries with a legacy_source are the original curated programs and presets, kept so their old endpoints answer exactly as before; they are not shown in the Library. Templates, not coaching.",
+ "workouts": [
+  {
+   "slug": "full-body-mobility-flow",
+   "name": "Full-body mobility flow",
+   "category": "athlete",
+   "difficulty": "beginner",
+   "duration_minutes": 25,
+   "description": "Every joint through its full range, slow and controlled. A recovery day, or a warm-up for anything.",
+   "standalone": true,
+   "focus_tags": ["mobility"],
+   "sort_order": 10,
+   "exercises": [
+     {"slug": "cat-cow", "sets": 2, "reps": [12, 12], "rest": 30},
+     {"slug": "worlds-greatest-stretch", "sets": 2, "reps": [12, 12], "rest": 30, "note": "Per side."},
+     {"slug": "hip-90-90", "sets": 2, "reps": [12, 12], "rest": 30},
+     {"slug": "inchworm", "sets": 2, "reps": [12, 12], "rest": 30},
+     {"slug": "band-pull-apart", "sets": 2, "reps": [15, 15], "rest": 30},
+     {"slug": "ankle-dorsiflexion-rocks", "sets": 2, "reps": [15, 15], "rest": 30, "note": "Per side."},
+     {"slug": "bird-dog", "sets": 2, "reps": [12, 12], "rest": 30, "note": "Per side."}
+   ]
+  },
+  {
+   "slug": "plyometric-power-circuit",
+   "name": "Plyometric power circuit",
+   "category": "athlete",
+   "difficulty": "intermediate",
+   "duration_minutes": 35,
+   "description": "Fast, springy, explosive. Six jumps and throws as one circuit - land quietly and stop a round before form goes.",
+   "standalone": true,
+   "focus_tags": ["plyometric", "circuit"],
+   "sort_order": 20,
+   "exercises": [
+     {"slug": "worlds-greatest-stretch", "sets": 1, "reps": [12, 12], "rest": 30, "note": "Per side."},
+     {"slug": "jump-squat", "sets": 3, "reps": [12, 12], "rest": 45, "superset": 1},
+     {"slug": "skater-jump", "sets": 3, "reps": [12, 16], "rest": 45, "superset": 1},
+     {"slug": "box-jump", "sets": 3, "reps": [12, 12], "rest": 45, "superset": 1},
+     {"slug": "medicine-ball-slam", "sets": 3, "reps": [15, 15], "rest": 45, "superset": 1},
+     {"slug": "burpee", "sets": 3, "reps": [12, 12], "rest": 45, "superset": 1},
+     {"slug": "mountain-climber", "sets": 3, "reps": [20, 20], "rest": 45, "superset": 1}
+   ]
+  },
+  {
+   "slug": "core-and-carry-conditioning",
+   "name": "Core and carry conditioning",
+   "category": "athlete",
+   "difficulty": "beginner",
+   "duration_minutes": 30,
+   "description": "A strong middle and a strong grip: anti-rotation, carries and crawls, short rests.",
+   "standalone": true,
+   "focus_tags": ["circuit", "compound_light"],
+   "sort_order": 30,
+   "exercises": [
+     {"slug": "cat-cow", "sets": 2, "reps": [12, 12], "rest": 30},
+     {"slug": "dead-bug", "sets": 3, "reps": [12, 12], "rest": 45, "note": "Per side."},
+     {"slug": "farmers-carry", "sets": 3, "reps": [20, 30], "rest": 45, "note": "Steps, not reps."},
+     {"slug": "plank", "sets": 3, "reps": [30, 45], "rest": 30, "note": "Seconds, not reps."},
+     {"slug": "side-plank", "sets": 3, "reps": [20, 30], "rest": 30, "note": "Seconds, not reps. Per side."},
+     {"slug": "bear-crawl", "sets": 3, "reps": [12, 16], "rest": 45, "note": "Steps, not reps."},
+     {"slug": "mountain-climber", "sets": 3, "reps": [20, 20], "rest": 30}
+   ]
+  },
+  {
+   "slug": "lower-body-agility-session",
+   "name": "Lower-body agility session",
+   "category": "athlete",
+   "difficulty": "intermediate",
+   "duration_minutes": 35,
+   "description": "Side to side and off one leg: lunges, bounds and bridges for quick, stable legs.",
+   "standalone": true,
+   "focus_tags": ["plyometric", "compound_light"],
+   "sort_order": 40,
+   "exercises": [
+     {"slug": "hip-90-90", "sets": 2, "reps": [12, 12], "rest": 30},
+     {"slug": "lateral-lunge", "sets": 3, "reps": [12, 12], "rest": 45, "note": "Per side."},
+     {"slug": "skater-jump", "sets": 3, "reps": [16, 16], "rest": 45},
+     {"slug": "walking-lunge", "sets": 3, "reps": [16, 16], "rest": 45},
+     {"slug": "sliding-lateral-lunge", "sets": 3, "reps": [12, 12], "rest": 45, "note": "Per side."},
+     {"slug": "glute-bridge", "sets": 3, "reps": [15, 20], "rest": 30}
+   ]
+  },
+  {
+   "slug": "movement-a",
+   "name": "Movement A",
+   "category": "athlete",
+   "difficulty": "beginner",
+   "duration_minutes": 30,
+   "description": "Squat, push and pull patterns, bodyweight first.",
+   "standalone": false,
+   "focus_tags": ["compound_light"],
+   "sort_order": 110,
+   "exercises": [
+     {"slug": "cat-cow", "sets": 2, "reps": [12, 12], "rest": 30},
+     {"slug": "bodyweight-squat", "sets": 3, "reps": [15, 15], "rest": 45},
+     {"slug": "push-up", "sets": 3, "reps": [12, 12], "rest": 45},
+     {"slug": "inverted-row", "sets": 3, "reps": [12, 12], "rest": 45},
+     {"slug": "glute-bridge", "sets": 3, "reps": [15, 15], "rest": 30},
+     {"slug": "plank", "sets": 3, "reps": [30, 30], "rest": 30, "note": "Seconds, not reps."}
+   ]
+  },
+  {
+   "slug": "movement-b",
+   "name": "Movement B",
+   "category": "athlete",
+   "difficulty": "beginner",
+   "duration_minutes": 30,
+   "description": "Single-leg work and a stable trunk.",
+   "standalone": false,
+   "focus_tags": ["compound_light"],
+   "sort_order": 111,
+   "exercises": [
+     {"slug": "worlds-greatest-stretch", "sets": 2, "reps": [12, 12], "rest": 30, "note": "Per side."},
+     {"slug": "reverse-lunge", "sets": 3, "reps": [12, 12], "rest": 45, "note": "Per side."},
+     {"slug": "step-up", "sets": 3, "reps": [12, 12], "rest": 45, "note": "Per side."},
+     {"slug": "band-pull-apart", "sets": 3, "reps": [15, 15], "rest": 30},
+     {"slug": "bird-dog", "sets": 3, "reps": [12, 12], "rest": 30, "note": "Per side."},
+     {"slug": "dead-bug", "sets": 3, "reps": [12, 12], "rest": 30, "note": "Per side."}
+   ]
+  },
+  {
+   "slug": "movement-c",
+   "name": "Movement C",
+   "category": "athlete",
+   "difficulty": "beginner",
+   "duration_minutes": 30,
+   "description": "Hinge, carry and press - the first loaded day.",
+   "standalone": false,
+   "focus_tags": ["compound_light"],
+   "sort_order": 112,
+   "exercises": [
+     {"slug": "hip-90-90", "sets": 2, "reps": [12, 12], "rest": 30},
+     {"slug": "goblet-squat", "sets": 3, "reps": [15, 15], "rest": 45},
+     {"slug": "kettlebell-swing", "sets": 3, "reps": [15, 15], "rest": 45},
+     {"slug": "push-up", "sets": 3, "reps": [12, 12], "rest": 45},
+     {"slug": "farmers-carry", "sets": 3, "reps": [20, 20], "rest": 45, "note": "Steps, not reps."},
+     {"slug": "side-plank", "sets": 2, "reps": [20, 20], "rest": 30, "note": "Seconds, not reps. Per side."}
+   ]
+  },
+  {
+   "slug": "speed-and-feet",
+   "name": "Speed and feet",
+   "category": "athlete",
+   "difficulty": "intermediate",
+   "duration_minutes": 30,
+   "description": "Quick feet and stiff ankles.",
+   "standalone": false,
+   "focus_tags": ["plyometric", "circuit"],
+   "sort_order": 120,
+   "exercises": [
+     {"slug": "ankle-dorsiflexion-rocks", "sets": 2, "reps": [15, 15], "rest": 30, "note": "Per side."},
+     {"slug": "skater-jump", "sets": 4, "reps": [16, 16], "rest": 45},
+     {"slug": "mountain-climber", "sets": 4, "reps": [20, 20], "rest": 30},
+     {"slug": "lateral-lunge", "sets": 3, "reps": [12, 12], "rest": 45, "note": "Per side."},
+     {"slug": "jump-squat", "sets": 3, "reps": [12, 12], "rest": 45},
+     {"slug": "plank-shoulder-taps", "sets": 3, "reps": [20, 20], "rest": 30}
+   ]
+  },
+  {
+   "slug": "jump-and-throw",
+   "name": "Jump and throw",
+   "category": "athlete",
+   "difficulty": "intermediate",
+   "duration_minutes": 35,
+   "description": "Maximal intent on every jump and throw.",
+   "standalone": false,
+   "focus_tags": ["plyometric"],
+   "sort_order": 121,
+   "exercises": [
+     {"slug": "worlds-greatest-stretch", "sets": 2, "reps": [12, 12], "rest": 30, "note": "Per side."},
+     {"slug": "jump-squat", "sets": 4, "reps": [12, 12], "rest": 60},
+     {"slug": "box-jump", "sets": 4, "reps": [12, 12], "rest": 60},
+     {"slug": "medicine-ball-slam", "sets": 4, "reps": [15, 15], "rest": 45},
+     {"slug": "clap-push-up", "sets": 3, "reps": [12, 12], "rest": 60},
+     {"slug": "dead-bug", "sets": 3, "reps": [12, 12], "rest": 30, "note": "Per side."}
+   ]
+  },
+  {
+   "slug": "engine",
+   "name": "Engine",
+   "category": "athlete",
+   "difficulty": "intermediate",
+   "duration_minutes": 30,
+   "description": "One long circuit to build the engine.",
+   "standalone": false,
+   "focus_tags": ["circuit"],
+   "sort_order": 122,
+   "exercises": [
+     {"slug": "cat-cow", "sets": 2, "reps": [12, 12], "rest": 30},
+     {"slug": "burpee", "sets": 4, "reps": [12, 12], "rest": 45, "superset": 1},
+     {"slug": "kettlebell-swing", "sets": 4, "reps": [20, 20], "rest": 45, "superset": 1},
+     {"slug": "mountain-climber", "sets": 4, "reps": [20, 20], "rest": 45, "superset": 1},
+     {"slug": "bear-crawl", "sets": 4, "reps": [12, 16], "rest": 45, "note": "Steps, not reps.", "superset": 1}
+   ]
+  },
+  {
+   "slug": "change-of-direction",
+   "name": "Change of direction",
+   "category": "athlete",
+   "difficulty": "intermediate",
+   "duration_minutes": 30,
+   "description": "Lateral strength and control.",
+   "standalone": false,
+   "focus_tags": ["plyometric", "compound_light"],
+   "sort_order": 123,
+   "exercises": [
+     {"slug": "hip-90-90", "sets": 2, "reps": [12, 12], "rest": 30},
+     {"slug": "lateral-lunge", "sets": 3, "reps": [12, 12], "rest": 45, "note": "Per side."},
+     {"slug": "sliding-lateral-lunge", "sets": 3, "reps": [12, 12], "rest": 45, "note": "Per side."},
+     {"slug": "skater-jump", "sets": 3, "reps": [16, 16], "rest": 45},
+     {"slug": "bear-crawl", "sets": 3, "reps": [12, 16], "rest": 45, "note": "Steps, not reps."},
+     {"slug": "side-plank", "sets": 3, "reps": [20, 30], "rest": 30, "note": "Seconds, not reps. Per side."}
+   ]
+  },
+  {
+   "slug": "circuit-lower",
+   "name": "Circuit: lower",
+   "category": "athlete",
+   "difficulty": "intermediate",
+   "duration_minutes": 35,
+   "description": "Squat, hinge and lunge as one circuit.",
+   "standalone": false,
+   "focus_tags": ["circuit"],
+   "sort_order": 130,
+   "exercises": [
+     {"slug": "worlds-greatest-stretch", "sets": 2, "reps": [12, 12], "rest": 30, "note": "Per side."},
+     {"slug": "goblet-squat", "sets": 3, "reps": [15, 15], "rest": 45, "superset": 1},
+     {"slug": "kettlebell-swing", "sets": 3, "reps": [15, 15], "rest": 45, "superset": 1},
+     {"slug": "walking-lunge", "sets": 3, "reps": [16, 16], "rest": 45, "superset": 1},
+     {"slug": "glute-bridge", "sets": 3, "reps": [15, 15], "rest": 30},
+     {"slug": "dead-bug", "sets": 3, "reps": [12, 12], "rest": 30, "note": "Per side."}
+   ]
+  },
+  {
+   "slug": "circuit-upper",
+   "name": "Circuit: upper",
+   "category": "athlete",
+   "difficulty": "intermediate",
+   "duration_minutes": 35,
+   "description": "Push, pull and press as one circuit.",
+   "standalone": false,
+   "focus_tags": ["circuit"],
+   "sort_order": 131,
+   "exercises": [
+     {"slug": "band-pull-apart", "sets": 2, "reps": [15, 15], "rest": 30},
+     {"slug": "push-up", "sets": 3, "reps": [15, 15], "rest": 45, "superset": 1},
+     {"slug": "inverted-row", "sets": 3, "reps": [12, 12], "rest": 45, "superset": 1},
+     {"slug": "seated-dumbbell-shoulder-press", "sets": 3, "reps": [12, 12], "rest": 45, "superset": 1},
+     {"slug": "plank-shoulder-taps", "sets": 3, "reps": [20, 20], "rest": 30},
+     {"slug": "hammer-curl", "sets": 3, "reps": [15, 15], "rest": 30}
+   ]
+  },
+  {
+   "slug": "circuit-full-body",
+   "name": "Circuit: full body",
+   "category": "athlete",
+   "difficulty": "intermediate",
+   "duration_minutes": 35,
+   "description": "Power to the whole body, then a circuit.",
+   "standalone": false,
+   "focus_tags": ["circuit"],
+   "sort_order": 132,
+   "exercises": [
+     {"slug": "cat-cow", "sets": 2, "reps": [12, 12], "rest": 30},
+     {"slug": "dumbbell-snatch", "sets": 3, "reps": [12, 12], "rest": 60, "note": "Per side."},
+     {"slug": "burpee", "sets": 3, "reps": [12, 12], "rest": 45, "superset": 1},
+     {"slug": "kettlebell-plank-row", "sets": 3, "reps": [12, 12], "rest": 45, "note": "Per side.", "superset": 1},
+     {"slug": "step-up", "sets": 3, "reps": [12, 12], "rest": 45, "note": "Per side.", "superset": 1},
+     {"slug": "mountain-climber", "sets": 3, "reps": [20, 20], "rest": 30}
+   ]
+  },
+  {
+   "slug": "circuit-carry",
+   "name": "Circuit: carry",
+   "category": "athlete",
+   "difficulty": "intermediate",
+   "duration_minutes": 35,
+   "description": "Carries, crawls and single-leg hinges.",
+   "standalone": false,
+   "focus_tags": ["circuit", "compound_light"],
+   "sort_order": 133,
+   "exercises": [
+     {"slug": "hip-90-90", "sets": 2, "reps": [12, 12], "rest": 30},
+     {"slug": "farmers-carry", "sets": 4, "reps": [20, 30], "rest": 60, "note": "Steps, not reps."},
+     {"slug": "kettlebell-single-leg-deadlift", "sets": 3, "reps": [12, 12], "rest": 45, "note": "Per side."},
+     {"slug": "bear-crawl", "sets": 3, "reps": [12, 16], "rest": 45, "note": "Steps, not reps."},
+     {"slug": "side-plank", "sets": 3, "reps": [20, 30], "rest": 30, "note": "Seconds, not reps. Per side."},
+     {"slug": "dead-bug", "sets": 3, "reps": [12, 12], "rest": 30, "note": "Per side."}
+   ]
+  },
+  {
+   "slug": "chest-and-triceps",
+   "name": "Chest and triceps",
+   "category": "bodybuilder",
+   "difficulty": "intermediate",
+   "duration_minutes": 55,
+   "description": "Heavy presses first, then flyes and pushdowns to finish the muscle off.",
+   "standalone": true,
+   "focus_tags": ["hypertrophy", "compound", "isolation"],
+   "sort_order": 10,
+   "exercises": [
+     {"slug": "incline-barbell-bench-press", "sets": 4, "reps": [8, 10], "rest": 120},
+     {"slug": "dumbbell-bench-press", "sets": 3, "reps": [10, 12], "rest": 90},
+     {"slug": "seated-cable-chest-fly", "sets": 3, "reps": [12, 15], "rest": 60},
+     {"slug": "chest-dip", "sets": 3, "reps": [8, 12], "rest": 90},
+     {"slug": "skull-crusher", "sets": 3, "reps": [10, 12], "rest": 75},
+     {"slug": "rope-triceps-pushdown", "sets": 3, "reps": [12, 15], "rest": 60}
+   ]
+  },
+  {
+   "slug": "back-and-biceps",
+   "name": "Back and biceps",
+   "category": "bodybuilder",
+   "difficulty": "intermediate",
+   "duration_minutes": 55,
+   "description": "Vertical and horizontal pulls for width and thickness, then the arms.",
+   "standalone": true,
+   "focus_tags": ["hypertrophy", "compound", "isolation"],
+   "sort_order": 20,
+   "exercises": [
+     {"slug": "lat-pulldown", "sets": 4, "reps": [8, 12], "rest": 90},
+     {"slug": "barbell-row", "sets": 4, "reps": [8, 10], "rest": 120},
+     {"slug": "seated-cable-row", "sets": 3, "reps": [10, 12], "rest": 90},
+     {"slug": "straight-arm-pulldown", "sets": 3, "reps": [12, 15], "rest": 60},
+     {"slug": "ez-bar-curl", "sets": 3, "reps": [10, 12], "rest": 75},
+     {"slug": "hammer-curl", "sets": 3, "reps": [12, 15], "rest": 60}
+   ]
+  },
+  {
+   "slug": "legs-and-glutes",
+   "name": "Legs and glutes",
+   "category": "bodybuilder",
+   "difficulty": "intermediate",
+   "duration_minutes": 60,
+   "description": "Squat, hinge and press, then the hamstrings, glutes and calves on their own.",
+   "standalone": true,
+   "focus_tags": ["hypertrophy", "compound", "isolation"],
+   "sort_order": 30,
+   "exercises": [
+     {"slug": "back-squat", "sets": 4, "reps": [8, 10], "rest": 120},
+     {"slug": "romanian-deadlift", "sets": 3, "reps": [8, 12], "rest": 120},
+     {"slug": "leg-press", "sets": 3, "reps": [10, 15], "rest": 90},
+     {"slug": "lying-leg-curl", "sets": 3, "reps": [10, 12], "rest": 60},
+     {"slug": "barbell-hip-thrust", "sets": 3, "reps": [10, 12], "rest": 90},
+     {"slug": "standing-calf-raise", "sets": 4, "reps": [12, 15], "rest": 60}
+   ]
+  },
+  {
+   "slug": "shoulders-and-arms",
+   "name": "Shoulders and arms",
+   "category": "bodybuilder",
+   "difficulty": "intermediate",
+   "duration_minutes": 50,
+   "description": "A press, three angles of raise, and arms finished as a superset.",
+   "standalone": true,
+   "focus_tags": ["hypertrophy", "isolation"],
+   "sort_order": 40,
+   "exercises": [
+     {"slug": "seated-dumbbell-shoulder-press", "sets": 4, "reps": [8, 12], "rest": 90},
+     {"slug": "dumbbell-lateral-raise", "sets": 4, "reps": [12, 15], "rest": 60},
+     {"slug": "rear-delt-fly", "sets": 3, "reps": [12, 15], "rest": 60},
+     {"slug": "barbell-curl", "sets": 3, "reps": [8, 12], "rest": 75},
+     {"slug": "overhead-tricep-extension", "sets": 3, "reps": [10, 12], "rest": 75},
+     {"slug": "cable-curl", "sets": 3, "reps": [12, 15], "rest": 60, "superset": 1},
+     {"slug": "rope-triceps-pushdown", "sets": 3, "reps": [12, 15], "rest": 60, "superset": 1}
+   ]
+  },
+  {
+   "slug": "ppl-push",
+   "name": "Push",
+   "category": "bodybuilder",
+   "difficulty": "intermediate",
+   "duration_minutes": 55,
+   "description": "Chest, shoulders and triceps.",
+   "standalone": false,
+   "focus_tags": ["hypertrophy"],
+   "sort_order": 110,
+   "exercises": [
+     {"slug": "barbell-bench-press", "sets": 4, "reps": [8, 10], "rest": 120},
+     {"slug": "incline-dumbbell-press", "sets": 3, "reps": [10, 12], "rest": 90},
+     {"slug": "machine-shoulder-press", "sets": 3, "reps": [10, 12], "rest": 90},
+     {"slug": "dumbbell-lateral-raise", "sets": 4, "reps": [12, 15], "rest": 60},
+     {"slug": "cable-crossover", "sets": 3, "reps": [12, 15], "rest": 60},
+     {"slug": "tricep-pushdown", "sets": 3, "reps": [12, 15], "rest": 60}
+   ]
+  },
+  {
+   "slug": "ppl-pull",
+   "name": "Pull",
+   "category": "bodybuilder",
+   "difficulty": "intermediate",
+   "duration_minutes": 55,
+   "description": "Back, rear delts and biceps.",
+   "standalone": false,
+   "focus_tags": ["hypertrophy"],
+   "sort_order": 111,
+   "exercises": [
+     {"slug": "pull-up", "sets": 3, "reps": [8, 12], "rest": 90},
+     {"slug": "barbell-row", "sets": 4, "reps": [8, 10], "rest": 120},
+     {"slug": "lat-pulldown", "sets": 3, "reps": [10, 12], "rest": 90},
+     {"slug": "face-pull", "sets": 3, "reps": [12, 15], "rest": 60},
+     {"slug": "dumbbell-curl", "sets": 3, "reps": [10, 12], "rest": 60},
+     {"slug": "hammer-curl", "sets": 3, "reps": [12, 15], "rest": 60}
+   ]
+  },
+  {
+   "slug": "ppl-legs",
+   "name": "Legs",
+   "category": "bodybuilder",
+   "difficulty": "intermediate",
+   "duration_minutes": 60,
+   "description": "Quads, hamstrings, glutes and calves.",
+   "standalone": false,
+   "focus_tags": ["hypertrophy"],
+   "sort_order": 112,
+   "exercises": [
+     {"slug": "back-squat", "sets": 4, "reps": [8, 10], "rest": 120},
+     {"slug": "romanian-deadlift", "sets": 3, "reps": [8, 10], "rest": 120},
+     {"slug": "leg-press", "sets": 3, "reps": [10, 15], "rest": 90},
+     {"slug": "leg-extension", "sets": 3, "reps": [12, 15], "rest": 60},
+     {"slug": "seated-leg-curl", "sets": 3, "reps": [12, 15], "rest": 60},
+     {"slug": "standing-calf-raise", "sets": 4, "reps": [12, 15], "rest": 60}
+   ]
+  },
+  {
+   "slug": "upper-a",
+   "name": "Upper A",
+   "category": "bodybuilder",
+   "difficulty": "beginner",
+   "duration_minutes": 50,
+   "description": "Presses and rows, machines and dumbbells.",
+   "standalone": false,
+   "focus_tags": ["hypertrophy"],
+   "sort_order": 120,
+   "exercises": [
+     {"slug": "dumbbell-bench-press", "sets": 3, "reps": [8, 12], "rest": 90},
+     {"slug": "seated-cable-row", "sets": 3, "reps": [10, 12], "rest": 90},
+     {"slug": "seated-dumbbell-shoulder-press", "sets": 3, "reps": [10, 12], "rest": 90},
+     {"slug": "lat-pulldown", "sets": 3, "reps": [10, 12], "rest": 90},
+     {"slug": "dumbbell-curl", "sets": 2, "reps": [12, 15], "rest": 60},
+     {"slug": "tricep-pushdown", "sets": 2, "reps": [12, 15], "rest": 60}
+   ]
+  },
+  {
+   "slug": "lower-a",
+   "name": "Lower A",
+   "category": "bodybuilder",
+   "difficulty": "beginner",
+   "duration_minutes": 50,
+   "description": "Goblet squats and hinges.",
+   "standalone": false,
+   "focus_tags": ["hypertrophy"],
+   "sort_order": 121,
+   "exercises": [
+     {"slug": "goblet-squat", "sets": 3, "reps": [10, 12], "rest": 90},
+     {"slug": "dumbbell-romanian-deadlift", "sets": 3, "reps": [10, 12], "rest": 90},
+     {"slug": "leg-press", "sets": 3, "reps": [12, 15], "rest": 90},
+     {"slug": "lying-leg-curl", "sets": 3, "reps": [12, 15], "rest": 60},
+     {"slug": "standing-calf-raise", "sets": 3, "reps": [12, 15], "rest": 60}
+   ]
+  },
+  {
+   "slug": "upper-b",
+   "name": "Upper B",
+   "category": "bodybuilder",
+   "difficulty": "beginner",
+   "duration_minutes": 50,
+   "description": "Chest press, rows and shoulders.",
+   "standalone": false,
+   "focus_tags": ["hypertrophy"],
+   "sort_order": 122,
+   "exercises": [
+     {"slug": "machine-chest-press", "sets": 3, "reps": [10, 12], "rest": 90},
+     {"slug": "dumbbell-row", "sets": 3, "reps": [10, 12], "rest": 90},
+     {"slug": "arnold-press", "sets": 3, "reps": [10, 12], "rest": 90},
+     {"slug": "pec-deck", "sets": 3, "reps": [12, 15], "rest": 60},
+     {"slug": "face-pull", "sets": 3, "reps": [12, 15], "rest": 60},
+     {"slug": "hammer-curl", "sets": 2, "reps": [12, 15], "rest": 60}
+   ]
+  },
+  {
+   "slug": "lower-b",
+   "name": "Lower B",
+   "category": "bodybuilder",
+   "difficulty": "beginner",
+   "duration_minutes": 50,
+   "description": "Leg press, split squats and glutes.",
+   "standalone": false,
+   "focus_tags": ["hypertrophy"],
+   "sort_order": 123,
+   "exercises": [
+     {"slug": "leg-press", "sets": 4, "reps": [10, 12], "rest": 90},
+     {"slug": "bulgarian-split-squat", "sets": 3, "reps": [10, 12], "rest": 90, "note": "Per side."},
+     {"slug": "barbell-hip-thrust", "sets": 3, "reps": [10, 12], "rest": 90},
+     {"slug": "leg-extension", "sets": 3, "reps": [12, 15], "rest": 60},
+     {"slug": "seated-calf-raise", "sets": 3, "reps": [12, 15], "rest": 60}
+   ]
+  },
+  {
+   "slug": "split-chest",
+   "name": "Chest",
+   "category": "bodybuilder",
+   "difficulty": "advanced",
+   "duration_minutes": 55,
+   "description": "Four angles, high effort.",
+   "standalone": false,
+   "focus_tags": ["hypertrophy"],
+   "sort_order": 130,
+   "exercises": [
+     {"slug": "barbell-bench-press", "sets": 4, "reps": [8, 10], "rest": 120},
+     {"slug": "incline-dumbbell-press", "sets": 4, "reps": [8, 12], "rest": 90},
+     {"slug": "dumbbell-fly", "sets": 3, "reps": [12, 15], "rest": 60},
+     {"slug": "low-to-high-cable-fly", "sets": 3, "reps": [12, 15], "rest": 60},
+     {"slug": "chest-dip", "sets": 3, "reps": [10, 12], "rest": 90}
+   ]
+  },
+  {
+   "slug": "split-back",
+   "name": "Back",
+   "category": "bodybuilder",
+   "difficulty": "advanced",
+   "duration_minutes": 60,
+   "description": "Width, thickness and the lower back.",
+   "standalone": false,
+   "focus_tags": ["hypertrophy"],
+   "sort_order": 131,
+   "exercises": [
+     {"slug": "pull-up", "sets": 4, "reps": [8, 10], "rest": 90},
+     {"slug": "pendlay-row", "sets": 4, "reps": [8, 10], "rest": 120},
+     {"slug": "single-arm-cable-row", "sets": 3, "reps": [10, 12], "rest": 75, "note": "Per side."},
+     {"slug": "straight-arm-pulldown", "sets": 3, "reps": [12, 15], "rest": 60},
+     {"slug": "barbell-shrug", "sets": 3, "reps": [10, 12], "rest": 75},
+     {"slug": "back-extension", "sets": 3, "reps": [12, 15], "rest": 60}
+   ]
+  },
+  {
+   "slug": "split-shoulders",
+   "name": "Shoulders",
+   "category": "bodybuilder",
+   "difficulty": "advanced",
+   "duration_minutes": 50,
+   "description": "A heavy press, then every head of the delts.",
+   "standalone": false,
+   "focus_tags": ["hypertrophy"],
+   "sort_order": 132,
+   "exercises": [
+     {"slug": "overhead-press", "sets": 4, "reps": [8, 10], "rest": 120},
+     {"slug": "cable-lateral-raise", "sets": 4, "reps": [12, 15], "rest": 60, "note": "Per side."},
+     {"slug": "dumbbell-lateral-raise", "sets": 3, "reps": [12, 15], "rest": 60},
+     {"slug": "cable-rear-delt-fly", "sets": 3, "reps": [12, 15], "rest": 60},
+     {"slug": "dumbbell-shrug", "sets": 3, "reps": [10, 12], "rest": 75}
+   ]
+  },
+  {
+   "slug": "split-legs",
+   "name": "Legs",
+   "category": "bodybuilder",
+   "difficulty": "advanced",
+   "duration_minutes": 65,
+   "description": "Squats, hack squats and hinges, then isolation.",
+   "standalone": false,
+   "focus_tags": ["hypertrophy"],
+   "sort_order": 133,
+   "exercises": [
+     {"slug": "back-squat", "sets": 4, "reps": [8, 10], "rest": 120},
+     {"slug": "hack-squat", "sets": 3, "reps": [10, 12], "rest": 90},
+     {"slug": "romanian-deadlift", "sets": 3, "reps": [8, 10], "rest": 120},
+     {"slug": "leg-extension", "sets": 3, "reps": [12, 15], "rest": 60},
+     {"slug": "seated-leg-curl", "sets": 3, "reps": [12, 15], "rest": 60},
+     {"slug": "standing-calf-raise", "sets": 4, "reps": [12, 15], "rest": 60}
+   ]
+  },
+  {
+   "slug": "split-arms",
+   "name": "Arms",
+   "category": "bodybuilder",
+   "difficulty": "advanced",
+   "duration_minutes": 50,
+   "description": "Biceps and triceps, paired in supersets.",
+   "standalone": false,
+   "focus_tags": ["hypertrophy"],
+   "sort_order": 134,
+   "exercises": [
+     {"slug": "barbell-curl", "sets": 4, "reps": [8, 10], "rest": 75},
+     {"slug": "close-grip-bench-press", "sets": 4, "reps": [8, 10], "rest": 90},
+     {"slug": "incline-dumbbell-curl", "sets": 3, "reps": [10, 12], "rest": 60, "superset": 1},
+     {"slug": "overhead-tricep-extension", "sets": 3, "reps": [10, 12], "rest": 60, "superset": 1},
+     {"slug": "cable-curl", "sets": 3, "reps": [12, 15], "rest": 60, "superset": 2},
+     {"slug": "rope-triceps-pushdown", "sets": 3, "reps": [12, 15], "rest": 60, "superset": 2}
+   ]
+  },
+  {
+   "slug": "squat-day",
+   "name": "Squat day",
+   "category": "powerlifter",
+   "difficulty": "intermediate",
+   "duration_minutes": 70,
+   "description": "Heavy squats, a front-squat backoff, then the legs and trunk that hold the squat up.",
+   "standalone": true,
+   "focus_tags": ["compound_heavy", "barbell"],
+   "sort_order": 10,
+   "exercises": [
+     {"slug": "back-squat", "sets": 5, "reps": [3, 5], "rest": 240},
+     {"slug": "front-squat", "sets": 3, "reps": [4, 6], "rest": 180},
+     {"slug": "bulgarian-split-squat", "sets": 3, "reps": [8, 10], "rest": 90, "note": "Per side."},
+     {"slug": "lying-leg-curl", "sets": 3, "reps": [10, 12], "rest": 60},
+     {"slug": "hanging-leg-raise", "sets": 3, "reps": [10, 12], "rest": 60}
+   ]
+  },
+  {
+   "slug": "bench-day",
+   "name": "Bench day",
+   "category": "powerlifter",
+   "difficulty": "intermediate",
+   "duration_minutes": 60,
+   "description": "Heavy bench, close-grip for lockout, and the upper back for a stable arch.",
+   "standalone": true,
+   "focus_tags": ["compound_heavy", "barbell"],
+   "sort_order": 20,
+   "exercises": [
+     {"slug": "barbell-bench-press", "sets": 5, "reps": [3, 5], "rest": 240},
+     {"slug": "close-grip-bench-press", "sets": 3, "reps": [4, 6], "rest": 180},
+     {"slug": "dumbbell-row", "sets": 4, "reps": [8, 10], "rest": 90, "note": "Per side."},
+     {"slug": "seated-dumbbell-shoulder-press", "sets": 3, "reps": [8, 10], "rest": 90},
+     {"slug": "tricep-pushdown", "sets": 3, "reps": [10, 12], "rest": 60}
+   ]
+  },
+  {
+   "slug": "deadlift-day",
+   "name": "Deadlift day",
+   "category": "powerlifter",
+   "difficulty": "intermediate",
+   "duration_minutes": 65,
+   "description": "Heavy pulls from the floor, a Romanian deadlift for the hamstrings, and a strong back.",
+   "standalone": true,
+   "focus_tags": ["compound_heavy", "barbell"],
+   "sort_order": 30,
+   "exercises": [
+     {"slug": "deadlift", "sets": 4, "reps": [3, 5], "rest": 300},
+     {"slug": "romanian-deadlift", "sets": 3, "reps": [5, 6], "rest": 180},
+     {"slug": "lat-pulldown", "sets": 3, "reps": [8, 10], "rest": 90},
+     {"slug": "back-extension", "sets": 3, "reps": [10, 12], "rest": 60},
+     {"slug": "hanging-leg-raise", "sets": 3, "reps": [10, 12], "rest": 60}
+   ]
+  },
+  {
+   "slug": "heavy-accessory-session",
+   "name": "Heavy accessory session",
+   "category": "powerlifter",
+   "difficulty": "intermediate",
+   "duration_minutes": 60,
+   "description": "The lifts that build the big three: a heavy press, rows, single-leg work and shoulder health.",
+   "standalone": true,
+   "focus_tags": ["compound_heavy", "accessory_minimal"],
+   "sort_order": 40,
+   "exercises": [
+     {"slug": "overhead-press", "sets": 4, "reps": [4, 6], "rest": 180},
+     {"slug": "barbell-row", "sets": 4, "reps": [6, 8], "rest": 120, "role": "accessory"},
+     {"slug": "bulgarian-split-squat", "sets": 3, "reps": [8, 10], "rest": 90, "note": "Per side."},
+     {"slug": "face-pull", "sets": 3, "reps": [12, 15], "rest": 60},
+     {"slug": "hanging-leg-raise", "sets": 3, "reps": [10, 12], "rest": 60}
+   ]
+  },
+  {
+   "slug": "linear-a",
+   "name": "Strength A",
+   "category": "powerlifter",
+   "difficulty": "beginner",
+   "duration_minutes": 50,
+   "description": "Squat and bench.",
+   "standalone": false,
+   "focus_tags": ["compound_heavy", "barbell"],
+   "sort_order": 110,
+   "exercises": [
+     {"slug": "back-squat", "sets": 3, "reps": [5, 5], "rest": 180},
+     {"slug": "barbell-bench-press", "sets": 3, "reps": [5, 5], "rest": 180},
+     {"slug": "dumbbell-row", "sets": 3, "reps": [8, 10], "rest": 90, "note": "Per side."},
+     {"slug": "hanging-leg-raise", "sets": 3, "reps": [8, 12], "rest": 60}
+   ]
+  },
+  {
+   "slug": "linear-b",
+   "name": "Strength B",
+   "category": "powerlifter",
+   "difficulty": "beginner",
+   "duration_minutes": 50,
+   "description": "Squat and deadlift.",
+   "standalone": false,
+   "focus_tags": ["compound_heavy", "barbell"],
+   "sort_order": 111,
+   "exercises": [
+     {"slug": "back-squat", "sets": 3, "reps": [5, 5], "rest": 180},
+     {"slug": "deadlift", "sets": 1, "reps": [5, 5], "rest": 240},
+     {"slug": "seated-dumbbell-shoulder-press", "sets": 3, "reps": [8, 10], "rest": 90},
+     {"slug": "lat-pulldown", "sets": 3, "reps": [8, 10], "rest": 90}
+   ]
+  },
+  {
+   "slug": "waves-squat",
+   "name": "Waves: squat",
+   "category": "powerlifter",
+   "difficulty": "intermediate",
+   "duration_minutes": 70,
+   "description": "The squat wave, then a front-squat backoff.",
+   "standalone": false,
+   "focus_tags": ["compound_heavy", "barbell"],
+   "sort_order": 120,
+   "exercises": [
+     {"slug": "back-squat", "sets": 5, "reps": [1, 5], "rest": 240, "note": "Week by week: 5s, then 3s, then singles; repeat heavier."},
+     {"slug": "front-squat", "sets": 3, "reps": [4, 6], "rest": 180},
+     {"slug": "walking-lunge", "sets": 3, "reps": [8, 10], "rest": 90, "note": "Per side."},
+     {"slug": "seated-leg-curl", "sets": 3, "reps": [10, 12], "rest": 60},
+     {"slug": "cable-crunch", "sets": 3, "reps": [10, 12], "rest": 60}
+   ]
+  },
+  {
+   "slug": "waves-bench",
+   "name": "Waves: bench",
+   "category": "powerlifter",
+   "difficulty": "intermediate",
+   "duration_minutes": 60,
+   "description": "The bench wave, then close-grip.",
+   "standalone": false,
+   "focus_tags": ["compound_heavy", "barbell"],
+   "sort_order": 121,
+   "exercises": [
+     {"slug": "barbell-bench-press", "sets": 5, "reps": [1, 5], "rest": 240, "note": "Week by week: 5s, then 3s, then singles; repeat heavier."},
+     {"slug": "close-grip-bench-press", "sets": 3, "reps": [4, 6], "rest": 180},
+     {"slug": "dumbbell-row", "sets": 4, "reps": [8, 10], "rest": 90, "note": "Per side."},
+     {"slug": "face-pull", "sets": 3, "reps": [12, 15], "rest": 60},
+     {"slug": "skull-crusher", "sets": 3, "reps": [8, 10], "rest": 60}
+   ]
+  },
+  {
+   "slug": "waves-deadlift",
+   "name": "Waves: deadlift",
+   "category": "powerlifter",
+   "difficulty": "intermediate",
+   "duration_minutes": 65,
+   "description": "The deadlift wave, then rows.",
+   "standalone": false,
+   "focus_tags": ["compound_heavy", "barbell"],
+   "sort_order": 122,
+   "exercises": [
+     {"slug": "deadlift", "sets": 5, "reps": [1, 5], "rest": 300, "note": "Week by week: 5s, then 3s, then singles; repeat heavier."},
+     {"slug": "pendlay-row", "sets": 3, "reps": [4, 6], "rest": 180},
+     {"slug": "lat-pulldown", "sets": 3, "reps": [8, 10], "rest": 90},
+     {"slug": "back-extension", "sets": 3, "reps": [10, 12], "rest": 60}
+   ]
+  },
+  {
+   "slug": "waves-press",
+   "name": "Waves: press",
+   "category": "powerlifter",
+   "difficulty": "intermediate",
+   "duration_minutes": 60,
+   "description": "The press wave, then incline bench.",
+   "standalone": false,
+   "focus_tags": ["compound_heavy", "barbell"],
+   "sort_order": 123,
+   "exercises": [
+     {"slug": "overhead-press", "sets": 5, "reps": [1, 5], "rest": 240, "note": "Week by week: 5s, then 3s, then singles; repeat heavier."},
+     {"slug": "incline-barbell-bench-press", "sets": 3, "reps": [4, 6], "rest": 180},
+     {"slug": "chin-up", "sets": 3, "reps": [6, 8], "rest": 120},
+     {"slug": "dumbbell-lateral-raise", "sets": 3, "reps": [12, 15], "rest": 60},
+     {"slug": "hammer-curl", "sets": 3, "reps": [10, 12], "rest": 60}
+   ]
+  },
+  {
+   "slug": "peak-squat",
+   "name": "Peak: squat",
+   "category": "powerlifter",
+   "difficulty": "advanced",
+   "duration_minutes": 70,
+   "description": "Heavy singles to triples.",
+   "standalone": false,
+   "focus_tags": ["compound_heavy", "barbell"],
+   "sort_order": 130,
+   "exercises": [
+     {"slug": "back-squat", "sets": 4, "reps": [1, 3], "rest": 300},
+     {"slug": "front-squat", "sets": 3, "reps": [2, 4], "rest": 240},
+     {"slug": "bulgarian-split-squat", "sets": 3, "reps": [6, 8], "rest": 120, "note": "Per side."},
+     {"slug": "hanging-leg-raise", "sets": 3, "reps": [8, 12], "rest": 60}
+   ]
+  },
+  {
+   "slug": "peak-bench",
+   "name": "Peak: bench",
+   "category": "powerlifter",
+   "difficulty": "advanced",
+   "duration_minutes": 60,
+   "description": "Competition bench, paused.",
+   "standalone": false,
+   "focus_tags": ["compound_heavy", "barbell"],
+   "sort_order": 131,
+   "exercises": [
+     {"slug": "barbell-bench-press", "sets": 5, "reps": [1, 3], "rest": 300, "note": "Pause every rep on the chest, as in a meet."},
+     {"slug": "close-grip-bench-press", "sets": 3, "reps": [3, 5], "rest": 180},
+     {"slug": "dumbbell-row", "sets": 4, "reps": [6, 8], "rest": 90, "note": "Per side."},
+     {"slug": "face-pull", "sets": 3, "reps": [12, 15], "rest": 60}
+   ]
+  },
+  {
+   "slug": "peak-deadlift",
+   "name": "Peak: deadlift",
+   "category": "powerlifter",
+   "difficulty": "advanced",
+   "duration_minutes": 60,
+   "description": "Heavy pulls, then Romanians.",
+   "standalone": false,
+   "focus_tags": ["compound_heavy", "barbell"],
+   "sort_order": 132,
+   "exercises": [
+     {"slug": "deadlift", "sets": 4, "reps": [1, 3], "rest": 300},
+     {"slug": "romanian-deadlift", "sets": 3, "reps": [3, 5], "rest": 180},
+     {"slug": "lat-pulldown", "sets": 3, "reps": [8, 10], "rest": 90},
+     {"slug": "cable-crunch", "sets": 3, "reps": [10, 12], "rest": 60}
+   ]
+  },
+  {
+   "slug": "peak-bench-volume",
+   "name": "Peak: bench volume",
+   "category": "powerlifter",
+   "difficulty": "advanced",
+   "duration_minutes": 60,
+   "description": "Bench and press for volume.",
+   "standalone": false,
+   "focus_tags": ["compound_heavy", "barbell"],
+   "sort_order": 133,
+   "exercises": [
+     {"slug": "barbell-bench-press", "sets": 4, "reps": [4, 6], "rest": 180},
+     {"slug": "overhead-press", "sets": 3, "reps": [4, 6], "rest": 180},
+     {"slug": "seated-cable-row", "sets": 3, "reps": [8, 10], "rest": 90},
+     {"slug": "tricep-pushdown", "sets": 3, "reps": [10, 12], "rest": 60},
+     {"slug": "dumbbell-lateral-raise", "sets": 3, "reps": [12, 15], "rest": 60}
+   ]
+  },
+  {
+   "slug": "barbell-foundations-day-1",
+   "name": "Foundations A",
+   "category": "powerlifter",
+   "difficulty": "beginner",
+   "duration_minutes": 60,
+   "description": null,
+   "standalone": false,
+   "focus_tags": [],
+   "sort_order": 900,
+   "legacy_source": "curated",
+   "exercises": [
+     {"slug": "back-squat", "sets": 3, "reps": [5, 5], "rest": 180},
+     {"slug": "barbell-bench-press", "sets": 3, "reps": [5, 5], "rest": 180},
+     {"slug": "barbell-row", "sets": 3, "reps": [8, 8], "rest": 120}
+   ]
+  },
+  {
+   "slug": "barbell-foundations-day-2",
+   "name": "Foundations B",
+   "category": "powerlifter",
+   "difficulty": "beginner",
+   "duration_minutes": 60,
+   "description": null,
+   "standalone": false,
+   "focus_tags": [],
+   "sort_order": 901,
+   "legacy_source": "curated",
+   "exercises": [
+     {"slug": "back-squat", "sets": 3, "reps": [5, 5], "rest": 180},
+     {"slug": "overhead-press", "sets": 3, "reps": [5, 5], "rest": 150},
+     {"slug": "deadlift", "sets": 1, "reps": [5, 5], "rest": 180}
+   ]
+  },
+  {
+   "slug": "peak-strength-block-day-1",
+   "name": "Squat Day",
+   "category": "powerlifter",
+   "difficulty": "intermediate",
+   "duration_minutes": 60,
+   "description": null,
+   "standalone": false,
+   "focus_tags": [],
+   "sort_order": 900,
+   "legacy_source": "curated",
+   "exercises": [
+     {"slug": "back-squat", "sets": 5, "reps": [3, 3], "rest": 240},
+     {"slug": "romanian-deadlift", "sets": 3, "reps": [6, 8], "rest": 150},
+     {"slug": "leg-press", "sets": 3, "reps": [8, 10], "rest": 120},
+     {"slug": "plank", "sets": 3, "reps": [1, 1], "rest": 60}
+   ]
+  },
+  {
+   "slug": "peak-strength-block-day-2",
+   "name": "Bench Day",
+   "category": "powerlifter",
+   "difficulty": "intermediate",
+   "duration_minutes": 60,
+   "description": null,
+   "standalone": false,
+   "focus_tags": [],
+   "sort_order": 901,
+   "legacy_source": "curated",
+   "exercises": [
+     {"slug": "barbell-bench-press", "sets": 5, "reps": [3, 3], "rest": 240},
+     {"slug": "close-grip-bench-press", "sets": 3, "reps": [5, 6], "rest": 150},
+     {"slug": "dumbbell-row", "sets": 3, "reps": [8, 10], "rest": 90},
+     {"slug": "tricep-pushdown", "sets": 3, "reps": [10, 12], "rest": 60}
+   ]
+  },
+  {
+   "slug": "peak-strength-block-day-3",
+   "name": "Deadlift Day",
+   "category": "powerlifter",
+   "difficulty": "intermediate",
+   "duration_minutes": 60,
+   "description": null,
+   "standalone": false,
+   "focus_tags": [],
+   "sort_order": 902,
+   "legacy_source": "curated",
+   "exercises": [
+     {"slug": "deadlift", "sets": 4, "reps": [3, 3], "rest": 240},
+     {"slug": "front-squat", "sets": 3, "reps": [5, 5], "rest": 150},
+     {"slug": "barbell-hip-thrust", "sets": 3, "reps": [6, 8], "rest": 120},
+     {"slug": "hanging-leg-raise", "sets": 3, "reps": [8, 12], "rest": 60}
+   ]
+  },
+  {
+   "slug": "peak-strength-block-day-4",
+   "name": "Press Day",
+   "category": "powerlifter",
+   "difficulty": "intermediate",
+   "duration_minutes": 60,
+   "description": null,
+   "standalone": false,
+   "focus_tags": [],
+   "sort_order": 903,
+   "legacy_source": "curated",
+   "exercises": [
+     {"slug": "overhead-press", "sets": 5, "reps": [5, 5], "rest": 180},
+     {"slug": "incline-barbell-bench-press", "sets": 3, "reps": [6, 8], "rest": 120},
+     {"slug": "pull-up", "sets": 3, "reps": [6, 8], "rest": 120},
+     {"slug": "face-pull", "sets": 3, "reps": [12, 15], "rest": 60}
+   ]
+  },
+  {
+   "slug": "upper-lower-builder-day-1",
+   "name": "Upper A",
+   "category": "bodybuilder",
+   "difficulty": "intermediate",
+   "duration_minutes": 60,
+   "description": null,
+   "standalone": false,
+   "focus_tags": [],
+   "sort_order": 900,
+   "legacy_source": "curated",
+   "exercises": [
+     {"slug": "barbell-bench-press", "sets": 4, "reps": [6, 10], "rest": 120},
+     {"slug": "barbell-row", "sets": 4, "reps": [6, 10], "rest": 120},
+     {"slug": "seated-dumbbell-shoulder-press", "sets": 3, "reps": [8, 12], "rest": 90},
+     {"slug": "lat-pulldown", "sets": 3, "reps": [10, 12], "rest": 90},
+     {"slug": "dumbbell-curl", "sets": 3, "reps": [10, 15], "rest": 60, "superset": 1},
+     {"slug": "tricep-pushdown", "sets": 3, "reps": [10, 15], "rest": 60, "superset": 1}
+   ]
+  },
+  {
+   "slug": "upper-lower-builder-day-2",
+   "name": "Lower A",
+   "category": "bodybuilder",
+   "difficulty": "intermediate",
+   "duration_minutes": 60,
+   "description": null,
+   "standalone": false,
+   "focus_tags": [],
+   "sort_order": 901,
+   "legacy_source": "curated",
+   "exercises": [
+     {"slug": "back-squat", "sets": 4, "reps": [6, 10], "rest": 150},
+     {"slug": "romanian-deadlift", "sets": 3, "reps": [8, 12], "rest": 120},
+     {"slug": "leg-extension", "sets": 3, "reps": [12, 15], "rest": 60},
+     {"slug": "lying-leg-curl", "sets": 3, "reps": [10, 15], "rest": 60},
+     {"slug": "standing-calf-raise", "sets": 4, "reps": [10, 15], "rest": 60}
+   ]
+  },
+  {
+   "slug": "upper-lower-builder-day-3",
+   "name": "Upper B",
+   "category": "bodybuilder",
+   "difficulty": "intermediate",
+   "duration_minutes": 60,
+   "description": null,
+   "standalone": false,
+   "focus_tags": [],
+   "sort_order": 902,
+   "legacy_source": "curated",
+   "exercises": [
+     {"slug": "incline-dumbbell-press", "sets": 4, "reps": [8, 12], "rest": 90},
+     {"slug": "seated-cable-row", "sets": 4, "reps": [8, 12], "rest": 90},
+     {"slug": "dumbbell-lateral-raise", "sets": 3, "reps": [12, 15], "rest": 60},
+     {"slug": "cable-crossover", "sets": 3, "reps": [12, 15], "rest": 60},
+     {"slug": "hammer-curl", "sets": 3, "reps": [10, 12], "rest": 60, "superset": 1},
+     {"slug": "overhead-tricep-extension", "sets": 3, "reps": [10, 12], "rest": 60, "superset": 1}
+   ]
+  },
+  {
+   "slug": "upper-lower-builder-day-4",
+   "name": "Lower B",
+   "category": "bodybuilder",
+   "difficulty": "intermediate",
+   "duration_minutes": 60,
+   "description": null,
+   "standalone": false,
+   "focus_tags": [],
+   "sort_order": 903,
+   "legacy_source": "curated",
+   "exercises": [
+     {"slug": "leg-press", "sets": 4, "reps": [10, 12], "rest": 120},
+     {"slug": "barbell-hip-thrust", "sets": 3, "reps": [8, 12], "rest": 90},
+     {"slug": "bulgarian-split-squat", "sets": 3, "reps": [8, 10], "rest": 90},
+     {"slug": "seated-leg-curl", "sets": 3, "reps": [10, 15], "rest": 60},
+     {"slug": "seated-calf-raise", "sets": 4, "reps": [12, 15], "rest": 60}
+   ]
+  },
+  {
+   "slug": "push-pull-legs-day-1",
+   "name": "Push",
+   "category": "bodybuilder",
+   "difficulty": "intermediate",
+   "duration_minutes": 60,
+   "description": null,
+   "standalone": false,
+   "focus_tags": [],
+   "sort_order": 900,
+   "legacy_source": "curated",
+   "exercises": [
+     {"slug": "barbell-bench-press", "sets": 4, "reps": [6, 10], "rest": 120},
+     {"slug": "incline-dumbbell-press", "sets": 3, "reps": [8, 12], "rest": 90},
+     {"slug": "seated-dumbbell-shoulder-press", "sets": 3, "reps": [8, 12], "rest": 90},
+     {"slug": "cable-lateral-raise", "sets": 3, "reps": [12, 15], "rest": 60},
+     {"slug": "tricep-pushdown", "sets": 3, "reps": [10, 15], "rest": 60},
+     {"slug": "overhead-tricep-extension", "sets": 3, "reps": [10, 15], "rest": 60}
+   ]
+  },
+  {
+   "slug": "push-pull-legs-day-2",
+   "name": "Pull",
+   "category": "bodybuilder",
+   "difficulty": "intermediate",
+   "duration_minutes": 60,
+   "description": null,
+   "standalone": false,
+   "focus_tags": [],
+   "sort_order": 901,
+   "legacy_source": "curated",
+   "exercises": [
+     {"slug": "pull-up", "sets": 4, "reps": [6, 10], "rest": 120},
+     {"slug": "barbell-row", "sets": 4, "reps": [6, 10], "rest": 120},
+     {"slug": "seated-cable-row", "sets": 3, "reps": [10, 12], "rest": 90},
+     {"slug": "face-pull", "sets": 3, "reps": [12, 15], "rest": 60},
+     {"slug": "barbell-curl", "sets": 3, "reps": [8, 12], "rest": 60},
+     {"slug": "hammer-curl", "sets": 3, "reps": [10, 12], "rest": 60}
+   ]
+  },
+  {
+   "slug": "push-pull-legs-day-3",
+   "name": "Legs",
+   "category": "bodybuilder",
+   "difficulty": "intermediate",
+   "duration_minutes": 60,
+   "description": null,
+   "standalone": false,
+   "focus_tags": [],
+   "sort_order": 902,
+   "legacy_source": "curated",
+   "exercises": [
+     {"slug": "back-squat", "sets": 4, "reps": [6, 10], "rest": 150},
+     {"slug": "romanian-deadlift", "sets": 3, "reps": [8, 12], "rest": 120},
+     {"slug": "leg-press", "sets": 3, "reps": [10, 15], "rest": 90},
+     {"slug": "leg-extension", "sets": 3, "reps": [12, 15], "rest": 60},
+     {"slug": "lying-leg-curl", "sets": 3, "reps": [10, 15], "rest": 60},
+     {"slug": "standing-calf-raise", "sets": 4, "reps": [10, 15], "rest": 60}
+   ]
+  },
+  {
+   "slug": "athletic-base-day-1",
+   "name": "Full Body A",
+   "category": "athlete",
+   "difficulty": "beginner",
+   "duration_minutes": 60,
+   "description": null,
+   "standalone": false,
+   "focus_tags": [],
+   "sort_order": 900,
+   "legacy_source": "curated",
+   "exercises": [
+     {"slug": "goblet-squat", "sets": 3, "reps": [8, 12], "rest": 90},
+     {"slug": "push-up", "sets": 3, "reps": [8, 15], "rest": 60},
+     {"slug": "dumbbell-row", "sets": 3, "reps": [8, 12], "rest": 90},
+     {"slug": "walking-lunge", "sets": 3, "reps": [10, 12], "rest": 90},
+     {"slug": "plank", "sets": 3, "reps": [1, 1], "rest": 45}
+   ]
+  },
+  {
+   "slug": "athletic-base-day-2",
+   "name": "Full Body B",
+   "category": "athlete",
+   "difficulty": "beginner",
+   "duration_minutes": 60,
+   "description": null,
+   "standalone": false,
+   "focus_tags": [],
+   "sort_order": 901,
+   "legacy_source": "curated",
+   "exercises": [
+     {"slug": "trap-bar-deadlift", "sets": 3, "reps": [5, 8], "rest": 150},
+     {"slug": "dumbbell-bench-press", "sets": 3, "reps": [8, 12], "rest": 90},
+     {"slug": "inverted-row", "sets": 3, "reps": [8, 12], "rest": 90},
+     {"slug": "step-up", "sets": 3, "reps": [8, 10], "rest": 90},
+     {"slug": "side-plank", "sets": 3, "reps": [1, 1], "rest": 45}
+   ]
+  },
+  {
+   "slug": "athletic-base-day-3",
+   "name": "Conditioning",
+   "category": "athlete",
+   "difficulty": "beginner",
+   "duration_minutes": 60,
+   "description": null,
+   "standalone": false,
+   "focus_tags": [],
+   "sort_order": 902,
+   "legacy_source": "curated",
+   "exercises": [
+     {"slug": "kettlebell-swing", "sets": 4, "reps": [15, 20], "rest": 60, "superset": 1},
+     {"slug": "burpee", "sets": 4, "reps": [10, 10], "rest": 60, "superset": 1},
+     {"slug": "jump-rope", "sets": 3, "reps": [1, 1], "rest": 60},
+     {"slug": "russian-twist", "sets": 3, "reps": [20, 20], "rest": 45}
+   ]
+  },
+  {
+   "slug": "power-and-conditioning-day-1",
+   "name": "Power Lower",
+   "category": "athlete",
+   "difficulty": "intermediate",
+   "duration_minutes": 60,
+   "description": null,
+   "standalone": false,
+   "focus_tags": [],
+   "sort_order": 900,
+   "legacy_source": "curated",
+   "exercises": [
+     {"slug": "front-squat", "sets": 4, "reps": [3, 5], "rest": 150},
+     {"slug": "trap-bar-deadlift", "sets": 3, "reps": [3, 5], "rest": 150},
+     {"slug": "bulgarian-split-squat", "sets": 3, "reps": [8, 8], "rest": 90},
+     {"slug": "kettlebell-swing", "sets": 3, "reps": [15, 15], "rest": 60}
+   ]
+  },
+  {
+   "slug": "power-and-conditioning-day-2",
+   "name": "Power Upper",
+   "category": "athlete",
+   "difficulty": "intermediate",
+   "duration_minutes": 60,
+   "description": null,
+   "standalone": false,
+   "focus_tags": [],
+   "sort_order": 901,
+   "legacy_source": "curated",
+   "exercises": [
+     {"slug": "push-press", "sets": 4, "reps": [3, 5], "rest": 150},
+     {"slug": "barbell-bench-press", "sets": 4, "reps": [5, 5], "rest": 150},
+     {"slug": "pull-up", "sets": 4, "reps": [6, 8], "rest": 120},
+     {"slug": "dumbbell-row", "sets": 3, "reps": [10, 10], "rest": 90}
+   ]
+  },
+  {
+   "slug": "power-and-conditioning-day-3",
+   "name": "Engine",
+   "category": "athlete",
+   "difficulty": "intermediate",
+   "duration_minutes": 60,
+   "description": null,
+   "standalone": false,
+   "focus_tags": [],
+   "sort_order": 902,
+   "legacy_source": "curated",
+   "exercises": [
+     {"slug": "rowing-machine", "sets": 1, "reps": [1, 1], "rest": 120},
+     {"slug": "burpee", "sets": 5, "reps": [10, 10], "rest": 60, "superset": 1},
+     {"slug": "jump-rope", "sets": 5, "reps": [1, 1], "rest": 60, "superset": 1},
+     {"slug": "ab-wheel-rollout", "sets": 3, "reps": [8, 12], "rest": 60}
+   ]
+  },
+  {
+   "slug": "power-and-conditioning-day-4",
+   "name": "Strength Endurance",
+   "category": "athlete",
+   "difficulty": "intermediate",
+   "duration_minutes": 60,
+   "description": null,
+   "standalone": false,
+   "focus_tags": [],
+   "sort_order": 903,
+   "legacy_source": "curated",
+   "exercises": [
+     {"slug": "walking-lunge", "sets": 3, "reps": [12, 12], "rest": 60, "superset": 1},
+     {"slug": "push-up", "sets": 3, "reps": [15, 20], "rest": 60, "superset": 1},
+     {"slug": "inverted-row", "sets": 3, "reps": [10, 12], "rest": 60},
+     {"slug": "hanging-leg-raise", "sets": 3, "reps": [10, 12], "rest": 60}
+   ]
+  },
+  {
+   "slug": "powerlifting-heavy-day",
+   "name": "Heavy Day",
+   "category": "powerlifter",
+   "difficulty": "intermediate",
+   "duration_minutes": 60,
+   "description": "The three competition lifts, low reps and long rests. Leave a rep in the tank on every set.",
+   "standalone": true,
+   "focus_tags": [],
+   "sort_order": 950,
+   "legacy_source": "preset",
+   "exercises": [
+     {"slug": "back-squat", "sets": 3, "reps": [5, 5], "rest": 180},
+     {"slug": "barbell-bench-press", "sets": 3, "reps": [5, 5], "rest": 180},
+     {"slug": "deadlift", "sets": 1, "reps": [5, 5], "rest": 240},
+     {"slug": "barbell-row", "sets": 3, "reps": [8, 8], "rest": 120}
+   ]
+  },
+  {
+   "slug": "bodybuilding-push-day",
+   "name": "Push Day",
+   "category": "bodybuilder",
+   "difficulty": "intermediate",
+   "duration_minutes": 60,
+   "description": "Chest, shoulders and triceps in the eight-to-twelve range, short rests, the last two reps hard.",
+   "standalone": true,
+   "focus_tags": [],
+   "sort_order": 951,
+   "legacy_source": "preset",
+   "exercises": [
+     {"slug": "incline-barbell-bench-press", "sets": 4, "reps": [10, 10], "rest": 90},
+     {"slug": "dumbbell-bench-press", "sets": 3, "reps": [12, 12], "rest": 75},
+     {"slug": "machine-shoulder-press", "sets": 3, "reps": [12, 12], "rest": 75},
+     {"slug": "dumbbell-lateral-raise", "sets": 3, "reps": [15, 15], "rest": 60},
+     {"slug": "overhead-tricep-extension", "sets": 3, "reps": [12, 12], "rest": 60},
+     {"slug": "chest-dip", "sets": 3, "reps": [10, 10], "rest": 75}
+   ]
+  },
+  {
+   "slug": "athletic-power-day",
+   "name": "Power Day",
+   "category": "athlete",
+   "difficulty": "intermediate",
+   "duration_minutes": 60,
+   "description": "Move fast, stay fresh: explosive work first, then single-leg strength and a carry to finish.",
+   "standalone": true,
+   "focus_tags": [],
+   "sort_order": 952,
+   "legacy_source": "preset",
+   "exercises": [
+     {"slug": "jump-rope", "sets": 3, "reps": [30, 30], "rest": 60},
+     {"slug": "trap-bar-deadlift", "sets": 4, "reps": [3, 3], "rest": 150},
+     {"slug": "bulgarian-split-squat", "sets": 3, "reps": [8, 8], "rest": 90},
+     {"slug": "pull-up", "sets": 3, "reps": [8, 8], "rest": 90},
+     {"slug": "walking-lunge", "sets": 3, "reps": [12, 12], "rest": 75},
+     {"slug": "plank", "sets": 3, "reps": [45, 45], "rest": 45}
+   ]
+  }
+ ],
+ "programs": [
+  {
+   "slug": "foundations-of-movement",
+   "name": "Foundations of Movement",
+   "category": "athlete",
+   "difficulty": "beginner",
+   "weeks": 4,
+   "days_per_week": 3,
+   "description": "Learn to squat, hinge, lunge, push, pull and carry well - three short full-body days a week.",
+   "sort_order": 10,
+   "schedule": {"week_pattern": [{"day": 1, "workout": "movement-a"}, {"day": 3, "workout": "movement-b"}, {"day": 5, "workout": "movement-c"}]}
+  },
+  {
+   "slug": "agility-and-conditioning",
+   "name": "Agility & Conditioning",
+   "category": "athlete",
+   "difficulty": "intermediate",
+   "weeks": 6,
+   "days_per_week": 4,
+   "description": "Faster feet, a bigger engine and sharper changes of direction, four days a week.",
+   "sort_order": 20,
+   "schedule": {"week_pattern": [{"day": 1, "workout": "speed-and-feet"}, {"day": 2, "workout": "jump-and-throw"}, {"day": 4, "workout": "engine"}, {"day": 5, "workout": "change-of-direction"}]}
+  },
+  {
+   "slug": "functional-strength-circuits",
+   "name": "Functional Strength Circuits",
+   "category": "athlete",
+   "difficulty": "intermediate",
+   "weeks": 6,
+   "days_per_week": 4,
+   "description": "Strength you can use: loaded circuits for the lower body, upper body, whole body and carries.",
+   "sort_order": 30,
+   "schedule": {"week_pattern": [{"day": 1, "workout": "circuit-lower"}, {"day": 2, "workout": "circuit-upper"}, {"day": 4, "workout": "circuit-full-body"}, {"day": 5, "workout": "circuit-carry"}]}
+  },
+  {
+   "slug": "push-pull-legs-8wk",
+   "name": "Push / Pull / Legs",
+   "category": "bodybuilder",
+   "difficulty": "intermediate",
+   "weeks": 8,
+   "days_per_week": 6,
+   "description": "Each muscle twice a week: push, pull and legs, then again. Take the seventh day off.",
+   "sort_order": 20,
+   "schedule": {"week_pattern": [{"day": 1, "workout": "ppl-push"}, {"day": 2, "workout": "ppl-pull"}, {"day": 3, "workout": "ppl-legs"}, {"day": 4, "workout": "ppl-push"}, {"day": 5, "workout": "ppl-pull"}, {"day": 6, "workout": "ppl-legs"}]}
+  },
+  {
+   "slug": "upper-lower-8wk",
+   "name": "Upper / Lower",
+   "category": "bodybuilder",
+   "difficulty": "beginner",
+   "weeks": 8,
+   "days_per_week": 4,
+   "description": "Four days, two upper and two lower, built on machines and dumbbells to learn the feel of each muscle.",
+   "sort_order": 10,
+   "schedule": {"week_pattern": [{"day": 1, "workout": "upper-a"}, {"day": 2, "workout": "lower-a"}, {"day": 4, "workout": "upper-b"}, {"day": 5, "workout": "lower-b"}]}
+  },
+  {
+   "slug": "five-day-split",
+   "name": "Five-day body-part split",
+   "category": "bodybuilder",
+   "difficulty": "advanced",
+   "weeks": 8,
+   "days_per_week": 5,
+   "description": "One muscle group a day with high volume and effort. For lifters with a few years behind them.",
+   "sort_order": 30,
+   "schedule": {"week_pattern": [{"day": 1, "workout": "split-chest"}, {"day": 2, "workout": "split-back"}, {"day": 3, "workout": "split-shoulders"}, {"day": 4, "workout": "split-legs"}, {"day": 5, "workout": "split-arms"}]}
+  },
+  {
+   "slug": "linear-strength-base",
+   "name": "Linear Strength Base",
+   "category": "powerlifter",
+   "difficulty": "beginner",
+   "weeks": 8,
+   "days_per_week": 3,
+   "description": "Two alternating days on the barbell. Add a little weight every session for as long as every set hits its reps.",
+   "sort_order": 10,
+   "schedule": {"rotation": {"workouts": ["linear-a", "linear-b"], "training_days": [1, 3, 5]}}
+  },
+  {
+   "slug": "intermediate-strength-waves",
+   "name": "Intermediate Strength Waves",
+   "category": "powerlifter",
+   "difficulty": "intermediate",
+   "weeks": 10,
+   "days_per_week": 4,
+   "description": "One lift a day in three-week waves - fives, triples, singles - each wave a little heavier than the last.",
+   "sort_order": 20,
+   "schedule": {"week_pattern": [{"day": 1, "workout": "waves-squat"}, {"day": 2, "workout": "waves-bench"}, {"day": 4, "workout": "waves-deadlift"}, {"day": 5, "workout": "waves-press"}]}
+  },
+  {
+   "slug": "meet-prep-peak",
+   "name": "Meet Prep Peak",
+   "category": "powerlifter",
+   "difficulty": "advanced",
+   "weeks": 8,
+   "days_per_week": 4,
+   "description": "Eight weeks to a meet: heavy singles and triples on the competition lifts, lighter the final week.",
+   "sort_order": 30,
+   "schedule": {"week_pattern": [{"day": 1, "workout": "peak-squat"}, {"day": 2, "workout": "peak-bench"}, {"day": 4, "workout": "peak-deadlift"}, {"day": 5, "workout": "peak-bench-volume"}]}
+  },
+  {
+   "slug": "barbell-foundations",
+   "name": "Barbell Foundations",
+   "category": "powerlifter",
+   "difficulty": "beginner",
+   "weeks": 8,
+   "days_per_week": 3,
+   "description": "Two alternating days of the big barbell lifts. Add weight whenever every set hits its reps.",
+   "sort_order": 900,
+   "legacy_source": "curated",
+   "schedule": {"rotation": {"workouts": ["barbell-foundations-day-1", "barbell-foundations-day-2"], "training_days": [1, 3, 5]}}
+  },
+  {
+   "slug": "peak-strength-block",
+   "name": "Peak Strength Block",
+   "category": "powerlifter",
+   "difficulty": "intermediate",
+   "weeks": 6,
+   "days_per_week": 4,
+   "description": "Heavy triples on squat, bench and deadlift, with the accessories that move them.",
+   "sort_order": 900,
+   "legacy_source": "curated",
+   "schedule": {"rotation": {"workouts": ["peak-strength-block-day-1", "peak-strength-block-day-2", "peak-strength-block-day-3", "peak-strength-block-day-4"], "training_days": [1, 2, 4, 5]}}
+  },
+  {
+   "slug": "upper-lower-builder",
+   "name": "Upper / Lower Builder",
+   "category": "bodybuilder",
+   "difficulty": "intermediate",
+   "weeks": 8,
+   "days_per_week": 4,
+   "description": "Four sessions in the 6-15 rep range, each muscle twice a week, arms finished in supersets.",
+   "sort_order": 900,
+   "legacy_source": "curated",
+   "schedule": {"rotation": {"workouts": ["upper-lower-builder-day-1", "upper-lower-builder-day-2", "upper-lower-builder-day-3", "upper-lower-builder-day-4"], "training_days": [1, 2, 4, 5]}}
+  },
+  {
+   "slug": "push-pull-legs",
+   "name": "Push Pull Legs",
+   "category": "bodybuilder",
+   "difficulty": "intermediate",
+   "weeks": 8,
+   "days_per_week": 6,
+   "description": "Pressing, pulling and legs on their own days, run twice a week for volume.",
+   "sort_order": 900,
+   "legacy_source": "curated",
+   "schedule": {"rotation": {"workouts": ["push-pull-legs-day-1", "push-pull-legs-day-2", "push-pull-legs-day-3"], "training_days": [1, 2, 3, 4, 5, 6]}}
+  },
+  {
+   "slug": "athletic-base",
+   "name": "Athletic Base",
+   "category": "athlete",
+   "difficulty": "beginner",
+   "weeks": 6,
+   "days_per_week": 3,
+   "description": "Full-body strength, single-leg work and a conditioning finisher - the base everything else is built on.",
+   "sort_order": 900,
+   "legacy_source": "curated",
+   "schedule": {"rotation": {"workouts": ["athletic-base-day-1", "athletic-base-day-2", "athletic-base-day-3"], "training_days": [1, 3, 5]}}
+  },
+  {
+   "slug": "power-and-conditioning",
+   "name": "Power and Conditioning",
+   "category": "athlete",
+   "difficulty": "intermediate",
+   "weeks": 8,
+   "days_per_week": 4,
+   "description": "Explosive lifts early in the session, strength next, conditioning to finish.",
+   "sort_order": 900,
+   "legacy_source": "curated",
+   "schedule": {"rotation": {"workouts": ["power-and-conditioning-day-1", "power-and-conditioning-day-2", "power-and-conditioning-day-3", "power-and-conditioning-day-4"], "training_days": [1, 2, 4, 5]}}
+  }
+ ]
+}

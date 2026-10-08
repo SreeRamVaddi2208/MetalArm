@@ -83,19 +83,25 @@ Every style uses tabular numerals.
 | `line_chart(data)` | chart | One accent line, dots only where `mark` is set (the latest point, records) |
 | `week_strip`, `month_calendar`, `body_map` | calendar, body_map | |
 | `toast()` and `ToastState.show(message, icon)` | toast | Surface-2, near the bottom, 3 s |
+| `program_card`, `program_shelf` | library | Name, one line, weeks · days · level; a "For your path" pill when the server says so |
+| `workout_card` | library | A ListRow: duration · exercises · equipment |
+| `path_chip(label, selected, own, href)` | library | A training path; the user's own marked with a dot |
+| `schedule_grid(weeks)` | library | Weeks by days; rest days muted; scrolls sideways in its own box |
 
 ## Information architecture
 
 | Tab | Root | Under it |
 |---|---|---|
 | Home | `/home` | `/leaderboard`, `/notifications`, `/u/<id>` |
-| Train | `/train` (the live workout or its summary when there is one) | `/train/exercises`, `/train/routine/<id>` (and `/new`), `/train/program/<id or slug>`, `/exercise/<id>` |
+| Train | `/train` (the live workout or its summary when there is one) | `/train/routine/<id>` (and `/new`), `/train/program/<id>` (your own programs) |
+| Library | `/library` | `/library/path/<category>`, `/library/program/<slug>`, `/library/workout/<slug>`, `/library/exercises`, `/exercise/<id>` |
 | Progress | `/progress` | `/progress/history`, `/progress/measurements`, `/progress/recovery`, `/session/<id>`, `/summary/<yyyy-mm>` |
 | Profile | `/profile` | `/profile/people`, `/quests`, `/duels`, `/parties`, `/rewards`, `/about/credits` |
 
-Signed out, there are `/login` and `/signup`; a new account then goes to `/welcome`. The old URLs redirect:
-- `/workout`, `/library` and `/routines` go to `/train`;
-- `/explore` goes to `/train/exercises`, or to `/profile/people` with `?tab=people`;
+Signed out, there are `/login` and `/signup`; a new account then goes to `/welcome`. Old URLs redirect:
+- `/workout` and `/routines` go to `/train`;
+- `/explore` and `/train/exercises` go to `/library/exercises`; `/explore?tab=people` goes to `/profile/people`;
+- `/train/program/<curated slug>` goes to `/library`;
 - `/you` goes to `/progress`;
 - `/dashboard` goes to `/home`;
 - `/gallery` goes to `/design-system`.
@@ -113,3 +119,49 @@ Signed out, there are `/login` and `/signup`; a new account then goes to `/welco
    - `pytest frontend/tests` covers tokens and contrast;
    - `node scripts/e2e/screens.mjs <out> <email> <pw> --widths 360,390,430` checks for horizontal overflow;
    - look at the captures against the ten rules.
+
+## iOS
+
+The iPhone app (`ios/MetalARM`) runs on the same system, with the same tokens and rules, rebuilt in SwiftUI.
+
+- **Tokens:** `Theme/Theme.swift`, value for value with `theme.py`:
+  - `Theme.bg`, `surface`, `surface2`, `border`, `text`, `text2`, `text3`, `accent`, `accentSoft`, `onAccent`, `danger`;
+  - `Theme.tier(_:)`, the rank tiers;
+  - fonts `display`, `titleLG`, `title`, `body`, `label`, `caption`, which scale with Dynamic Type through `relativeTo:`;
+  - spacing `Theme.Space.s4…s48`, `gutter`, `touch` (48), `iconHit` (44), `radius` (12) and `radiusSheet` (16).
+- **Primitives:** `Theme/Components.swift`, the twins of `ui/`:
+
+  | Web (`ui/`) | iOS |
+  |---|---|
+  | `button(variant=…)` | `.buttonStyle(.primary / .secondary / .ghost / .danger)` |
+  | `icon_button` | `IconButton` |
+  | `card` | `.card()` |
+  | `list_row`, `rows` | `ListRow`, `RowGroup` |
+  | `section` | `SectionBlock` |
+  | `chip` | `Chip` |
+  | `segmented` | `Segmented` |
+  | `stat_tile` | `StatTile` |
+  | `progress_bar` | `ProgressBar` |
+  | `pill` | `Pill` |
+  | `rank_badge` | `RankBadge` |
+  | `avatar` | `Avatar` |
+  | `empty_state`, `error_state` | `EmptyState`, `ErrorState` |
+  | `skeleton` | `Skeleton` |
+  | `shell(pinned=…)` | `.pinnedPrimary { }` |
+
+- **Enforcement:** `scripts/check_ios_tokens.py`, which runs as `tests/test_ios_tokens.py` in this suite. It fails on any of these outside `Theme/`:
+  - a raw colour or hex value;
+  - a fixed font size or a system text style;
+  - a numeric corner radius;
+  - an old token name;
+  - a tier colour outside `RankBadge` and `LevelUpView`;
+  - a `Theme.swift` colour that differs from `theme.py`.
+
+  `ShareCard.swift` is exempt, because it renders a fixed-size image. A single line can opt out with `// token-exempt: <why>`.
+- **Tabs:** Home, Train, Library, Progress and Profile, each in its own `NavigationStack`, so a list pushes its detail. The leaderboard is reached from Home's "See all".
+
+**To add an iOS screen:**
+1. Build it from `Components.swift`, with `.screen()` for the frame and `.pinnedPrimary` for the one primary.
+2. Give each list a `Skeleton`, an `EmptyState` and an `ErrorState`.
+3. Give its controls `accessibilityIdentifier`s for `MetalARMUITests`.
+4. Run `python scripts/check_ios_tokens.py`.

@@ -2,8 +2,9 @@
 //  LeaderboardView.swift
 //  MetalARM
 //
-//  The Ranks tab: your party's weekly workout leaderboard. There is no global
-//  board - parties are how friends compete.
+//  The leaderboard, opened from Home: your party's weekly workout board, this
+//  week's league, and the party raid. There is no global board - parties are
+//  how friends compete.
 //
 
 import SwiftUI
@@ -17,48 +18,41 @@ struct LeaderboardView: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 10) {
-                HStack {
-                    Text("Ranks")
-                        .font(Theme.display(28))
-                        .foregroundStyle(Theme.text)
-                    Spacer()
-                    if !model.parties.isEmpty {
-                        Menu {
-                            Button("Create a Party", systemImage: "plus") { showingCreate = true }
-                            Button("Join with Code", systemImage: "person.badge.plus") { showingJoin = true }
-                        } label: {
-                            Image(systemName: "plus.circle.fill")
-                                .font(Theme.body(24))
-                                .foregroundStyle(Theme.accent)
-                        }
-                        .accessibilityLabel("Add a party")
-                    }
-                }
-                .padding(.bottom, 6)
-
+            VStack(alignment: .leading, spacing: Theme.Space.s24) {
                 if let league = model.league {
-                    leagueCard(league)
+                    leagueSection(league)
                 }
                 if model.parties.isEmpty {
                     if !model.isBusy { emptyState }
                 } else {
-                    partyHeader
+                    partySection
                     if let raid = model.partyRaid {
-                        raidCard(raid)
-                    }
-                    ForEach(model.partyBoard?.entries ?? []) { entry in
-                        row(entry)
+                        raidSection(raid)
                     }
                     if let party = model.selectedParty, let code = party.inviteCode {
-                        inviteCard(party: party, code: code)
+                        inviteRow(party: party, code: code)
                     }
                 }
                 ErrorText(message: model.errorMessage)
             }
-            .padding(20)
+            .screen()
         }
         .background(Theme.bg)
+        .navigationTitle("Leaderboard")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            if !model.parties.isEmpty {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Menu {
+                        Button("Create a party", systemImage: "plus") { showingCreate = true }
+                        Button("Join with a code", systemImage: "person.badge.plus") { showingJoin = true }
+                    } label: {
+                        Image(systemName: "plus").foregroundStyle(Theme.text2)
+                    }
+                    .accessibilityLabel("Add a party")
+                }
+            }
+        }
         .task { await model.loadParties() }
         .task { await model.loadLeague() }
         .refreshable { await model.loadParties() }
@@ -89,238 +83,148 @@ struct LeaderboardView: View {
     }
 
     /// This week's league: division, where the user sits, and the cutoffs.
-    private func leagueCard(_ league: League) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                Text(league.divisionLabel.uppercased())
-                    .font(Theme.display(15))
-                    .foregroundStyle(Theme.text)
-                Spacer()
-                Text("\(league.daysLeft(from: Date())) days left")
-                    .font(Theme.body(11))
-                    .foregroundStyle(Theme.dim)
-            }
+    private func leagueSection(_ league: League) -> some View {
+        SectionBlock(title: "League") {
+            Text("\(league.divisionLabel) · \(league.daysLeft(from: Date())) days left")
+                .font(Theme.caption).foregroundStyle(Theme.text2)
             if let me = league.me {
                 Text("You're \(me.position) of \(league.entries.count) with \(me.points) points")
-                    .font(Theme.body(12, .semibold))
-                    .foregroundStyle(Theme.accent)
+                    .font(Theme.body).foregroundStyle(Theme.text)
+            }
+            VStack(spacing: Theme.Space.s4) {
+                ForEach(league.entries.prefix(5)) { entry in
+                    BoardRow(position: entry.position, name: entry.displayName, detail: "",
+                             value: "\(entry.points)", isMe: entry.isMe)
+                }
             }
             Text("Top \(league.promoteCutoff) move up. Bottom places move down.")
-                .font(Theme.body(10.5))
-                .foregroundStyle(Theme.dim)
-            ForEach(league.entries.prefix(5)) { entry in
-                HStack(spacing: 10) {
-                    Text("\(entry.position)")
-                        .font(Theme.display(12))
-                        .foregroundStyle(entry.position <= league.promoteCutoff ? Theme.accent : Theme.dim)
-                        .frame(width: 20, alignment: .leading)
-                    Text(entry.displayName)
-                        .font(Theme.body(12, entry.isMe ? .bold : .regular))
-                        .foregroundStyle(entry.isMe ? Theme.accent : Theme.text)
-                    Spacer()
-                    Text("\(entry.points)")
-                        .font(Theme.body(12, .semibold))
-                        .foregroundStyle(Theme.text)
-                }
-                .accessibilityElement(children: .combine)
-            }
+                .font(Theme.caption).foregroundStyle(Theme.text2)
         }
-        .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .cardStyle(cornerRadius: 16)
-        .padding(.bottom, 6)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("leagueCard")
     }
 
     private var emptyState: some View {
-        VStack(spacing: 14) {
-            Image(systemName: "person.3.fill")
-                .font(Theme.body(40))
-                .foregroundStyle(Theme.accent)
-            Text("Train with friends")
-                .font(Theme.display(22))
-                .foregroundStyle(Theme.text)
-            Text("Create a party and share its invite code, or join one. Members are ranked by workout points each week.")
-                .font(Theme.body(14))
-                .foregroundStyle(Theme.dim)
-                .multilineTextAlignment(.center)
-            Button("Create a Party") { showingCreate = true }
-                .buttonStyle(PrimaryButtonStyle())
+        VStack(spacing: Theme.Space.s12) {
+            EmptyState(systemImage: "person.3",
+                       line: "Create a party and share its code, or join one. Members are ranked by workout points each week.")
+            Button("Create a party") { showingCreate = true }
+                .buttonStyle(.primary)
                 .accessibilityIdentifier("createPartyButton")
-            Button("Join with Invite Code") { showingJoin = true }
-                .buttonStyle(SecondaryButtonStyle())
+            Button("Join with an invite code") { showingJoin = true }
+                .buttonStyle(.secondary)
                 .accessibilityIdentifier("joinPartyButton")
         }
-        .padding(.top, 40)
     }
 
-    private var partyHeader: some View {
-        HStack {
+    private var partySection: some View {
+        SectionBlock(title: model.selectedParty?.name ?? "Your party") {
             if model.parties.count > 1 {
-                Menu {
-                    ForEach(model.parties) { party in
-                        Button(party.name) { Task { await model.selectParty(party.id) } }
-                    }
-                } label: {
-                    HStack(spacing: 4) {
-                        Text(model.selectedParty?.name ?? "")
-                        Image(systemName: "chevron.down")
-                            .font(Theme.body(11, .bold))
-                    }
-                    .font(Theme.display(16))
-                    .foregroundStyle(Theme.text)
-                }
-            } else {
-                Text(model.selectedParty?.name ?? "")
-                    .font(Theme.display(16))
-                    .foregroundStyle(Theme.text)
-            }
-            Spacer()
-            Text("This Week")
-                .font(Theme.body(11.5, .bold))
-                .foregroundStyle(Theme.bg)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 6)
-                .background(Theme.accent, in: RoundedRectangle(cornerRadius: 8))
-        }
-        .padding(.bottom, 4)
-    }
-
-    private func row(_ entry: PartyBoardEntry) -> some View {
-        HStack(spacing: 12) {
-            Text("\(entry.position)")
-                .font(Theme.display(14, .heavy))
-                .foregroundStyle(entry.isMe ? Theme.accent : Theme.faint)
-                .frame(width: 20)
-            AvatarBadge(initials: initials(of: entry.displayName), size: 34, cornerRadius: 10, fontSize: 12)
-            VStack(alignment: .leading, spacing: 2) {
-                HStack(spacing: 4) {
-                    Text(entry.displayName)
-                        .font(Theme.body(13.5, .bold))
-                        .foregroundStyle(Theme.text)
-                    if entry.isMe {
-                        Text("(you)")
-                            .font(Theme.body(13.5, .medium))
-                            .foregroundStyle(Theme.dim)
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: Theme.Space.s8) {
+                        ForEach(model.parties) { party in
+                            Chip(label: party.name, selected: party.id == model.selectedParty?.id) {
+                                Task { await model.selectParty(party.id) }
+                            }
+                        }
                     }
                 }
-                Text("\(entry.workouts) workout\(entry.workouts == 1 ? "" : "s") · \(RankTitle.of(entry.rank))")
-                    .font(Theme.body(11))
-                    .foregroundStyle(Theme.dim)
             }
-            Spacer()
-            Text("\(entry.points)")
-                .font(Theme.display(13))
-                .foregroundStyle(entry.isMe ? Theme.text : Theme.dim)
+            Text("This week").font(Theme.caption).foregroundStyle(Theme.text2)
+            VStack(spacing: Theme.Space.s4) {
+                ForEach(model.partyBoard?.entries ?? []) { entry in
+                    BoardRow(position: entry.position, name: entry.displayName,
+                             detail: "\(entry.workouts) workout\(entry.workouts == 1 ? "" : "s")",
+                             value: "\(entry.points)", isMe: entry.isMe, rank: entry.rank)
+                        .accessibilityIdentifier("partyRow-\(entry.displayName)")
+                }
+            }
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 12)
-        .background(entry.isMe ? Theme.accent.opacity(0.16) : Color.clear, in: RoundedRectangle(cornerRadius: 14))
-        .overlay(RoundedRectangle(cornerRadius: 14).stroke(entry.isMe ? Theme.accent.opacity(0.3) : Color.clear))
     }
 
     /// This week's party boss: HP, idle-day healing, and the top hitters.
-    private func raidCard(_ raid: PartyRaid) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(alignment: .firstTextBaseline) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("PARTY RAID")
-                        .font(Theme.body(11, .bold))
-                        .kerning(1)
-                        .foregroundStyle(Theme.dim)
-                    Text(raid.name)
-                        .font(Theme.display(20))
-                        .foregroundStyle(Theme.text)
-                }
+    private func raidSection(_ raid: PartyRaid) -> some View {
+        SectionBlock(title: "Party raid") {
+            HStack {
+                Text(raid.name).font(Theme.body).foregroundStyle(Theme.text)
                 Spacer()
                 if raid.defeated {
-                    Text("DEFEATED")
-                        .font(Theme.body(11, .bold))
-                        .foregroundStyle(Theme.bg)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(Theme.accent, in: RoundedRectangle(cornerRadius: 6))
+                    Pill(label: "Defeated")
                 } else {
                     let days = raid.daysLeft()
-                    Text("\(days) day\(days == 1 ? "" : "s") left")
-                        .font(Theme.body(12, .semibold))
-                        .foregroundStyle(Theme.dim)
+                    Text("\(days) day\(days == 1 ? "" : "s") left").font(Theme.caption).foregroundStyle(Theme.text2)
                 }
             }
-            GeometryReader { geometry in
-                ZStack(alignment: .leading) {
-                    Capsule().fill(Theme.bg)
-                    Capsule()
-                        .fill(LinearGradient(colors: [Theme.accent, Theme.accentDeep], startPoint: .leading, endPoint: .trailing))
-                        .frame(width: geometry.size.width * max(0, min(1, raid.hpFraction)))
-                }
-            }
-            .frame(height: 10)
-            .accessibilityElement()
-            .accessibilityLabel("Boss health")
-            .accessibilityValue("\(raid.hpRemaining) of \(raid.maxHp)")
-            HStack {
-                Text("\(raid.hpRemaining.formatted()) / \(raid.maxHp.formatted()) HP")
-                Spacer()
-                if raid.healed > 0 && !raid.defeated {
-                    Text("+\(raid.healed.formatted()) healed on idle days")
-                }
-            }
-            .font(Theme.body(11.5))
-            .foregroundStyle(Theme.dim)
+            ProgressBar(progress: raid.hpFraction,
+                        label: "\(raid.hpRemaining.formatted()) / \(raid.maxHp.formatted()) HP"
+                            + (raid.healed > 0 && !raid.defeated ? " · +\(raid.healed.formatted()) healed on idle days" : ""))
+                .accessibilityLabel("Boss health")
             if raid.hitters.isEmpty {
-                Text("No hits yet. Finish a workout to strike first.")
-                    .font(Theme.body(12))
-                    .foregroundStyle(Theme.dim)
+                Text("No hits yet. Finish a workout to strike first.").font(Theme.body).foregroundStyle(Theme.text2)
             } else {
-                ForEach(raid.hitters.prefix(3)) { hitter in
-                    HStack {
-                        Text(hitter.displayName + (hitter.isMe ? " (you)" : ""))
-                            .font(Theme.body(13, hitter.isMe ? .bold : .regular))
-                            .foregroundStyle(Theme.text)
-                        Spacer()
-                        Text("\(hitter.damage.formatted()) dmg")
-                            .font(Theme.display(13))
-                            .foregroundStyle(hitter.isMe ? Theme.text : Theme.dim)
+                RowGroup {
+                    ForEach(raid.hitters.prefix(3)) { hitter in
+                        ListRow(title: hitter.displayName + (hitter.isMe ? " (you)" : ""),
+                                trailing: "\(hitter.damage.formatted()) dmg")
                     }
                 }
             }
         }
-        .padding(16)
-        .cardStyle(cornerRadius: 16)
-        .padding(.bottom, 6)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("raidCard")
     }
 
-    private func inviteCard(party: Party, code: String) -> some View {
+    private func inviteRow(party: Party, code: String) -> some View {
         HStack {
-            VStack(alignment: .leading, spacing: 2) {
-                Text("INVITE CODE")
-                    .font(Theme.body(11))
-                    .kerning(0.5)
-                    .foregroundStyle(Theme.dim)
-                Text(code)
-                    .font(Theme.display(20))
-                    .foregroundStyle(Theme.text)
-                    .textSelection(.enabled)
+            VStack(alignment: .leading, spacing: 0) {
+                Text("Invite code").font(Theme.caption).foregroundStyle(Theme.text2)
+                Text(code).font(Theme.title).foregroundStyle(Theme.text).textSelection(.enabled)
             }
             Spacer()
             ShareLink(item: "Join my MetalArm party \"\(party.name)\" with invite code \(code).") {
-                Label("Share", systemImage: "square.and.arrow.up")
-                    .font(Theme.body(13, .semibold))
+                Label("Share", systemImage: "square.and.arrow.up").font(Theme.label)
             }
-            .foregroundStyle(Theme.accent)
+            .buttonStyle(MAButtonStyle(kind: .ghost, full: false))
         }
-        .padding(14)
-        .cardStyle(cornerRadius: 14)
-        .padding(.top, 8)
+        .card()
+    }
+}
+
+/// One line of a board: place, name (rank beside it), the number it is
+/// ranked by. Yours is tinted.
+struct BoardRow: View {
+    let position: Int
+    let name: String
+    var detail: String = ""
+    let value: String
+    let isMe: Bool
+    var rank: String?
+
+    var body: some View {
+        HStack(spacing: Theme.Space.s12) {
+            Text("\(position)").font(Theme.label).foregroundStyle(Theme.text2).frame(width: Theme.Space.s24)
+            Avatar(initials: initials(of: name))
+            VStack(alignment: .leading, spacing: 0) {
+                HStack(spacing: Theme.Space.s8) {
+                    Text(name + (isMe ? " (you)" : "")).font(Theme.body).foregroundStyle(Theme.text).lineLimit(1)
+                    if let rank { RankBadge(rank: rank, size: 24) }
+                }
+                if !detail.isEmpty {
+                    Text(detail).font(Theme.caption).foregroundStyle(Theme.text2)
+                }
+            }
+            Spacer()
+            Text(value).font(Theme.body).foregroundStyle(Theme.text2)
+        }
+        .padding(.horizontal, Theme.Space.s8)
+        .frame(minHeight: Theme.rowMin)
+        .background(isMe ? Theme.accentSoft : .clear, in: RoundedRectangle(cornerRadius: Theme.radius))
+        .accessibilityElement(children: .combine)
     }
 }
 
 #Preview {
-    LeaderboardView()
+    NavigationStack { LeaderboardView() }
         .environment(AppModel(api: MockAPIClient()))
         .preferredColorScheme(.dark)
 }
