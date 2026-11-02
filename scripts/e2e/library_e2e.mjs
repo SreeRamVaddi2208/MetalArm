@@ -106,7 +106,7 @@ try {
 
     // --- What the Library leads with -------------------------------------
     const home = (await api('/library/home', 'GET', null, who.token)).body;
-    await page.goto(`${UI}/library`);
+    await page.goto(`${UI}/explore?tab=programs`);
     await page.locator('.ma-shelf .ma-program-card').first().waitFor({ timeout: 20000 });
     const shownPrograms = await page.locator('.ma-shelf .ma-program-card').evaluateAll(
       (cards) => cards.map((c) => c.getAttribute('data-program')));
@@ -169,7 +169,7 @@ try {
       await logOne(page);
       await finishAndCheckPoints(page, who.token, 'program day');
       await page.getByRole('button', { name: 'Done', exact: true }).click();
-      await page.goto(`${UI}/library`);
+      await page.goto(`${UI}/explore?tab=programs`);
       const card = page.locator('.ma-your-program');
       check('"Your program" sits on top and has moved on',
         await ok(card.getByText('Week 1 · Day 3').waitFor({ timeout: 15000 })));
@@ -190,7 +190,7 @@ try {
   const ctx = await browser.newContext({ viewport: { width: 390, height: 860 }, deviceScaleFactor: 2 });
   const page = await ctx.newPage();
   await signIn(page, who);
-  await page.goto(`${UI}/library`);
+  await page.goto(`${UI}/explore?tab=programs`);
   check('a choose-your-path prompt appears',
     await ok(page.getByRole('button', { name: 'Choose your path' }).waitFor({ timeout: 20000 })));
   check('all three paths are offered, with equal weight', (await page.locator('.ma-other-path').count()) === 3);

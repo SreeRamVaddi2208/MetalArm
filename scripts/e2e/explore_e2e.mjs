@@ -6,7 +6,7 @@
 // Against a RUNNING stack. A fresh bodybuilder:
 //   - every library exercise's artwork is actually served (all of them, not a sample);
 //   - search finds by alias ("rdl"), remembers recent searches;
-//   - a muscle chip, then an equipment chip, list exactly what the API counts;
+//   - a muscle tile, then an equipment chip, list exactly what the API counts;
 //   - Exercise Detail shows the picture;
 //   - the Library leads with the user's path; a program shows its schedule
 //     and can be followed;
@@ -93,12 +93,13 @@ try {
     await page.waitForURL('**/home', { timeout: 30000 });
 
     // --- Search -------------------------------------------------------------
-    await page.goto(`${UI}/library/exercises`);
-    const total = (await api('/exercises/browse?limit=1', 'GET', null, token)).body.total;
-    check(`the library opens on all ${total} exercises`, await seen(page.getByText(`${total} exercises`, { exact: true }), 20000));
+    await page.goto(`${UI}/explore?tab=exercises`);
+    check('Exercises opens on the muscle and equipment grids', await seen(page.locator('.ma-muscle-tile').first(), 20000));
+    check('every muscle tile shows its figure', await page.locator('.ma-muscle-tile img').first()
+      .evaluate((el) => el.complete && el.naturalWidth > 0).catch(() => false));
     await page.screenshot({ path: join(dir, '01-exercises.png'), fullPage: true });
     await overflow('Exercises');
-    const box = page.getByPlaceholder('Search exercises');
+    const box = page.getByPlaceholder('Search for exercises');
     await box.fill('rdl');
     check('search finds Romanian Deadlift by "rdl"', await seen(page.getByText('Romanian Deadlift', { exact: true })));
     await page.screenshot({ path: join(dir, '02-search.png'), fullPage: true });
@@ -107,7 +108,7 @@ try {
     await page.waitForURL('**/exercise/**', { timeout: 15000 });
     const img = page.locator('img[alt="Romanian Deadlift"]');
     await img.waitFor({ timeout: 15000 }).catch(() => {});
-    check('Exercise Detail shows its picture',
+    check('Exercise Detail shows its figure',
       await img.evaluate((el) => el.complete && el.naturalWidth > 0).catch(() => false));
     await page.goBack();
     await box.waitFor({ timeout: 15000 });
@@ -115,24 +116,34 @@ try {
     check('a recent search is offered', await seen(page.locator('.ma-recents').getByText('rdl', { exact: true }), 8000));
 
     // --- Muscle, then equipment ---------------------------------------------
-    await page.getByRole('button', { name: 'Chest', exact: true }).click();
+    await page.locator('.ma-muscle-tile', { hasText: 'Chest' }).click();
     const chest = (await api('/exercises/browse?muscle=chest&limit=1', 'GET', null, token)).body.total;
     check(`Chest lists ${chest} exercises, as the API counts`, await seen(page.getByText(`${chest} exercises`, { exact: true })));
     await page.getByRole('button', { name: 'Dumbbell', exact: true }).click();
     const chestDb = (await api('/exercises/browse?muscle=chest&equipment=dumbbell&limit=1', 'GET', null, token)).body.total;
     check(`Chest + Dumbbell lists ${chestDb}`, await seen(page.getByText(`${chestDb} exercise${chestDb === 1 ? '' : 's'}`, { exact: true })));
     await page.waitForTimeout(500);
-    const subs = await page.locator('a[href^="/exercise/"]').allInnerTexts();
-    check('every listed exercise is a dumbbell chest exercise',
-      subs.length === chestDb && subs.every((x) => /Chest/.test(x) && /Dumbbell/.test(x)), `${subs.length}`);
+    check('every listed exercise has a figure card', (await page.locator('.ma-exercise-card').count()) === chestDb,
+      `${chestDb}`);
+    const mark = page.locator('.ma-exercise-card').first().getByRole('button', { name: 'Bookmark' });
+    await mark.click();
+    check('a bookmark takes', await page.waitForFunction(() =>
+      document.querySelector('.ma-exercise-card button[aria-label="Bookmark"]')?.getAttribute('aria-pressed') === 'true', null, { timeout: 8000 }).then(() => true, () => false));
+    const kept = (await api('/library?filter=favorites', 'GET', null, token)).body.items;
+    check('the server kept the bookmark', kept.some((i) => i.type === 'exercise'));
     await page.screenshot({ path: join(dir, '03-filtered.png'), fullPage: true });
     await overflow('Filtered list');
     await page.getByRole('button', { name: 'Clear', exact: true }).click();
-    check('Clear goes back to the whole library', await seen(page.getByText(`${total} exercises`, { exact: true })));
+    check('Clear goes back to the grids', await seen(page.locator('.ma-muscle-tile').first()));
 
     // --- Programs: the Library leads with the user's path --------------------
-    await page.goto(`${UI}/library`);
+    await page.goto(`${UI}/explore?tab=programs`);
     const shelf = page.locator('.ma-shelf .ma-program-card');
+    await shelf.first().waitFor({ timeout: 15000 });
+    const programBox = page.getByPlaceholder('Search for programs');
+    await programBox.fill('upper');
+    check('program search finds Upper/Lower', await seen(page.locator('.ma-program-hits [data-program="upper-lower-8wk"]')));
+    await programBox.fill('');
     await shelf.first().waitFor({ timeout: 15000 });
     check('three programs recommended for this path', (await shelf.count()) === 3);
     const shown = await shelf.evaluateAll((cards) => cards.map((c) => c.innerText));
@@ -169,10 +180,11 @@ try {
 
     // --- Credits ----------------------------------------------------------------
     await page.goto(`${UI}/about/credits`);
-    const credited = all.filter((e) => e.media_author && e.media_author !== 'MetalArm').length;
+    const credited = all.filter((e) => e.media_author && e.media_author !== 'MetalArm').length
+      + all.filter((e) => e.text_source_url).length;
     await page.locator('a[target="_blank"]').first().waitFor({ timeout: 15000 }).catch(() => {});
     const rows = await page.locator('a[target="_blank"]').count();
-    check(`credits list all ${credited} outside images`, rows === credited, `${rows}`);
+    check(`credits list all ${credited} outside figures and texts`, rows === credited, `${rows}`);
     await overflow('Credits');
 
     check('no uncaught errors', errors.length === 0, errors.slice(0, 3).join(' | '));

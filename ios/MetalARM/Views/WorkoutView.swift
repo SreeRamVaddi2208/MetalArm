@@ -59,7 +59,7 @@ struct WorkoutView: View {
     private var emptyState: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Theme.Space.s24) {
-                ScreenTitle("Train")
+                ScreenTitle("Workout")
                 Text("Start a workout to log sets, earn points and chase records. Your last numbers fill in for you.")
                     .font(Theme.body).foregroundStyle(Theme.text2)
                 RowGroup {

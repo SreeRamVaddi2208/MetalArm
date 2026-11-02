@@ -1,11 +1,11 @@
-"""The Library tab.
+"""The programs half of Explore, and the Library tab.
 
-/library                   your program, then what is recommended for your
+/explore (Programs)        your program, then what is recommended for your
                            path, then the other paths - two taps to a workout
+/library                   what you have kept: routines, programs, saved
 /library/path/<category>   every program and workout of one path, filtered
 /library/program/<slug>    a program: its weeks and days; Follow
 /library/workout/<slug>    a workout: exercises and targets; Start
-/library/exercises         the exercise library (pages/train.py)
 
 What leads, and in what order, is the server's decision.
 """
@@ -26,6 +26,7 @@ from metalarm.state.library import (
     LibraryWorkoutState,
     label,
 )
+from metalarm.state.saved import SAVED_TABS, SavedState
 from metalarm.state.settings import SettingsState
 from metalarm.ui.chrome import top_bar
 from metalarm.ui.library import path_chip, program_card, program_shelf, schedule_grid, workout_card
@@ -42,6 +43,7 @@ from metalarm.ui.primitives import (
     pill,
     rows,
     section,
+    segmented,
     sheet,
     skeleton,
     skeleton_rows,
@@ -122,15 +124,16 @@ def _other_paths() -> rx.Component:
     )
 
 
-def library_home_page() -> rx.Component:
+def programs_tab() -> rx.Component:
+    """Explore's Programs tab."""
     s = LibraryState
     own = AuthState.character_class
-    return shell(
-        top_bar("Library", large=True,
-                trailing=icon_button("search", "Search and filter",
-                                     href=rx.cond(own != "", f"/library/path/{own}?filters=1",
-                                                  "/library/path/athlete?filters=1"))),
-        _path_chips(own),
+    return rx.vstack(
+        rx.hstack(_path_chips(own), rx.spacer(),
+                  icon_button("sliders-horizontal", "Filter",
+                              href=rx.cond(own != "", f"/library/path/{own}?filters=1",
+                                           "/library/path/athlete?filters=1")),
+                  width="100%", align="center", spacing="2"),
         rx.cond(s.error != "", error_state(s.error, s.load)),
         rx.cond(
             s.loaded,
@@ -148,14 +151,37 @@ def library_home_page() -> rx.Component:
                     ),
                 ),
                 _other_paths(),
-                rows(list_row("Exercises", "Every exercise, by muscle and equipment",
-                              leading=rx.icon("search", size=20, color=t.TEXT_2, stroke_width=1.75),
-                              chevron=True, href="/library/exercises")),
                 spacing="6", width="100%",
             ),
             rx.vstack(skeleton("120px"), skeleton("160px"), skeleton_rows(3), spacing="4", width="100%"),
         ),
         _path_sheet(),
+        spacing="4", width="100%",
+    )
+
+
+# ---------------------------------------------------------------------------
+# /library
+# ---------------------------------------------------------------------------
+
+
+def _kept(row) -> rx.Component:
+    return list_row(row["title"], row["sub"], chevron=True, href=row["href"], class_name="ma-kept",
+                    leading=rx.cond(row["image"] != "",
+                                    rx.image(src=row["image"], width="40px", height="40px", object_fit="contain",
+                                             border_radius=t.RADIUS, background=t.SURFACE_2, loading="lazy", alt="")))
+
+
+def library_home_page() -> rx.Component:
+    s = SavedState
+    return shell(
+        top_bar("Library", large=True),
+        segmented(SAVED_TABS, s.tab, s.set_tab),
+        rx.cond(s.error != "", error_state(s.error, s.load)),
+        rx.cond(s.loaded,
+                rx.cond(s.items.length() > 0, rows(rx.foreach(s.items, _kept), class_name="ma-kept-list"),
+                        empty_state("bookmark", s.empty_note)),
+                skeleton_rows(4)),
     )
 
 
@@ -189,7 +215,7 @@ def library_path_page() -> rx.Component:
     s = LibraryState
     clear = button("Clear filters", s.clear_filters, variant="secondary")
     return shell(
-        top_bar(s.category_label, back="/library",
+        top_bar(s.category_label, back="/explore",
                 trailing=icon_button("sliders-horizontal", "Filter", on_click=s.open_filters,
                                      badge=s.filter_count)),
         _path_chips(s.category),

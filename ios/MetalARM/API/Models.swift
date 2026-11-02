@@ -144,10 +144,100 @@ struct Exercise: Codable, Equatable, Hashable, Identifiable {
     var mediaUrl: String?
     var isCustom: Bool
     var isArchived: Bool
+    var thumbnailUrl: String?
+    var illustrationUrl: String?
+    var secondaryMuscleGroups: [String]?
+    var steps: [String]?
+    var mediaLicense: String?
+    var mediaAuthor: String?
 
     var muscleLabel: String {
         primaryMuscleGroups.map { $0.replacingOccurrences(of: "_", with: " ") }.joined(separator: ", ").capitalized
     }
+
+    var secondaryLabel: String {
+        (secondaryMuscleGroups ?? []).map { $0.replacingOccurrences(of: "_", with: " ") }.joined(separator: ", ").capitalized
+    }
+
+    var howTo: [String] {
+        if let steps, !steps.isEmpty { return steps }
+        return instructions.map { [$0] } ?? []
+    }
+
+    /// Outside artwork is credited wherever it is shown; our own needs none.
+    var figureCredit: String? {
+        guard let mediaAuthor, let mediaLicense, mediaAuthor != "MetalArm" else { return nil }
+        return "Image: \(mediaAuthor), \(mediaLicense)"
+    }
+}
+
+/// A row of GET /exercises/browse.
+struct ExerciseCard: Codable, Equatable, Hashable, Identifiable {
+    var id: String
+    var name: String
+    var equipment: String
+    var primaryMuscleGroups: [String]
+    var thumbnailUrl: String?
+    var isCustom: Bool
+    var mediaAuthor: String?
+    var mediaLicense: String?
+    var mediaSourceUrl: String?
+    var textLicense: String?
+    var textSourceUrl: String?
+
+    var muscleLabel: String {
+        (primaryMuscleGroups.first ?? "").replacingOccurrences(of: "_", with: " ").capitalized
+    }
+}
+
+struct ExerciseBrowsePage: Codable, Equatable {
+    var items: [ExerciseCard]
+    var total: Int
+    var nextCursor: String?
+}
+
+/// A row of GET /library: something the user has kept.
+struct SavedItem: Codable, Equatable, Hashable, Identifiable {
+    var type: String
+    var id: String
+    var title: String
+    var subtitle: String?
+    var image: String?
+}
+
+/// GET /routines/{id}: a plan the user saved.
+struct RoutineDetail: Codable, Equatable {
+    struct Slot: Codable, Equatable {
+        var exercise: Exercise
+        var targetSets: Int?
+        var targetReps: Int?
+
+        var targetLabel: String {
+            guard let targetSets else { return exercise.muscleLabel }
+            return targetReps.map { "\(targetSets) × \($0)" } ?? "\(targetSets) sets"
+        }
+    }
+
+    var id: String
+    var name: String
+    var exercises: [Slot]
+}
+
+/// GET /programs/{id}: the user's own program and its routines.
+struct ProgramDetail: Codable, Equatable {
+    struct Routine: Codable, Equatable, Identifiable {
+        var id: String
+        var name: String
+        var exerciseCount: Int
+    }
+
+    var id: String
+    var name: String
+    var routines: [Routine]
+}
+
+struct SavedPage: Codable, Equatable {
+    var items: [SavedItem]
 }
 
 struct HistoryPoint: Codable, Equatable, Identifiable {

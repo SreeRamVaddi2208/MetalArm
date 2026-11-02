@@ -4,6 +4,7 @@
 
 package com.sreeram.metalarm
 
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.Assert.assertEquals
@@ -16,7 +17,7 @@ import org.junit.runner.RunWith
 class LibraryFlowTest : MetalArmUiTest() {
     @Test fun aWorkoutFromTheLibraryRunsToTheSummary() {
         launchSignedIn(TestConfig(path = "bodybuilder"))
-        openTab("Library")
+        openTab("Explore")
         waitFor("library-workout-back-and-biceps")
         assertTrue(exists("library-workout-chest-and-triceps"))
         // The server's order: the beginner workout leads.
@@ -48,7 +49,7 @@ class LibraryFlowTest : MetalArmUiTest() {
         launchSignedIn(TestConfig(path = "bodybuilder"))
         tap("homeStartWorkoutButton")
         waitFor("addFirstExerciseButton")
-        openTab("Library")
+        openTab("Explore")
         tap("library-workout-chest-and-triceps")
         tap("libraryStartButton")
         waitForText("Finish or discard the workout you have going first.")
@@ -56,7 +57,7 @@ class LibraryFlowTest : MetalArmUiTest() {
 
     @Test fun followingAProgram() {
         launchSignedIn(TestConfig(path = "bodybuilder"))
-        openTab("Library")
+        openTab("Explore")
         tap("library-program-upper-lower-8wk")
         waitFor("followProgramButton")
         assertTrue(exists("programSchedule"))
@@ -74,7 +75,7 @@ class LibraryFlowTest : MetalArmUiTest() {
 
     @Test fun filteringAPath() {
         launchSignedIn(TestConfig(path = "athlete"))
-        openTab("Library")
+        openTab("Explore")
         tap("librarySearchButton")
         waitFor("library-workout-athletic-press")
         tap("libraryFilterButton")
@@ -93,7 +94,7 @@ class LibraryFlowTest : MetalArmUiTest() {
 
     @Test fun withNoPathTheLibraryAsksForOne() {
         launchSignedIn()
-        openTab("Library")
+        openTab("Explore")
         waitFor("choosePathButton")
         assertTrue(exists("library-path-athlete"))
         tap("choosePathButton")
@@ -103,9 +104,41 @@ class LibraryFlowTest : MetalArmUiTest() {
         assertFalse(exists("choosePathButton"))
     }
 
+    @Test fun aSavedRoutineOpensAndStarts() {
+        launchSignedIn()
+        openTab("Library")
+        tap("saved-item-Upper Day")
+        tap("planStartButton")
+        waitGone("planStartButton")
+    }
+
+    @Test fun programSearchFindsAWorkout() {
+        launchSignedIn(TestConfig(path = "bodybuilder"))
+        openTab("Explore")
+        type("exploreSearch", "chest")
+        waitFor("library-workout-chest-and-triceps")
+    }
+
+    @Test fun exploreLeadsFromAMuscleToItsFigure() {
+        launchSignedIn(TestConfig(path = "bodybuilder"))
+        openTab("Explore")
+        tap("explore-exercises")
+        waitFor("muscle-chest")
+        compose.waitForIdle()
+        screenshot("explore-exercises")
+        tap("muscle-chest")
+        waitFor("exerciseCard-Barbell Bench Press")
+        tap("bookmark-Barbell Bench Press")
+        compose.waitUntil(REACTS) { exists(hasContentDescription("Remove bookmark")) }
+        tap("exerciseCard-Barbell Bench Press")
+        waitFor("exerciseSheetFigure")
+        Thread.sleep(1500)
+        screenshot("exercise-figure")
+    }
+
     @Test fun trainLeadsToTheLibrary() {
         launchSignedIn(TestConfig(path = "powerlifter"))
-        openTab("Train")
+        openTab("Workout")
         tap("trainToLibrary")
         tap("library-workout-squat-day")
         waitFor("library-exercise-0")

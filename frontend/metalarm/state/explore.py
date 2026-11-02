@@ -1,5 +1,5 @@
-"""Explore (overhaul 7.2): search, the muscle and equipment grids, filtered
-exercise lists, curated programs. People arrive with following (phase 4).
+"""Explore: search, the muscle and equipment grids, and the exercise cards
+they lead to. The Programs tab reads LibraryState.
 
 The server filters and pages (GET /exercises/browse); this state holds the
 current query, filters and page.
@@ -12,9 +12,11 @@ import json
 import reflex as rx
 
 from metalarm import api
+from metalarm import library_api as lapi
 from metalarm import workout_api as wapi
 from metalarm.api import ApiError
 from metalarm.state.auth import AuthState
+from metalarm.state.library import program_row, workout_row
 from metalarm.ui.body_map import paths_for
 from metalarm.workout_models import plural
 
@@ -22,8 +24,10 @@ CATEGORY_LABELS = {"powerlifter": "Powerlifter", "bodybuilder": "Bodybuilder", "
 RECENT_MAX = 6
 
 
-def _card(e: dict) -> dict[str, str]:
+def _card(e: dict, favorites: list[str] | tuple[str, ...] = ()) -> dict[str, str]:
     return {"id": str(e["id"]), "name": e["name"], "image": e.get("thumbnail_url") or "",
+            "muscle": (e.get("primary_muscle_groups") or [""])[0].replace("_", " ").capitalize(),
+            "favorite": "1" if str(e["id"]) in favorites else "",
             "sub": " · ".join([m.replace("_", " ").capitalize() for m in e.get("primary_muscle_groups") or []][:2]
                               + [e["equipment"].replace("_", " ").capitalize().replace("Ez bar", "EZ bar")])}
 
@@ -47,7 +51,11 @@ def _rows(program: dict) -> list[dict[str, str]]:
 class ExploreState(rx.State):
     muscles: list[dict] = []
     equipment: list[dict] = []
-    tab: str = "Exercises"
+    tab: str = "Programs"
+    favorites: list[str] = []
+    # Every program and workout, for the Programs tab's search.
+    all_programs: list[dict[str, str]] = []
+    all_workouts: list[dict[str, str]] = []
     loaded: bool = False
     error: str = ""
 
@@ -73,6 +81,16 @@ class ExploreState(rx.State):
     @rx.var
     def listing(self) -> bool:
         return bool(self.query.strip() or self.muscle or self.gear)
+
+    @rx.var
+    def program_hits(self) -> list[dict[str, str]]:
+        needle = self.query.strip().casefold()
+        return [p for p in self.all_programs if needle in p["name"].casefold()] if needle else []
+
+    @rx.var
+    def workout_hits(self) -> list[dict[str, str]]:
+        needle = self.query.strip().casefold()
+        return [w for w in self.all_workouts if needle in w["name"].casefold()] if needle else []
 
     @rx.var
     def recents(self) -> list[str]:
@@ -104,29 +122,34 @@ class ExploreState(rx.State):
         # A program sheet left open on the last visit must not cover this one.
         self.program_slug = ""
         wanted = str(self.router.url.query_parameters.get("tab", "")).capitalize()
-        if wanted in ("Programs", "Exercises", "People"):
+        if wanted in ("Programs", "Exercises"):
             self.tab = wanted
         try:
             data = await api.taxonomy(token)
             curated = await wapi.curated_programs(token)
+            kept = await wapi.library(token, filter="favorites", limit=100)
+            programs = await lapi.programs(token)
+            workouts = await lapi.workouts(token)
         except ApiError as exc:
             self.error = exc.detail
             return
+        self.all_programs = [program_row(p) for p in programs]
+        self.all_workouts = [workout_row(w) for w in workouts]
+        self.favorites = [str(i["id"]) for i in kept.get("items") or [] if i.get("type") == "exercise"]
         svg = {m["code"]: m["svg_path_ids"] for m in data.get("muscle_groups", [])}
         # Each tile lights its own muscle, full strength.
         self.muscles = [
             {"code": m["code"], "label": m["display_name"],
-             "paths": paths_for({m["code"]: 1.0}, svg), "side": m["body_side"]}
+             "paths": paths_for({m["code"]: 1.0}, svg), "side": m["body_side"],
+             "image": f"/figures/muscles/{m['code']}.png"}
             for m in data.get("muscle_groups", []) if m["browsable"]
         ]
         self.equipment = [
-            {"code": e["code"], "label": e["display_name"]}
+            {"code": e["code"], "label": e["display_name"], "image": f"/figures/equipment/{e['code']}.png"}
             for e in data.get("equipment", []) if e["browsable"]
         ]
         self._set_programs(curated)
         self.loaded = True
-        # /train/exercises lists the whole library until something narrows it.
-        self.tab = "Exercises"
         await self._search()
 
     def _set_programs(self, curated: list[dict]) -> None:
@@ -140,8 +163,10 @@ class ExploreState(rx.State):
             for p in curated
         ]
 
-    def set_tab(self, tab: str) -> None:
+    async def set_tab(self, tab: str):
         self.tab = tab
+        if tab == "Exercises":
+            await self._search()
 
     # --- search and filters ---------------------------------------------
 
@@ -155,7 +180,7 @@ class ExploreState(rx.State):
             self.error = exc.detail
             self.busy = False
             return
-        cards = [_card(e) for e in page.get("items") or []]
+        cards = [_card(e, self.favorites) for e in page.get("items") or []]
         self.results = (self.results + cards) if more else cards
         self.total = page.get("total") or 0
         self.cursor = page.get("next_cursor") or ""
@@ -197,6 +222,16 @@ class ExploreState(rx.State):
         self.muscle = self.muscle_label = self.gear = self.gear_label = ""
         self.query = ""
         await self._search()
+
+    async def toggle_favorite(self, exercise_id: str):
+        on = exercise_id not in self.favorites
+        try:
+            await wapi.favorite(await self._token(), "exercise", exercise_id, on)
+        except ApiError as exc:
+            self.error = exc.detail
+            return
+        self.favorites = [*self.favorites, exercise_id] if on else [f for f in self.favorites if f != exercise_id]
+        self.results = [{**r, "favorite": "1" if on else ""} if r["id"] == exercise_id else r for r in self.results]
 
     async def more(self):
         if self.cursor:

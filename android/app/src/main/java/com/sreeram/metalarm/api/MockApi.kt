@@ -153,6 +153,43 @@ class MockApi(
 
     // Exercises and progress
 
+    private val favoriteIds = mutableSetOf<String>()
+
+    override suspend fun browseExercises(query: String, muscle: String?, equipment: String?, cursor: String?): ExerciseBrowsePage {
+        val cards = searchExercises(query)
+            .filter { muscle == null || muscle in it.primaryMuscleGroups }
+            .filter { equipment == null || it.equipment == equipment }
+            .map { ExerciseCard(it.id, it.name, it.equipment, it.primaryMuscleGroups, "/exercises/diagrams/barbell-bench-press.png", it.isCustom) }
+        return ExerciseBrowsePage(cards, cards.size)
+    }
+
+    override suspend fun exercise(id: String): Exercise {
+        check()
+        return library.first { it.id == id }.copy(thumbnailUrl = "/exercises/diagrams/barbell-bench-press.png")
+    }
+
+    override suspend fun savedItems(filter: String): List<SavedItem> {
+        check()
+        if (filter == "routines") return listOf(SavedItem("routine", "routine-1", "Upper Day", "1 exercise"))
+        if (filter == "programs") return listOf(SavedItem("program", "program-1", "My Split", "1 routine"))
+        return library.filter { it.id in favoriteIds }.map { SavedItem("exercise", it.id, it.name, it.muscleLabel, it.thumbnailUrl) }
+    }
+
+    override suspend fun setFavorite(type: String, id: String, on: Boolean) {
+        check()
+        if (on) favoriteIds += id else favoriteIds -= id
+    }
+
+    override suspend fun routine(id: String): RoutineDetail =
+        RoutineDetail(id, "Upper Day", listOf(RoutineSlot(exercise(ContractFixtures.benchID), 3, 8)))
+
+    override suspend fun program(id: String): ProgramDetail {
+        check()
+        return ProgramDetail(id, "My Split", listOf(ProgramRoutine("routine-1", "Upper Day", 1)))
+    }
+
+    override suspend fun startRoutine(id: String): WorkoutSession = startSession(null)
+
     override suspend fun searchExercises(query: String): List<Exercise> {
         check()
         val needle = query.trim().lowercase()

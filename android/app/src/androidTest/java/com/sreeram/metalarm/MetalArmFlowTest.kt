@@ -3,6 +3,9 @@
 
 package com.sreeram.metalarm
 
+import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeUp
 import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.performClick
@@ -252,7 +255,10 @@ class MetalArmFlowTest : MetalArmUiTest() {
         tap("cancelDeleteButton")
         waitGone("deleteAccountSheet")
 
-        // Sign out of all devices, confirmed: back to sign-in.
+        // Sign out of all devices, confirmed: back to sign-in. Scrolled up by
+        // hand first: at the screen's edge the row is behind the floating bar.
+        compose.onRoot().performTouchInput { swipeUp(startY = centerY, endY = top) }
+        compose.waitForIdle()
         tap("signOutEverywhereButton")
         tap("confirmSignOutEverywhere")
         waitFor("authSubmitButton")
@@ -287,7 +293,7 @@ class MetalArmFlowTest : MetalArmUiTest() {
 
     @Test fun everyTabLoads() {
         launchSignedIn()
-        val checks = listOf("Train" to "workoutStartButton", "Library" to "choosePathButton", "Progress" to "topSetUnit", "Profile" to "characterCard")
+        val checks = listOf("Workout" to "workoutStartButton", "Explore" to "choosePathButton", "Progress" to "topSetUnit", "Profile" to "characterCard")
         for ((tab, tag) in checks) {
             openTab(tab)
             waitFor(tag)

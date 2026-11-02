@@ -131,7 +131,7 @@ final class MetalARMUITests: MetalARMUITestCase {
     func testStartingAReadyMadeWorkout() throws {
         // Ready-made workouts live in the Library now; Train links there.
         let app = launchSignedIn(["-UITestPath", "powerlifter"])
-        openTab(app, "Train")
+        openTab(app, "Workout")
         let browse = app.buttons["trainToLibrary"]
         XCTAssertTrue(browse.waitForExistence(timeout: reacts), "Train does not lead to the Library")
         browse.tap()
@@ -267,6 +267,83 @@ final class MetalARMUITests: MetalARMUITestCase {
         XCTAssertTrue(app.buttons["doneButton"].exists, "Summary missing behind the celebration")
     }
 
+    // Bookmarks and saved routines against the real backend: same opt-in.
+    @MainActor
+    func testLiveBookmarksAndSavedRoutine() throws {
+        try XCTSkipUnless(ProcessInfo.processInfo.environment["METALARM_LIVE_UI"] == "1",
+                          "Start the backend and set TEST_RUNNER_METALARM_LIVE_UI=1 to run")
+        let app = XCUIApplication()
+        app.launchArguments = ["-UITestResetOnboarding"]
+        app.launchEnvironment["METALARM_BACKEND_URL"] =
+            ProcessInfo.processInfo.environment["METALARM_BACKEND_URL"] ?? "http://127.0.0.1:8000"
+        app.launch()
+        XCTAssertTrue(app.buttons["getStartedButton"].waitForExistence(timeout: 10))
+        app.buttons["getStartedButton"].tap()
+        type("Live Tester", into: app.textFields["displayNameField"])
+        type("live-\(UUID().uuidString.prefix(8).lowercased())@metalarm.dev", into: app.textFields["emailField"])
+        typeNewPassword(password, into: app.secureTextFields["passwordField"], in: app)
+        app.buttons["authSubmitButton"].tap()
+        let bodybuilder = app.buttons["path-bodybuilder"]
+        XCTAssertTrue(bodybuilder.waitForExistence(timeout: 15))
+        dismissSavePasswordPrompt(app)
+        let confirm = app.buttons["confirmPathButton"]
+        scrollUntilHittable(bodybuilder, in: app, clearOf: confirm)
+        bodybuilder.tap()
+        XCTAssertTrue(waitUntilEnabled(confirm))
+        confirm.tap()
+        XCTAssertTrue(app.buttons["tab-Explore"].waitForExistence(timeout: 15))
+
+        // A real figure, a real bookmark.
+        openTab(app, "Explore")
+        app.buttons["explore-Exercises"].tap()
+        let chest = app.buttons["muscle-chest"]
+        XCTAssertTrue(chest.waitForExistence(timeout: 15))
+        chest.tap()
+        let bookmark = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'bookmark-'")).firstMatch
+        XCTAssertTrue(bookmark.waitForExistence(timeout: 15), "Chest listed nothing from the server")
+        attachScreenshot(app, named: "Live 11 Exercise cards")
+        let bookmarkID = bookmark.identifier
+        bookmark.tap()
+        XCTAssertTrue(app.buttons["Remove bookmark"].waitForExistence(timeout: 15), "The server refused the bookmark")
+        let name = String(bookmarkID.dropFirst("bookmark-".count))
+        openTab(app, "Library")
+        app.buttons["saved-favorites"].tap()
+        let kept = app.buttons["saved-item-\(name)"]
+        XCTAssertTrue(kept.waitForExistence(timeout: 15), "The bookmark is not in the Library")
+        kept.tap()
+        XCTAssertTrue(element(app, "exerciseSheetFigure").waitForExistence(timeout: 15))
+        attachScreenshot(app, named: "Live 12 Exercise figure")
+        app.buttons["Done"].tap()
+
+        // Save a workout, open it from the Library, start it.
+        openTab(app, "Explore")
+        app.buttons["explore-Programs"].tap()
+        let recommended = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'library-workout-'")).firstMatch
+        XCTAssertTrue(recommended.waitForExistence(timeout: 15))
+        scrollUntilHittable(recommended, in: app)
+        recommended.tap()
+        let pinnedStart = app.buttons["libraryStartButton"]
+        XCTAssertTrue(pinnedStart.waitForExistence(timeout: 15))
+        XCTAssertLessThanOrEqual(pinnedStart.frame.maxY, app.buttons["tab-Home"].frame.minY,
+                                 "Start workout is hidden behind the tab bar")
+        let save = app.buttons["saveRoutineButton"]
+        XCTAssertTrue(save.waitForExistence(timeout: 15))
+        scrollUntilHittable(save, in: app, clearOf: pinnedStart)
+        save.tap()
+        XCTAssertTrue(element(app, "libraryNotice").waitForExistence(timeout: 15), "The save did not go through")
+        openTab(app, "Library")
+        app.buttons["saved-routines"].tap()
+        let routine = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'saved-item-'")).firstMatch
+        XCTAssertTrue(routine.waitForExistence(timeout: 15), "The saved workout is not in the Library")
+        routine.tap()
+        let start = app.buttons["planStartButton"]
+        XCTAssertTrue(start.waitForExistence(timeout: 15), "The routine did not open")
+        attachScreenshot(app, named: "Live 13 Saved routine")
+        start.tap()
+        XCTAssertTrue(app.buttons["logSetButton"].waitForExistence(timeout: 15), "The routine did not start")
+        deleteAccount(app)
+    }
+
     // End-to-end against the real backend (the LevelForge stack on 127.0.0.1:8000):
     // signs up a fresh account, logs a workout, then deletes the account again.
     // Runs only when xcodebuild is given TEST_RUNNER_METALARM_LIVE_UI=1.
@@ -338,7 +415,7 @@ final class MetalARMUITests: MetalARMUITestCase {
         attachScreenshot(app, named: "Live 07 Profile")
 
         // The Library, from the server: a recommended workout starts on Train.
-        openTab(app, "Library")
+        openTab(app, "Explore")
         let recommended = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'library-workout-'")).firstMatch
         XCTAssertTrue(recommended.waitForExistence(timeout: 15), "The Library had no recommendations")
         attachScreenshot(app, named: "Live 08 Library")

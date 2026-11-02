@@ -45,11 +45,14 @@ class MetalARMUITestCase: XCTestCase {
 
     @MainActor
     func openTab(_ app: XCUIApplication, _ name: String) {
-        let tab = app.tabBars.buttons[name]
-        if tab.exists {
-            tab.tap()
+        // Progress and Profile are the two halves of the You tab.
+        if name == "Progress" || name == "Profile" {
+            app.buttons["tab-You"].tap()
+            let part = app.buttons["you-\(name)"]
+            XCTAssertTrue(part.waitForExistence(timeout: 5))
+            part.tap()
         } else {
-            app.buttons[name].firstMatch.tap()
+            app.buttons["tab-\(name)"].tap()
         }
     }
 
@@ -173,7 +176,7 @@ class MetalARMUITestCase: XCTestCase {
         }
         XCTAssertTrue(element.isHittable, "\(element) never scrolled into view")
 
-        let bar = obstruction ?? app.tabBars.firstMatch
+        let bar = obstruction ?? app.buttons["tab-Home"]
         guard bar.exists else { return }
         var nudges = 0
         while element.frame.maxY > bar.frame.minY - 8 && nudges < 6 {

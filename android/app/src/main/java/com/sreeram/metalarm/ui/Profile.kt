@@ -65,6 +65,7 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.compose.material.icons.outlined.Info
 import com.sreeram.metalarm.BuildConfig
 import com.sreeram.metalarm.api.Badge
 import com.sreeram.metalarm.api.CharacterSheet
@@ -84,7 +85,6 @@ import com.sreeram.metalarm.theme.ProgressBar
 import com.sreeram.metalarm.theme.RankBadge
 import com.sreeram.metalarm.theme.RowGroup
 import com.sreeram.metalarm.theme.Screen
-import com.sreeram.metalarm.theme.ScreenTitle
 import com.sreeram.metalarm.theme.SectionBlock
 import com.sreeram.metalarm.theme.Segmented
 import com.sreeram.metalarm.theme.StatTile
@@ -94,7 +94,8 @@ import kotlinx.coroutines.launch
 @Composable
 fun ProfileTab(model: AppModel, nav: NavHostController) {
     NavHost(nav, startDestination = "profile") {
-        composable("profile") { ProfileScreen(model, onChoosePath = { nav.navigate("path") }) }
+        composable("profile") { ProfileScreen(model, onChoosePath = { nav.navigate("path") }, onCredits = { nav.navigate("credits") }) }
+        composable("credits") { CreditsScreen(model, onBack = { nav.popBackStack() }) }
         composable("path") {
             Column {
                 Box(Modifier.padding(horizontal = Theme.gutter).padding(top = Theme.Space.s8)) { TopBar("Training path", { nav.popBackStack() }) }
@@ -105,7 +106,7 @@ fun ProfileTab(model: AppModel, nav: NavHostController) {
 }
 
 @Composable
-fun ProfileScreen(model: AppModel, onChoosePath: () -> Unit) {
+fun ProfileScreen(model: AppModel, onChoosePath: () -> Unit, onCredits: () -> Unit) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     var deleting by remember { mutableStateOf(false) }
@@ -119,7 +120,6 @@ fun ProfileScreen(model: AppModel, onChoosePath: () -> Unit) {
     LaunchedEffect(Unit) { model.loadProfile() }
 
     Screen {
-        ScreenTitle("Profile")
         model.profile?.let { profile ->
             Header(profile)
             Stats(profile.stats)
@@ -174,6 +174,7 @@ fun ProfileScreen(model: AppModel, onChoosePath: () -> Unit) {
         }
         SectionBlock("Account") {
             RowGroup {
+                row { SettingRow("Credits", Icons.Outlined.Info, "creditsLink", onClick = onCredits) }
                 row { SettingRow("Privacy policy", Icons.Outlined.PanTool, "privacyLink") { openLink(context, BuildConfig.WEB_BASE_URL + "/privacy") } }
                 row { SettingRow("Support", Icons.Outlined.HelpOutline, "supportLink") { openLink(context, BuildConfig.WEB_BASE_URL + "/support") } }
                 row { SettingRow("Sign out", Icons.AutoMirrored.Outlined.Logout, "signOutButton") { scope.launch { model.signOut() } } }

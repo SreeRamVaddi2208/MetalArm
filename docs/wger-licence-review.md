@@ -1,3 +1,5 @@
+> **Superseded for images (2026-10-31).** MetalArm no longer ships wger's images; exercises show licensed figures or its own muscle figures. wger's how-to text stays, credited through `text_license` and `text_source_url` on `/about/credits` and in the apps. The `enrich` and `library` importer commands are retired. The record below is kept as written.
+
 # wger import - licence review
 
 Written by `backend/scripts/import_wger.py library`. Re-run it to refresh.

@@ -6,7 +6,6 @@ from metalarm import theme as t
 from metalarm.components.layout import error_banner, shell
 from metalarm.state.exercise_detail import CHARTS, TABS, ExerciseDetailState
 from metalarm.state.session_detail import SessionDetailState
-from metalarm.ui.body_map import body_map
 from metalarm.ui.chart import line_chart
 from metalarm.ui.chrome import avatar, top_bar
 from metalarm.ui.primitives import (
@@ -52,7 +51,6 @@ def _set_row(row) -> rx.Component:
 def _about() -> rx.Component:
     s = ExerciseDetailState
     return rx.vstack(
-        rx.center(body_map(s.muscle_paths, size="180px"), width="100%"),
         text(s.muscles_label, t.CAPTION, t.TEXT_2, text_align="center", width="100%"),
         rx.cond(s.steps.length() > 0,
                 section("How to",
@@ -86,7 +84,7 @@ def exercise_page() -> rx.Component:
             s.loaded,
             rx.vstack(
                 rx.cond(s.image != "",
-                        rx.image(src=s.image, width="100%", max_height="280px", object_fit="contain",
+                        rx.image(src=s.image, width="100%", height="280px", object_fit="contain",
                                  background=t.SURFACE, border_radius=t.RADIUS, alt=s.name),
                         rx.center(rx.icon("dumbbell", size=40, color=t.TEXT_3), width="100%", height="160px",
                                   background=t.SURFACE, border_radius=t.RADIUS)),

@@ -10,6 +10,7 @@
 import Foundation
 
 final class MockAPIClient: MetalArmAPI {
+    private var favoriteIDs: Set<String> = []
     static let password = "correct-horse-1"
 
     /// When set, every call throws this instead of returning data.
@@ -129,6 +130,52 @@ final class MockAPIClient: MetalArmAPI {
     }
 
     // MARK: - Exercises and progress
+
+    func browseExercises(query: String, muscle: String?, equipment: String?, cursor: String?) async throws -> ExerciseBrowsePage {
+        let cards = try await searchExercises(query: query)
+            .filter { muscle == nil || $0.primaryMuscleGroups.contains(muscle!) }
+            .filter { equipment == nil || $0.equipment == equipment }
+            .map { ExerciseCard(id: $0.id, name: $0.name, equipment: $0.equipment,
+                                primaryMuscleGroups: $0.primaryMuscleGroups,
+                                thumbnailUrl: "/exercises/diagrams/barbell-bench-press.png", isCustom: $0.isCustom) }
+        return ExerciseBrowsePage(items: cards, total: cards.count, nextCursor: nil)
+    }
+
+    func exercise(id: String) async throws -> Exercise {
+        guard var found = try await searchExercises(query: "").first(where: { $0.id == id }) else {
+            throw URLError(.fileDoesNotExist)
+        }
+        found.thumbnailUrl = "/exercises/diagrams/barbell-bench-press.png"
+        return found
+    }
+
+    func savedItems(filter: String) async throws -> [SavedItem] {
+        try check()
+        if filter == "routines" { return [SavedItem(type: "routine", id: "routine-1", title: "Upper Day", subtitle: "1 exercise")] }
+        if filter == "programs" { return [SavedItem(type: "program", id: "program-1", title: "My Split", subtitle: "1 routine")] }
+        return try await searchExercises(query: "").filter { favoriteIDs.contains($0.id) }.map {
+            SavedItem(type: "exercise", id: $0.id, title: $0.name, subtitle: $0.muscleLabel)
+        }
+    }
+
+    func setFavorite(type: String, id: String, on: Bool) async throws {
+        try check()
+        if on { favoriteIDs.insert(id) } else { favoriteIDs.remove(id) }
+    }
+
+    func routine(id: String) async throws -> RoutineDetail {
+        let bench = try await exercise(id: ContractFixtures.benchID)
+        return RoutineDetail(id: id, name: "Upper Day", exercises: [.init(exercise: bench, targetSets: 3, targetReps: 8)])
+    }
+
+    func program(id: String) async throws -> ProgramDetail {
+        try check()
+        return ProgramDetail(id: id, name: "My Split", routines: [.init(id: "routine-1", name: "Upper Day", exerciseCount: 1)])
+    }
+
+    func startRoutine(id: String) async throws -> WorkoutSession {
+        try await startSession(presetSlug: nil)
+    }
 
     func searchExercises(query: String) async throws -> [Exercise] {
         try check()

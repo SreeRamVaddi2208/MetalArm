@@ -11,7 +11,7 @@ from metalarm.state.auth import AuthState
 from metalarm.state.profile import ProfileState
 from metalarm.state.quests import QuestState
 from metalarm.state.settings import SettingsState
-from metalarm.ui.chrome import avatar, top_bar
+from metalarm.ui.chrome import avatar, top_bar, you_switch
 from metalarm.ui.path_card import path_card
 from metalarm.ui.primitives import (
     icon_button,
@@ -190,7 +190,8 @@ def _sheets() -> rx.Component:
 
 def profile_page() -> rx.Component:
     return shell(
-        top_bar("Profile", large=True),
+        top_bar("You", large=True),
+        you_switch("Profile"),
         error_banner(ProfileState.error),
         error_banner(SettingsState.error),
         _header(),

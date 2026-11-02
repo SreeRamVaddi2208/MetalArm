@@ -1,6 +1,5 @@
-// Searches the shared exercise library plus the user's own. From Train a tap
-// adds the exercise; from the Library (`browsing`) it is a list to look
-// through. The twin of iOS ExercisePickerView.
+// Searches the shared exercise library plus the user's own. From Workout a
+// tap adds the exercise. The twin of iOS ExercisePickerView.
 
 package com.sreeram.metalarm.ui
 
@@ -43,7 +42,7 @@ import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ExercisePicker(model: AppModel, browsing: Boolean = false, onDismiss: () -> Unit) {
+fun ExercisePicker(model: AppModel, onDismiss: () -> Unit) {
     val scope = rememberCoroutineScope()
     var query by remember { mutableStateOf("") }
     LaunchedEffect(query) {
@@ -60,8 +59,8 @@ fun ExercisePicker(model: AppModel, browsing: Boolean = false, onDismiss: () -> 
     ) {
         Column(Modifier.fillMaxHeight(0.92f).padding(horizontal = Theme.gutter), verticalArrangement = Arrangement.spacedBy(Theme.Space.s12)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(if (browsing) "Exercises" else "Add exercise", style = Theme.title, color = Theme.text, modifier = Modifier.weight(1f))
-                MAButton(if (browsing) "Done" else "Cancel", onDismiss, Modifier.testTag("pickerCancel"), kind = ButtonKind.Ghost)
+                Text("Add exercise", style = Theme.title, color = Theme.text, modifier = Modifier.weight(1f))
+                MAButton("Cancel", onDismiss, Modifier.testTag("pickerCancel"), kind = ButtonKind.Ghost)
             }
             Field(query, { query = it }, "Search exercises", "pickerSearch")
             if (model.pickerResults.isEmpty() && query.isNotBlank() && !model.isBusy) {
@@ -74,7 +73,7 @@ fun ExercisePicker(model: AppModel, browsing: Boolean = false, onDismiss: () -> 
                             .fillMaxWidth()
                             .heightIn(min = Theme.rowMin)
                             .clickable(role = Role.Button) {
-                                if (!browsing) scope.launch {
+                                scope.launch {
                                     model.addExercise(exercise)
                                     onDismiss()
                                 }

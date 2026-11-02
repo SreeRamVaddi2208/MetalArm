@@ -45,11 +45,19 @@ extension AppModel {
     /// already going, nothing is replaced and the user is told why.
     @discardableResult
     func startLibraryWorkout(_ slug: String) async -> Bool {
+        await startPlanned { try await self.api.startLibraryWorkout(slug: slug) }
+    }
+
+    func startRoutine(_ id: String) async -> Bool {
+        await startPlanned { try await self.api.startRoutine(id: id) }
+    }
+
+    private func startPlanned(_ start: () async throws -> WorkoutSession) async -> Bool {
         var started = false
         isBusy = true
         defer { isBusy = false }
         do {
-            session = try await api.startLibraryWorkout(slug: slug)
+            session = try await start()
             pendingExercises = []
             prHint = ""
             progressionHint = ""

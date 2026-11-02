@@ -23,8 +23,8 @@ final class HealthPermissionUITests: XCTestCase {
 
     @MainActor
     private func openProfile(_ app: XCUIApplication) {
-        let tab = app.tabBars.buttons["Profile"]
-        if tab.exists { tab.tap() } else { app.buttons["Profile"].firstMatch.tap() }
+        app.buttons["tab-You"].tap()
+        app.buttons["you-Profile"].tap()
     }
 
     @MainActor

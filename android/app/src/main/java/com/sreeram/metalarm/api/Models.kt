@@ -175,10 +175,79 @@ data class Exercise(
     val mediaUrl: String? = null,
     val isCustom: Boolean = false,
     val isArchived: Boolean = false,
+    val thumbnailUrl: String? = null,
+    val illustrationUrl: String? = null,
+    val secondaryMuscleGroups: List<String> = emptyList(),
+    val steps: List<String> = emptyList(),
+    val mediaLicense: String? = null,
+    val mediaAuthor: String? = null,
 ) {
     val muscleLabel: String
         get() = primaryMuscleGroups.joinToString(", ") { it.replace('_', ' ') }.capitalizedWords()
+
+    val secondaryLabel: String
+        get() = secondaryMuscleGroups.joinToString(", ") { it.replace('_', ' ') }.capitalizedWords()
+
+    val howTo: List<String>
+        get() = steps.ifEmpty { listOfNotNull(instructions) }
+
+    /** Outside artwork is credited wherever it is shown; our own needs none. */
+    val figureCredit: String?
+        get() = if (mediaAuthor != null && mediaLicense != null && mediaAuthor != "MetalArm") "Image: $mediaAuthor, $mediaLicense" else null
 }
+
+/** A row of GET /exercises/browse. */
+@Serializable
+data class ExerciseCard(
+    val id: String,
+    val name: String,
+    val equipment: String,
+    val primaryMuscleGroups: List<String> = emptyList(),
+    val thumbnailUrl: String? = null,
+    val isCustom: Boolean = false,
+    val mediaAuthor: String? = null,
+    val mediaLicense: String? = null,
+    val mediaSourceUrl: String? = null,
+    val textLicense: String? = null,
+    val textSourceUrl: String? = null,
+) {
+    val muscleLabel: String
+        get() = primaryMuscleGroups.firstOrNull().orEmpty().replace('_', ' ').capitalizedWords()
+}
+
+@Serializable
+data class ExerciseBrowsePage(val items: List<ExerciseCard> = emptyList(), val total: Int = 0, val nextCursor: String? = null)
+
+/** A row of GET /library: something the user has kept. */
+@Serializable
+data class SavedItem(val type: String, val id: String, val title: String, val subtitle: String? = null, val image: String? = null)
+
+/** GET /routines/{id}: a plan the user saved. */
+@Serializable
+data class RoutineDetail(val id: String, val name: String, val exercises: List<RoutineSlot> = emptyList())
+
+@Serializable
+data class RoutineSlot(val exercise: Exercise, val targetSets: Int? = null, val targetReps: Int? = null) {
+    val targetLabel: String
+        get() = when {
+            targetSets == null -> exercise.muscleLabel
+            targetReps == null -> "$targetSets sets"
+            else -> "$targetSets × $targetReps"
+        }
+}
+
+/** GET /programs/{id}: the user's own program and its routines. */
+@Serializable
+data class ProgramDetail(val id: String, val name: String, val routines: List<ProgramRoutine> = emptyList())
+
+@Serializable
+data class ProgramRoutine(val id: String, val name: String, val exerciseCount: Int = 0)
+
+@Serializable
+data class SavedPage(val items: List<SavedItem> = emptyList())
+
+@Serializable
+data class FavoriteBody(val targetType: String, val targetId: String)
 
 @Serializable
 data class HistoryPoint(

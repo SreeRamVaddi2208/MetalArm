@@ -3,7 +3,7 @@
 Routes, the global stylesheet and the document head. Layout lives in
 components/ and ui/, data in state/, tokens in theme.py.
 
-Five tabs - Home, Train, Library, Progress, Profile - and everything else
+Five tabs - Home, Explore, Workout, Library, You - and everything else
 folded under one of them (components/layout.py ROUTE_TABS). Old URLs still
 work: each redirects to where its screen lives now.
 """
@@ -16,6 +16,7 @@ from metalarm.pages.credits import credits_page
 from metalarm.pages.design_system import design_system_page
 from metalarm.pages.details import exercise_page, session_page
 from metalarm.pages.duels import duels_page
+from metalarm.pages.explore import explore_page
 from metalarm.pages.home import home_page
 from metalarm.pages.library import (
     library_home_page,
@@ -32,7 +33,7 @@ from metalarm.pages.profile import profile_page
 from metalarm.pages.progress import history_page, measurements_page, progress_page, recovery_page
 from metalarm.pages.quests import quests_page
 from metalarm.pages.rewards import rewards_page
-from metalarm.pages.train import exercises_page, program_page, routine_page, train_page
+from metalarm.pages.train import program_page, routine_page, train_page
 from metalarm.state.auth import AuthState
 from metalarm.state.credits import CreditsState
 from metalarm.state.duels import DuelState
@@ -48,6 +49,7 @@ from metalarm.state.quests import QuestState
 from metalarm.state.rewards import RewardState
 from metalarm.state.routines import RoutineState
 from metalarm.state.session_detail import SessionDetailState
+from metalarm.state.saved import SavedState
 from metalarm.state.settings import SettingsState, WelcomeState
 from metalarm.state.train import ProgramState, TrainState
 from metalarm.state.workout import WorkoutState
@@ -64,7 +66,8 @@ def landing() -> rx.Component:
 REDIRECTS = {
     "/workout": "/train",
     "/routines": "/train",
-    "/train/exercises": "/library/exercises",
+    "/train/exercises": "/explore?tab=exercises",
+    "/library/exercises": "/explore?tab=exercises",
     "/dashboard": "/home",
     "/gallery": "/design-system",
 }
@@ -82,8 +85,6 @@ class RouteState(rx.State):
         path = str(self.router.url.path).rstrip("/") or "/"
         query = self.router.url.query_parameters
         tab = str(query.get("tab", "")).lower()
-        if path == "/explore":
-            return rx.redirect("/profile/people" if tab == "people" else "/library/exercises")
         if path == "/you":
             return rx.redirect({"history": "/progress/history",
                                 "measurements": "/progress/measurements"}.get(tab, "/progress"))
@@ -130,8 +131,15 @@ class RouteState(rx.State):
     async def enter_library(self):
         if not await self._signed_in():
             return rx.redirect("/login")
+        return SavedState.load
+
+    async def enter_explore(self):
+        if not await self._signed_in():
+            return rx.redirect("/login")
+        if str(self.router.url.query_parameters.get("tab", "")).lower() == "people":
+            return rx.redirect("/profile/people")
         # Settings first: the choose-your-path sheet reads its paths.
-        return [AuthState.refresh_me, SettingsState.load, LibraryState.load]
+        return [AuthState.refresh_me, SettingsState.load, LibraryState.load, ExploreState.load]
 
     async def enter_library_path(self):
         if not await self._signed_in():
@@ -147,11 +155,6 @@ class RouteState(rx.State):
         if not await self._signed_in():
             return rx.redirect("/login")
         return LibraryWorkoutState.load
-
-    async def enter_exercises(self):
-        if not await self._signed_in():
-            return rx.redirect("/login")
-        return ExploreState.load
 
     async def enter_routine(self):
         if not await self._signed_in():
@@ -352,10 +355,10 @@ page(exercise_page, "/exercise/[id]", "Exercise", r.enter_exercise)
 
 # Library
 page(library_home_page, "/library", "Library", r.enter_library)
+page(explore_page, "/explore", "Explore", r.enter_explore)
 page(library_path_page, "/library/path/[lib_path]", "Library", r.enter_library_path)
 page(library_program_page, "/library/program/[lib_program]", "Program", r.enter_library_program)
 page(library_workout_page, "/library/workout/[lib_workout]", "Workout", r.enter_library_workout)
-page(exercises_page, "/library/exercises", "Exercises", r.enter_exercises)
 
 # Progress
 page(progress_page, "/progress", "Progress", r.enter_progress)
@@ -378,5 +381,5 @@ page(credits_page, "/about/credits", "Credits", r.enter_credits)
 page(design_system_page, "/design-system", "Design system")
 
 # Earlier URLs.
-for old in (*REDIRECTS, "/explore", "/you"):
+for old in (*REDIRECTS, "/you"):
     page(landing, old, "", r.moved)

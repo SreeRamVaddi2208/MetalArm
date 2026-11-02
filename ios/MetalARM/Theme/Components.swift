@@ -96,13 +96,7 @@ extension View {
 
     /// The screen's one primary action, pinned above the tab bar.
     func pinnedPrimary<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
-        safeAreaInset(edge: .bottom) {
-            content()
-                .padding(.horizontal, Theme.gutter)
-                .padding(.top, Theme.Space.s12)
-                .padding(.bottom, Theme.Space.s8)
-                .background(Theme.bg)
-        }
+        modifier(PinnedPrimary(action: content()))
     }
 
     /// A tab's root screen scrolls under the status bar; this keeps the bar
@@ -459,4 +453,25 @@ struct ScreenTitle<Trailing: View>: View {
 
 extension ScreenTitle where Trailing == EmptyView {
     init(_ title: String) { self.init(title: title) { EmptyView() } }
+}
+
+extension EnvironmentValues {
+    /// How far the floating tab bar reaches up from the safe area.
+    @Entry var tabBarInset: CGFloat = 0
+}
+
+/// The screen's main button, held above the tab bar.
+private struct PinnedPrimary<Action: View>: ViewModifier {
+    @Environment(\.tabBarInset) private var tabBarInset
+    let action: Action
+
+    func body(content: Content) -> some View {
+        content.safeAreaInset(edge: .bottom) {
+            action
+                .padding(.horizontal, Theme.gutter)
+                .padding(.top, Theme.Space.s12)
+                .padding(.bottom, Theme.Space.s8 + tabBarInset)
+                .background(Theme.bg)
+        }
+    }
 }

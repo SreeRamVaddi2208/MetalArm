@@ -38,6 +38,7 @@ def alpha(color: str, opacity: float) -> str:
     return f"rgba({r},{g},{b},{opacity})"
 
 
+TAB_BAR_BG = alpha(SURFACE_2, 0.82)  # the floating bar; content shows through
 ACCENT_SOFT = alpha(ACCENT, 0.14)   # selected chip/card background, PR row tint
 SCRIM = "rgba(0,0,0,0.6)"           # behind sheets and dialogs
 HAIRLINE = f"1px solid {BORDER}"
@@ -106,12 +107,13 @@ ROW_MIN = "56px"          # ListRow minimum height
 BUTTON_HEIGHT = "52px"
 MAX_WIDTH = "430px"       # the app column; centred on wide screens
 TAB_BAR_HEIGHT = "64px"
+TAB_BAR_GAP = "12px"      # the floating bar's distance from the screen edge
 # Content keeps clear of the tab bar and anything pinned above it.
-BOTTOM_CLEARANCE = "160px"
+BOTTOM_CLEARANCE = "172px"
 # Where a toast or banner floats: above the tab bar AND the pinned button.
-FLOAT_BOTTOM = f"calc({TAB_BAR_HEIGHT} + 12px + {BUTTON_HEIGHT} + 16px + env(safe-area-inset-bottom))"
+FLOAT_BOTTOM = f"calc({TAB_BAR_HEIGHT} + {TAB_BAR_GAP} + 12px + {BUTTON_HEIGHT} + 16px + env(safe-area-inset-bottom))"
 # A toast stacks one slot above that, so it never covers the PR banner.
-TOAST_BOTTOM = f"calc({TAB_BAR_HEIGHT} + 12px + {BUTTON_HEIGHT} + 16px + 56px + env(safe-area-inset-bottom))"
+TOAST_BOTTOM = f"calc({TAB_BAR_HEIGHT} + {TAB_BAR_GAP} + 12px + {BUTTON_HEIGHT} + 16px + 56px + env(safe-area-inset-bottom))"
 
 RADIUS = "12px"           # cards and inputs
 RADIUS_SHEET = "16px"     # sheets (top corners)

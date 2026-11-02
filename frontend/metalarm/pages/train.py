@@ -4,7 +4,7 @@
                        it has just finished, otherwise what to train
 /train/routine/<id>    a routine: its exercises and targets; Start; Edit
 /train/program/<id>    a program of your own (Library programs are under /library)
-/library/exercises     the exercise library: search, muscle, equipment (served
+/explore?tab=exercises the exercise library (pages/explore.py) (was served
                        from here; it belongs to the Library tab)
 """
 
@@ -70,9 +70,9 @@ def _landing() -> rx.Component:
         rx.cond(s.programs.length() > 0,
                 section("Your programs", rows(rx.foreach(s.programs, lambda p: list_row(
                     p["name"], p["sub"], chevron=True, href=f"/train/program/{p['id']}"))))),
-        rows(list_row("Browse the Library", "Programs and ready-made workouts for your path",
-                      leading=rx.icon("library", size=20, color=t.TEXT_2, stroke_width=1.75), chevron=True,
-                      href="/library", class_name="ma-to-library")),
+        rows(list_row("Explore programs", "Programs and ready-made workouts for your path",
+                      leading=rx.icon("search", size=20, color=t.TEXT_2, stroke_width=1.75), chevron=True,
+                      href="/explore", class_name="ma-to-library")),
         spacing="6", width="100%",
     )
 
@@ -187,40 +187,4 @@ def program_page() -> rx.Component:
         ),
         pinned=rx.cond(s.loaded, link_button("Add routine", f"/train/routine/new?program={s.key}",
                                              variant="primary", icon="plus", full=True)),
-    )
-
-
-# ---------------------------------------------------------------------------
-# /library/exercises (the Library's exercise browser)
-# ---------------------------------------------------------------------------
-
-
-def _exercise(row) -> rx.Component:
-    return list_row(row["name"], row["sub"], chevron=True, href=f"/exercise/{row['id']}",
-                    leading=rx.cond(row["image"] != "",
-                                    rx.image(src=row["image"], width="40px", height="40px", object_fit="cover",
-                                             border_radius=t.RADIUS, background=t.SURFACE_2, loading="lazy"),
-                                    rx.center(rx.icon("dumbbell", size=20, color=t.TEXT_3), width="40px",
-                                              height="40px", border_radius=t.RADIUS, background=t.SURFACE_2)))
-
-
-def exercises_page() -> rx.Component:
-    s = ExploreState
-    return shell(
-        top_bar("Exercises", back="/library"),
-        field(s.query, s.set_query, "Search exercises", debounce=True, on_blur=s.blur_search),
-        rx.cond((s.query == "") & (s.recents.length() > 0),
-                rx.hstack(text("Recent", t.CAPTION, t.TEXT_2),
-                          chips(rx.foreach(s.recents, lambda q: chip(q, on_click=s.use_recent(q)))),
-                          spacing="2", align="center", width="100%", class_name="ma-recents")),
-        chips(rx.foreach(s.muscles, lambda m: chip(m["label"], selected=s.muscle == m["code"],
-                                                   on_click=s.pick_muscle(m["code"], m["label"])))),
-        chips(rx.foreach(s.equipment, lambda e: chip(e["label"], selected=s.gear == e["code"],
-                                                     on_click=s.pick_gear(e["code"], e["label"])))),
-        error_banner(s.error),
-        rx.hstack(text(s.total_label, t.CAPTION, t.TEXT_2), rx.spacer(),
-                  rx.cond(s.listing, button("Clear", s.clear_filters, variant="ghost")), width="100%", align="center"),
-        rx.cond(s.results.length() > 0, rows(rx.foreach(s.results, _exercise)),
-                rx.cond(s.busy, skeleton_rows(6), empty_state("search", "No exercises match. Try fewer filters."))),
-        rx.cond(s.cursor != "", button("Show more", s.more, variant="ghost", full=True)),
     )

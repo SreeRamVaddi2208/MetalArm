@@ -25,7 +25,7 @@ const SIZES = WIDTHS.map((width) => ({ width, height: width < 400 ? 800 : 932 })
 const API = process.env.METALARM_API || 'http://localhost:8000/api/v1';
 const PAGES = (process.env.SCREEN_ROUTES ||
   '/design-system,/home,/leaderboard,/notifications,/train,/train/routine/new,/library,/library/path/powerlifter,' +
-  '/library/program/upper-lower-8wk,/library/workout/chest-and-triceps,/library/exercises,/progress,' +
+  '/library/program/upper-lower-8wk,/library/workout/chest-and-triceps,/explore,/progress,' +
   '/progress/history,/progress/measurements,/progress/recovery,/profile,/profile/people,/quests,/duels,/parties,' +
   '/rewards,/about/credits,/welcome'
 ).split(',');

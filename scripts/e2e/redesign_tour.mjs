@@ -168,7 +168,7 @@ try {
   });
 
   await chapter('exercises', async () => {
-    await go('/library/exercises');
+    await go('/explore');
     await wait(800);
     await tap(page.getByRole('button', { name: 'Chest', exact: true }), 'chest');
     await wait(1000);

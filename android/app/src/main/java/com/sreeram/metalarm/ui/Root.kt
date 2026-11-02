@@ -6,6 +6,31 @@
 
 package com.sreeram.metalarm.ui
 
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.outlined.AddCircleOutline
+import androidx.compose.material.icons.outlined.PersonOutline
+import androidx.compose.material.icons.outlined.Search
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
+import com.sreeram.metalarm.theme.LocalTabBarInset
+import com.sreeram.metalarm.theme.ScreenTitle
+import com.sreeram.metalarm.ui.library.SavedLibrary
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -15,9 +40,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.LibraryBooks
-import androidx.compose.material.icons.automirrored.outlined.ShowChart
-import androidx.compose.material.icons.outlined.AccountCircle
-import androidx.compose.material.icons.outlined.FitnessCenter
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -49,10 +71,10 @@ import com.sreeram.metalarm.ui.library.LibraryTab
 
 enum class AppTab(val label: String, val icon: ImageVector) {
     Home("Home", Icons.Outlined.Home),
-    Train("Train", Icons.Outlined.FitnessCenter),
+    Explore("Explore", Icons.Outlined.Search),
+    Workout("Workout", Icons.Outlined.AddCircleOutline),
     Library("Library", Icons.AutoMirrored.Outlined.LibraryBooks),
-    Progress("Progress", Icons.AutoMirrored.Outlined.ShowChart),
-    Profile("Profile", Icons.Outlined.AccountCircle),
+    You("You", Icons.Outlined.PersonOutline),
 }
 
 /** Material components (switches, sheets, menus) drawn in our tokens. */
@@ -109,52 +131,96 @@ private fun Tabs(model: AppModel) {
         selected = AppTab.Home
     }
 
-    Box(Modifier.fillMaxSize()) {
-        Scaffold(
-            containerColor = Theme.bg,
-            contentWindowInsets = WindowInsets(0),
-            bottomBar = {
-                NavigationBar(containerColor = Theme.surface, tonalElevation = 0.dp) {
-                    AppTab.entries.forEach { tab ->
-                        NavigationBarItem(
-                            selected = tab == selected,
-                            onClick = {
-                                if (tab == selected) {
-                                    // A second tap returns the tab to its root.
-                                    controllers.getValue(tab).popBackStack(controllers.getValue(tab).graph.startDestinationId, false)
-                                }
-                                selected = tab
-                            },
-                            icon = { Icon(tab.icon, contentDescription = null) },
-                            label = { Text(tab.label, style = Theme.caption) },
-                            modifier = Modifier.testTag("tab-${tab.name.lowercase()}"),
-                            colors = NavigationBarItemDefaults.colors(
-                                selectedIconColor = Theme.accent, selectedTextColor = Theme.accent,
-                                indicatorColor = Theme.accentSoft, unselectedIconColor = Theme.text2,
-                                unselectedTextColor = Theme.text2,
-                            ),
-                        )
-                    }
-                }
-            },
-        ) { padding ->
-            Column(Modifier.fillMaxSize().padding(padding)) {
-                saveable.SaveableStateProvider(selected.name) {
-                    val nav = controllers.getValue(selected)
-                    when (selected) {
-                        AppTab.Home -> HomeTab(model, nav, onOpenWorkout = { selected = AppTab.Train })
-                        AppTab.Train -> WorkoutScreen(model, onOpenLibrary = { selected = AppTab.Library })
-                        AppTab.Library -> LibraryTab(model, nav, onStarted = { selected = AppTab.Train })
-                        AppTab.Progress -> ProgressScreen(model)
-                        AppTab.Profile -> ProfileTab(model, nav)
-                    }
+    Box(Modifier.fillMaxSize().background(Theme.bg)) {
+        CompositionLocalProvider(LocalTabBarInset provides TabBarInset) {
+            saveable.SaveableStateProvider(selected.name) {
+                val nav = controllers.getValue(selected)
+                when (selected) {
+                    AppTab.Home -> HomeTab(model, nav, onOpenWorkout = { selected = AppTab.Workout })
+                    AppTab.Explore -> LibraryTab(model, nav, onStarted = { selected = AppTab.Workout })
+                    AppTab.Workout -> WorkoutScreen(model, onOpenLibrary = { selected = AppTab.Explore })
+                    AppTab.Library -> SavedLibrary(model, onStarted = { selected = AppTab.Workout })
+                    AppTab.You -> YouTab(model, nav)
                 }
             }
+        }
+        FloatingTabBar(selected, Modifier.align(Alignment.BottomCenter)) { tab ->
+            if (tab == selected) {
+                // A second tap returns the tab to its root.
+                controllers.getValue(tab).takeIf { it.currentBackStackEntry != null }?.let { it.popBackStack(it.graph.startDestinationId, false) }
+            }
+            selected = tab
         }
 
         val result = model.finishResult
         if (model.showingSummary && result != null) {
             SummaryScreen(result, model.weightUnit, model.shareInviteCode) { model.showingSummary = false }
+        }
+    }
+}
+
+private val TabBarHeight = 68.dp
+private val TabBarInset = TabBarHeight + 24.dp
+
+/** The five tabs, in a pill that floats over the content. */
+@Composable
+private fun FloatingTabBar(selected: AppTab, modifier: Modifier = Modifier, onSelect: (AppTab) -> Unit) {
+    Row(
+        modifier
+            .windowInsetsPadding(WindowInsets.navigationBars)
+            .padding(horizontal = Theme.gutter, vertical = Theme.Space.s8)
+            .fillMaxWidth()
+            .height(TabBarHeight)
+            .background(Theme.surface2.copy(alpha = 0.92f), CircleShape)
+            .border(1.dp, Theme.border, CircleShape)
+            .padding(Theme.Space.s4),
+    ) {
+        AppTab.entries.forEach { tab ->
+            Column(
+                Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+                    .clip(CircleShape)
+                    .background(if (tab == selected) Theme.bg else Color.Transparent)
+                    .selectable(selected = tab == selected, role = Role.Tab) { onSelect(tab) }
+                    .testTag("tab-${tab.name.lowercase()}"),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+            ) {
+                Icon(tab.icon, contentDescription = null, tint = Theme.text)
+                Text(tab.label, style = Theme.caption, color = Theme.text, maxLines = 1)
+            }
+        }
+    }
+}
+
+/** The You tab: your progress and your profile, one switch apart. */
+@Composable
+private fun YouTab(model: AppModel, nav: NavHostController) {
+    var part by rememberSaveable { mutableStateOf("Progress") }
+    Column(Modifier.fillMaxSize().background(Theme.bg).windowInsetsPadding(WindowInsets.statusBars)) {
+        Column(Modifier.padding(horizontal = Theme.gutter), verticalArrangement = Arrangement.spacedBy(Theme.Space.s8)) {
+            ScreenTitle("You")
+            Row(Modifier.fillMaxWidth().background(Theme.surface, RoundedCornerShape(Theme.radius)).padding(Theme.Space.s4)) {
+                listOf("Progress", "Profile").forEach { option ->
+                    Box(
+                        Modifier
+                            .weight(1f)
+                            .heightIn(min = Theme.touch)
+                            .clip(RoundedCornerShape(Theme.radius))
+                            .background(if (part == option) Theme.surface2 else Color.Transparent)
+                            .selectable(selected = part == option, role = Role.Tab) { part = option }
+                            .testTag("you-${option.lowercase()}"),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(option, style = Theme.label, color = if (part == option) Theme.text else Theme.text2)
+                    }
+                }
+            }
+        }
+        // The title has the status bar; the halves sit right under it.
+        Box(Modifier.weight(1f).consumeWindowInsets(WindowInsets.statusBars)) {
+            if (part == "Progress") ProgressScreen(model) else ProfileTab(model, nav)
         }
     }
 }

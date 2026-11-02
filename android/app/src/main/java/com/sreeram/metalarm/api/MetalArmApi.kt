@@ -44,6 +44,15 @@ interface MetalArmApi {
 
     // Exercises and progress
     suspend fun searchExercises(query: String): List<Exercise>
+    suspend fun browseExercises(query: String, muscle: String?, equipment: String?, cursor: String?): ExerciseBrowsePage
+    suspend fun exercise(id: String): Exercise
+    /** What the user has kept: "routines", "programs" or "favorites". */
+    suspend fun savedItems(filter: String): List<SavedItem>
+    suspend fun setFavorite(type: String, id: String, on: Boolean)
+    suspend fun routine(id: String): RoutineDetail
+    suspend fun program(id: String): ProgramDetail
+    /** A live session loaded with the routine's exercises. 409 if one is live. */
+    suspend fun startRoutine(id: String): WorkoutSession
     suspend fun lastPerformance(exerciseId: String): LastPerformance
     suspend fun exerciseHistory(exerciseId: String): List<HistoryPoint>
     suspend fun records(exerciseId: String?): List<WorkoutRecord>

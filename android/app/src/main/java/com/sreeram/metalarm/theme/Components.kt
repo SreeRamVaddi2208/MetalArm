@@ -171,6 +171,9 @@ fun Modifier.card(padding: Dp = Theme.cardPadding): Modifier =
  * the screen's one primary action pinned low (above the tab bar) when there
  * is one. `top` adds the status-bar inset for a tab's root screen.
  */
+/** How much of the screen's bottom the floating tab bar covers. */
+val LocalTabBarInset = androidx.compose.runtime.compositionLocalOf { 0.dp }
+
 @Composable
 fun Screen(
     modifier: Modifier = Modifier,
@@ -184,14 +187,17 @@ fun Screen(
             .fillMaxSize()
             .background(Theme.bg)
             .then(if (top) Modifier.windowInsetsPadding(WindowInsets.statusBars) else Modifier)
-            .imePadding(),
+            .imePadding()
+            // A pinned action sits above the bar; a plain list scrolls under it.
+            .padding(bottom = if (pinned != null) LocalTabBarInset.current else 0.dp),
     ) {
         Column(
             Modifier
                 .weight(1f)
                 .fillMaxWidth()
                 .then(if (scroll) Modifier.verticalScroll(rememberScrollState()) else Modifier)
-                .padding(horizontal = Theme.gutter, vertical = Theme.Space.s16),
+                .padding(horizontal = Theme.gutter)
+                .padding(top = Theme.Space.s16, bottom = Theme.Space.s16 + if (pinned == null) LocalTabBarInset.current else 0.dp),
             verticalArrangement = Arrangement.spacedBy(Theme.Space.s24),
             content = content,
         )

@@ -30,13 +30,14 @@ def session_keeper() -> rx.Component:
 # Which tab each route belongs to.
 ROUTE_TABS = (
     ("/home", "home"), ("/leaderboard", "home"), ("/notifications", "home"), ("/u/[id]", "home"),
-    ("/train", "train"), ("/train/routine/[id]", "train"), ("/train/program/[id]", "train"),
-    ("/library", "library"), ("/library/path/[lib_path]", "library"), ("/library/program/[lib_program]", "library"),
-    ("/library/workout/[lib_workout]", "library"), ("/library/exercises", "library"), ("/exercise/[id]", "library"),
-    ("/progress", "progress"), ("/progress/history", "progress"), ("/progress/measurements", "progress"),
-    ("/progress/recovery", "progress"), ("/session/[id]", "progress"), ("/summary/[ym]", "progress"),
-    ("/profile", "profile"), ("/profile/people", "profile"), ("/quests", "profile"), ("/duels", "profile"),
-    ("/parties", "profile"), ("/rewards", "profile"), ("/about/credits", "profile"),
+    ("/explore", "explore"), ("/library/path/[lib_path]", "explore"), ("/library/program/[lib_program]", "explore"),
+    ("/library/workout/[lib_workout]", "explore"), ("/exercise/[id]", "explore"),
+    ("/train", "workout"), ("/train/routine/[id]", "workout"), ("/train/program/[id]", "workout"),
+    ("/library", "library"),
+    ("/progress", "you"), ("/progress/history", "you"), ("/progress/measurements", "you"),
+    ("/progress/recovery", "you"), ("/session/[id]", "you"), ("/summary/[ym]", "you"),
+    ("/profile", "you"), ("/profile/people", "you"), ("/quests", "you"), ("/duels", "you"),
+    ("/parties", "you"), ("/rewards", "you"), ("/about/credits", "you"),
 )
 
 

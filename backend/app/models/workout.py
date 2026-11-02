@@ -106,6 +106,9 @@ class Exercise(UUIDPrimaryKey, Timestamps, Base):
     media_license: Mapped[str | None] = mapped_column(String(40), nullable=True)
     media_author: Mapped[str | None] = mapped_column(String(200), nullable=True)
     media_source_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    # The how-to text's own credit, where it came from elsewhere (wger, CC-BY-SA).
+    text_license: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    text_source_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     is_custom: Mapped[bool] = mapped_column(
         Boolean, nullable=False, server_default="false"
     )

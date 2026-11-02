@@ -79,7 +79,15 @@ abstract class MetalArmUiTest {
         compose.waitForIdle()
     }
 
-    fun openTab(name: String) = tap("tab-${name.lowercase()}")
+    /** Progress and Profile are the two halves of the You tab. */
+    fun openTab(name: String) {
+        if (name == "Progress" || name == "Profile") {
+            tap("tab-you")
+            tap("you-${name.lowercase()}")
+        } else {
+            tap("tab-${name.lowercase()}")
+        }
+    }
 
     fun type(tag: String, value: String) {
         waitFor(tag)

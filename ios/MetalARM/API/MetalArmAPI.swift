@@ -35,6 +35,15 @@ protocol MetalArmAPI: AnyObject {
 
     // Exercises and progress
     func searchExercises(query: String) async throws -> [Exercise]
+    func browseExercises(query: String, muscle: String?, equipment: String?, cursor: String?) async throws -> ExerciseBrowsePage
+    func exercise(id: String) async throws -> Exercise
+    /// What the user has kept: "routines", "programs" or "favorites".
+    func savedItems(filter: String) async throws -> [SavedItem]
+    func setFavorite(type: String, id: String, on: Bool) async throws
+    func routine(id: String) async throws -> RoutineDetail
+    func program(id: String) async throws -> ProgramDetail
+    /// A live session loaded with the routine's exercises. 409 if one is live.
+    func startRoutine(id: String) async throws -> WorkoutSession
     func lastPerformance(exerciseID: String) async throws -> LastPerformance
     func exerciseHistory(exerciseID: String) async throws -> [HistoryPoint]
     func records(exerciseID: String?) async throws -> [WorkoutRecord]

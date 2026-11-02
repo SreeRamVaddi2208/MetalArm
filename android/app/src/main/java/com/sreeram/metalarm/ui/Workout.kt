@@ -99,7 +99,7 @@ private fun EmptyWorkout(model: AppModel, onOpenLibrary: () -> Unit) {
             MAButton("Start empty workout", { scope.launch { model.startWorkout() } }, Modifier.testTag("workoutStartButton"), icon = Icons.Filled.PlayArrow)
         },
     ) {
-        ScreenTitle("Train")
+        ScreenTitle("Workout")
         Text(
             "Start a workout to log sets, earn points and chase records. Your last numbers fill in for you.",
             style = Theme.body, color = Theme.text2,
@@ -107,7 +107,7 @@ private fun EmptyWorkout(model: AppModel, onOpenLibrary: () -> Unit) {
         RowGroup {
             row {
                 ListRow(
-                    "Browse the Library", Modifier.testTag("trainToLibrary"),
+                    "Explore programs", Modifier.testTag("trainToLibrary"),
                     subtitle = "Programs and ready-made workouts for your path", chevron = true, onClick = onOpenLibrary,
                 ) { Icon(Icons.AutoMirrored.Outlined.LibraryBooks, contentDescription = null, tint = Theme.text2) }
             }

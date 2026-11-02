@@ -22,7 +22,6 @@ struct ProfileView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Theme.Space.s32) {
-                ScreenTitle("Profile")
                 if let profile = model.profile {
                     header(profile)
                     stats(profile.stats)
@@ -268,6 +267,9 @@ struct ProfileView: View {
             }
             SectionBlock(title: "Account") {
                 RowGroup {
+                    NavigationLink { CreditsView() } label: { settingsLabel("Credits", icon: "text.badge.star") }
+                        .buttonStyle(.plain)
+                        .accessibilityIdentifier("creditsLink")
                     Link(destination: AppConfig.privacyPolicyURL) { settingsLabel("Privacy policy", icon: "hand.raised") }
                     Link(destination: AppConfig.supportURL) { settingsLabel("Support", icon: "questionmark.circle") }
                     Button { Task { await model.signOut() } } label: {
