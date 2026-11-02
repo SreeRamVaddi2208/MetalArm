@@ -36,7 +36,7 @@ the Android app, in the same piece of work.
 
 - **Training path** - Athletic, Bodybuilder or Powerlifter, asked once after you sign up and changeable whenever your goals move. It sets the reps, loads and rests MetalArm suggests, leads with the workout that suits it, and highlights the character stats you care about. It never changes your points or your rank.
 - **Ready-made workouts** - three styles to start from in one tap (athletic, powerlifting, bodybuilding), each with its sets, reps and rests, and a demo clip beside every movement so you can see what you're about to do.
-- **Workouts** - live sessions that survive a refresh or a device switch, an exercise library of 91 starters plus your own, routines, ghost values from your last session, a rest timer, and editing or deleting sets.
+- **Workouts** - live sessions that survive a refresh or a device switch, an exercise library of 203 starters plus your own, routines, ghost values from your last session, a rest timer, and editing or deleting sets.
 - **Records** - heaviest set, estimated 1RM, session volume and most reps at a weight, detected on the server as you log.
 - **Progression** - points become XP, levels and ranks: Untrained, Novice, Intermediate, Advanced, Elite and World Class (stored as E-S). Advanced, Elite and World Class also need a strength trial: a bench at 1x, squat at 1.5x and deadlift at 2x bodyweight. Weekly workout streaks, badges and a rewards shop.
 - **Quests** - daily, weekly and one-off goals in your own time zone.
@@ -358,7 +358,7 @@ docker compose run --rm tests python -m scripts.recompute_progression
 ### Exercise library
 
 `backend/scripts/import_exercises.py` loads the shared library from
-`backend/app/data/exercises.json` (91 starter exercises). The `migrate` service
+`backend/app/data/exercises.json` (203 starter exercises). The `migrate` service
 runs it after every `alembic upgrade head`; it upserts by slug, so repeat runs
 change nothing. To load a bigger dataset (JSON, or CSV with `;`-separated muscle
 groups):

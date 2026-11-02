@@ -318,13 +318,15 @@ struct PresetTests {
         #expect(model.errorMessage.contains("No such workout"))
     }
 
-    @Test func aDemoIsOnlyClaimedWhenThereIsOne() async throws {
-        let presets = try await MockAPIClient().presets()
-        let withDemo = presets.flatMap(\.exercises).filter { $0.exercise.mediaUrl != nil }
-        let without = presets.flatMap(\.exercises).filter { $0.exercise.mediaUrl == nil }
-        // Both states exist in the fixtures, so the UI is exercised either way.
-        #expect(!withDemo.isEmpty)
-        #expect(!without.isEmpty)
+    @Test func aBrowseFiltersByMuscle() async throws {
+        let page = try await MockAPIClient().browseExercises(query: "", muscle: "chest", equipment: nil, cursor: nil)
+        #expect(!page.items.isEmpty)
+        #expect(page.items.allSatisfy { $0.primaryMuscleGroups.contains("chest") })
+    }
+
+    @Test func aFigureResolvesAgainstTheWebApp() {
+        #expect(figureURL("/exercises/diagrams/x.png")?.path() == "/exercises/diagrams/x.png")
+        #expect(figureURL(nil) == nil)
     }
 }
 

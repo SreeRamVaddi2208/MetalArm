@@ -458,7 +458,7 @@ final class ButtonSweepUITests: MetalARMUITestCase {
         let checks: [(tab: String, content: XCUIElement)] = [
             ("Home", app.staticTexts["Level 14 · Intermediate"]),
             ("Progress", app.staticTexts["Heaviest — Barbell Bench Press"]),
-            ("Library", app.buttons["choosePathButton"]),
+            ("Explore", app.buttons["choosePathButton"]),
             ("Profile", app.staticTexts["Badges"]),
         ]
         for (tab, content) in checks {

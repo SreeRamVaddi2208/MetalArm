@@ -2,7 +2,8 @@
 //  LibraryHomeView.swift
 //  MetalARM
 //
-//  The Library tab: the program you follow (its Start is the screen's one
+//  The Explore tab: search, and two tabs. Exercises is ExploreExercises;
+//  Programs is the program you follow (its Start is the screen's one
 //  accent fill), what is recommended for your path, then the other paths and
 //  the exercise list. Two taps to a workout. With no path yet, one card asks
 //  for it and everything is listed by path.
@@ -17,7 +18,10 @@ struct LibraryHomeView: View {
 
     @State private var path = NavigationPath()
     @State private var choosingPath = false
-    @State private var browsingExercises = false
+    @State private var part = "Programs"
+    @State private var query = ""
+    @State private var allPrograms: [LibraryProgramCard] = []
+    @State private var allWorkouts: [LibraryWorkoutCard] = []
 
     private var own: String { model.libraryHome?.path ?? model.me?.characterClass ?? "" }
 
@@ -31,32 +35,46 @@ struct LibraryHomeView: View {
     private var home: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Theme.Space.s24) {
-                ScreenTitle(title: "Library") {
-                    NavigationLink(value: LibraryRoute.path(own.isEmpty ? "athlete" : own)) {
-                        Image(systemName: "magnifyingglass").font(.system(.title3)).foregroundStyle(Theme.text2)
-                            .frame(width: Theme.iconHit, height: Theme.iconHit)
-                    }
-                    .accessibilityLabel("Search and filter")
-                    .accessibilityIdentifier("librarySearchButton")
+                HStack(spacing: Theme.Space.s8) {
+                    Image(systemName: "magnifyingglass").foregroundStyle(Theme.text2)
+                    TextField(part == "Exercises" ? "Search for exercises" : "Search for programs", text: $query)
+                        .font(Theme.body).foregroundStyle(Theme.text)
+                        .autocorrectionDisabled()
+                        .accessibilityIdentifier("exploreSearch")
                 }
-                PathChips(selected: own, own: own) { category in
-                    path.append(LibraryRoute.path(category))
-                }
-                if let home = model.libraryHome {
-                    content(home)
-                } else if model.errorMessage.isEmpty {
-                    VStack(spacing: Theme.Space.s16) {
-                        Skeleton(height: 120)
-                        Skeleton(height: 160)
-                        Skeleton()
+                .padding(.horizontal, Theme.Space.s16)
+                .frame(minHeight: Theme.touch)
+                .background(Theme.surface2, in: RoundedRectangle(cornerRadius: Theme.radius))
+                HStack(spacing: 0) {
+                    ForEach(["Programs", "Exercises"], id: \.self) { option in
+                        Button { part = option } label: {
+                            VStack(spacing: Theme.Space.s8) {
+                                Text(option).font(Theme.label)
+                                    .foregroundStyle(part == option ? Theme.text : Theme.text2)
+                                Rectangle().fill(part == option ? Theme.text : .clear).frame(height: 2)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityIdentifier("explore-\(option)")
                     }
+                }
+                if part == "Exercises" {
+                    ExploreExercises(query: query)
                 } else {
-                    ErrorState(message: model.errorMessage) { Task { await model.loadLibraryHome() } }
+                    if query.trimmed.isEmpty { programs } else { programHits }
                 }
             }
             .screen()
         }
         .background(Theme.bg)
+        .task(id: query.trimmed.isEmpty) {
+            // Every program and workout, once, for the search below.
+            guard !query.trimmed.isEmpty, allPrograms.isEmpty else { return }
+            allPrograms = (try? await model.api.libraryPrograms(category: nil, filters: LibraryFilters())) ?? []
+            allWorkouts = (try? await model.api.libraryWorkouts(category: nil, filters: LibraryFilters())) ?? []
+        }
         .task { await model.loadLibraryHome() }
         .refreshable { await model.loadLibraryHome() }
         .sheet(isPresented: $choosingPath) {
@@ -67,7 +85,52 @@ struct LibraryHomeView: View {
             .task { await model.loadTrainingPaths() }
             .presentationBackground(Theme.bg)
         }
-        .sheet(isPresented: $browsingExercises) { ExercisePickerView(browsing: true) }
+    }
+
+    @ViewBuilder
+    private var programHits: some View {
+        let needle = query.trimmed.lowercased()
+        let foundPrograms = allPrograms.filter { $0.name.lowercased().contains(needle) }
+        let foundWorkouts = allWorkouts.filter { $0.name.lowercased().contains(needle) }
+        if foundPrograms.isEmpty && foundWorkouts.isEmpty {
+            EmptyState(systemImage: "magnifyingglass", line: "No programs or workouts match.")
+        }
+        if !foundPrograms.isEmpty {
+            SectionBlock(title: "Programs") {
+                VStack(spacing: Theme.Space.s12) { ForEach(foundPrograms) { ProgramCard(program: $0) } }
+            }
+        }
+        if !foundWorkouts.isEmpty {
+            SectionBlock(title: "Workouts") {
+                RowGroup { ForEach(foundWorkouts) { WorkoutRow(workout: $0) } }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var programs: some View {
+        HStack(spacing: Theme.Space.s8) {
+            PathChips(selected: own, own: own) { category in
+                path.append(LibraryRoute.path(category))
+            }
+            NavigationLink(value: LibraryRoute.path(own.isEmpty ? "athlete" : own)) {
+                Image(systemName: "slider.horizontal.3").font(Theme.title).foregroundStyle(Theme.text2)
+                    .frame(width: Theme.iconHit, height: Theme.iconHit)
+            }
+            .accessibilityLabel("Search and filter")
+            .accessibilityIdentifier("librarySearchButton")
+        }
+        if let home = model.libraryHome {
+            content(home)
+        } else if model.errorMessage.isEmpty {
+            VStack(spacing: Theme.Space.s16) {
+                Skeleton(height: 120)
+                Skeleton(height: 160)
+                Skeleton()
+            }
+        } else {
+            ErrorState(message: model.errorMessage) { Task { await model.loadLibraryHome() } }
+        }
     }
 
     @ViewBuilder
@@ -108,15 +171,6 @@ struct LibraryHomeView: View {
                     .accessibilityIdentifier("library-path-\(other.category)")
                 }
             }
-        }
-        RowGroup {
-            Button { browsingExercises = true } label: {
-                ListRow(title: "Exercises", subtitle: "Every exercise, by muscle and equipment", chevron: true) {
-                    Image(systemName: "magnifyingglass").foregroundStyle(Theme.text2)
-                }
-            }
-            .buttonStyle(.plain)
-            .accessibilityIdentifier("libraryExercisesRow")
         }
     }
 

@@ -3,8 +3,7 @@
 //  MetalARM
 //
 //  Searches the shared exercise library plus the user's own exercises. From
-//  Train a tap adds the exercise; from the Library (`browsing`) it is a list
-//  to look through.
+//  Workout a tap adds the exercise.
 //
 
 import SwiftUI
@@ -12,14 +11,12 @@ import SwiftUI
 struct ExercisePickerView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
-    var browsing = false
     @State private var query = ""
 
     var body: some View {
         NavigationStack {
             List(model.pickerResults) { exercise in
                 Button {
-                    guard !browsing else { return }
                     Task {
                         await model.addExercise(exercise)
                         dismiss()
@@ -48,11 +45,11 @@ struct ExercisePickerView: View {
             .scrollContentBackground(.hidden)
             .background(Theme.bg)
             .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: "Search exercises")
-            .navigationTitle(browsing ? "Exercises" : "Add exercise")
+            .navigationTitle("Add exercise")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(browsing ? "Done" : "Cancel") { dismiss() }
+                    Button("Cancel") { dismiss() }
                 }
             }
             .task(id: query) {

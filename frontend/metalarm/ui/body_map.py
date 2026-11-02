@@ -1,8 +1,8 @@
 """The body map: a front and a back figure, every muscle region a path whose
 id matches MuscleGroup.svg_path_ids, filled by intensity.
 
-MetalArm's own drawing - a deliberately simple, geometric figure built from
-rounded shapes, not traced from any anatomical illustration. Two layers: every
+MetalArm's own drawing - a stylised figure built from smooth outlines, not
+traced from any anatomical illustration. Two layers: every
 region in a neutral surface tone, then the worked ones again in the
 muscle-active colour at an opacity equal to their intensity (0-1).
 """
@@ -28,52 +28,76 @@ def _round_rect(x: float, y: float, w: float, h: float, r: float) -> str:
             f"v{-(h - 2 * r)} a{r},{r} 0 0 1 {r},{-r} Z")
 
 
-def _pair(prefix: str, shape, left: tuple, mirror_x: float = 60) -> dict[str, str]:
-    """Left and right copies of one region, mirrored about the centre line."""
-    lx, *rest = left
-    if shape is _ellipse:
-        cx, cy, a, b = left
-        return {f"{prefix}-l": _ellipse(cx, cy, a, b), f"{prefix}-r": _ellipse(2 * mirror_x - cx, cy, a, b)}
-    x, y, w, h, r = left
-    return {f"{prefix}-l": _round_rect(x, y, w, h, r),
-            f"{prefix}-r": _round_rect(2 * mirror_x - x - w, y, w, h, r)}
+def _blob(*points: tuple[float, float]) -> str:
+    """A closed, smooth outline through the points (Catmull-Rom as cubics)."""
+    n = len(points)
+    out = [f"M{points[0][0]},{points[0][1]}"]
+    for i in range(n):
+        p0, p1, p2, p3 = (points[(i + k) % n] for k in (-1, 0, 1, 2))
+        c1 = (p1[0] + (p2[0] - p0[0]) / 6, p1[1] + (p2[1] - p0[1]) / 6)
+        c2 = (p2[0] - (p3[0] - p1[0]) / 6, p2[1] - (p3[1] - p1[1]) / 6)
+        out.append(f"C{c1[0]:.1f},{c1[1]:.1f} {c2[0]:.1f},{c2[1]:.1f} {p2[0]},{p2[1]}")
+    return " ".join(out) + " Z"
 
 
-# The silhouette: head, hands, knees and feet - never lit.
+def _mirror(points: tuple[tuple[float, float], ...], axis: float = 60) -> tuple[tuple[float, float], ...]:
+    return tuple((2 * axis - x, y) for x, y in points)
+
+
+def _pair(prefix: str, *points: tuple[float, float]) -> dict[str, str]:
+    """Left and right copies of one muscle, mirrored about the centre line."""
+    return {f"{prefix}-l": _blob(*points), f"{prefix}-r": _blob(*_mirror(points))}
+
+
+def _both(*points: tuple[float, float]) -> list[str]:
+    return [_blob(*points), _blob(*_mirror(points))]
+
+
+# The silhouette: never lit, shared by both views.
 BASE = [
-    _ellipse(60, 16, 11, 13),                              # head
-    _ellipse(25, 132, 5, 7), _ellipse(95, 132, 5, 7),      # hands
-    _round_rect(41, 228, 15, 20, 6), _round_rect(64, 228, 15, 20, 6),  # feet/shins
+    _ellipse(60, 15, 9, 12),                                                 # head
+    _round_rect(53, 22, 14, 14, 4),                                          # neck
+    _blob((60, 30), (72, 33), (86, 38), (85, 62), (80, 88), (82, 108), (60, 120),
+          (38, 108), (40, 88), (35, 62), (34, 38), (48, 33)),                # torso
+    *_both((38, 36), (28, 37), (21, 48), (19, 70), (14, 94), (12, 120), (16, 127),
+           (22, 124), (27, 100), (34, 76), (38, 56)),                        # arm
+    *_both((13, 122), (11, 133), (14, 143), (20, 140), (23, 128), (20, 121)),  # hand
+    *_both((38, 104), (58, 112), (59, 150), (57, 178), (56, 212), (53, 236), (44, 236),
+           (40, 212), (36, 178), (34, 146)),                                 # leg
+    *_both((44, 233), (53, 233), (54, 244), (47, 247), (38, 246)),           # foot
 ]
 
 FRONT: dict[str, str] = {
-    "front-neck": _round_rect(54, 27, 12, 10, 4),
-    **_pair("front-trap", _round_rect, (45, 34, 10, 6, 3)),
-    **_pair("front-delt", _ellipse, (33, 47, 9, 9)),
-    **_pair("front-chest", _round_rect, (40, 40, 19, 22, 8)),
-    **_pair("front-biceps", _round_rect, (24, 58, 10, 26, 5)),
-    **_pair("front-forearm", _round_rect, (21, 88, 9, 36, 4.5)),
-    "front-abs": _round_rect(50, 64, 20, 38, 6),
-    **_pair("front-oblique", _round_rect, (40, 66, 9, 32, 4.5)),
-    **_pair("front-quad", _round_rect, (40, 112, 18, 56, 8)),
-    **_pair("front-adductor", _round_rect, (53, 112, 6, 34, 3)),
+    "front-neck": " ".join(_both((52, 23), (56, 24), (58, 36), (53, 35))),
+    **_pair("front-trap", (50, 30), (53, 35), (50, 38), (41, 38), (44, 33)),
+    **_pair("front-delt", (37, 38), (29, 38), (22, 48), (22, 60), (30, 57), (36, 48)),
+    **_pair("front-chest", (59, 40), (59, 58), (49, 62), (39, 58), (37, 49), (41, 41), (50, 39)),
+    **_pair("front-biceps", (31, 56), (24, 62), (21, 76), (24, 85), (29, 80), (33, 67)),
+    **_pair("front-forearm", (23, 88), (17, 100), (14, 118), (20, 120), (26, 105), (30, 90), (27, 85)),
+    "front-abs": " ".join(_round_rect(x, y, 7.5, h, 2.5) for x in (51.5, 61)
+                          for y, h in ((62, 9.5), (72.5, 9.5), (83, 9.5), (93.5, 13))),
+    **_pair("front-oblique", (49, 64), (40, 62), (39, 78), (41, 98), (49, 103)),
+    **_pair("front-quad", (39, 112), (50, 116), (55, 134), (54, 164), (50, 176), (43, 174), (37, 152)),
+    **_pair("front-adductor", (53, 115), (58, 120), (58, 146), (55, 136)),
 }
 
 BACK: dict[str, str] = {
-    "back-neck": _round_rect(54, 27, 12, 10, 4),
-    "back-trap": "M42,38 L60,30 L78,38 L70,58 L60,62 L50,58 Z",
-    **_pair("back-delt", _ellipse, (33, 47, 9, 9)),
-    "back-upper-back": _round_rect(48, 50, 24, 18, 6),
-    **_pair("back-lat", _round_rect, (38, 54, 10, 34, 5)),
-    **_pair("back-triceps", _round_rect, (24, 58, 10, 26, 5)),
-    **_pair("back-forearm", _round_rect, (21, 88, 9, 36, 4.5)),
-    "back-lower-back": _round_rect(50, 74, 20, 26, 6),
-    **_pair("back-glute", _round_rect, (40, 102, 19, 22, 9)),
-    **_pair("back-abductor", _round_rect, (36, 104, 5, 16, 2.5)),
-    **_pair("back-hamstring", _round_rect, (41, 128, 17, 44, 7)),
-    **_pair("back-calf", _round_rect, (42, 178, 14, 46, 7)),
+    "back-neck": _round_rect(54, 23, 12, 9, 3),
+    "back-trap": _blob((60, 31), (70, 35), (79, 39), (68, 50), (60, 66), (52, 50), (41, 39), (50, 35)),
+    **_pair("back-delt", (37, 38), (29, 38), (22, 48), (22, 60), (30, 57), (36, 48)),
+    "back-upper-back": " ".join(_both((52, 50), (59, 66), (58, 72), (47, 68), (40, 54), (42, 44))),
+    **_pair("back-lat", (40, 57), (47, 70), (58, 74), (53, 90), (44, 98), (39, 82), (36, 66)),
+    **_pair("back-triceps", (31, 56), (24, 62), (21, 76), (24, 85), (29, 80), (33, 67)),
+    **_pair("back-forearm", (23, 88), (17, 100), (14, 118), (20, 120), (26, 105), (30, 90), (27, 85)),
+    "back-lower-back": _blob((60, 76), (66, 84), (68, 100), (60, 106), (52, 100), (54, 84)),
+    **_pair("back-glute", (59, 108), (59, 128), (48, 133), (39, 126), (38, 112), (47, 103)),
+    **_pair("back-abductor", (39, 106), (36, 118), (36, 130), (40, 126), (40, 113)),
+    **_pair("back-hamstring", (40, 134), (49, 136), (57, 134), (56, 158), (52, 176), (43, 176), (38, 156)),
+    **_pair("back-calf", (42, 182), (50, 180), (55, 190), (54, 208), (50, 226), (46, 226), (41, 208), (39, 192)),
 }
-FRONT_LEGS = {**_pair("front-shin", _round_rect, (42, 172, 14, 54, 7))}  # not a muscle group: silhouette
+# Not a muscle group: the shin, part of the silhouette from the front.
+FRONT_LEGS = {"front-shin-l": _blob((42, 184), (50, 182), (54, 196), (52, 226), (46, 226), (41, 200)),
+              "front-shin-r": _blob(*_mirror(((42, 184), (50, 182), (54, 196), (52, 226), (46, 226), (41, 200))))}
 
 
 def _intensity(values: Any, path_id: str) -> Any:

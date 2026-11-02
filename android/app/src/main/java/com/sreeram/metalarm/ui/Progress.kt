@@ -38,7 +38,6 @@ import com.sreeram.metalarm.theme.ErrorState
 import com.sreeram.metalarm.theme.ListRow
 import com.sreeram.metalarm.theme.RowGroup
 import com.sreeram.metalarm.theme.Screen
-import com.sreeram.metalarm.theme.ScreenTitle
 import com.sreeram.metalarm.theme.SectionBlock
 import com.sreeram.metalarm.theme.Theme
 import kotlinx.coroutines.launch
@@ -54,8 +53,7 @@ private val longDate = DateTimeFormatter.ofPattern("MMM d, yyyy", Locale.US).wit
 fun ProgressScreen(model: AppModel) {
     val scope = rememberCoroutineScope()
     LaunchedEffect(Unit) { model.loadProgress() }
-    Screen {
-        ScreenTitle("Progress")
+    Screen(top = false) {
         if (model.progressTabs.isEmpty()) {
             if (!model.isBusy) EmptyState(Icons.AutoMirrored.Outlined.ShowChart, "Finish a workout to start tracking your progress.")
         } else {

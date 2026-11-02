@@ -344,7 +344,7 @@ try {
 
   // ---------------------------------------------------------------------
   section('Every page, phone and desktop');
-  const routes = ['/home', '/train', '/library', '/library/exercises', '/progress', '/progress/history', '/profile', '/parties',
+  const routes = ['/home', '/train', '/library', '/explore', '/progress', '/progress/history', '/profile', '/parties',
     '/duels', '/rewards', '/quests', '/leaderboard'];
   for (const [label, viewport] of [['phone', { width: 360, height: 800 }], ['desktop', { width: 1280, height: 900 }]]) {
     const sweep = await browser.newContext({ viewport });
@@ -366,11 +366,11 @@ try {
   }
 
   // The five-tab app's URLs still land somewhere.
-  for (const [from, to] of [['/workout', '/train'], ['/train/exercises', '/library/exercises'],
-    ['/explore', '/library/exercises'],
+  for (const [from, to] of [['/workout', '/train'], ['/train/exercises', '/explore'],
+    ['/library/exercises', '/explore'],
     ['/you', '/progress'], ['/dashboard', '/home'], ['/gallery', '/design-system']]) {
     await page.goto(UI + from);
-    check(`${from} redirects to ${to}`, await ok(page.waitForURL(new RegExp(`${to}/?$`), { timeout: 15000 })),
+    check(`${from} redirects to ${to}`, await ok(page.waitForURL(new RegExp(`${to}/?(\\?.*)?$`), { timeout: 15000 })),
       page.url());
   }
 } catch (err) {

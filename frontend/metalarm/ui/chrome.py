@@ -1,4 +1,4 @@
-"""The app shell: avatar, top bar, the five-tab bar, and the page column.
+"""The app shell: avatar, top bar, the floating five-tab bar, and the page column.
 
 Every signed-in page sits in shell(): a 430 px column centred on wide
 screens, 20 px gutters, safe-area insets, the tab bar at the bottom, and -
@@ -15,9 +15,9 @@ from reflex.vars import Var
 from metalarm import theme as t
 from metalarm.ui.primitives import icon_button, text, when
 
-TABS = [("home", "Home", "/home", "house"), ("train", "Train", "/train", "dumbbell"),
-        ("library", "Library", "/library", "library"),
-        ("progress", "Progress", "/progress", "chart-line"), ("profile", "Profile", "/profile", "user")]
+TABS = [("home", "Home", "/home", "house"), ("explore", "Explore", "/explore", "search"),
+        ("workout", "Workout", "/train", "circle-plus"), ("library", "Library", "/library", "library"),
+        ("you", "You", "/progress", "user")]
 
 
 def avatar(initials: Any, *, size: int = 40, image: Any = "") -> rx.Component:
@@ -57,22 +57,37 @@ def top_bar(title: Any = "", *, back: Any = "", trailing: rx.Component | None = 
 def _tab(key: str, label: str, href: str, icon: str, active: Any) -> rx.Component:
     on = active == key
     return rx.link(
-        rx.vstack(rx.icon(icon, size=24, stroke_width=1.75), text(label, t.CAPTION, when(on, t.ACCENT, t.TEXT_2)),
-                  spacing="1", align="center", color=when(on, t.ACCENT, t.TEXT_2)),
-        href=href, underline="none", flex="1", display="flex", justify_content="center",
-        align_items="center", min_height=t.TAB_BAR_HEIGHT,
-        custom_attrs={"aria-current": rx.cond(on, "page", "false") if isinstance(on, Var) else ("page" if on else "false")},
+        rx.vstack(rx.icon(icon, size=22, stroke_width=1.75), text(label, t.CAPTION, t.TEXT),
+                  spacing="1", align="center", color=t.TEXT),
+        href=href, underline="none", flex="1", min_width="0", display="flex", justify_content="center",
+        align_items="center", height="100%", border_radius=t.RADIUS_PILL, background=when(on, t.BG, "transparent"),
+        custom_attrs={"aria-current": rx.cond(on, "page", "false") if isinstance(on, Var) else ("page" if on else "false"),
+                      "data-tab": key},
     )
 
 
 def tab_bar(active: Any) -> rx.Component:
+    """Floats over the content, which shows through it."""
     return rx.hstack(
         *[_tab(key, label, href, icon, active) for key, label, href, icon in TABS],
-        position="fixed", bottom="0", left="0", right="0", margin="0 auto", max_width=t.MAX_WIDTH,
-        background=t.SURFACE, border_top=t.HAIRLINE, spacing="0", z_index="40",
-        padding_bottom="env(safe-area-inset-bottom)", role="navigation",
-        class_name="ma-tab-bar",
+        position="fixed", left=t.GUTTER, right=t.GUTTER, margin="0 auto", max_width=f"calc({t.MAX_WIDTH} - 2 * {t.GUTTER})",
+        bottom=f"calc({t.TAB_BAR_GAP} + env(safe-area-inset-bottom))", height=t.TAB_BAR_HEIGHT, padding=t.space(4),
+        background=t.TAB_BAR_BG, border=t.HAIRLINE, border_radius=t.RADIUS_PILL, spacing="0", z_index="40",
+        backdrop_filter="blur(16px)", role="navigation", class_name="ma-tab-bar",
     )
+
+
+def you_switch(selected: str) -> rx.Component:
+    """The You tab's two halves."""
+    def part(label: str, href: str) -> rx.Component:
+        on = selected == label
+        return rx.link(text(label, t.LABEL, t.TEXT if on else t.TEXT_2), href=href, underline="none", flex="1",
+                       display="flex", justify_content="center", align_items="center", min_height=t.TOUCH,
+                       border_radius=t.RADIUS, background=t.SURFACE_2 if on else "transparent",
+                       custom_attrs={"aria-current": "page" if on else "false"})
+
+    return rx.hstack(part("Progress", "/progress"), part("Profile", "/profile"), spacing="1", width="100%",
+                     background=t.SURFACE, border_radius=t.RADIUS, padding=t.space(4), class_name="ma-you-switch")
 
 
 def shell(*children: rx.Component, tab: Any, pinned: rx.Component | None = None) -> rx.Component:
@@ -85,7 +100,7 @@ def shell(*children: rx.Component, tab: Any, pinned: rx.Component | None = None)
             align="start",
         ),
         rx.box(pinned, position="fixed", left="0", right="0", margin="0 auto", max_width=t.MAX_WIDTH,
-               padding=f"0 {t.GUTTER}", bottom=f"calc({t.TAB_BAR_HEIGHT} + {t.space(12)} + env(safe-area-inset-bottom))",
+               padding=f"0 {t.GUTTER}", bottom=f"calc({t.TAB_BAR_HEIGHT} + {t.TAB_BAR_GAP} + {t.space(12)} + env(safe-area-inset-bottom))",
                z_index="39", class_name="ma-pinned") if pinned is not None else rx.fragment(),
         tab_bar(tab),
         background=t.BG, color=t.TEXT, min_height="100vh", width="100%", overflow_x="hidden",

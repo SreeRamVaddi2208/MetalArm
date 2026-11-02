@@ -156,7 +156,7 @@
    "size_class": "small",
    "tile_asset": "muscle/neck",
    "sort_order": 11,
-   "browsable": true
+   "browsable": false
   },
   {
    "code": "cardio",
@@ -326,14 +326,14 @@
    "display_name": "EZ bar",
    "icon_asset": "equipment/ez_bar",
    "sort_order": 9,
-   "browsable": false
+   "browsable": true
   },
   {
    "code": "trap_bar",
    "display_name": "Trap bar",
    "icon_asset": "equipment/trap_bar",
    "sort_order": 10,
-   "browsable": false
+   "browsable": true
   },
   {
    "code": "plate",
@@ -347,7 +347,7 @@
    "display_name": "Cardio machine",
    "icon_asset": "equipment/cardio_machine",
    "sort_order": 12,
-   "browsable": false
+   "browsable": true
   }
  ]
 }

@@ -9,7 +9,7 @@ The web app is built on one calm system: near-black neutrals, one accent, a few 
 ## The ten rules
 
 1. **One job per screen, one primary button.** Everything else is secondary, ghost or danger.
-2. **One accent, used sparingly.** Forge orange covers about 10% of a screen at most. It goes on the primary button, the active tab, progress fills, the PR pill and selected chips.
+2. **One accent, used sparingly.** Forge orange covers about 10% of a screen at most. It goes on the primary button, progress fills, the PR pill and selected chips.
 3. **No second colour.** Danger red is for destructive actions only. Rank-tier colours live only inside `RankBadge` and the rank-up overlay; the lint checks this.
 4. **Flat.** No shadows, gradients or glow, except in reward moments (rank-up, duel win).
 5. **Three content sizes per screen.** One title size, body and caption. The display size is for a screen's single hero number. Button labels belong to the control.
@@ -26,7 +26,7 @@ Each token is also a CSS custom property (`--ma-bg`, `--ma-accent` and so on), w
 | Colour | Value | Used for |
 |---|---|---|
 | `BG` | `#0E0E10` | App background |
-| `SURFACE` | `#17171A` | Cards, sheets, tab bar |
+| `SURFACE` | `#17171A` | Cards, sheets |
 | `SURFACE_2` | `#202024` | Inputs, chips, pressed rows, avatars |
 | `BORDER` | `#2A2A2F` | Hairlines and outlines only |
 | `TEXT` | `#F4F4F2` | Primary text and hero numbers |
@@ -93,15 +93,19 @@ Every style uses tabular numerals.
 | Tab | Root | Under it |
 |---|---|---|
 | Home | `/home` | `/leaderboard`, `/notifications`, `/u/<id>` |
-| Train | `/train` (the live workout or its summary when there is one) | `/train/routine/<id>` (and `/new`), `/train/program/<id>` (your own programs) |
-| Library | `/library` | `/library/path/<category>`, `/library/program/<slug>`, `/library/workout/<slug>`, `/library/exercises`, `/exercise/<id>` |
-| Progress | `/progress` | `/progress/history`, `/progress/measurements`, `/progress/recovery`, `/session/<id>`, `/summary/<yyyy-mm>` |
-| Profile | `/profile` | `/profile/people`, `/quests`, `/duels`, `/parties`, `/rewards`, `/about/credits` |
+| Explore | `/explore` (`?tab=programs` or `?tab=exercises`) | `/library/path/<category>`, `/library/program/<slug>`, `/library/workout/<slug>`, `/exercise/<id>` |
+| Workout | `/train` (the live workout or its summary when there is one) | `/train/routine/<id>` (and `/new`), `/train/program/<id>` (your own programs) |
+| Library | `/library` (routines, programs and bookmarks you have kept) | |
+| You | `/progress` and `/profile`, joined by `you_switch` | `/progress/history`, `/progress/measurements`, `/progress/recovery`, `/session/<id>`, `/summary/<yyyy-mm>`, `/profile/people`, `/quests`, `/duels`, `/parties`, `/rewards`, `/about/credits` |
+
+The tab bar is a pill floating over the content: every tab label is white, and a dark pill marks the active one.
+
+**Exercise pictures:** every exercise shows a figure, and nothing else. Licensed pose figures come from `backend/scripts/import_figures.py`; any exercise without one gets MetalArm's own muscle figure from `scripts/exercise_diagrams.py` and `scripts/e2e/rasterise_figures.mjs`. `frontend/tests/test_assets.py` enforces this.
 
 Signed out, there are `/login` and `/signup`; a new account then goes to `/welcome`. Old URLs redirect:
 - `/workout` and `/routines` go to `/train`;
-- `/explore` and `/train/exercises` go to `/library/exercises`; `/explore?tab=people` goes to `/profile/people`;
-- `/train/program/<curated slug>` goes to `/library`;
+- `/library/exercises` and `/train/exercises` go to `/explore?tab=exercises`; `/explore?tab=people` goes to `/profile/people`;
+- `/train/program/<curated slug>` goes to `/explore`;
 - `/you` goes to `/progress`;
 - `/dashboard` goes to `/home`;
 - `/gallery` goes to `/design-system`.
@@ -158,7 +162,7 @@ The iPhone app (`ios/MetalARM`) runs on the same system, with the same tokens an
   - a `Theme.swift` colour that differs from `theme.py`.
 
   `ShareCard.swift` is exempt, because it renders a fixed-size image. A single line can opt out with `// token-exempt: <why>`.
-- **Tabs:** Home, Train, Library, Progress and Profile, each in its own `NavigationStack`, so a list pushes its detail. The leaderboard is reached from Home's "See all".
+- **Tabs:** Home, Explore, Workout, Library and You, in `FloatingTabBar`, each keeping its own stack, so a list pushes its detail. The leaderboard is reached from Home's "See all".
 
 **To add an iOS screen:**
 1. Build it from `Components.swift`, with `.screen()` for the frame and `.pinnedPrimary` for the one primary.

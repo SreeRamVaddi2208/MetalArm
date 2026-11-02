@@ -3304,6 +3304,8 @@ otherwise 503 with per-dependency detail.
 | `media_author` | `string | null` | no |
 | `media_license` | `string | null` | no |
 | `media_source_url` | `string | null` | no |
+| `text_license` | `string | null` | no |
+| `text_source_url` | `string | null` | no |
 
 #### `ExerciseCategory`
 
@@ -3375,6 +3377,8 @@ otherwise 503 with per-dependency detail.
 | `media_license` | `string | null` | no |
 | `media_author` | `string | null` | no |
 | `media_source_url` | `string | null` | no |
+| `text_license` | `string | null` | no |
+| `text_source_url` | `string | null` | no |
 | `is_custom` | `boolean` | yes |
 | `is_archived` | `boolean` | yes |
 

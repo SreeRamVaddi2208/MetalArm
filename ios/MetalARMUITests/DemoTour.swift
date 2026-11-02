@@ -54,8 +54,12 @@ final class DemoTour: XCTestCase {
 
     @MainActor
     private func openTab(_ app: XCUIApplication, _ name: String) {
-        let tab = app.tabBars.buttons[name]
-        if tab.exists { tab.tap() } else { app.buttons[name].firstMatch.tap() }
+        if name == "Progress" || name == "Profile" {
+            app.buttons["tab-You"].tap()
+            app.buttons["you-\(name)"].tap()
+        } else {
+            app.buttons["tab-\(name)"].tap()
+        }
         pause()
     }
 
@@ -161,7 +165,7 @@ final class DemoTour: XCTestCase {
 
         // --- The Library: a ready-made workout for the chosen path --------
         mark("presets")
-        openTab(app, "Library")
+        openTab(app, "Explore")
         let circuit = app.buttons["library-workout-athletic-circuit"]
         XCTAssertTrue(circuit.waitForExistence(timeout: 10), "The Library's recommendations never appeared")
         pause(2)

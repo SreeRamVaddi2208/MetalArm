@@ -41,7 +41,6 @@ struct ProgressScreen: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Theme.Space.s24) {
-                ScreenTitle("Progress")
                 if model.progressTabs.isEmpty {
                     if !model.isBusy {
                         EmptyState(systemImage: "chart.line.uptrend.xyaxis",

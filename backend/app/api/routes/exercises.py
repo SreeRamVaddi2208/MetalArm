@@ -156,7 +156,8 @@ def browse_exercises(
                                primary_muscle_groups=list(e.primary_muscle_groups or []),
                                thumbnail_url=e.thumbnail_url, is_custom=e.is_custom,
                                media_author=e.media_author, media_license=e.media_license,
-                               media_source_url=e.media_source_url) for e in rows],
+                               media_source_url=e.media_source_url,
+                               text_license=e.text_license, text_source_url=e.text_source_url) for e in rows],
         total=total,
         next_cursor=_browse_cursor(rows[-1].name_key, rows[-1].id) if more else None,
     )

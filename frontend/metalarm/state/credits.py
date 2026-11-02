@@ -1,5 +1,5 @@
-"""The credits page: who made each piece of library artwork, under which
-licence. A condition of using CC-BY-SA material, not a courtesy."""
+"""The credits page: who made each piece of library artwork and whose words
+the how-to steps are. A condition of using licensed material, not a courtesy."""
 
 from __future__ import annotations
 
@@ -12,6 +12,7 @@ from metalarm.state.auth import AuthState
 
 class CreditsState(rx.State):
     rows: list[dict] = []
+    text_rows: list[dict] = []
     error: str = ""
 
     diagrams: int = 0
@@ -20,12 +21,17 @@ class CreditsState(rx.State):
         auth = await self.get_state(AuthState)
         if not auth.token:
             return
-        rows, diagrams, cursor = [], 0, ""
+        rows, text_rows, diagrams, cursor = [], [], 0, ""
         try:
             while True:
                 page = await wapi.browse(auth.token, cursor=cursor, limit=100)
                 for e in page.get("items") or []:
-                    if e.get("is_custom") or not e.get("media_license"):
+                    if e.get("is_custom"):
+                        continue
+                    if e.get("text_source_url"):
+                        text_rows.append({"name": e["name"], "license": e.get("text_license") or "",
+                                          "source": e["text_source_url"]})
+                    if not e.get("media_license"):
                         continue
                     if e.get("media_author") == "MetalArm":
                         diagrams += 1
@@ -40,4 +46,4 @@ class CreditsState(rx.State):
         except ApiError as exc:
             self.error = exc.detail
             return
-        self.rows, self.diagrams = rows, diagrams
+        self.rows, self.text_rows, self.diagrams = rows, text_rows, diagrams

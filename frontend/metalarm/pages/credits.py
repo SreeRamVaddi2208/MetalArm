@@ -1,8 +1,6 @@
-"""Credits: every piece of library artwork, its author and its licence.
-
-Most of it comes from wger (https://wger.de) under Creative Commons
-Attribution-ShareAlike; attribution is a condition of that licence. Images
-were resized for the app and remain under the same licence."""
+"""Credits: who drew each exercise figure, and whose words the how-to steps
+are. wger's text (https://wger.de) is Creative Commons Attribution-ShareAlike;
+attribution is a condition of that licence."""
 
 import reflex as rx
 
@@ -20,14 +18,20 @@ def _row(row) -> rx.Component:
                    href=row["source"], is_external=True, underline="none", width="100%")
 
 
+def _text_row(row) -> rx.Component:
+    return rx.link(list_row(row["name"], f"wger contributors · {row['license']}", chevron=True),
+                   href=row["source"], is_external=True, underline="none", width="100%")
+
+
 def credits_page() -> rx.Component:
     return shell(
         top_bar("Credits", back="/profile"),
-        text("Exercise images and how-to steps come from the wger project (wger.de) and its contributors, under "
-             "Creative Commons Attribution-ShareAlike licences. The images have been resized for MetalArm and "
-             "remain under the same licence. Tap an entry for its source.", t.BODY, t.TEXT_2),
-        text(f"The muscle diagrams on the other {CreditsState.diagrams} exercises are MetalArm's own drawings, "
-             "released under CC0 1.0.", t.BODY, t.TEXT_2),
+        text(f"The muscle figures on {CreditsState.diagrams} exercises are MetalArm's own drawings, released under "
+             "CC0 1.0.", t.BODY, t.TEXT_2),
+        text("Many how-to steps come from the wger project (wger.de) and its contributors, under Creative Commons "
+             "Attribution-ShareAlike licences. Tap an entry for its source.", t.BODY, t.TEXT_2),
         error_banner(CreditsState.error),
-        section("Exercise images", rows(rx.foreach(CreditsState.rows, _row))),
+        rx.cond(CreditsState.rows.length() > 0,
+                section("Exercise figures", rows(rx.foreach(CreditsState.rows, _row)))),
+        section("How-to steps", rows(rx.foreach(CreditsState.text_rows, _text_row))),
     )

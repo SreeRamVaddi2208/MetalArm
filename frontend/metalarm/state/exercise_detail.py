@@ -81,7 +81,7 @@ class ExerciseDetailState(rx.State):
         self.muscles_label = " · ".join(names.get(c, c) for c in primary) + (
             f"  (also {', '.join(names.get(c, c) for c in secondary)})" if secondary else "")
         self.credit = (f"Image: {e['media_author']}, {e['media_license']}"
-                       if e.get("media_author") and e.get("media_license") else "")
+                       if e.get("media_author") not in (None, "", "MetalArm") and e.get("media_license") else "")
         # Primary muscles at full strength, secondary at 40% (spec 7.3).
         self.muscle_paths = paths_for({**{c: SECONDARY_FILL for c in secondary}, **{c: 1.0 for c in primary}}, svg)
         self.steps = list(e.get("steps") or []) or ([e["instructions"]] if e.get("instructions") else [])

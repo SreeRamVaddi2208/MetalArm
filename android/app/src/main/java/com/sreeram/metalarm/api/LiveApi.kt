@@ -86,6 +86,29 @@ class LiveApi(
         return send(get("exercises", parameters))
     }
 
+    override suspend fun browseExercises(query: String, muscle: String?, equipment: String?, cursor: String?): ExerciseBrowsePage {
+        val parameters = mutableMapOf("limit" to "100")
+        if (query.isNotBlank()) parameters["q"] = query.trim()
+        muscle?.let { parameters["muscle"] = it }
+        equipment?.let { parameters["equipment"] = it }
+        cursor?.let { parameters["cursor"] = it }
+        return send(get("exercises/browse", parameters))
+    }
+
+    override suspend fun exercise(id: String): Exercise = send(get("exercises/$id"))
+
+    override suspend fun savedItems(filter: String): List<SavedItem> =
+        send<SavedPage>(get("library", mapOf("filter" to filter, "limit" to "100"))).items
+
+    override suspend fun setFavorite(type: String, id: String, on: Boolean) {
+        if (on) perform(post("favorites", FavoriteBody(type, id)), authenticated = true)
+        else perform(delete("favorites/$type/$id", EmptyBody()), authenticated = true)
+    }
+
+    override suspend fun routine(id: String): RoutineDetail = send(get("routines/$id"))
+    override suspend fun program(id: String): ProgramDetail = send(get("programs/$id"))
+    override suspend fun startRoutine(id: String): WorkoutSession = send(post("workouts/sessions", RoutineStart(id)))
+
     override suspend fun lastPerformance(exerciseId: String): LastPerformance =
         send(get("exercises/$exerciseId/last-performance"))
     override suspend fun exerciseHistory(exerciseId: String): List<HistoryPoint> =
@@ -278,6 +301,7 @@ class LiveApi(
 // No points or PR fields: the server computes those and ignores any sent.
 @Serializable private class SetBody(val exerciseId: String, val weight: Double, val unit: String, val reps: Int, val clientSetId: String)
 @Serializable private class PresetStart(val presetSlug: String)
+@Serializable private class RoutineStart(val routineId: String)
 @Serializable private class PartyBody(val name: String)
 @Serializable private class JoinBody(val inviteCode: String)
 @Serializable private class ImportBody(val csv: String, val unit: String)

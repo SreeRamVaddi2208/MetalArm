@@ -95,6 +95,9 @@ class ExerciseOut(BaseModel):
     media_license: str | None = None
     media_author: str | None = None
     media_source_url: str | None = None
+    # Credit for steps and instructions taken from elsewhere.
+    text_license: str | None = None
+    text_source_url: str | None = None
     is_custom: bool
     is_archived: bool
 

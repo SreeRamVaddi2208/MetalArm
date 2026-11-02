@@ -11,9 +11,55 @@ import XCTest
 
 final class LibraryUITests: MetalARMUITestCase {
     @MainActor
+    func testASavedRoutineOpensAndStarts() throws {
+        let app = launchSignedIn()
+        openTab(app, "Library")
+        let routine = app.buttons["saved-item-Upper Day"]
+        XCTAssertTrue(routine.waitForExistence(timeout: reacts), "The saved routine never appeared")
+        routine.tap()
+        let start = app.buttons["planStartButton"]
+        XCTAssertTrue(start.waitForExistence(timeout: reacts), "The routine did not open")
+        start.tap()
+        XCTAssertFalse(start.waitForExistence(timeout: 2), "Starting did not close the sheet")
+    }
+
+    @MainActor
+    func testProgramSearchFindsAWorkout() throws {
+        let app = launchSignedIn(["-UITestPath", "bodybuilder"])
+        openTab(app, "Explore")
+        let search = app.textFields["exploreSearch"]
+        XCTAssertTrue(search.waitForExistence(timeout: reacts))
+        search.tap()
+        search.typeText("chest")
+        XCTAssertTrue(app.buttons["library-workout-chest-and-triceps"].waitForExistence(timeout: reacts),
+                      "Search did not find the workout")
+    }
+
+    @MainActor
+    func testExploreLeadsFromAMuscleToItsFigure() throws {
+        let app = launchSignedIn(["-UITestPath", "bodybuilder"])
+        openTab(app, "Explore")
+        app.buttons["explore-Exercises"].tap()
+        let chest = app.buttons["muscle-chest"]
+        XCTAssertTrue(chest.waitForExistence(timeout: reacts), "The muscle grid never appeared")
+        attachScreenshot(app, named: "20 Explore exercises")
+        chest.tap()
+        let card = app.buttons["exerciseCard-Barbell Bench Press"]
+        XCTAssertTrue(card.waitForExistence(timeout: reacts), "Chest listed no exercises")
+        let bookmark = app.buttons["bookmark-Barbell Bench Press"]
+        XCTAssertEqual(bookmark.label, "Bookmark")
+        bookmark.tap()
+        XCTAssertTrue(app.buttons["Remove bookmark"].waitForExistence(timeout: reacts), "The bookmark did not take")
+        attachScreenshot(app, named: "21 Exercise cards")
+        card.tap()
+        XCTAssertTrue(element(app, "exerciseSheetFigure").waitForExistence(timeout: reacts), "The figure did not open")
+        attachScreenshot(app, named: "22 Exercise figure")
+    }
+
+    @MainActor
     func testAWorkoutFromTheLibraryRunsToTheSummary() throws {
         let app = launchSignedIn(["-UITestPath", "bodybuilder"])
-        openTab(app, "Library")
+        openTab(app, "Explore")
 
         // The server's order: the user's path, easiest first.
         let back = app.buttons["library-workout-back-and-biceps"]
@@ -51,7 +97,7 @@ final class LibraryUITests: MetalARMUITestCase {
         app.buttons["homeStartWorkoutButton"].tap()
         XCTAssertTrue(app.buttons["addFirstExerciseButton"].waitForExistence(timeout: reacts))
 
-        openTab(app, "Library")
+        openTab(app, "Explore")
         let chest = app.buttons["library-workout-chest-and-triceps"]
         XCTAssertTrue(chest.waitForExistence(timeout: reacts))
         scrollUntilHittable(chest, in: app)
@@ -66,7 +112,7 @@ final class LibraryUITests: MetalARMUITestCase {
     @MainActor
     func testFollowingAProgram() throws {
         let app = launchSignedIn(["-UITestPath", "bodybuilder"])
-        openTab(app, "Library")
+        openTab(app, "Explore")
         let program = app.buttons["library-program-upper-lower-8wk"]
         XCTAssertTrue(program.waitForExistence(timeout: reacts), "The recommended programs never appeared")
         program.tap()
@@ -93,7 +139,7 @@ final class LibraryUITests: MetalARMUITestCase {
     @MainActor
     func testFilteringAPath() throws {
         let app = launchSignedIn(["-UITestPath", "athlete"])
-        openTab(app, "Library")
+        openTab(app, "Explore")
         let search = app.buttons["librarySearchButton"]
         XCTAssertTrue(search.waitForExistence(timeout: reacts))
         search.tap()
@@ -119,7 +165,7 @@ final class LibraryUITests: MetalARMUITestCase {
     @MainActor
     func testWithNoPathTheLibraryAsksForOne() throws {
         let app = launchSignedIn()
-        openTab(app, "Library")
+        openTab(app, "Explore")
         let choose = app.buttons["choosePathButton"]
         XCTAssertTrue(choose.waitForExistence(timeout: reacts), "No prompt to choose a path")
         XCTAssertTrue(app.buttons["library-path-athlete"].exists, "Every path should be listed")

@@ -129,6 +129,9 @@ class ExerciseCardOut(BaseModel):
     media_author: str | None = None
     media_license: str | None = None
     media_source_url: str | None = None
+    # The how-to text's credit, for the credits screens.
+    text_license: str | None = None
+    text_source_url: str | None = None
 
 
 class ExerciseBrowsePage(BaseModel):

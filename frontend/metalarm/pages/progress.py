@@ -18,7 +18,7 @@ from metalarm.state.you import FOCUS_METRICS, METRICS, RANGES, YouState
 from metalarm.ui.body_map import body_map
 from metalarm.ui.calendar import month_calendar
 from metalarm.ui.chart import line_chart
-from metalarm.ui.chrome import top_bar
+from metalarm.ui.chrome import top_bar, you_switch
 from metalarm.ui.primitives import (
     button,
     card,
@@ -103,7 +103,8 @@ def _pr(r) -> rx.Component:
 def progress_page() -> rx.Component:
     s = YouState
     return shell(
-        top_bar("Progress", large=True),
+        top_bar("You", large=True),
+        you_switch("Progress"),
         error_banner(s.error),
         _month_card(),
         _focus_row(),

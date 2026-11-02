@@ -2,6 +2,9 @@
 """Bring wger's open exercise data into MetalArm's library: artwork, muscles,
 equipment - each piece with its licence and author.
 
+Only `snapshot` still runs: wger's images are no longer used, so `enrich` and
+`library`, which write them back, are retired. Kept for the licence record.
+
 wger (https://wger.de) publishes its exercise database under Creative
 Commons, mostly CC-BY-SA. Attribution is a condition of using it, so nothing
 leaves this script without `media_license`, `media_author` and
@@ -470,9 +473,10 @@ def main() -> int:
     args = ap.parse_args()
     if args.command == "snapshot":
         return snapshot()
-    if args.command == "library":
-        return library_import(args.assets, args.size)
-    return enrich(args.assets)
+    # Both write wger's pictures back into the library. Exercises now show
+    # licensed figures or our own (scripts/import_figures.py, exercise_diagrams.py).
+    print(f"'{args.command}' is retired: wger's images are no longer used.", file=sys.stderr)
+    return 2
 
 
 if __name__ == "__main__":

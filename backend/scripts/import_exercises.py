@@ -64,6 +64,8 @@ _FIELDS = (
     "media_license",
     "media_author",
     "media_source_url",
+    "text_license",
+    "text_source_url",
     "instructions",
     "media_url",
 )
@@ -88,6 +90,8 @@ class LibraryExercise(BaseModel):
     media_license: str | None = Field(default=None, max_length=40)
     media_author: str | None = Field(default=None, max_length=200)
     media_source_url: str | None = Field(default=None, max_length=500)
+    text_license: str | None = Field(default=None, max_length=40)
+    text_source_url: str | None = Field(default=None, max_length=500)
 
     @model_validator(mode="after")
     def _attributed(self) -> "LibraryExercise":
@@ -119,6 +123,8 @@ class LibraryExercise(BaseModel):
             "media_license": self.media_license or None,
             "media_author": self.media_author or None,
             "media_source_url": self.media_source_url or None,
+            "text_license": self.text_license or None,
+            "text_source_url": self.text_source_url or None,
             "instructions": self.instructions or None,
             "media_url": self.media_url or None,
         }

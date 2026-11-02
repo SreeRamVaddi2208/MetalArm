@@ -839,10 +839,14 @@ class AppModel(
 
     /** Starts a Library workout as the live session. Returns true when it did,
      *  so the caller can switch to Train. One workout at a time. */
-    suspend fun startLibraryWorkout(slug: String): Boolean {
+    suspend fun startLibraryWorkout(slug: String): Boolean = startPlanned { api.startLibraryWorkout(slug) }
+
+    suspend fun startRoutine(id: String): Boolean = startPlanned { api.startRoutine(id) }
+
+    private suspend fun startPlanned(start: suspend () -> WorkoutSession): Boolean {
         isBusy = true
         try {
-            session = api.startLibraryWorkout(slug)
+            session = start()
             pendingExercises = emptyList()
             prHint = ""
             progressionHint = ""

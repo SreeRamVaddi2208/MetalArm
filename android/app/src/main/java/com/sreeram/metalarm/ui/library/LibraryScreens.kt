@@ -6,6 +6,16 @@
 
 package com.sreeram.metalarm.ui.library
 
+import com.sreeram.metalarm.ui.Field
+import com.sreeram.metalarm.api.LibraryWorkoutCard
+import com.sreeram.metalarm.api.LibraryProgramCard
+
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -114,7 +124,8 @@ fun LibraryHomeScreen(
 ) {
     val scope = rememberCoroutineScope()
     var choosingPath by remember { mutableStateOf(false) }
-    var browsingExercises by remember { mutableStateOf(false) }
+    var part by rememberSaveable { mutableStateOf("Programs") }
+    var query by rememberSaveable { mutableStateOf("") }
     val own = model.libraryHome?.path?.takeIf { it.isNotEmpty() } ?: model.me?.characterClass.orEmpty()
     LaunchedEffect(Unit) { model.loadLibraryHome() }
 
@@ -131,13 +142,34 @@ fun LibraryHomeScreen(
         return
     }
     Screen {
-        ScreenTitle("Library") {
-            IconButton(Icons.Filled.Search, "Search and filter", { onPath(own.ifEmpty { "athlete" }) }, Modifier.testTag("librarySearchButton"))
+        Field(query, { query = it }, if (part == "Exercises") "Search for exercises" else "Search for programs", "exploreSearch")
+        Row(Modifier.fillMaxWidth()) {
+            listOf("Programs", "Exercises").forEach { option ->
+                Column(
+                    Modifier.weight(1f).clickable(role = Role.Tab) { part = option }.testTag("explore-${option.lowercase()}"),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(Theme.Space.s8),
+                ) {
+                    Text(option, style = Theme.label, color = if (part == option) Theme.text else Theme.text2, modifier = Modifier.padding(top = Theme.Space.s8))
+                    Box(Modifier.fillMaxWidth().height(2.dp).background(if (part == option) Theme.text else Theme.bg))
+                }
+            }
         }
-        PathChips(own, own, onPath)
+        if (part == "Exercises") {
+            ExploreExercises(model, query)
+            return@Screen
+        }
+        if (query.isNotBlank()) {
+            ProgramHits(model, query, onProgram, onWorkout)
+            return@Screen
+        }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.weight(1f)) { PathChips(own, own, onPath) }
+            IconButton(Icons.Filled.Tune, "Search and filter", { onPath(own.ifEmpty { "athlete" }) }, Modifier.testTag("librarySearchButton"))
+        }
         val home = model.libraryHome
         when {
-            home != null -> HomeContent(model, home, onPath, onProgram, onWorkout, onStarted, { choosingPath = true }, { browsingExercises = true })
+            home != null -> HomeContent(model, home, onPath, onProgram, onWorkout, onStarted, { choosingPath = true })
             model.errorMessage.isEmpty() -> Column(verticalArrangement = Arrangement.spacedBy(Theme.Space.s16)) {
                 Skeleton(height = 120.dp)
                 Skeleton(height = 160.dp)
@@ -146,14 +178,37 @@ fun LibraryHomeScreen(
             else -> ErrorState(model.errorMessage) { /* retried by pull-in */ }
         }
     }
-    if (browsingExercises) ExercisePicker(model, browsing = true) { browsingExercises = false }
+}
+
+/** Every program and workout whose name matches, across all paths. */
+@Composable
+private fun ProgramHits(model: AppModel, query: String, onProgram: (String) -> Unit, onWorkout: (String) -> Unit) {
+    var programs by remember { mutableStateOf<List<LibraryProgramCard>>(emptyList()) }
+    var workouts by remember { mutableStateOf<List<LibraryWorkoutCard>>(emptyList()) }
+    LaunchedEffect(Unit) {
+        runCatching {
+            programs = model.api.libraryPrograms(null, LibraryFilters())
+            workouts = model.api.libraryWorkouts(null, LibraryFilters())
+        }.onFailure { if (it is kotlinx.coroutines.CancellationException) throw it }
+    }
+    val foundPrograms = programs.filter { it.name.contains(query.trim(), ignoreCase = true) }
+    val foundWorkouts = workouts.filter { it.name.contains(query.trim(), ignoreCase = true) }
+    if (foundPrograms.isEmpty() && foundWorkouts.isEmpty()) {
+        EmptyState(Icons.Filled.Search, "No programs or workouts match.")
+    }
+    if (foundPrograms.isNotEmpty()) SectionBlock("Programs") {
+        foundPrograms.forEach { ProgramCard(it, { onProgram(it.slug) }) }
+    }
+    if (foundWorkouts.isNotEmpty()) SectionBlock("Workouts") {
+        RowGroup { foundWorkouts.forEach { w -> row { WorkoutRow(w) { onWorkout(w.slug) } } } }
+    }
 }
 
 @Composable
 private fun HomeContent(
     model: AppModel, home: LibraryHome,
     onPath: (String) -> Unit, onProgram: (String) -> Unit, onWorkout: (String) -> Unit, onStarted: () -> Unit,
-    onChoosePath: () -> Unit, onExercises: () -> Unit,
+    onChoosePath: () -> Unit,
 ) {
     home.yourProgram?.let { YourProgramCard(model, it, onProgram, onWorkout, onStarted) }
     if (home.needsPath) {
@@ -190,12 +245,6 @@ private fun HomeContent(
                     )
                 }
             }
-        }
-    }
-    RowGroup {
-        row {
-            ListRow("Exercises", Modifier.testTag("libraryExercisesRow"), subtitle = "Every exercise, by muscle and equipment",
-                chevron = true, onClick = onExercises) { Icon(Icons.Filled.Search, contentDescription = null, tint = Theme.text2) }
         }
     }
 }

@@ -67,8 +67,8 @@ class ProgramState(rx.State):
         try:
             uuid.UUID(self.key)
         except ValueError:
-            # A curated plan's old address: those live in the Library now.
-            return rx.redirect("/library")
+            # A curated plan's old address: those live in Explore now.
+            return rx.redirect("/explore")
         self.loaded, self.error = False, ""
         try:
             p = await wapi.get_program(token, self.key)

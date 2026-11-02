@@ -118,6 +118,42 @@ final class LiveAPIClient: MetalArmAPI {
         return try await send(.get("exercises", query: parameters))
     }
 
+    func browseExercises(query: String, muscle: String?, equipment: String?, cursor: String?) async throws -> ExerciseBrowsePage {
+        var parameters = ["limit": "100"]
+        if !query.trimmed.isEmpty { parameters["q"] = query.trimmed }
+        if let muscle { parameters["muscle"] = muscle }
+        if let equipment { parameters["equipment"] = equipment }
+        if let cursor { parameters["cursor"] = cursor }
+        return try await send(.get("exercises/browse", query: parameters))
+    }
+
+    func exercise(id: String) async throws -> Exercise {
+        try await send(.get("exercises/\(id)"))
+    }
+
+    func savedItems(filter: String) async throws -> [SavedItem] {
+        let page: SavedPage = try await send(.get("library", query: ["filter": filter, "limit": "100"]))
+        return page.items
+    }
+
+    func setFavorite(type: String, id: String, on: Bool) async throws {
+        struct Favorite: Encodable { var targetType: String; var targetId: String }
+        if on {
+            _ = try await perform(.post("favorites", Favorite(targetType: type, targetId: id), encoder), authenticated: true)
+        } else {
+            _ = try await perform(.delete("favorites/\(type)/\(id)", EmptyBody(), encoder), authenticated: true)
+        }
+    }
+
+    func routine(id: String) async throws -> RoutineDetail { try await send(.get("routines/\(id)")) }
+
+    func program(id: String) async throws -> ProgramDetail { try await send(.get("programs/\(id)")) }
+
+    func startRoutine(id: String) async throws -> WorkoutSession {
+        struct RoutineStart: Encodable { let routineId: String }
+        return try await send(.post("workouts/sessions", RoutineStart(routineId: id), encoder))
+    }
+
     func lastPerformance(exerciseID: String) async throws -> LastPerformance {
         try await send(.get("exercises/\(exerciseID)/last-performance"))
     }
